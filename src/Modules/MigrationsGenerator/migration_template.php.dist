@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{namespace}};
+
+use Norm\DatabaseComparator\Migrations\BaseMigration;
+
+class {{className}} extends BaseMigration
+{
+    protected function up(): void
+    {
+        {{upScript}}
+    }
+
+    protected function down(): void
+    {
+        {{downScript}}
+    }
+}

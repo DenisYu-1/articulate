@@ -1,0 +1,65 @@
+<?php
+
+namespace Norm\Tests\Commands\InitCommand;
+
+use Norm\Commands\InitCommand;
+use Norm\Connection;
+use Norm\Tests\AbstractTestCase;
+use Symfony\Component\Console\Tester\CommandTester;
+
+class InitialCreationTest extends AbstractTestCase
+{
+    public function testExecuteWithSQLite(): void
+    {
+//        $this->sqliteConnection->executeQuery('DROP DATABASE migrations');
+        $this->runTestWithConnection($this->sqliteConnection, "
+            SELECT name 
+            FROM sqlite_master 
+            WHERE type='table' 
+                AND name='migrations';
+        ");
+    }
+
+    public function testExecuteWithMySQL(): void
+    {
+//        $this->mysqlConnection->executeQuery('DROP DATABASE migrations');
+        $this->runTestWithConnection($this->mysqlConnection, "
+            SHOW TABLES LIKE 'migrations'
+        ");
+    }
+
+    public function testExecuteWithPostgreSQL(): void
+    {
+//        $this->pgsqlConnection->executeQuery('DROP DATABASE migrations');
+        $this->runTestWithConnection($this->pgsqlConnection, "
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+                AND table_name = 'migrations'
+        ");
+    }
+
+    private function runTestWithConnection(Connection $connection, $resultQuery): void
+    {
+        $command = new InitCommand($connection);
+        $commandTester = new CommandTester($command);
+
+        $result = $connection->executeQuery($resultQuery);
+
+        $tables = $result->fetchAll();
+        $this->assertEmpty($tables, "Migrations table not found in database.");
+
+        // Execute the command
+        $commandTester->execute([]);
+
+        // Check the command output
+        $output = $commandTester->getDisplay();
+        $this->assertStringContainsString('Migrations table created successfully.', $output);
+
+        // Verify that the table was created
+        $result = $connection->executeQuery($resultQuery);
+
+        $tables = $result->fetchAll();
+        $this->assertNotEmpty($tables, "Migrations table not found in database.");
+    }
+}
