@@ -1,12 +1,12 @@
 <?php
 
-namespace Norm\Tests\Attributes\Entity;
+namespace Articulate\Tests\Attributes\Entity;
 
-use Norm\Attributes\Entity;
-use Norm\Attributes\Property;
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Attributes\Reflection\ReflectionProperty;
-use Norm\Tests\AbstractTestCase;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Tests\AbstractTestCase;
 
 #[Entity]
 class EntityDefaultTest extends AbstractTestCase

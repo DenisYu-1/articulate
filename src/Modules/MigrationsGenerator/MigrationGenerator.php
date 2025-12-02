@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Modules\MigrationsGenerator;
+namespace Articulate\Modules\MigrationsGenerator;
 
 use DateTimeImmutable;
 

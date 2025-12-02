@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Modules\DatabaseSchemaReader;
+namespace Articulate\Modules\DatabaseSchemaReader;
 
 class DatabaseColumn {
     public readonly ?int $length;

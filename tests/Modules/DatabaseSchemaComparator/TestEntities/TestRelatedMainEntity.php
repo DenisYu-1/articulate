@@ -1,9 +1,9 @@
 <?php
 
-namespace Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities;
+namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
-use Norm\Attributes\Entity;
-use Norm\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Relations\OneToOne;
 
 #[Entity]
 class TestRelatedMainEntity

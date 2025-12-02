@@ -1,10 +1,10 @@
 <?php
 
-namespace Norm\Tests\Commands\InitCommand;
+namespace Articulate\Tests\Commands\InitCommand;
 
-use Norm\Commands\InitCommand;
-use Norm\Connection;
-use Norm\Tests\AbstractTestCase;
+use Articulate\Commands\InitCommand;
+use Articulate\Connection;
+use Articulate\Tests\AbstractTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class InitialCreationTest extends AbstractTestCase

@@ -1,11 +1,11 @@
 <?php
 
-namespace Norm\Modules\MigrationsGenerator;
+namespace Articulate\Modules\MigrationsGenerator;
 
-use Norm\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\PropertiesData;
-use Norm\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
+use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator {
 

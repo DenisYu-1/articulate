@@ -1,8 +1,8 @@
 <?php
 
-namespace Norm\Attributes\Reflection;
+namespace Articulate\Attributes\Reflection;
 
-use Norm\Attributes\Property;
+use Articulate\Attributes\Property;
 use ReflectionProperty as BaseReflectionProperty;
 
 interface PropertyInterface

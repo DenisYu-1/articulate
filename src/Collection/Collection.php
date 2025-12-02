@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Collection;
+namespace Articulate\Collection;
 
 use Iterator;
 

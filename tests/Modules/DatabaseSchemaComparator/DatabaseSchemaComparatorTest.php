@@ -1,20 +1,20 @@
 <?php
 
-namespace Norm\Tests\Modules\DatabaseSchemaComparator;
+namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Exceptions\EmptyPropertiesList;
-use Norm\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Norm\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Norm\Modules\DatabaseSchemaReader\DatabaseColumn;
-use Norm\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
-use Norm\Tests\AbstractTestCase;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEmptyEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiPrimaryKeyEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiSortedPrimaryKeyEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSecondEntity;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEmptyEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiPrimaryKeyEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiSortedPrimaryKeyEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSecondEntity;
 
 class DatabaseSchemaComparatorTest extends AbstractTestCase
 {

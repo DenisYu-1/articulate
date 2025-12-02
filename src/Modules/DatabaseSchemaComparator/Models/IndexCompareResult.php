@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Modules\DatabaseSchemaComparator\Models;
+namespace Articulate\Modules\DatabaseSchemaComparator\Models;
 
 class IndexCompareResult extends CompareResult {
     public function __construct(

@@ -1,9 +1,9 @@
 <?php
 
-namespace Norm\Commands;
+namespace Articulate\Commands;
 
-use Norm\Connection;
-use Norm\Modules\MigrationsGenerator\BaseMigration;
+use Articulate\Connection;
+use Articulate\Modules\MigrationsGenerator\BaseMigration;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -14,7 +14,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'norm:migrate')]
+#[AsCommand(name: 'articulate:migrate')]
 class MigrateCommand extends Command
 {
     public function __construct(

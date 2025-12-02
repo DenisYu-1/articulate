@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm;
+namespace Articulate;
 
 use PDO;
 use PDOException;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Attributes\Relations;
+namespace Articulate\Attributes\Relations;
 
 interface RelationAttributeInterface
 {

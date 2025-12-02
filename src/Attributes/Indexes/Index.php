@@ -1,11 +1,11 @@
 <?php
 
-namespace Norm\Attributes\Indexes;
+namespace Articulate\Attributes\Indexes;
 
 use Attribute;
-use Norm\Attributes\Property;
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Attributes\Reflection\ReflectionProperty;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionProperty;
 use ReflectionClass;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]

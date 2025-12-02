@@ -1,15 +1,15 @@
 <?php
 
-namespace Norm\Tests\Attributes\OneToMany;
+namespace Articulate\Tests\Attributes\OneToMany;
 
-use Norm\Attributes\Entity;
-use Norm\Attributes\Property;
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Attributes\Reflection\ReflectionRelation;
-use Norm\Attributes\Relations\ManyToOne;
-use Norm\Attributes\Relations\OneToMany;
-use Norm\Tests\AbstractTestCase;
-use Norm\Tests\Attributes\OneToOne\OneToOneRelatedEntity;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Attributes\OneToOne\OneToOneRelatedEntity;
 use RuntimeException;
 
 class NonEntity {

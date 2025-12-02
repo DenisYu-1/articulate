@@ -1,8 +1,8 @@
 <?php
 
-namespace Norm;
+namespace Articulate;
 
-use Norm\Attributes\Entity;
+use Articulate\Attributes\Entity;
 use ReflectionClass;
 
 class EntityManager

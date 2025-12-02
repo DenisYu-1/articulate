@@ -1,12 +1,12 @@
 <?php
 
-namespace Norm\Tests\Modules\MigrationsGenerator;
+namespace Articulate\Tests\Modules\MigrationsGenerator;
 
-use Norm\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\PropertiesData;
-use Norm\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Norm\Modules\MigrationsGenerator\MigrationsCommandGenerator;
-use Norm\Tests\AbstractTestCase;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
+use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
+use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase

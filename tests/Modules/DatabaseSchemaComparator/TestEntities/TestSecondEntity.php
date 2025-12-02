@@ -1,9 +1,9 @@
 <?php
 
-namespace Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities;
+namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
-use Norm\Attributes\Entity;
-use Norm\Attributes\Property;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
 
 #[Entity(tableName: 'test_entity')]
 class TestSecondEntity

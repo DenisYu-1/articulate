@@ -1,8 +1,8 @@
 <?php
 
-namespace Norm\Modules\DatabaseSchemaReader;
+namespace Articulate\Modules\DatabaseSchemaReader;
 
-use Norm\Connection;
+use Articulate\Connection;
 use PDO;
 use PDOException;
 

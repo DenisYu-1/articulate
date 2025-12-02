@@ -1,13 +1,13 @@
 <?php
 
-namespace Norm\Attributes\Reflection;
+namespace Articulate\Attributes\Reflection;
 
-use Norm\Attributes\Entity;
-use Norm\Attributes\Indexes\AutoIncrement;
-use Norm\Attributes\Indexes\PrimaryKey;
-use Norm\Attributes\Property;
-use Norm\Attributes\Relations\ManyToOne;
-use Norm\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\AutoIncrement;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToOne;
 use ReflectionClass;
 
 class ReflectionEntity extends ReflectionClass

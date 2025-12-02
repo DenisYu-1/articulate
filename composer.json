@@ -1,15 +1,15 @@
 {
-    "name": "denis/norm",
+    "name": "denis/articulate",
     "description": "A business-oriented PHP ORM library",
     "type": "library",
     "autoload": {
         "psr-4": {
-            "Norm\\": "src/"
+            "Articulate\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Norm\\Tests\\": "tests/"
+            "Articulate\\Tests\\": "tests/"
         }
     },
     "authors": [

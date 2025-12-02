@@ -1,14 +1,14 @@
 <?php
 
-namespace Norm\Commands;
+namespace Articulate\Commands;
 
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Norm\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
-use Norm\Modules\MigrationsGenerator\MigrationGenerator;
-use Norm\Modules\MigrationsGenerator\MigrationsCommandGenerator;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
+use Articulate\Modules\MigrationsGenerator\MigrationGenerator;
+use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,7 +17,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'norm:diff')]
+#[AsCommand(name: 'articulate:diff')]
 class DiffCommand extends Command
 {
     private readonly MigrationGenerator $migrationGenerator;

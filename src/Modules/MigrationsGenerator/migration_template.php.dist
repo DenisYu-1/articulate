@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace {{namespace}};
 
-use Norm\DatabaseComparator\Migrations\BaseMigration;
+use Articulate\Modules\MigrationsGenerator\BaseMigration;
 
 class {{className}} extends BaseMigration
 {

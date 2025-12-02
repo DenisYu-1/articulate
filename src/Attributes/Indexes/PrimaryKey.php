@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Attributes\Indexes;
+namespace Articulate\Attributes\Indexes;
 
 use Attribute;
 

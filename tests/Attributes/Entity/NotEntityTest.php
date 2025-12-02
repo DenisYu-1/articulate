@@ -1,10 +1,10 @@
 <?php
 
-namespace Norm\Tests\Attributes\Entity;
+namespace Articulate\Tests\Attributes\Entity;
 
-use Norm\Attributes\Property;
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Tests\AbstractTestCase;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Tests\AbstractTestCase;
 
 class NotEntityTest extends AbstractTestCase
 {

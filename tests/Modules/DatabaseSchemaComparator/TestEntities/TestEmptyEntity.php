@@ -1,8 +1,8 @@
 <?php
 
-namespace Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities;
+namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
-use Norm\Attributes\Entity;
+use Articulate\Attributes\Entity;
 
 #[Entity]
 class TestEmptyEntity

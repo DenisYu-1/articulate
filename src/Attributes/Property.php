@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Attributes;
+namespace Articulate\Attributes;
 
 use Attribute;
 

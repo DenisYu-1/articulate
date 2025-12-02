@@ -1,8 +1,8 @@
 <?php
 
-namespace Norm\Modules\MigrationsGenerator;
+namespace Articulate\Modules\MigrationsGenerator;
 
-use Norm\Connection;
+use Articulate\Connection;
 
 abstract class BaseMigration {
     public function __construct(

@@ -1,18 +1,18 @@
 <?php
 
-namespace Norm\Modules\DatabaseSchemaComparator;
+namespace Articulate\Modules\DatabaseSchemaComparator;
 
-use Norm\Attributes\Indexes\AutoIncrement;
-use Norm\Attributes\Indexes\Index;
-use Norm\Attributes\Indexes\PrimaryKey;
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Exceptions\EmptyPropertiesList;
-use Norm\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
-use Norm\Modules\DatabaseSchemaComparator\Models\PropertiesData;
-use Norm\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Norm\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Attributes\Indexes\AutoIncrement;
+use Articulate\Attributes\Indexes\Index;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
+use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 
 readonly class DatabaseSchemaComparator {
     public function __construct(

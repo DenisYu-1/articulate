@@ -1,14 +1,14 @@
 <?php
 
-namespace Norm\Tests\Modules\DatabaseSchemaComparator;
+namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
-use Norm\Attributes\Reflection\ReflectionEntity;
-use Norm\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Norm\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Norm\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
-use Norm\Tests\AbstractTestCase;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
-use Norm\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 {

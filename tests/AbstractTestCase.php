@@ -1,9 +1,9 @@
 <?php
 
-namespace Norm\Tests;
+namespace Articulate\Tests;
 
 use Dotenv\Dotenv;
-use Norm\Connection;
+use Articulate\Connection;
 use PHPUnit\Framework\TestCase;
 
 abstract class AbstractTestCase extends TestCase

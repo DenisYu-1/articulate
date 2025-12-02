@@ -1,6 +1,6 @@
 <?php
 
-namespace Norm\Exceptions;
+namespace Articulate\Exceptions;
 
 use Exception;
 

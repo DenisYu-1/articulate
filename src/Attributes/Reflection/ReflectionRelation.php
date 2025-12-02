@@ -1,10 +1,10 @@
 <?php
 
-namespace Norm\Attributes\Reflection;
+namespace Articulate\Attributes\Reflection;
 
 use Exception;
-use Norm\Attributes\Relations\ManyToOne;
-use Norm\Attributes\Relations\RelationAttributeInterface;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\RelationAttributeInterface;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 

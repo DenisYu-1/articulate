@@ -1,11 +1,11 @@
 <?php
 
-namespace Norm\Tests\Attributes;
+namespace Articulate\Tests\Attributes;
 
 use Exception;
-use Norm\Attributes\Property;
-use Norm\Attributes\Reflection\ReflectionProperty;
-use Norm\Tests\AbstractTestCase;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Tests\AbstractTestCase;
 use ReflectionClass;
 
 class PropertyTest extends AbstractTestCase
