@@ -4,6 +4,7 @@ namespace Articulate\Commands;
 
 use Articulate\Connection;
 use Articulate\Modules\MigrationsGenerator\BaseMigration;
+use Articulate\Commands\InitCommand;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -19,6 +20,7 @@ class MigrateCommand extends Command
 {
     public function __construct(
         private readonly Connection $connection,
+        private readonly InitCommand $initCommand,
     )
     {
         parent::__construct(static::getDefaultName());
@@ -27,6 +29,7 @@ class MigrateCommand extends Command
     protected function configure()
     {
         $this
+            ->setDescription('Run database migrations')
             ->setDefinition(
                 new InputDefinition([
                     new InputArgument('rollback', InputArgument::OPTIONAL),
@@ -39,9 +42,14 @@ class MigrateCommand extends Command
         $isRollback = $input->getArgument('rollback') === 'rollback';
         $io = new SymfonyStyle($input, $output);
 
-        $classNames = [];
+        $this->initCommand->ensureMigrationsTableExists();
 
         $directory = '/app/migrations';
+
+        if (!is_dir($directory)) {
+            $io->warning("Migrations directory does not exist: $directory");
+            return Command::SUCCESS;
+        }
 
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($directory)
@@ -56,51 +64,56 @@ class MigrateCommand extends Command
             $executedMigrations[$row['name']] = $row;
         }
 
+        $executedCount = 0;
+        $lastMigrationInstance = null;
+
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
                 $filePath = $file->getPathname();
 
-                // Include the file (assuming it contains a class definition)
                 include_once $filePath;
 
-                // Extract the class name from the file path (assuming file name matches class name)
                 $className = pathinfo($filePath, PATHINFO_FILENAME);
-
                 $namespace = getNamespaceFromFile($filePath);
                 $fullClassName = $namespace . '\\' . $className;
+
                 if (!$isRollback && isset($executedMigrations[$fullClassName])) {
                     continue;
                 } elseif ($isRollback && !isset($executedMigrations[$fullClassName])) {
                     continue;
                 }
-                // Instantiate the class
+
                 if (class_exists($fullClassName)) {
                     $migrationInstance = new $fullClassName($this->connection);
 
-                    /** @var BaseMigration $migrationInstance */
-                    if (!$isRollback && $migrationInstance instanceof BaseMigration) {
+                    if (!($migrationInstance instanceof BaseMigration)) {
+                        $io->warning("Class $fullClassName is not a valid migration");
+                        continue;
+                    }
+
+                    if (!$isRollback) {
                         $migrationInstance->runMigration();
+                        $io->writeln("Executed migration: $fullClassName");
+                        $executedCount++;
+                    } else {
+                        $lastMigrationInstance = $migrationInstance;
                     }
                 } else {
-                    echo "Class $className does not exist in file $filePath" . PHP_EOL;
+                    $io->warning("Class $className does not exist in file $filePath");
                 }
             }
         }
 
-        if ($migrationInstance && $isRollback) {
-            $migrationInstance->rollbackMigration();
+        if ($isRollback && $lastMigrationInstance) {
+            $lastMigrationInstance->rollbackMigration();
+            $io->success('Last migration rolled back successfully.');
+        } elseif ($isRollback) {
+            $io->info('No migrations to rollback.');
+        } elseif ($executedCount > 0) {
+            $io->success("Executed $executedCount migration(s) successfully.");
+        } else {
+            $io->info('No new migrations to execute.');
         }
-
-        /**
-         * читаем из бд миграции
-         * сканируем папку
-         * идем по файлам
-         * если есть в базе – пропускаем
-         * иначе делаем ап, добавляем в бд
-         *
-         */
-
-        $io->success('Migrations table created successfully.');
 
         return Command::SUCCESS;
     }
