@@ -26,7 +26,7 @@ class MigrateCommand extends Command
         parent::__construct(static::getDefaultName());
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setDescription('Run database migrations')

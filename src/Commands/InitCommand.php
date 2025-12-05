@@ -17,7 +17,7 @@ class InitCommand extends Command
         parent::__construct(static::getDefaultName());
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setDescription('Initialize migrations table in the database')
