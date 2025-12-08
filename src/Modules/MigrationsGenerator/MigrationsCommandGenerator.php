@@ -33,11 +33,10 @@ class MigrationsCommandGenerator {
             return $query;
         }
 
-        $query = 'ALTER TABLE `' . $compareResult->name . '` ';
-        $columns = [];
+        $alterParts = [];
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $columns[] = 'DROP ' . $column->name;
+                $alterParts[] = 'DROP ' . $column->name;
                 continue;
             }
             $parts = [];
@@ -47,39 +46,27 @@ class MigrationsCommandGenerator {
                 $parts[] = 'MODIFY';
             }
             $parts[] = $this->columnDefinition($column->name, $column->propertyData);
-            $columns[] = implode(' ', $parts);
+            $alterParts[] = implode(' ', $parts);
         }
-        $query .= implode(', ', $columns);
 
         // Handle Index modifications (ADD, DROP)
-        $indexSqlParts = [];
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $indexSqlParts[] = $this->generateIndexSql($index, $compareResult->name);
+                $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
             } elseif ($index->operation === CompareResult::OPERATION_DELETE) {
-                $indexSqlParts[] = 'DROP INDEX `' . $index->indexName . '`';
+                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
             }
         }
 
-        $foreignKeySqlParts = [];
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $foreignKeySqlParts[] = $this->foreignKeyDefinition($foreignKey);
+                $alterParts[] = $this->foreignKeyDefinition($foreignKey);
             } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $foreignKeySqlParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
             }
         }
 
-        $extraParts = array_filter([
-            !empty($indexSqlParts) ? implode(', ', $indexSqlParts) : null,
-            !empty($foreignKeySqlParts) ? implode(', ', $foreignKeySqlParts) : null,
-        ]);
-
-        if (!empty($extraParts)) {
-            $query .= ', ' . implode(', ', $extraParts);
-        }
-
-        return $query;
+        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
     }
 
     public function rollback(TableCompareResult $compareResult): string
