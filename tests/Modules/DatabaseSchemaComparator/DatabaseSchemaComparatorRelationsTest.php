@@ -11,6 +11,12 @@ use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityMisconfigured;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityInverseMain;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityInverseForeignKey;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityMisconfigured;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseMain;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseForeignKey;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 {
@@ -24,7 +30,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -32,13 +38,15 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals('create', $result[0]->operation);
-        $this->assertEquals(1, count($result[0]->columns));
-        $this->assertEquals('name_id', $result[0]->columns[0]->name);
+        $this->assertEquals(2, count($result[0]->columns));
+        $this->assertEquals('id', $result[0]->columns[0]->name);
         $this->assertEquals('create', $result[0]->columns[0]->operation);
-        $this->assertEquals('int', $result[0]->columns[0]->propertyData->type);
-        $this->assertFalse($result[0]->columns[0]->propertyData->isNullable);
-        $this->assertNull($result[0]->columns[0]->propertyData->defaultValue);
-        $this->assertTrue($result[0]->columns[0]->isDefaultValueMatch);
+        $this->assertEquals('name_id', $result[0]->columns[1]->name);
+        $this->assertEquals('create', $result[0]->columns[1]->operation);
+        $this->assertEquals('int', $result[0]->columns[1]->propertyData->type);
+        $this->assertFalse($result[0]->columns[1]->propertyData->isNullable);
+        $this->assertNull($result[0]->columns[1]->propertyData->defaultValue);
+        $this->assertTrue($result[0]->columns[1]->isDefaultValueMatch);
         $this->assertCount(1, $result[0]->foreignKeys);
     }
 
@@ -46,7 +54,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -62,7 +70,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -102,5 +110,56 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         $this->assertCount(1, $result[0]->foreignKeys);
         $this->assertEquals('delete', $result[0]->foreignKeys[0]->operation);
         $this->assertEquals('name_id', $result[0]->foreignKeys[0]->column);
+    }
+
+    public function testOneToOneInverseMisconfiguredThrows()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
+
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('One-to-one inverse side misconfigured');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityMisconfigured::class),
+            new ReflectionEntity(TestRelatedEntityMisconfigured::class),
+        ]));
+    }
+
+    public function testOneToOneInverseMarkedAsMainThrows()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
+
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side marked as main');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityInverseMain::class),
+            new ReflectionEntity(TestRelatedEntityInverseMain::class),
+        ]));
+    }
+
+    public function testOneToOneInverseRequestsForeignKeyThrows()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
+
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side requests foreign key');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityInverseForeignKey::class),
+            new ReflectionEntity(TestRelatedEntityInverseForeignKey::class),
+        ]));
     }
 }

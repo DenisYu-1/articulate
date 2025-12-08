@@ -3,11 +3,15 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
 use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToOne;
 
 #[Entity]
 class TestRelatedMainEntity
 {
-    #[OneToOne(inversedBy: 'test_main_entity', mainSide: true)]
+    #[Property]
+    public int $id;
+
+    #[OneToOne(inversedBy: 'name', mainSide: true)]
     public TestRelatedEntity $name;
 }

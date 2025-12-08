@@ -7,6 +7,7 @@ use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
@@ -95,6 +96,7 @@ readonly class DatabaseSchemaComparator {
                     new PropertiesData(),
                 );
                 if ($data instanceof ReflectionRelation && $data->isForeignKeyRequired()) {
+                    $this->validateOneToOneRelation($data);
                     $targetEntity = new ReflectionEntity($data->getTargetEntity());
                     $foreignKeys[] = new ForeignKeyCompareResult(
                         $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $columnName),
@@ -188,6 +190,7 @@ readonly class DatabaseSchemaComparator {
                     $foreignKeyName = $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
                     if ($property->isForeignKeyRequired()) {
+                        $this->validateOneToOneRelation($property);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                         if (!$foreignKeyExists) {
                             $foreignKeys[] = new ForeignKeyCompareResult(
@@ -277,5 +280,40 @@ readonly class DatabaseSchemaComparator {
     private function buildForeignKeyName(string $table, string $referencedTable, string $column): string
     {
         return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
+    }
+
+    private function validateOneToOneRelation(ReflectionRelation $relation): void
+    {
+        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+        $inversedPropertyName = $relation->getInversedBy();
+
+        if (!$inversedPropertyName) {
+            return;
+        }
+
+        if (!$targetEntity->hasProperty($inversedPropertyName)) {
+            throw new \RuntimeException('One-to-one inverse side misconfigured: property not found');
+        }
+
+        $property = $targetEntity->getProperty($inversedPropertyName);
+        $attributes = $property->getAttributes(OneToOne::class);
+
+        if (empty($attributes)) {
+            throw new \RuntimeException('One-to-one inverse side misconfigured: attribute missing');
+        }
+
+        $targetProperty = $attributes[0]->newInstance();
+
+        if ($targetProperty->mainSide) {
+            throw new \RuntimeException('One-to-one inverse side misconfigured: inverse side marked as main');
+        }
+
+        if ($targetProperty->foreignKey) {
+            throw new \RuntimeException('One-to-one inverse side misconfigured: inverse side requests foreign key');
+        }
+
+        if ($targetProperty->mappedBy && $targetProperty->mappedBy !== $relation->getPropertyName()) {
+            throw new \RuntimeException('One-to-one inverse side misconfigured: mappedBy does not reference main property');
+        }
     }
 }

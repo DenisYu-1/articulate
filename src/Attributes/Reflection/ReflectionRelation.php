@@ -77,7 +77,7 @@ class ReflectionRelation implements PropertyInterface
         if ($this->entityProperty instanceof ManyToOne && $this->entityProperty->nullable !== null) {
             return $this->entityProperty->nullable;
         }
-        return false;
+        return $this->property->getType()?->allowsNull() ?? false;
     }
 
     public function getType(): string
@@ -103,6 +103,13 @@ class ReflectionRelation implements PropertyInterface
 
     public function getReferencedColumnName(): string
     {
-        return 'id';
+        $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+        $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
+        return $primaryColumns[0] ?? 'id';
+    }
+
+    public function getPropertyName(): string
+    {
+        return $this->property->getName();
     }
 }

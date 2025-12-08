@@ -12,6 +12,6 @@ class TestRelatedEntity
     #[Property]
     public int $id;
 
-    #[OneToOne(mappedBy: 'testRelatedEntity')]
+    #[OneToOne(mappedBy: 'name', foreignKey: false)]
     public TestRelatedMainEntity $name;
 }
