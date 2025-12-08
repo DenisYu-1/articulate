@@ -17,6 +17,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEn
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityMisconfigured;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseMain;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseForeignKey;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityCustomColumn;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 {
@@ -161,5 +162,22 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
             new ReflectionEntity(TestRelatedMainEntityInverseForeignKey::class),
             new ReflectionEntity(TestRelatedEntityInverseForeignKey::class),
         ]));
+    }
+
+    public function testOneToOneCustomColumnName()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
+        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
+
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        /** @var TableCompareResult[] $result */
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityCustomColumn::class)
+        ]));
+
+        $this->assertEquals('create', $result[0]->operation);
+        $this->assertEquals('custom_fk', $result[0]->columns[1]->name);
+        $this->assertEquals('custom_fk', $result[0]->foreignKeys[0]->column);
     }
 }

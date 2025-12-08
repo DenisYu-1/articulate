@@ -11,6 +11,7 @@ class OneToOne implements RelationAttributeInterface
         public readonly ?string $targetEntity = null,
         public readonly ?string $mappedBy = null,
         public readonly ?string $inversedBy = null,
+        public readonly ?string $column = null,
         public readonly bool $foreignKey = true,
         public readonly bool $mainSide = false,
     ) {}
@@ -22,6 +23,6 @@ class OneToOne implements RelationAttributeInterface
 
     public function getColumn(): ?string
     {
-        return $this->mappedBy;
+        return $this->column ?? $this->mappedBy;
     }
 }
