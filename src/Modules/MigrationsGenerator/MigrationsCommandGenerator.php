@@ -81,60 +81,53 @@ class MigrationsCommandGenerator {
             foreach ($compareResult->columns as $column) {
                 $columns[] = $this->columnDefinition($column->name, $column->columnData);
             }
-            $query .= implode(', ', $columns) . ')';
+            $parts = [implode(', ', $columns)];
+            foreach ($compareResult->foreignKeys as $foreignKey) {
+                if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
+                    continue;
+                }
+                $parts[] = $this->foreignKeyDefinition($foreignKey);
+            }
+            $query .= implode(', ', $parts) . ')';
             foreach ($compareResult->indexes as $index) {
                 $query .= ', ' . $this->generateIndexSql($index, $compareResult->name);
             }
             return $query;
         }
 
-        $query = 'ALTER TABLE `' . $compareResult->name . '` ';
-        $columns = [];
+        $alterParts = [];
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_CREATE) {
-                $columns[] = 'DROP COLUMN ' . $column->name;
+                $alterParts[] = 'DROP COLUMN ' . $column->name;
                 continue;
             }
-            $parts = [];
+            $columnParts = [];
             if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $parts[] = 'ADD';
+                $columnParts[] = 'ADD';
             } else {
-                $parts[] = 'MODIFY';
+                $columnParts[] = 'MODIFY';
             }
-            $parts[] = $this->columnDefinition($column->name, $column->columnData);
-            $columns[] = implode(' ', $parts);
+            $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
+            $alterParts[] = implode(' ', $columnParts);
         }
-        $query .= implode(', ', $columns);
 
-        // Add index rollback (DROP for created indexes, ADD for deleted ones)
-        $indexSqlParts = [];
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $indexSqlParts[] = 'DROP INDEX `' . $index->name . '`';
+                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
             } elseif ($index->operation === CompareResult::OPERATION_DELETE) {
-                $indexSqlParts[] = $this->generateIndexSql($index, $compareResult->name);
+                $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
             }
         }
 
-        $foreignKeySqlParts = [];
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $foreignKeySqlParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
             } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $foreignKeySqlParts[] = $this->foreignKeyDefinition($foreignKey);
+                $alterParts[] = $this->foreignKeyDefinition($foreignKey);
             }
         }
 
-        $extraParts = array_filter([
-            !empty($indexSqlParts) ? implode(', ', $indexSqlParts) : null,
-            !empty($foreignKeySqlParts) ? implode(', ', $foreignKeySqlParts) : null,
-        ]);
-
-        if (!empty($extraParts)) {
-            $query .= ', ' . implode(', ', $extraParts);
-        }
-
-        return $query;
+        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
     }
 
     private function mapTypeLength(?PropertiesData $propertyData): string

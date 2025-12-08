@@ -6,6 +6,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
@@ -71,5 +72,35 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         $this->assertEquals('create', $result[0]->operation);
         $this->assertCount(1, $result[0]->columns);
         $this->assertCount(0, $result[0]->foreignKeys);
+    }
+
+    public function testForeignKeyDroppedWhenDisabled()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_related_main_entity_no_fk']);
+        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
+            new DatabaseColumn('name_id', 'int', false, null),
+        ]);
+        $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
+        $databaseSchemaReader->expects($this->once())->method('getTableForeignKeys')->willReturn([
+            'fk_test_related_main_entity_no_fk_test_related_entity_name_id' => [
+                'column' => 'name_id',
+                'referencedTable' => 'test_related_entity',
+                'referencedColumn' => 'id',
+            ],
+        ]);
+
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        /** @var TableCompareResult[] $result */
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityNoFk::class)
+        ]));
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('update', $result[0]->operation);
+        $this->assertCount(0, $result[0]->columns);
+        $this->assertCount(1, $result[0]->foreignKeys);
+        $this->assertEquals('delete', $result[0]->foreignKeys[0]->operation);
+        $this->assertEquals('name_id', $result[0]->foreignKeys[0]->column);
     }
 }

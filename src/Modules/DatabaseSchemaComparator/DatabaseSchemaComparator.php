@@ -37,11 +37,16 @@ readonly class DatabaseSchemaComparator {
 
             $existingIndexes = $indexesToRemove = [];
 
+            $existingForeignKeys = [];
+            $foreignKeysToRemove = [];
+
             if (!in_array($tableName, $existingTables)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
             } else {
                 $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
                 $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+                $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
+                $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
             }
             unset($tablesToRemove[$tableName]);
 
@@ -92,10 +97,11 @@ readonly class DatabaseSchemaComparator {
                 if ($data instanceof ReflectionRelation && $data->isForeignKeyRequired()) {
                     $targetEntity = new ReflectionEntity($data->getTargetEntity());
                     $foreignKeys[] = new ForeignKeyCompareResult(
-                        sprintf('fk_%s_%s', $tableName, $targetEntity->getTableName()),
+                        $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $columnName),
                         CompareResult::OPERATION_CREATE,
                         $columnName,
                         $targetEntity->getTableName(),
+                        $data->getReferencedColumnName(),
                     );
                 }
             }
@@ -170,11 +176,62 @@ readonly class DatabaseSchemaComparator {
                 );
             }
 
+            if (isset($existingForeignKeys)) {
+                foreach ($propertiesIndexed as $property) {
+                    if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
+                        continue;
+                    }
+                    if (!$property instanceof ReflectionRelation) {
+                        continue;
+                    }
+                    $targetEntity = new ReflectionEntity($property->getTargetEntity());
+                    $foreignKeyName = $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
+                    $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
+                    if ($property->isForeignKeyRequired()) {
+                        $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                        if (!$foreignKeyExists) {
+                            $foreignKeys[] = new ForeignKeyCompareResult(
+                                $foreignKeyName,
+                                CompareResult::OPERATION_CREATE,
+                                $property->getColumnName(),
+                                $targetEntity->getTableName(),
+                                $property->getReferencedColumnName(),
+                            );
+                        } else {
+                            unset($foreignKeysToRemove[$foreignKeyName]);
+                        }
+                    } else {
+                        if ($foreignKeyExists) {
+                            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                            unset($foreignKeysToRemove[$foreignKeyName]);
+                            $foreignKeys[] = new ForeignKeyCompareResult(
+                                $foreignKeyName,
+                                CompareResult::OPERATION_DELETE,
+                                $existingForeignKeys[$foreignKeyName]['column'],
+                                $existingForeignKeys[$foreignKeyName]['referencedTable'],
+                                $existingForeignKeys[$foreignKeyName]['referencedColumn'],
+                            );
+                        }
+                    }
+                }
+
+                foreach (array_keys($foreignKeysToRemove ?? []) as $foreignKeyName) {
+                    $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                    $foreignKeys[] = new ForeignKeyCompareResult(
+                        $foreignKeyName,
+                        CompareResult::OPERATION_DELETE,
+                        $existingForeignKeys[$foreignKeyName]['column'],
+                        $existingForeignKeys[$foreignKeyName]['referencedTable'],
+                        $existingForeignKeys[$foreignKeyName]['referencedColumn'],
+                    );
+                }
+            }
+
             if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
                 throw new EmptyPropertiesList($tableName);
             }
 
-            if (!$operation || empty($columnsCompareResults)) {
+            if (!$operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {
                 yield from [];
                 continue;
             }
@@ -215,5 +272,10 @@ readonly class DatabaseSchemaComparator {
             $entitiesIndexed[$tableName][] = $entity;
         }
         return $entitiesIndexed;
+    }
+
+    private function buildForeignKeyName(string $table, string $referencedTable, string $column): string
+    {
+        return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
     }
 }

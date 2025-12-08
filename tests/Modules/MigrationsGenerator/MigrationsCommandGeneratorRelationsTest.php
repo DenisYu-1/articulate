@@ -93,7 +93,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
             [],
             [
                 new ForeignKeyCompareResult(
-                    name: 'fk_test_table_related_entity',
+                    name: 'fk_test_table_related_entity_related_entity_id',
                     operation: 'create',
                     column: 'related_entity_id',
                     referencedTable: 'related_entity',
@@ -102,7 +102,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
+            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
@@ -126,6 +126,29 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
 
         $this->assertEquals(
             'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL',
+            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+        );
+    }
+
+    public function testOneToOneForeignKeyDrop()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'update',
+            [],
+            [],
+            [
+                new ForeignKeyCompareResult(
+                    name: 'fk_test_table_related_entity_related_entity_id',
+                    operation: 'delete',
+                    column: 'related_entity_id',
+                    referencedTable: 'related_entity',
+                ),
+            ],
+        );
+
+        $this->assertEquals(
+            'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }

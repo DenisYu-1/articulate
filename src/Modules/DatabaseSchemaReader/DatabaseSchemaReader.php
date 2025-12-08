@@ -52,6 +52,35 @@ class DatabaseSchemaReader {
         return $indexes;
     }
 
+    public function getTableForeignKeys(string $tableName): array
+    {
+        $query = "
+            SELECT
+                constraint_name,
+                column_name,
+                referenced_table_name,
+                referenced_column_name
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE table_schema = DATABASE()
+              AND table_name = :table
+              AND referenced_table_name IS NOT NULL
+        ";
+
+        $statement = $this->connection->executeQuery($query, ['table' => $tableName]);
+        $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
+
+        $foreignKeys = [];
+        foreach ($rows as $row) {
+            $foreignKeys[$row['constraint_name']] = [
+                'column' => $row['column_name'],
+                'referencedTable' => $row['referenced_table_name'],
+                'referencedColumn' => $row['referenced_column_name'],
+            ];
+        }
+
+        return $foreignKeys;
+    }
+
     /**
      * Builds a query to fetch index information based on the database platform.
      *

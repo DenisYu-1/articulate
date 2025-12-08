@@ -74,6 +74,9 @@ class ReflectionRelation implements PropertyInterface
 
     public function isNullable(): bool
     {
+        if ($this->entityProperty instanceof ManyToOne && $this->entityProperty->nullable !== null) {
+            return $this->entityProperty->nullable;
+        }
         return false;
     }
 
@@ -90,5 +93,16 @@ class ReflectionRelation implements PropertyInterface
     public function getLength(): ?int
     {
         return null;
+    }
+
+    public function getReferencedTableName(): string
+    {
+        $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+        return $reflectionEntity->getTableName();
+    }
+
+    public function getReferencedColumnName(): string
+    {
+        return 'id';
     }
 }
