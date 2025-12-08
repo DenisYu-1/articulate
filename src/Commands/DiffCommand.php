@@ -26,7 +26,7 @@ class DiffCommand extends Command
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
     )
     {
-        parent::__construct(static::getDefaultName());
+        parent::__construct();
         $this->migrationGenerator = new MigrationGenerator( '/app/migrations' );
     }
 

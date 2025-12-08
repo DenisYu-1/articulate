@@ -14,6 +14,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function setUp(): void
     {
+        parent::setUp();
         $this->sqliteConnection = new Connection('sqlite::memory:', '1', '2');
         $dotenv = Dotenv::createImmutable(__DIR__ . '/../'); // Adjust the path if needed
         $dotenv->load();
@@ -23,7 +24,6 @@ abstract class AbstractTestCase extends TestCase
         $this->sqliteConnection->beginTransaction();
         $this->mysqlConnection->beginTransaction();
         $this->pgsqlConnection->beginTransaction();
-        parent::setUp();
     }
 
     protected function tearDown(): void

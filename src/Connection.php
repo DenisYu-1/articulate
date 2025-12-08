@@ -62,6 +62,8 @@ class Connection {
 
     public function rollbackTransaction()
     {
-        $this->pdo->rollBack();
+        if ($this->pdo->inTransaction()) {
+            $this->pdo->rollBack();
+        }
     }
 }

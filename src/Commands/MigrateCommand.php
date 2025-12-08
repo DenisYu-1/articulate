@@ -23,7 +23,7 @@ class MigrateCommand extends Command
         private readonly InitCommand $initCommand,
     )
     {
-        parent::__construct(static::getDefaultName());
+        parent::__construct();
     }
 
     protected function configure(): void

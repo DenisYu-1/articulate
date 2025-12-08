@@ -14,7 +14,7 @@ class InitCommand extends Command
 {
     public function __construct(private readonly Connection $connection)
     {
-        parent::__construct(static::getDefaultName());
+        parent::__construct();
     }
 
     protected function configure(): void

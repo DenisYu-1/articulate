@@ -9,9 +9,21 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class InitialCreationTest extends AbstractTestCase
 {
+    public function setUp(): void
+    {
+        parent::setUp();
+        foreach ([
+            $this->sqliteConnection,
+            $this->mysqlConnection,
+            $this->pgsqlConnection,
+        ] as $connection) {
+            $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+            $connection->beginTransaction();
+        }
+    }
+
     public function testExecuteWithSQLite(): void
     {
-//        $this->sqliteConnection->executeQuery('DROP DATABASE migrations');
         $this->runTestWithConnection($this->sqliteConnection, "
             SELECT name 
             FROM sqlite_master 
@@ -22,7 +34,6 @@ class InitialCreationTest extends AbstractTestCase
 
     public function testExecuteWithMySQL(): void
     {
-//        $this->mysqlConnection->executeQuery('DROP DATABASE migrations');
         $this->runTestWithConnection($this->mysqlConnection, "
             SHOW TABLES LIKE 'migrations'
         ");
@@ -30,7 +41,6 @@ class InitialCreationTest extends AbstractTestCase
 
     public function testExecuteWithPostgreSQL(): void
     {
-//        $this->pgsqlConnection->executeQuery('DROP DATABASE migrations');
         $this->runTestWithConnection($this->pgsqlConnection, "
             SELECT table_name 
             FROM information_schema.tables 
@@ -39,7 +49,7 @@ class InitialCreationTest extends AbstractTestCase
         ");
     }
 
-    private function runTestWithConnection(Connection $connection, $resultQuery): void
+    private function runTestWithConnection(Connection $connection, string $resultQuery): void
     {
         $command = new InitCommand($connection);
         $commandTester = new CommandTester($command);
@@ -47,19 +57,17 @@ class InitialCreationTest extends AbstractTestCase
         $result = $connection->executeQuery($resultQuery);
 
         $tables = $result->fetchAll();
-        $this->assertEmpty($tables, "Migrations table not found in database.");
+        $this->assertEmpty($tables, 'Migrations table already present before init.');
 
-        // Execute the command
-        $commandTester->execute([]);
+        $statusCode = $commandTester->execute([]);
+        $this->assertSame(0, $statusCode);
 
-        // Check the command output
         $output = $commandTester->getDisplay();
         $this->assertStringContainsString('Migrations table created successfully.', $output);
 
-        // Verify that the table was created
         $result = $connection->executeQuery($resultQuery);
 
         $tables = $result->fetchAll();
-        $this->assertNotEmpty($tables, "Migrations table not found in database.");
+        $this->assertNotEmpty($tables, 'Migrations table not found in database.');
     }
 }
