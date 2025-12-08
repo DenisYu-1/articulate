@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
@@ -19,7 +20,9 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
             'update',
             [
                 new ColumnCompareResult(...$params),
-            ]
+            ],
+            [],
+            [],
         );
         $this->assertEquals(
             $query,
@@ -72,5 +75,58 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
                 ],
             ],
         ];
+    }
+
+    public function testOneToOneForeignKeyCreation()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'update',
+            [
+                new ColumnCompareResult(
+                    name: 'related_entity_id',
+                    operation: 'create',
+                    propertyData: new PropertiesData('int', false),
+                    columnData: new PropertiesData(),
+                ),
+            ],
+            [],
+            [
+                new ForeignKeyCompareResult(
+                    name: 'fk_test_table_related_entity',
+                    operation: 'create',
+                    column: 'related_entity_id',
+                    referencedTable: 'related_entity',
+                ),
+            ],
+        );
+
+        $this->assertEquals(
+            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
+            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+        );
+    }
+
+    public function testOneToOneForeignKeySkipped()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'update',
+            [
+                new ColumnCompareResult(
+                    name: 'related_entity_id',
+                    operation: 'create',
+                    propertyData: new PropertiesData('int', false),
+                    columnData: new PropertiesData(),
+                ),
+            ],
+            [],
+            [],
+        );
+
+        $this->assertEquals(
+            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL',
+            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+        );
     }
 }

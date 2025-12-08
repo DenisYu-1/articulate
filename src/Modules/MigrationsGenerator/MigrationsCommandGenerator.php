@@ -3,6 +3,7 @@
 namespace Articulate\Modules\MigrationsGenerator;
 
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
@@ -21,7 +22,14 @@ class MigrationsCommandGenerator {
             foreach ($compareResult->columns as $column) {
                 $columns[] = $this->columnDefinition($column->name, $column->propertyData);
             }
-            $query .= implode(', ', $columns) . ')';
+            $parts = [implode(', ', $columns)];
+            foreach ($compareResult->foreignKeys as $foreignKey) {
+                if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
+                    continue;
+                }
+                $parts[] = $this->foreignKeyDefinition($foreignKey);
+            }
+            $query .= implode(', ', $parts) . ')';
             return $query;
         }
 
@@ -53,9 +61,22 @@ class MigrationsCommandGenerator {
             }
         }
 
-        // Combine column and index changes in the ALTER TABLE statement
-        if (!empty($indexSqlParts)) {
-            $query .= ', ' . implode(', ', $indexSqlParts);
+        $foreignKeySqlParts = [];
+        foreach ($compareResult->foreignKeys as $foreignKey) {
+            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
+                $foreignKeySqlParts[] = $this->foreignKeyDefinition($foreignKey);
+            } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
+                $foreignKeySqlParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+            }
+        }
+
+        $extraParts = array_filter([
+            !empty($indexSqlParts) ? implode(', ', $indexSqlParts) : null,
+            !empty($foreignKeySqlParts) ? implode(', ', $foreignKeySqlParts) : null,
+        ]);
+
+        if (!empty($extraParts)) {
+            $query .= ', ' . implode(', ', $extraParts);
         }
 
         return $query;
@@ -108,8 +129,22 @@ class MigrationsCommandGenerator {
             }
         }
 
-        if (!empty($indexSqlParts)) {
-            $query .= ', ' . implode(', ', $indexSqlParts);
+        $foreignKeySqlParts = [];
+        foreach ($compareResult->foreignKeys as $foreignKey) {
+            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
+                $foreignKeySqlParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+            } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
+                $foreignKeySqlParts[] = $this->foreignKeyDefinition($foreignKey);
+            }
+        }
+
+        $extraParts = array_filter([
+            !empty($indexSqlParts) ? implode(', ', $indexSqlParts) : null,
+            !empty($foreignKeySqlParts) ? implode(', ', $foreignKeySqlParts) : null,
+        ]);
+
+        if (!empty($extraParts)) {
+            $query .= ', ' . implode(', ', $extraParts);
         }
 
         return $query;
@@ -149,6 +184,17 @@ class MigrationsCommandGenerator {
             $indexType,
             $index->name,
             $columns
+        );
+    }
+
+    private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey): string
+    {
+        return sprintf(
+            'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)',
+            $foreignKey->name,
+            $foreignKey->column,
+            $foreignKey->referencedTable,
+            $foreignKey->referencedColumn,
         );
     }
 }

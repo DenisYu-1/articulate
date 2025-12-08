@@ -20,7 +20,9 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
             $operation,
             [
                 new ColumnCompareResult(...$parameters),
-            ]
+            ],
+            [],
+            [],
         );
         $this->assertEquals(
             $query,

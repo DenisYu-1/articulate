@@ -9,6 +9,7 @@ use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 {
@@ -37,6 +38,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         $this->assertFalse($result[0]->columns[0]->propertyData->isNullable);
         $this->assertNull($result[0]->columns[0]->propertyData->defaultValue);
         $this->assertTrue($result[0]->columns[0]->isDefaultValueMatch);
+        $this->assertCount(1, $result[0]->foreignKeys);
     }
 
     public function testCreateDependantOneToOneSide()
@@ -53,5 +55,21 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         $this->assertEquals('create', $result[0]->operation);
         $this->assertEquals(1, count($result[0]->columns));
         $this->assertEquals('id', $result[0]->columns[0]->name);
+    }
+
+    public function testOneToOneMainSideWithoutForeignKey()
+    {
+        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
+        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        /** @var TableCompareResult[] $result */
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestRelatedMainEntityNoFk::class)
+        ]));
+        $this->assertCount(1, $result);
+        $this->assertEquals('create', $result[0]->operation);
+        $this->assertCount(1, $result[0]->columns);
+        $this->assertCount(0, $result[0]->foreignKeys);
     }
 }

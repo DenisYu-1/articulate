@@ -6,9 +6,11 @@ use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
@@ -72,6 +74,7 @@ readonly class DatabaseSchemaComparator {
             $columnsToUpdate = array_intersect_key($propertiesIndexed, $columnsIndexed);
 
             $columnsCompareResults = [];
+            $foreignKeys = [];
 
             foreach ($columnsToCreate as $columnName => $data) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
@@ -86,6 +89,15 @@ readonly class DatabaseSchemaComparator {
                     ),
                     new PropertiesData(),
                 );
+                if ($data instanceof ReflectionRelation && $data->isForeignKeyRequired()) {
+                    $targetEntity = new ReflectionEntity($data->getTargetEntity());
+                    $foreignKeys[] = new ForeignKeyCompareResult(
+                        sprintf('fk_%s_%s', $tableName, $targetEntity->getTableName()),
+                        CompareResult::OPERATION_CREATE,
+                        $columnName,
+                        $targetEntity->getTableName(),
+                    );
+                }
             }
 
             foreach ($columnsToUpdate as $columnName => $data) {
@@ -171,6 +183,7 @@ readonly class DatabaseSchemaComparator {
                 $operation,
                 $columnsCompareResults,
                 $indexCompareResults,
+                $foreignKeys,
                 $entity->getPrimaryKeyColumns(),
             );
         }
