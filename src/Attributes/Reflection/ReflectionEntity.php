@@ -8,6 +8,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToOne;
+use ReflectionAttribute;
 use ReflectionClass;
 
 class ReflectionEntity extends ReflectionClass
@@ -24,6 +25,7 @@ class ReflectionEntity extends ReflectionClass
             return;
         }
         foreach ($this->getProperties() as $property) {
+            /** @var ReflectionAttribute<Property>[] $entityProperty */
             $entityProperty = $property->getAttributes(Property::class);
 
             if (!empty($entityProperty)) {
@@ -35,6 +37,7 @@ class ReflectionEntity extends ReflectionClass
                 );
                 continue;
             }
+            /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(OneToOne::class);
             if (!empty($entityProperty)) {
                 $propertyInstance = $entityProperty[0]->newInstance();
@@ -44,6 +47,7 @@ class ReflectionEntity extends ReflectionClass
                 yield new ReflectionRelation($propertyInstance, $property);
                 continue;
             }
+            /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(ManyToOne::class);
             if (!empty($entityProperty)) {
                 $propertyInstance = $entityProperty[0]->newInstance();
@@ -59,18 +63,21 @@ class ReflectionEntity extends ReflectionClass
             return;
         }
         foreach ($this->getProperties() as $property) {
+            /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(OneToOne::class);
             if (empty($entityProperty)) {
                 continue;
             }
 
-            if (!$entityProperty->mainSide) {
+            $oneToOne = $entityProperty[0]->newInstance();
+            if (!$oneToOne->mainSide) {
                 continue;
             }
 
-            yield new ReflectionRelation($entityProperty[0]->newInstance(), $property);
+            yield new ReflectionRelation($oneToOne, $property);
         }
         foreach ($this->getProperties() as $property) {
+            /** @var ReflectionAttribute<Property>[] $entityProperty */
             $entityProperty = $property->getAttributes(Property::class);
             if (empty($entityProperty)) {
                 continue;
@@ -87,6 +94,7 @@ class ReflectionEntity extends ReflectionClass
             return;
         }
         foreach ($this->getProperties() as $property) {
+            /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(OneToOne::class);
             if (empty($entityProperty)) {
                 continue;

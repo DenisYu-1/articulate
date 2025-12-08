@@ -6,6 +6,7 @@ use Attribute;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use ReflectionAttribute;
 use ReflectionClass;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
@@ -24,9 +25,12 @@ class Index
         foreach ($this->fields as $propertyName) {
             $property = $entity->getProperty($propertyName);
 
+            /** @var ReflectionAttribute<Property>[] $attributes */
             $attributes = $property->getAttributes(Property::class);
             if (!empty($attributes)) {
-                $reflectionProperty = new ReflectionProperty($attributes[0]->newInstance(), $property);
+                /** @var Property $entityProperty */
+                $entityProperty = $attributes[0]->newInstance();
+                $reflectionProperty = new ReflectionProperty($entityProperty, $property);
                 $this->columns[] = $reflectionProperty->getColumnName();
             }
         }
