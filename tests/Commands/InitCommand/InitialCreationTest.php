@@ -9,57 +9,18 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class InitialCreationTest extends AbstractTestCase
 {
-    public function testExecuteWithSQLite(): void
+    /**
+     * @dataProvider migrationsProvider
+     */
+    public function testCreatesMigrationsTable(string $driver, string $existenceQuery): void
     {
-        $this->runTestWithConnection($this->sqliteConnection, "
-            SELECT name 
-            FROM sqlite_master 
-            WHERE type='table' 
-                AND name='migrations';
-        ");
-    }
-
-    public function testExecuteWithMySQL(): void
-    {
-        $this->runTestWithConnection($this->mysqlConnection, "
-            SHOW TABLES LIKE 'migrations'
-        ");
-    }
-
-    public function testExecuteWithPostgreSQL(): void
-    {
-        $this->runTestWithConnection($this->pgsqlConnection, "
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' 
-                AND table_name = 'migrations'
-        ");
-    }
-
-    public function testDoesNothingWhenTableExistsSQLite(): void
-    {
-        $this->runNoOpTest($this->sqliteConnection);
-    }
-
-    public function testDoesNothingWhenTableExistsMySQL(): void
-    {
-        $this->runNoOpTest($this->mysqlConnection);
-    }
-
-    public function testDoesNothingWhenTableExistsPostgreSQL(): void
-    {
-        $this->runNoOpTest($this->pgsqlConnection);
-    }
-
-    private function runTestWithConnection(Connection $connection, string $resultQuery): void
-    {
+        $connection = $this->connectionFor($driver);
         $connection->executeQuery('DROP TABLE IF EXISTS migrations');
 
         $command = new InitCommand($connection);
         $commandTester = new CommandTester($command);
 
-        $result = $connection->executeQuery($resultQuery);
-
+        $result = $connection->executeQuery($existenceQuery);
         $tables = $result->fetchAll();
         $this->assertEmpty($tables, 'Migrations table already present before init.');
 
@@ -69,21 +30,26 @@ class InitialCreationTest extends AbstractTestCase
         $output = $commandTester->getDisplay();
         $this->assertStringContainsString('Migrations table created successfully.', $output);
 
-        $result = $connection->executeQuery($resultQuery);
-
+        $result = $connection->executeQuery($existenceQuery);
         $tables = $result->fetchAll();
         $this->assertNotEmpty($tables, 'Migrations table not found in database.');
 
         $this->assertMigrationSchema($connection);
     }
 
-    private function runNoOpTest(Connection $connection): void
+    /**
+     * @dataProvider migrationsProvider
+     */
+    public function testDoesNothingWhenTableExists(string $driver, string $existenceQuery): void
     {
+        $connection = $this->connectionFor($driver);
         $connection->executeQuery('DROP TABLE IF EXISTS migrations');
 
         $command = new InitCommand($connection);
         $commandTester = new CommandTester($command);
         $commandTester->execute([]);
+
+        $this->assertNotEmpty($connection->executeQuery($existenceQuery)->fetchAll());
 
         $this->insertSampleMigration($connection);
         $countBefore = $this->countMigrations($connection);
@@ -93,6 +59,33 @@ class InitialCreationTest extends AbstractTestCase
 
         $this->assertMigrationSchema($connection);
         $this->assertSame($countBefore, $this->countMigrations($connection));
+    }
+
+    public static function migrationsProvider(): array
+    {
+        return [
+            'sqlite' => [
+                Connection::SQLITE,
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations';",
+            ],
+            'mysql' => [
+                Connection::MYSQL,
+                "SHOW TABLES LIKE 'migrations'",
+            ],
+            'pgsql' => [
+                Connection::PGSQL,
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migrations'",
+            ],
+        ];
+    }
+
+    private function connectionFor(string $driver): Connection
+    {
+        return match ($driver) {
+            Connection::MYSQL => $this->mysqlConnection,
+            Connection::PGSQL => $this->pgsqlConnection,
+            default => $this->sqliteConnection,
+        };
     }
 
     private function assertMigrationSchema(Connection $connection): void
