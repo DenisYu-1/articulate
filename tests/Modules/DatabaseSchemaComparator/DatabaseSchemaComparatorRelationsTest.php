@@ -4,10 +4,25 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
+use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwner;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwnerCustomColumn;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwnerInverseIsOwning;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwnerMappedByMismatch;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwnerMissingInverse;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwnerNoFk;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTarget;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetInverseIsOwning;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetMappedByMismatch;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetMissingInverse;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyInverseMissingOwner;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwner;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwnerType;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
@@ -18,6 +33,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMa
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseMain;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseForeignKey;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityCustomColumn;
+use RuntimeException;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 {
@@ -29,10 +45,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
      */
     public function testCreateMainOneToOneSide()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntity::class)
@@ -53,10 +69,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testCreateDependantOneToOneSide()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedEntity::class)
@@ -69,10 +85,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testOneToOneMainSideWithoutForeignKey()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityNoFk::class)
@@ -85,21 +101,20 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testForeignKeyDroppedWhenDisabled()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_related_main_entity_no_fk']);
-        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
-            new DatabaseColumn('name_id', 'int', false, null),
-        ]);
-        $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaReader->expects($this->once())->method('getTableForeignKeys')->willReturn([
-            'fk_test_related_main_entity_no_fk_test_related_entity_name_id' => [
-                'column' => 'name_id',
-                'referencedTable' => 'test_related_entity',
-                'referencedColumn' => 'id',
+        $databaseSchemaComparator = $this->comparator(
+            tables: ['test_related_main_entity_no_fk'],
+            columns: fn() => [new DatabaseColumn('name_id', 'int', false, null)],
+            indexes: [],
+            foreignKeys: fn() => [
+                'fk_test_related_main_entity_no_fk_test_related_entity_name_id' => [
+                    'column' => 'name_id',
+                    'referencedTable' => 'test_related_entity',
+                    'referencedColumn' => 'id',
+                ],
             ],
-        ]);
-
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+            indexesExpectation: 'any',
+            foreignKeysExpectation: 'once',
+        );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityNoFk::class)
@@ -115,11 +130,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testOneToOneInverseMisconfiguredThrows()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('One-to-one inverse side misconfigured');
@@ -132,11 +146,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testOneToOneInverseMarkedAsMainThrows()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side marked as main');
@@ -149,11 +162,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testOneToOneInverseRequestsForeignKeyThrows()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side requests foreign key');
@@ -166,11 +178,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
     public function testOneToOneCustomColumnName()
     {
-        $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
-        $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaReader->expects($this->any())->method('getTableColumns')->willReturn([]);
-
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityCustomColumn::class)
@@ -179,5 +190,271 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         $this->assertEquals('create', $result[0]->operation);
         $this->assertEquals('custom_fk', $result[0]->columns[1]->name);
         $this->assertEquals('custom_fk', $result[0]->foreignKeys[0]->column);
+    }
+
+    public function testCreateManyToOneWithForeignKey()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwner::class),
+            new ReflectionEntity(TestManyToOneTarget::class),
+        ]));
+
+        $ownerTable = array_values(array_filter(
+            $result,
+            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
+        ))[0];
+
+        $this->assertEquals('create', $ownerTable->operation);
+        $this->assertCount(2, $ownerTable->columns);
+        $this->assertSame('target_id', $ownerTable->columns[1]->name);
+        $this->assertFalse($ownerTable->columns[1]->propertyData->isNullable);
+        $this->assertCount(1, $ownerTable->foreignKeys);
+        $this->assertSame('target_id', $ownerTable->foreignKeys[0]->column);
+    }
+
+    public function testCreateManyToOneWithoutForeignKey()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerNoFk::class),
+            new ReflectionEntity(TestManyToOneTarget::class),
+        ]));
+
+        $ownerTable = array_values(array_filter(
+            $result,
+            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
+        ))[0];
+
+        $this->assertEquals('create', $ownerTable->operation);
+        $this->assertCount(2, $ownerTable->columns);
+        $this->assertTrue($ownerTable->columns[1]->propertyData->isNullable);
+        $this->assertCount(0, $ownerTable->foreignKeys);
+    }
+
+    public function testManyToOneForeignKeyCreatedWhenMissing()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: ['test_many_to_one_owner', 'test_many_to_one_target'],
+            columns: fn(string $table) => $table === 'test_many_to_one_owner'
+                ? [
+                    new DatabaseColumn('id', 'int', false, null),
+                    new DatabaseColumn('target_id', 'int', false, null),
+                ]
+                : [new DatabaseColumn('id', 'int', false, null)],
+            indexes: [],
+            foreignKeys: fn() => [],
+            indexesExpectation: 'any',
+        );
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwner::class),
+            new ReflectionEntity(TestManyToOneTarget::class),
+        ]));
+
+        $ownerTable = array_values(array_filter(
+            $result,
+            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
+        ))[0];
+
+        $this->assertEquals('update', $ownerTable->operation);
+        $this->assertCount(0, $ownerTable->columns);
+        $this->assertCount(1, $ownerTable->foreignKeys);
+        $this->assertEquals('create', $ownerTable->foreignKeys[0]->operation);
+    }
+
+    public function testManyToOneForeignKeyDroppedWhenDisabled()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: ['test_many_to_one_owner_no_fk', 'test_many_to_one_target'],
+            columns: fn(string $table) => $table === 'test_many_to_one_owner_no_fk'
+                ? [
+                    new DatabaseColumn('id', 'int', false, null),
+                    new DatabaseColumn('nullable_target_id', 'int', true, null),
+                ]
+                : [new DatabaseColumn('id', 'int', false, null)],
+            indexes: [],
+            foreignKeys: fn(string $table) => $table === 'test_many_to_one_owner_no_fk'
+                ? [
+                    'fk_test_many_to_one_owner_no_fk_test_many_to_one_target_nullable_target_id' => [
+                        'column' => 'nullable_target_id',
+                        'referencedTable' => 'test_many_to_one_target',
+                        'referencedColumn' => 'id',
+                    ],
+                ]
+                : [],
+            indexesExpectation: 'any',
+            foreignKeysExpectation: 'any',
+        );
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerNoFk::class),
+            new ReflectionEntity(TestManyToOneTarget::class),
+        ]));
+
+        $ownerTable = array_values(array_filter(
+            $result,
+            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
+        ))[0];
+
+        $this->assertEquals('update', $ownerTable->operation);
+        $this->assertCount(1, $ownerTable->foreignKeys);
+        $this->assertEquals('delete', $ownerTable->foreignKeys[0]->operation);
+        $this->assertEquals('nullable_target_id', $ownerTable->foreignKeys[0]->column);
+    }
+
+    public function testManyToOneColumnRenameAndNullableChange()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: ['test_many_to_one_owner_custom_column', 'test_many_to_one_target'],
+            columns: fn(string $table) => $table === 'test_many_to_one_owner_custom_column'
+                ? [
+                    new DatabaseColumn('id', 'int', false, null),
+                    new DatabaseColumn('target_id', 'int', false, null),
+                ]
+                : [new DatabaseColumn('id', 'int', false, null)],
+            indexes: [],
+            foreignKeys: fn(string $table) => $table === 'test_many_to_one_owner_custom_column'
+                ? [
+                    'fk_test_many_to_one_owner_custom_column_test_many_to_one_target_target_id' => [
+                        'column' => 'target_id',
+                        'referencedTable' => 'test_many_to_one_target',
+                        'referencedColumn' => 'id',
+                    ],
+                ]
+                : [],
+            indexesExpectation: 'any',
+            foreignKeysExpectation: 'any',
+        );
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerCustomColumn::class),
+            new ReflectionEntity(TestManyToOneTarget::class),
+        ]));
+
+        $ownerTable = array_values(array_filter(
+            $result,
+            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_custom_column'
+        ))[0];
+
+        $this->assertEquals('update', $ownerTable->operation);
+        $created = array_filter($ownerTable->columns, fn($c) => $c->name === 'custom_column_id');
+        $deleted = array_filter($ownerTable->columns, fn($c) => $c->name === 'target_id' && $c->operation === CompareResult::OPERATION_DELETE);
+        $this->assertNotEmpty($created);
+        $this->assertTrue(reset($created)->propertyData->isNullable);
+        $this->assertNotEmpty($deleted);
+        $this->assertCount(2, $ownerTable->foreignKeys);
+    }
+
+    public function testManyToOneInverseMissingThrows()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-one inverse side misconfigured: property not found');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerMissingInverse::class),
+            new ReflectionEntity(TestManyToOneTargetMissingInverse::class),
+        ]));
+    }
+
+    public function testManyToOneMappedByMismatchThrows()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-one inverse side misconfigured: mappedBy does not reference owning property');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerMappedByMismatch::class),
+            new ReflectionEntity(TestManyToOneTargetMappedByMismatch::class),
+        ]));
+    }
+
+    public function testManyToOneInverseActingAsOwnerThrows()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-one inverse side misconfigured: inverse side marked as owner');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestManyToOneOwnerInverseIsOwning::class),
+            new ReflectionEntity(TestManyToOneTargetInverseIsOwning::class),
+        ]));
+    }
+
+    public function testOneToManyMappedByMissingOwnerThrows()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('One-to-many inverse side misconfigured: owning property not found');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestOneToManyInverseMissingOwner::class),
+            new ReflectionEntity(TestManyToOneOwner::class),
+        ]));
+    }
+
+    public function testOneToManyMappedByWrongOwnerTypeThrows()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn() => [],
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('One-to-many inverse side misconfigured: owning property not many-to-one');
+
+        iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestOneToManyWrongOwnerType::class),
+            new ReflectionEntity(TestOneToManyWrongOwner::class),
+        ]));
+    }
+
+    private function comparator(
+        array $tables,
+        callable $columns,
+        ?array $indexes = [],
+        ?callable $foreignKeys = null,
+        string $indexesExpectation = 'any',
+        string $foreignKeysExpectation = 'any',
+    ): DatabaseSchemaComparator {
+        $reader = $this->createMock(DatabaseSchemaReader::class);
+        $reader->expects($this->once())->method('getTables')->willReturn($tables);
+        $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
+
+        if ($indexesExpectation === 'once') {
+            $reader->expects($this->once())->method('getTableIndexes')->willReturn($indexes ?? []);
+        } else {
+            $reader->expects($this->any())->method('getTableIndexes')->willReturn($indexes ?? []);
+        }
+
+        if ($foreignKeys === null) {
+            $reader->expects($this->any())->method('getTableForeignKeys')->willReturn([]);
+        } elseif ($foreignKeysExpectation === 'once') {
+            $reader->expects($this->once())->method('getTableForeignKeys')->willReturnCallback($foreignKeys);
+        } else {
+            $reader->expects($this->any())->method('getTableForeignKeys')->willReturnCallback($foreignKeys);
+        }
+
+        return new DatabaseSchemaComparator($reader, new SchemaNaming());
     }
 }

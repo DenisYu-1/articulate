@@ -10,7 +10,8 @@ class ManyToOne implements RelationAttributeInterface
     public function __construct(
         public readonly ?string $targetEntity = null,
         public readonly ?string $inversedBy = null,
-        public readonly ?bool $nullable = false,
+        public readonly ?string $column = null,
+        public readonly ?bool $nullable = null,
         public readonly bool $foreignKey = true,
     ) {}
 
@@ -21,6 +22,6 @@ class ManyToOne implements RelationAttributeInterface
 
     public function getColumn(): ?string
     {
-        return $this->inversedBy;
+        return $this->column;
     }
 }

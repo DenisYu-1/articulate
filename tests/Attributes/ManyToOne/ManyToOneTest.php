@@ -21,15 +21,12 @@ class NonEntity {
 class RelatedEntity {
     #[Property]
     private int $id;
-}
 
-#[Entity]
-class ManyToOneRelatedEntity {
-    #[Property]
-    private int $id;
+    #[OneToMany(mappedBy: 'customColumn', targetEntity: ManyToOneTest::class)]
+    private ManyToOneTest $owners;
 
-    #[OneToMany]
-    private ManyToOneTest $oneToMany;
+    #[OneToMany(mappedBy: 'relatedEntity3', targetEntity: ManyToOneTest::class)]
+    private ManyToOneTest $inverseRelated;
 }
 
 #[Entity(tableName: 'test')]
@@ -41,89 +38,86 @@ class ManyToOneTest extends AbstractTestCase
     #[ManyToOne]
     private RelatedEntity $relatedEntity;
 
-    public function testManyToOne()
-    {
-        $entity = new ReflectionEntity(static::class);
-        $properties = $entity->getProperties();
-
-        $propertyToTest = null;
-        foreach ($properties as $property) {
-            if ($property->getName() === 'relatedEntity') {
-                /** @var ManyToOne $attribute */
-                $attribute = $property->getAttributes(ManyToOne::class);
-                $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
-                break;
-            }
-        }
-
-        $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
-        $this->assertTrue($propertyToTest->isForeignKeyRequired());
-        $this->assertEquals('many_to_one_test_id', $propertyToTest->getInversedBy());
-    }
+    #[ManyToOne(nullable: true, foreignKey: false)]
+    private RelatedEntity $nullableNoFk;
 
     #[ManyToOne]
-    private NonEntity $relatedNonEntity;
+    private ?RelatedEntity $nullableByType;
 
-    public function testRelationToNonEntity()
-    {
-        $entity = new ReflectionEntity(static::class);
-        $properties = $entity->getProperties();
+    #[ManyToOne(column: 'custom_fk', inversedBy: 'owners')]
+    private RelatedEntity $customColumn;
 
-        $propertyToTest = null;
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Non-entity found in relation');
-        foreach ($properties as $property) {
-            if ($property->getName() === 'relatedNonEntity') {
-                /** @var ManyToOne $attribute */
-                $attribute = $property->getAttributes(ManyToOne::class);
-                $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
-                break;
-            }
-        }
-
-        $this->assertEquals(NonEntity::class, $propertyToTest->getTargetEntity());
-    }
+    #[ManyToOne(inversedBy: 'inverseRelated')]
+    private RelatedEntity $relatedEntity3;
 
     #[ManyToOne(targetEntity: RelatedEntity::class)]
     private OneToOneRelatedEntity $relatedEntity2;
 
-    public function testOverwrittenRelatedEntity()
+    #[ManyToOne(nullable: true)]
+    private NonEntity $relatedNonEntity;
+
+    public function testDefaultColumnAndForeignKey()
     {
-        $entity = new ReflectionEntity(static::class);
-        $properties = $entity->getProperties();
+        $relation = $this->relation('relatedEntity');
 
-        $propertyToTest = null;
-        foreach ($properties as $property) {
-            if ($property->getName() === 'relatedEntity2') {
-                /** @var ManyToOne $attribute */
-                $attribute = $property->getAttributes(ManyToOne::class);
-                $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
-                break;
-            }
-        }
-
-        $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
+        $this->assertSame(RelatedEntity::class, $relation->getTargetEntity());
+        $this->assertSame('related_entity_id', $relation->getColumnName());
+        $this->assertTrue($relation->isForeignKeyRequired());
+        $this->assertFalse($relation->isNullable());
+        $this->assertNull($relation->getInversedBy());
     }
 
-    #[ManyToOne(inversedBy: 'relatedEntity')]
-    private RelatedEntity $relatedEntity3;
+    public function testRelationToNonEntity()
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Non-entity found in relation');
+
+        $this->relation('relatedNonEntity')->getTargetEntity();
+    }
+
+    public function testNullableFromAttributeAndForeignKeyToggle()
+    {
+        $relation = $this->relation('nullableNoFk');
+
+        $this->assertTrue($relation->isNullable());
+        $this->assertFalse($relation->isForeignKeyRequired());
+    }
+
+    public function testNullableFromType()
+    {
+        $relation = $this->relation('nullableByType');
+
+        $this->assertTrue($relation->isNullable());
+    }
+
+    public function testCustomColumnAndInverse()
+    {
+        $relation = $this->relation('customColumn');
+
+        $this->assertSame('custom_fk', $relation->getColumnName());
+        $this->assertSame('owners', $relation->getInversedBy());
+    }
+
+    public function testOverwrittenRelatedEntity()
+    {
+        $this->assertSame(RelatedEntity::class, $this->relation('relatedEntity2')->getTargetEntity());
+    }
 
     public function testInversedBySpecified()
     {
+        $relation = $this->relation('relatedEntity3');
+
+        $this->assertSame(RelatedEntity::class, $relation->getTargetEntity());
+        $this->assertSame('inverseRelated', $relation->getInversedBy());
+    }
+
+    private function relation(string $propertyName): ReflectionRelation
+    {
         $entity = new ReflectionEntity(static::class);
-        $properties = $entity->getProperties();
+        $property = $entity->getProperty($propertyName);
+        /** @var ManyToOne $attribute */
+        $attribute = $property->getAttributes(ManyToOne::class)[0]->newInstance();
 
-        $propertyToTest = null;
-        foreach ($properties as $property) {
-            if ($property->getName() === 'relatedEntity3') {
-                /** @var ManyToOne $attribute */
-                $attribute = $property->getAttributes(ManyToOne::class);
-                $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
-                break;
-            }
-        }
-
-        $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
-        $this->assertEquals('relatedEntity', $propertyToTest->getInversedBy());
+        return new ReflectionRelation($attribute, $property);
     }
 }

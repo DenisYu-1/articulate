@@ -1,0 +1,22 @@
+<?php
+
+namespace Articulate\Schema;
+
+class SchemaNaming
+{
+    public function snakeCase(string $name): string
+    {
+        return strtolower(preg_replace('/\B([A-Z])/', '_$1', $name));
+    }
+
+    public function relationColumn(string $propertyName): string
+    {
+        return $this->snakeCase($propertyName) . '_id';
+    }
+
+    public function foreignKeyName(string $table, string $referencedTable, string $column): string
+    {
+        return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
+    }
+}
+

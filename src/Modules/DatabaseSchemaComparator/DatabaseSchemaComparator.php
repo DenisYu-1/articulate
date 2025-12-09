@@ -8,6 +8,8 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
@@ -16,10 +18,13 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Schema\SchemaNaming;
+use RuntimeException;
 
 readonly class DatabaseSchemaComparator {
     public function __construct(
         private DatabaseSchemaReader $databaseSchemaReader,
+        private SchemaNaming $schemaNaming,
     ) {}
 
     /**
@@ -31,7 +36,10 @@ readonly class DatabaseSchemaComparator {
         $existingTables = $this->databaseSchemaReader->getTables();
         $tablesToRemove = array_fill_keys($existingTables, true);
 
+        $this->validateRelations($entities);
+
         $entitiesIndexed = $this->indexByTableName($entities);
+        $indexesFetched = false;
 
         foreach ($entitiesIndexed as $tableName => $entities) {
             $operation = null;
@@ -44,8 +52,11 @@ readonly class DatabaseSchemaComparator {
             if (!in_array($tableName, $existingTables)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
             } else {
-                $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
-                $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+                if (!$indexesFetched) {
+                    $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
+                    $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+                    $indexesFetched = true;
+                }
                 $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
                 $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
             }
@@ -81,6 +92,9 @@ readonly class DatabaseSchemaComparator {
 
             $columnsCompareResults = [];
             $foreignKeys = [];
+            $foreignKeysByName = [];
+            $existingIndexesLoaded = isset($existingIndexes);
+            $createdColumnsWithForeignKeys = [];
 
             foreach ($columnsToCreate as $columnName => $data) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
@@ -96,15 +110,17 @@ readonly class DatabaseSchemaComparator {
                     new PropertiesData(),
                 );
                 if ($data instanceof ReflectionRelation && $data->isForeignKeyRequired()) {
-                    $this->validateOneToOneRelation($data);
+                    $this->validateRelation($data);
                     $targetEntity = new ReflectionEntity($data->getTargetEntity());
-                    $foreignKeys[] = new ForeignKeyCompareResult(
-                        $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $columnName),
+                    $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                    $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
+                        $fkName,
                         CompareResult::OPERATION_CREATE,
                         $columnName,
                         $targetEntity->getTableName(),
                         $data->getReferencedColumnName(),
                     );
+                    $createdColumnsWithForeignKeys[$columnName] = true;
                 }
             }
 
@@ -151,6 +167,13 @@ readonly class DatabaseSchemaComparator {
             $indexCompareResults = [];
 
             // Compare the indexes between the entity and the existing table indexes
+            if (!empty($entityIndexes) || !empty($indexesToRemove)) {
+                if (!$existingIndexesLoaded) {
+                    $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
+                    $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+                    $existingIndexesLoaded = true;
+                }
+            }
             foreach ($entityIndexes as $indexName => $indexInstance) {
                 if (!isset($existingIndexes[$indexName])) {
                     // If the index doesn't exist in the database, it needs to be created
@@ -187,13 +210,17 @@ readonly class DatabaseSchemaComparator {
                         continue;
                     }
                     $targetEntity = new ReflectionEntity($property->getTargetEntity());
-                    $foreignKeyName = $this->buildForeignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
+                    $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
-                    if ($property->isForeignKeyRequired()) {
-                        $this->validateOneToOneRelation($property);
+                if ($property->isForeignKeyRequired()) {
+                    if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$property->getColumnName()])) {
+                        unset($foreignKeysToRemove[$foreignKeyName]);
+                        continue;
+                    }
+                        $this->validateRelation($property);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                         if (!$foreignKeyExists) {
-                            $foreignKeys[] = new ForeignKeyCompareResult(
+                            $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
                                 $foreignKeyName,
                                 CompareResult::OPERATION_CREATE,
                                 $property->getColumnName(),
@@ -207,7 +234,7 @@ readonly class DatabaseSchemaComparator {
                         if ($foreignKeyExists) {
                             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                             unset($foreignKeysToRemove[$foreignKeyName]);
-                            $foreignKeys[] = new ForeignKeyCompareResult(
+                            $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
                                 $foreignKeyName,
                                 CompareResult::OPERATION_DELETE,
                                 $existingForeignKeys[$foreignKeyName]['column'],
@@ -220,7 +247,7 @@ readonly class DatabaseSchemaComparator {
 
                 foreach (array_keys($foreignKeysToRemove ?? []) as $foreignKeyName) {
                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-                    $foreignKeys[] = new ForeignKeyCompareResult(
+                    $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
                         $foreignKeyName,
                         CompareResult::OPERATION_DELETE,
                         $existingForeignKeys[$foreignKeyName]['column'],
@@ -229,6 +256,7 @@ readonly class DatabaseSchemaComparator {
                     );
                 }
             }
+            $foreignKeys = array_values($foreignKeysByName);
 
             if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
                 throw new EmptyPropertiesList($tableName);
@@ -277,13 +305,40 @@ readonly class DatabaseSchemaComparator {
         return $entitiesIndexed;
     }
 
-    private function buildForeignKeyName(string $table, string $referencedTable, string $column): string
+    private function validateRelations(array $entities): void
     {
-        return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
+        foreach ($entities as $entity) {
+            foreach ($entity->getEntityRelationProperties() as $relation) {
+                $this->validateRelation($relation);
+            }
+        }
+    }
+
+    private function validateRelation(ReflectionRelation $relation): void
+    {
+        if ($relation->isOneToOne()) {
+            $this->validateOneToOneRelation($relation);
+            return;
+        }
+
+        if ($relation->isManyToOne()) {
+            $this->validateManyToOneRelation($relation);
+            return;
+        }
+
+        if ($relation->isOneToMany()) {
+            $this->validateOneToManyRelation($relation);
+        }
     }
 
     private function validateOneToOneRelation(ReflectionRelation $relation): void
     {
+        if (!$relation->isForeignKeyRequired()) {
+            return;
+        }
+        if (!$relation->isOwningSide()) {
+            return;
+        }
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
         $inversedPropertyName = $relation->getInversedBy();
 
@@ -292,28 +347,101 @@ readonly class DatabaseSchemaComparator {
         }
 
         if (!$targetEntity->hasProperty($inversedPropertyName)) {
-            throw new \RuntimeException('One-to-one inverse side misconfigured: property not found');
+            throw new RuntimeException('One-to-one inverse side misconfigured: property not found');
         }
 
         $property = $targetEntity->getProperty($inversedPropertyName);
         $attributes = $property->getAttributes(OneToOne::class);
 
         if (empty($attributes)) {
-            throw new \RuntimeException('One-to-one inverse side misconfigured: attribute missing');
+            throw new RuntimeException('One-to-one inverse side misconfigured: attribute missing');
         }
 
         $targetProperty = $attributes[0]->newInstance();
 
         if ($targetProperty->mainSide) {
-            throw new \RuntimeException('One-to-one inverse side misconfigured: inverse side marked as main');
+            throw new RuntimeException('One-to-one inverse side misconfigured: inverse side marked as main');
         }
 
         if ($targetProperty->foreignKey) {
-            throw new \RuntimeException('One-to-one inverse side misconfigured: inverse side requests foreign key');
+            throw new RuntimeException('One-to-one inverse side misconfigured: inverse side requests foreign key');
         }
 
         if ($targetProperty->mappedBy && $targetProperty->mappedBy !== $relation->getPropertyName()) {
-            throw new \RuntimeException('One-to-one inverse side misconfigured: mappedBy does not reference main property');
+            throw new RuntimeException('One-to-one inverse side misconfigured: mappedBy does not reference main property');
+        }
+    }
+
+    private function validateManyToOneRelation(ReflectionRelation $relation): void
+    {
+        if (!$relation->isManyToOne()) {
+            return;
+        }
+
+        $inversedPropertyName = $relation->getInversedBy();
+        if (!$inversedPropertyName) {
+            return;
+        }
+
+        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+        if (!$targetEntity->hasProperty($inversedPropertyName)) {
+            throw new RuntimeException('Many-to-one inverse side misconfigured: property not found');
+        }
+
+        $targetProperty = $targetEntity->getProperty($inversedPropertyName);
+        if (!empty($targetProperty->getAttributes(ManyToOne::class))) {
+            throw new RuntimeException('Many-to-one inverse side misconfigured: inverse side marked as owner');
+        }
+        $attributes = $targetProperty->getAttributes(OneToMany::class);
+
+        if (empty($attributes)) {
+            throw new RuntimeException('Many-to-one inverse side misconfigured: attribute missing');
+        }
+
+        $inverseRelation = new ReflectionRelation($attributes[0]->newInstance(), $targetProperty);
+        $mappedBy = $inverseRelation->getMappedBy();
+
+        if ($mappedBy !== $relation->getPropertyName()) {
+            throw new RuntimeException('Many-to-one inverse side misconfigured: mappedBy does not reference owning property');
+        }
+
+        if ($inverseRelation->getTargetEntity() !== $relation->getDeclaringClassName()) {
+            throw new RuntimeException('Many-to-one inverse side misconfigured: target entity mismatch');
+        }
+    }
+
+    private function validateOneToManyRelation(ReflectionRelation $relation): void
+    {
+        if (!$relation->isOneToMany()) {
+            return;
+        }
+
+        $mappedBy = $relation->getMappedBy();
+        if (!$mappedBy) {
+            throw new RuntimeException('One-to-many inverse side misconfigured: mappedBy is required');
+        }
+
+        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+        if (!$targetEntity->hasProperty($mappedBy)) {
+            throw new RuntimeException('One-to-many inverse side misconfigured: owning property not found');
+        }
+
+        $targetProperty = $targetEntity->getProperty($mappedBy);
+        $attributes = $targetProperty->getAttributes(ManyToOne::class);
+
+        if (empty($attributes)) {
+            throw new RuntimeException('One-to-many inverse side misconfigured: owning property not many-to-one');
+        }
+
+        $owningRelation = new ReflectionRelation($attributes[0]->newInstance(), $targetProperty);
+
+        if ($owningRelation->getTargetEntity() !== $relation->getDeclaringClassName()) {
+            throw new RuntimeException('One-to-many inverse side misconfigured: target entity mismatch');
+        }
+
+        $inversedBy = $owningRelation->getInversedBy();
+        if ($inversedBy && $inversedBy !== $relation->getPropertyName()) {
+            throw new RuntimeException('One-to-many inverse side misconfigured: inversedBy does not reference inverse property');
         }
     }
 }

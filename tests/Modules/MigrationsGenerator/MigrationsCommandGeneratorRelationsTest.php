@@ -152,4 +152,64 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
+
+    public function testForeignKeyAndColumnDropCombined()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'update',
+            [
+                new ColumnCompareResult(
+                    name: 'related_entity_id',
+                    operation: 'delete',
+                    propertyData: new PropertiesData(),
+                    columnData: new PropertiesData('int', false),
+                ),
+            ],
+            [],
+            [
+                new ForeignKeyCompareResult(
+                    name: 'fk_test_table_related_entity_related_entity_id',
+                    operation: 'delete',
+                    column: 'related_entity_id',
+                    referencedTable: 'related_entity',
+                ),
+            ],
+        );
+
+        $this->assertEquals(
+            'ALTER TABLE `test_table` DROP related_entity_id, DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`',
+            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+        );
+    }
+
+    public function testRollbackRecreatesForeignKeyOnTableRestore()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'delete',
+            [
+                new ColumnCompareResult(
+                    name: 'related_entity_id',
+                    operation: 'delete',
+                    propertyData: new PropertiesData(),
+                    columnData: new PropertiesData('int', false),
+                ),
+            ],
+            [],
+            [
+                new ForeignKeyCompareResult(
+                    name: 'fk_test_table_related_entity_related_entity_id',
+                    operation: 'delete',
+                    column: 'related_entity_id',
+                    referencedTable: 'related_entity',
+                ),
+            ],
+        );
+
+        $this->assertEquals(
+            'CREATE TABLE `test_table` (related_entity_id int NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
+            (new MigrationsCommandGenerator())->rollback($tableCompareResult)
+        );
+    }
 }

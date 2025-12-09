@@ -27,7 +27,7 @@ class MigrationsCommandGenerator {
                 if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
                     continue;
                 }
-                $parts[] = $this->foreignKeyDefinition($foreignKey);
+                $parts[] = $this->foreignKeyDefinition($foreignKey, false);
             }
             $query .= implode(', ', $parts) . ')';
             return $query;
@@ -86,7 +86,7 @@ class MigrationsCommandGenerator {
                 if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
                     continue;
                 }
-                $parts[] = $this->foreignKeyDefinition($foreignKey);
+                $parts[] = $this->foreignKeyDefinition($foreignKey, false);
             }
             $query .= implode(', ', $parts) . ')';
             foreach ($compareResult->indexes as $index) {
@@ -167,10 +167,14 @@ class MigrationsCommandGenerator {
         );
     }
 
-    private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey): string
+    private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey, bool $withAdd = true): string
     {
+        $template = $withAdd
+            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)'
+            : 'CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)';
+
         return sprintf(
-            'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)',
+            $template,
             $foreignKey->name,
             $foreignKey->column,
             $foreignKey->referencedTable,

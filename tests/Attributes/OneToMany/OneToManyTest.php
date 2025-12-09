@@ -57,7 +57,7 @@ class OneToManyTest extends AbstractTestCase
         }
 
         $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
-        $this->assertTrue($propertyToTest->isForeignKeyRequired());
+        $this->assertFalse($propertyToTest->isForeignKeyRequired());
         $this->assertEquals('test', $propertyToTest->getMappedBy());
         $this->assertEquals('one_to_many_test_id', $propertyToTest->getInversedBy());
     }

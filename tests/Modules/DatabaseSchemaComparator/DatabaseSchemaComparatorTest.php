@@ -8,6 +8,7 @@ use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEmptyEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
@@ -22,7 +23,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $result = $databaseSchemaComparator->compareAll([]);
         $this->assertEmpty(iterator_to_array($result));
     }
@@ -31,7 +32,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEntity::class)
@@ -53,7 +54,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['table_to_delete']);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
@@ -68,7 +69,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([new DatabaseColumn('id', 'string', true, 'test')]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEntity::class)
@@ -93,7 +94,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([new DatabaseColumn('id_to_remove', 'string', true, null)]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEntity::class)
@@ -116,7 +117,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEntity::class),
@@ -141,7 +142,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity3']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestPrimaryKeyEntity::class),
@@ -157,7 +158,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity31']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestMultiPrimaryKeyEntity::class),
@@ -173,7 +174,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity312']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestMultiSortedPrimaryKeyEntity::class),
@@ -191,7 +192,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
             new DatabaseColumn('id', 'int', false, null),
         ]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEntity::class),
@@ -204,7 +205,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
-        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader);
+        $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $this->expectException(EmptyPropertiesList::class);
         iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEmptyEntity::class),

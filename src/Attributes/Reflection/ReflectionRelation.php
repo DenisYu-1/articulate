@@ -4,7 +4,10 @@ namespace Articulate\Attributes\Reflection;
 
 use Exception;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
+use Articulate\Schema\SchemaNaming;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
@@ -13,6 +16,7 @@ class ReflectionRelation implements PropertyInterface
     public function __construct(
         private readonly RelationAttributeInterface $entityProperty,
         private readonly BaseReflectionProperty $property,
+        private readonly SchemaNaming $schemaNaming = new SchemaNaming(),
     ) {
     }
 
@@ -33,38 +37,48 @@ class ReflectionRelation implements PropertyInterface
         throw new Exception('Target entity is misconfigured');
     }
 
-    public function getMappedBy(): string
+    public function getMappedBy(): ?string
     {
-        if (!($this->entityProperty instanceof ManyToOne) && empty($this->entityProperty->mappedBy) && empty($this->entityProperty->inversedBy)) {
-            throw new Exception('Either mappedBy or inversedBy is required');
+        if ($this->isManyToOne()) {
+            return $this->getMappedByProperty();
         }
-        if (!empty($this->entityProperty->mappedBy) && !empty($this->entityProperty->inversedBy)) {
-            throw new Exception('mappedBy and inversedBy cannot be specified at the same time');
-        }
-        return $this->entityProperty->mappedBy ?? $this->parseColumnName($this->property->getName());
+        $this->assertMappingConfigured();
+
+        return $this->getMappedByProperty() ?? $this->parseColumnName($this->property->getName());
     }
 
-    public function getInversedBy(): string
+    public function getInversedBy(): ?string
     {
-        if (!($this->entityProperty instanceof ManyToOne) && empty($this->entityProperty->mappedBy) && empty($this->entityProperty->inversedBy)) {
-            throw new Exception('Either mappedBy or inversedBy is required');
+        if ($this->isManyToOne()) {
+            return $this->getInversedByProperty();
         }
-        if (!empty($this->entityProperty->mappedBy) && !empty($this->entityProperty->inversedBy)) {
+        $this->assertMappingConfigured();
+
+        if ($this->getMappedByProperty() && $this->getInversedByProperty()) {
             throw new Exception('mappedBy and inversedBy cannot be specified at the same time');
+        }
+        if ($this->getInversedByProperty()) {
+            return $this->getInversedByProperty();
         }
         $class = $this->property->class;
         $array = explode('\\', $class);
-        return $this->entityProperty->inversedBy ?? $this->parseColumnName(end($array));
+        return $this->getInversedByProperty() ?? $this->parseColumnName(end($array));
     }
 
     public function isForeignKeyRequired(): bool
     {
-        return $this->entityProperty->foreignKey ?? true;
+        if ($this->isOneToMany()) {
+            return false;
+        }
+
+        return property_exists($this->entityProperty, 'foreignKey')
+            ? ($this->entityProperty->foreignKey ?? true)
+            : true;
     }
 
     private function parseColumnName(string $name): string
     {
-        return strtolower(preg_replace('/\B([A-Z])/', '_$1', $name)) . '_id';
+        return $this->schemaNaming->relationColumn($name);
     }
 
     public function getColumnName(): string
@@ -111,5 +125,47 @@ class ReflectionRelation implements PropertyInterface
     public function getPropertyName(): string
     {
         return $this->property->getName();
+    }
+
+    public function getDeclaringClassName(): string
+    {
+        return $this->property->class;
+    }
+
+    public function isOneToOne(): bool
+    {
+        return $this->entityProperty instanceof OneToOne;
+    }
+
+    public function isManyToOne(): bool
+    {
+        return $this->entityProperty instanceof ManyToOne;
+    }
+
+    public function isOneToMany(): bool
+    {
+        return $this->entityProperty instanceof OneToMany;
+    }
+
+    public function isOwningSide(): bool
+    {
+        return $this->isManyToOne() || ($this->isOneToOne() && $this->entityProperty->mainSide);
+    }
+
+    public function getMappedByProperty(): ?string
+    {
+        return property_exists($this->entityProperty, 'mappedBy') ? $this->entityProperty->mappedBy : null;
+    }
+
+    public function getInversedByProperty(): ?string
+    {
+        return property_exists($this->entityProperty, 'inversedBy') ? $this->entityProperty->inversedBy : null;
+    }
+
+    private function assertMappingConfigured(): void
+    {
+        if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
+            throw new Exception('Either mappedBy or inversedBy is required');
+        }
     }
 }
