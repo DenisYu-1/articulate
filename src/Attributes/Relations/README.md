@@ -16,3 +16,9 @@
 - Validation: if inverse is provided it must be `OneToMany` pointing back via `mappedBy`, must not request FK or be owning; inverse side must reference owning `ManyToOne` via `mappedBy`
 - Example: `#[ManyToOne(inversedBy: 'articles')] public User $author;` + `#[OneToMany(mappedBy: 'author')] public Article $articles;` creates `author_id` on `Article` with optional FK to `user.id`
 - Example diff: turning off `foreignKey` drops only the FK constraint, leaving the column intact
+
+# One-to-Many specifics
+
+- Inverse-only: emits no columns or FKs; `mappedBy` is required and must reference a `ManyToOne` on the target pointing back.
+- Type: property should be an iterable/array collection; non-collection types are rejected.
+- Inverse must not declare `foreignKey`/ownership.

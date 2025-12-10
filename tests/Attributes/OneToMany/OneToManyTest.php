@@ -38,8 +38,8 @@ class OneToManyTest extends AbstractTestCase
     #[Property]
     private int $id;
 
-    #[OneToMany(mappedBy: 'test')]
-    private RelatedEntity $relatedEntity;
+    #[OneToMany(mappedBy: 'test', targetEntity: RelatedEntity::class)]
+    private array $relatedEntity;
 
     public function testOneToMany()
     {
@@ -62,31 +62,24 @@ class OneToManyTest extends AbstractTestCase
         $this->assertEquals('one_to_many_test_id', $propertyToTest->getInversedBy());
     }
 
-    #[OneToMany]
-    private NonEntity $relatedNonEntity;
+    #[OneToMany(targetEntity: NonEntity::class)]
+    private array $relatedNonEntity;
 
     public function testRelationToNonEntity()
     {
         $entity = new ReflectionEntity(static::class);
-        $properties = $entity->getProperties();
-
-        $propertyToTest = null;
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Non-entity found in relation');
-        foreach ($properties as $property) {
-            if ($property->getName() === 'relatedNonEntity') {
-                /** @var OneToMany $attribute */
-                $attribute = $property->getAttributes(OneToMany::class);
-                $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
-                break;
-            }
-        }
+        $property = $entity->getProperty('relatedNonEntity');
+        /** @var OneToMany $attribute */
+        $attribute = $property->getAttributes(OneToMany::class)[0]->newInstance();
+        $relation = new ReflectionRelation($attribute, $property);
 
-        $this->assertEquals(NonEntity::class, $propertyToTest->getTargetEntity());
+        $relation->getTargetEntity();
     }
 
     #[OneToMany(targetEntity: RelatedEntity::class)]
-    private OneToOneRelatedEntity $relatedEntity2;
+    private array $relatedEntity2;
 
     public function testOverwrittenRelatedEntity()
     {
@@ -106,8 +99,11 @@ class OneToManyTest extends AbstractTestCase
         $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
     }
 
-    #[OneToMany(mappedBy: 'relatedEntity')]
-    private RelatedEntity $relatedEntity3;
+    #[OneToMany(mappedBy: 'relatedEntity', targetEntity: RelatedEntity::class)]
+    private array $relatedEntity3;
+
+    #[OneToMany(targetEntity: RelatedEntity::class)]
+    private int $invalidCollection;
 
     public function testMappedBySpecified()
     {
@@ -127,5 +123,17 @@ class OneToManyTest extends AbstractTestCase
         $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
         $this->assertEquals('relatedEntity', $propertyToTest->getMappedBy());
         $this->assertEquals('one_to_many_test_id', $propertyToTest->getInversedBy());
+    }
+
+    public function testInvalidCollectionType()
+    {
+        $entity = new ReflectionEntity(static::class);
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('One-to-many property must be iterable collection');
+
+        $property = $entity->getProperty('invalidCollection');
+        $attribute = $property->getAttributes(OneToMany::class)[0]->newInstance();
+        $relation = new ReflectionRelation($attribute, $property);
+        $relation->getTargetEntity();
     }
 }

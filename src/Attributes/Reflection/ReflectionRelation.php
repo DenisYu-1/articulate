@@ -23,7 +23,17 @@ class ReflectionRelation implements PropertyInterface
     public function getTargetEntity(): string
     {
         if ($this->entityProperty->getTargetEntity()) {
+            $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
+            if (!$reflectionEntity->isEntity()) {
+                throw new RuntimeException('Non-entity found in relation');
+            }
+            if ($this->isOneToMany()) {
+                $this->assertOneToManyCollectionType();
+            }
             return $this->entityProperty->getTargetEntity();
+        }
+        if ($this->isOneToMany()) {
+            $this->assertOneToManyCollectionType();
         }
         $type = $this->property->getType();
 
@@ -167,5 +177,20 @@ class ReflectionRelation implements PropertyInterface
         if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
             throw new Exception('Either mappedBy or inversedBy is required');
         }
+    }
+
+    private function assertOneToManyCollectionType(): void
+    {
+        $type = $this->property->getType();
+        if ($type === null) {
+            return;
+        }
+        if ($type->isBuiltin()) {
+            $allowed = ['array', 'iterable'];
+            if (!in_array($type->getName(), $allowed, true)) {
+                throw new RuntimeException('One-to-many property must be iterable collection');
+            }
+        }
+        // Non-builtin types are accepted here (could be custom collection classes).
     }
 }
