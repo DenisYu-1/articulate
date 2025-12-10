@@ -2,14 +2,13 @@
 
 namespace Articulate\Modules\DatabaseSchemaComparator;
 
-use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\Index;
-use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Exceptions\EmptyPropertiesList;
@@ -19,7 +18,6 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
@@ -556,6 +554,11 @@ readonly class DatabaseSchemaComparator {
                 if ($existing['ownerJoinColumn'] !== $relation->getOwnerJoinColumn() || $existing['targetJoinColumn'] !== $relation->getTargetJoinColumn()) {
                     throw new RuntimeException('Many-to-many misconfigured: conflicting mapping table definition');
                 }
+                $definitions[$tableName]['extraProperties'] = $this->mergeMappingTableProperties(
+                    $existing['extraProperties'],
+                    $relation->getExtraProperties(),
+                    $tableName,
+                );
             }
         }
         return $definitions;
@@ -698,5 +701,45 @@ readonly class DatabaseSchemaComparator {
             array_values($foreignKeysByName),
             $definition['primaryColumns'],
         );
+    }
+
+    /**
+     * @param MappingTableProperty[] $existing
+     * @param MappingTableProperty[] $incoming
+     * @return MappingTableProperty[]
+     */
+    private function mergeMappingTableProperties(array $existing, array $incoming, string $tableName): array
+    {
+        $properties = [];
+        foreach ($existing as $property) {
+            $properties[$property->name] = $property;
+        }
+        foreach ($incoming as $property) {
+            if (!isset($properties[$property->name])) {
+                $properties[$property->name] = $property;
+                continue;
+            }
+            $current = $properties[$property->name];
+            if ($current->type !== $property->type || $current->length !== $property->length || $current->defaultValue !== $property->defaultValue) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Many-to-many misconfigured: mapping table "%s" property "%s" conflicts between relations',
+                        $tableName,
+                        $property->name,
+                    ),
+                );
+            }
+            if ($property->nullable && !$current->nullable) {
+                $properties[$property->name] = new MappingTableProperty(
+                    name: $current->name,
+                    type: $current->type,
+                    nullable: true,
+                    length: $current->length,
+                    defaultValue: $current->defaultValue,
+                );
+            }
+        }
+
+        return array_values($properties);
     }
 }

@@ -30,4 +30,6 @@
 - Default mapping table name: snake_case of both table names sorted; defaults to composite PK on both join columns
 - Join columns: `owner_table_id` + `target_table_id`; FKs reference the first primary key of each side
 - Extra mapping columns come from `MappingTableProperty`; collection access via `MappingCollection/MappingItem`
+- Mapping table name can be reused across owning relations with the same join columns; extra properties are merged (union) and any shared column becomes nullable if at least one relation marks it nullable
+- Conflicting definitions for the same extra column (type/length/default) raise validation errors
 - Validation: only one owning side (no `mappedBy`), inverse must point back via `mappedBy`; name mismatches or inverse missing property throw
