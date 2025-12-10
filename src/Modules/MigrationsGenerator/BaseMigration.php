@@ -3,6 +3,7 @@
 namespace Articulate\Modules\MigrationsGenerator;
 
 use Articulate\Connection;
+use Throwable;
 
 abstract class BaseMigration {
     public function __construct(
@@ -18,7 +19,7 @@ abstract class BaseMigration {
             $end = microtime(true);
             $this->addMigration($end - $begin);
             $this->connection->commit();
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->connection->rollbackTransaction();
             throw $e;
         }
@@ -33,7 +34,7 @@ abstract class BaseMigration {
             $end = microtime(true);
             $this->removeMigration();
             $this->connection->commit();
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $this->connection->rollbackTransaction();
             throw $e;
         }

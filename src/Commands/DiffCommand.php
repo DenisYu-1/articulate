@@ -84,11 +84,13 @@ class DiffCommand extends Command
             $queries[] = $this->migrationsCommandGenerator->generate($compareResult);
             $rollbacks[] = $this->migrationsCommandGenerator->rollback($compareResult);
         }
+        $upScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', $queries);
+        $downScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', array_reverse($rollbacks));
         $this->migrationGenerator->generate(
             'App\Migrations',
             'MigrationFrom'.time(),
-            implode(PHP_EOL, array_map(fn ($query) => '$this->addSql("'.$query.'");', $queries)),
-            implode(PHP_EOL, array_map(fn ($query) => '$this->addSql("'.$query.'");', $rollbacks)),
+            implode(PHP_EOL, $upScript),
+            implode(PHP_EOL, $downScript),
         );
 
         $io->success('Migrations table created successfully.');
