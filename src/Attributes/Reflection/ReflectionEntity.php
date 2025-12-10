@@ -7,6 +7,7 @@ use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Schema\SchemaNaming;
@@ -106,19 +107,25 @@ class ReflectionEntity extends ReflectionClass
             /** @var ReflectionAttribute<OneToOne>[] $oneToOne */
             $oneToOne = $property->getAttributes(OneToOne::class);
             if (!empty($oneToOne)) {
-            yield new ReflectionRelation($oneToOne[0]->newInstance(), $property, $this->schemaNaming);
+                yield new ReflectionRelation($oneToOne[0]->newInstance(), $property, $this->schemaNaming);
             }
 
             /** @var ReflectionAttribute<ManyToOne>[] $manyToOne */
             $manyToOne = $property->getAttributes(ManyToOne::class);
             if (!empty($manyToOne)) {
-            yield new ReflectionRelation($manyToOne[0]->newInstance(), $property, $this->schemaNaming);
+                yield new ReflectionRelation($manyToOne[0]->newInstance(), $property, $this->schemaNaming);
             }
 
             /** @var ReflectionAttribute<OneToMany>[] $oneToMany */
             $oneToMany = $property->getAttributes(OneToMany::class);
             if (!empty($oneToMany)) {
-            yield new ReflectionRelation($oneToMany[0]->newInstance(), $property, $this->schemaNaming);
+                yield new ReflectionRelation($oneToMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<ManyToMany>[] $manyToMany */
+            $manyToMany = $property->getAttributes(ManyToMany::class);
+            if (!empty($manyToMany)) {
+                yield new ReflectionManyToMany($manyToMany[0]->newInstance(), $property, $this->schemaNaming);
             }
         }
     }

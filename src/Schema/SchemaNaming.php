@@ -18,5 +18,11 @@ class SchemaNaming
     {
         return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
     }
-}
 
+    public function mappingTableName(string $ownerTable, string $targetTable): string
+    {
+        $parts = [$ownerTable, $targetTable];
+        sort($parts, SORT_STRING);
+        return $this->snakeCase(implode('_', $parts));
+    }
+}

@@ -6,10 +6,12 @@ use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
-use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
@@ -17,6 +19,7 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
@@ -37,19 +40,19 @@ readonly class DatabaseSchemaComparator {
         $tablesToRemove = array_fill_keys($existingTables, true);
 
         $this->validateRelations($entities);
+        $manyToManyTables = $this->collectManyToManyTables($entities);
 
         $entitiesIndexed = $this->indexByTableName($entities);
         $indexesFetched = false;
 
-        foreach ($entitiesIndexed as $tableName => $entities) {
+        foreach ($entitiesIndexed as $tableName => $entityGroup) {
             $operation = null;
 
             $existingIndexes = $indexesToRemove = [];
-
             $existingForeignKeys = [];
             $foreignKeysToRemove = [];
 
-            if (!in_array($tableName, $existingTables)) {
+            if (!in_array($tableName, $existingTables, true)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
             } else {
                 if (!$indexesFetched) {
@@ -72,8 +75,7 @@ readonly class DatabaseSchemaComparator {
             $propertiesIndexed = [];
 
             /** @var ReflectionEntity $entity */
-            foreach ($entities as $entity) {
-                // Check if the class has Index attributes
+            foreach ($entityGroup as $entity) {
                 foreach ($entity->getAttributes(Index::class) as $indexAttribute) {
                     /** @var Index $indexInstance */
                     $indexInstance = $indexAttribute->newInstance();
@@ -91,7 +93,6 @@ readonly class DatabaseSchemaComparator {
             $columnsToUpdate = array_intersect_key($propertiesIndexed, $columnsIndexed);
 
             $columnsCompareResults = [];
-            $foreignKeys = [];
             $foreignKeysByName = [];
             $existingIndexesLoaded = isset($existingIndexes);
             $createdColumnsWithForeignKeys = [];
@@ -163,10 +164,8 @@ readonly class DatabaseSchemaComparator {
             }
 
 
-            // Check if any index changes are needed
             $indexCompareResults = [];
 
-            // Compare the indexes between the entity and the existing table indexes
             if (!empty($entityIndexes) || !empty($indexesToRemove)) {
                 if (!$existingIndexesLoaded) {
                     $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
@@ -176,7 +175,6 @@ readonly class DatabaseSchemaComparator {
             }
             foreach ($entityIndexes as $indexName => $indexInstance) {
                 if (!isset($existingIndexes[$indexName])) {
-                    // If the index doesn't exist in the database, it needs to be created
                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                     $indexCompareResults[] = new IndexCompareResult(
                         $indexName,
@@ -185,12 +183,10 @@ readonly class DatabaseSchemaComparator {
                         $indexInstance->unique,
                     );
                 } else {
-                    // If the index exists, remove it from the $indexesToRemove list (no need to delete)
                     unset($indexesToRemove[$indexName]);
                 }
             }
 
-            // Any remaining indexes in $indexesToRemove should be dropped
             foreach (array_keys($indexesToRemove) as $indexName) {
                 $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                 $indexCompareResults[] = new IndexCompareResult(
@@ -212,11 +208,11 @@ readonly class DatabaseSchemaComparator {
                     $targetEntity = new ReflectionEntity($property->getTargetEntity());
                     $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
-                if ($property->isForeignKeyRequired()) {
-                    if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$property->getColumnName()])) {
-                        unset($foreignKeysToRemove[$foreignKeyName]);
-                        continue;
-                    }
+                    if ($property->isForeignKeyRequired()) {
+                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$property->getColumnName()])) {
+                            unset($foreignKeysToRemove[$foreignKeyName]);
+                            continue;
+                        }
                         $this->validateRelation($property);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                         if (!$foreignKeyExists) {
@@ -272,8 +268,16 @@ readonly class DatabaseSchemaComparator {
                 $columnsCompareResults,
                 $indexCompareResults,
                 $foreignKeys,
-                $entity->getPrimaryKeyColumns(),
+                $entityGroup[0]->getPrimaryKeyColumns(),
             );
+        }
+
+        foreach ($manyToManyTables as $definition) {
+            unset($tablesToRemove[$definition['tableName']]);
+            $compareResult = $this->compareMappingTable($definition, $existingTables);
+            if ($compareResult !== null) {
+                yield $compareResult;
+            }
         }
 
         foreach (array_keys($tablesToRemove) as $tableName) {
@@ -282,8 +286,6 @@ readonly class DatabaseSchemaComparator {
                 TableCompareResult::OPERATION_DELETE,
             );
         }
-
-
     }
 
     /**
@@ -309,6 +311,10 @@ readonly class DatabaseSchemaComparator {
     {
         foreach ($entities as $entity) {
             foreach ($entity->getEntityRelationProperties() as $relation) {
+                if ($relation instanceof ReflectionManyToMany) {
+                    $this->validateManyToManyRelation($relation);
+                    continue;
+                }
                 $this->validateRelation($relation);
             }
         }
@@ -443,5 +449,254 @@ readonly class DatabaseSchemaComparator {
         if ($inversedBy && $inversedBy !== $relation->getPropertyName()) {
             throw new RuntimeException('One-to-many inverse side misconfigured: inversedBy does not reference inverse property');
         }
+    }
+
+    private function validateManyToManyRelation(ReflectionManyToMany $relation): void
+    {
+        if ($relation->getMappedBy() && $relation->getInversedBy()) {
+            throw new RuntimeException('Many-to-many misconfigured: mappedBy and inversedBy cannot be both defined');
+        }
+
+        if (!$relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
+            throw new RuntimeException('Many-to-many misconfigured: inverse side cannot define extra mapping properties');
+        }
+
+        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+        $mappedBy = $relation->getMappedBy();
+        $inversedBy = $relation->getInversedBy();
+
+        if ($relation->isOwningSide()) {
+            if (!$inversedBy) {
+                return;
+            }
+            if (!$targetEntity->hasProperty($inversedBy)) {
+                throw new RuntimeException('Many-to-many inverse side misconfigured: property not found');
+            }
+            $targetProperty = $targetEntity->getProperty($inversedBy);
+            $attributes = $targetProperty->getAttributes(ManyToMany::class);
+            if (empty($attributes)) {
+                throw new RuntimeException('Many-to-many inverse side misconfigured: attribute missing');
+            }
+            /** @var ManyToMany $targetAttr */
+            $targetAttr = $attributes[0]->newInstance();
+            if ($targetAttr->mappedBy !== $relation->getPropertyName()) {
+                throw new RuntimeException('Many-to-many inverse side misconfigured: mappedBy does not reference owning property');
+            }
+            if (
+                $targetAttr->mappingTable
+                && $targetAttr->mappingTable->name
+                && $relation->getAttribute()->mappingTable?->name
+                && $targetAttr->mappingTable->name !== $relation->getTableName()
+            ) {
+                throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+            }
+            return;
+        }
+
+        if (!$mappedBy) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: mappedBy is required');
+        }
+        if (!$targetEntity->hasProperty($mappedBy)) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property not found');
+        }
+        $targetProperty = $targetEntity->getProperty($mappedBy);
+        $attributes = $targetProperty->getAttributes(ManyToMany::class);
+        if (empty($attributes)) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property attribute missing');
+        }
+        /** @var ManyToMany $targetAttr */
+        $targetAttr = $attributes[0]->newInstance();
+        if ($targetAttr->mappedBy !== null) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property cannot declare mappedBy');
+        }
+        if ($targetAttr->inversedBy && $targetAttr->inversedBy !== $relation->getPropertyName()) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: inversedBy does not reference inverse property');
+        }
+        if (
+            $targetAttr->mappingTable
+            && $targetAttr->mappingTable->name
+            && $relation->getAttribute()->mappingTable?->name
+            && $targetAttr->mappingTable->name !== $relation->getTableName()
+        ) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+        }
+    }
+
+    private function collectManyToManyTables(array $entities): array
+    {
+        $definitions = [];
+        foreach ($entities as $entity) {
+            foreach ($entity->getEntityRelationProperties() as $relation) {
+                if (!$relation instanceof ReflectionManyToMany) {
+                    continue;
+                }
+                if (!$relation->isOwningSide()) {
+                    continue;
+                }
+                $ownerEntity = new ReflectionEntity($relation->getDeclaringClassName());
+                $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+                $tableName = $relation->getTableName();
+
+                if (!isset($definitions[$tableName])) {
+                    $definitions[$tableName] = [
+                        'tableName' => $tableName,
+                        'ownerTable' => $ownerEntity->getTableName(),
+                        'targetTable' => $targetEntity->getTableName(),
+                        'ownerJoinColumn' => $relation->getOwnerJoinColumn(),
+                        'targetJoinColumn' => $relation->getTargetJoinColumn(),
+                        'ownerReferencedColumn' => $relation->getOwnerPrimaryColumn(),
+                        'targetReferencedColumn' => $relation->getTargetPrimaryColumn(),
+                        'extraProperties' => $relation->getExtraProperties(),
+                        'primaryColumns' => $relation->getPrimaryColumns(),
+                    ];
+                    continue;
+                }
+
+                $existing = $definitions[$tableName];
+                if ($existing['ownerJoinColumn'] !== $relation->getOwnerJoinColumn() || $existing['targetJoinColumn'] !== $relation->getTargetJoinColumn()) {
+                    throw new RuntimeException('Many-to-many misconfigured: conflicting mapping table definition');
+                }
+            }
+        }
+        return $definitions;
+    }
+
+    private function compareMappingTable(array $definition, array $existingTables): ?TableCompareResult
+    {
+        $tableName = $definition['tableName'];
+        $operation = null;
+
+        $columnsIndexed = [];
+        $existingForeignKeys = [];
+        $foreignKeysToRemove = [];
+        $existingIndexes = [];
+        $indexesToRemove = [];
+
+        if (!in_array($tableName, $existingTables, true)) {
+            $operation = TableCompareResult::OPERATION_CREATE;
+        } else {
+            $existingColumns = $this->databaseSchemaReader->getTableColumns($tableName);
+            foreach ($existingColumns as $column) {
+                $columnsIndexed[$column->name] = $column;
+            }
+            $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
+            $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
+            $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
+            $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+        }
+
+        $requiredProperties = [];
+        $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null);
+        $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null);
+        foreach ($definition['extraProperties'] as $extra) {
+            $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
+        }
+
+        $columnsCompareResults = [];
+        $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
+        $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
+        $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
+
+        foreach ($columnsToCreate as $name => $property) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $columnsCompareResults[] = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_CREATE,
+                $property,
+                new PropertiesData(),
+            );
+        }
+
+        foreach ($columnsToUpdate as $name => $property) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $column = $columnsIndexed[$name];
+            $result = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_UPDATE,
+                $property,
+                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+            );
+            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+                $columnsCompareResults[] = $result;
+            }
+        }
+
+        foreach ($columnsToDelete as $name => $column) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $columnsCompareResults[] = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_DELETE,
+                new PropertiesData(),
+                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+            );
+        }
+
+        $foreignKeysByName = [];
+        $desiredForeignKeys = [
+            $this->schemaNaming->foreignKeyName($tableName, $definition['ownerTable'], $definition['ownerJoinColumn']) => [
+                'column' => $definition['ownerJoinColumn'],
+                'referencedTable' => $definition['ownerTable'],
+                'referencedColumn' => $definition['ownerReferencedColumn'],
+            ],
+            $this->schemaNaming->foreignKeyName($tableName, $definition['targetTable'], $definition['targetJoinColumn']) => [
+                'column' => $definition['targetJoinColumn'],
+                'referencedTable' => $definition['targetTable'],
+                'referencedColumn' => $definition['targetReferencedColumn'],
+            ],
+        ];
+
+        foreach ($desiredForeignKeys as $name => $fk) {
+            if (!isset($existingForeignKeys[$name])) {
+                $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                $foreignKeysByName[$name] = new ForeignKeyCompareResult(
+                    $name,
+                    CompareResult::OPERATION_CREATE,
+                    $fk['column'],
+                    $fk['referencedTable'],
+                    $fk['referencedColumn'],
+                );
+            } else {
+                unset($foreignKeysToRemove[$name]);
+            }
+        }
+
+        foreach (array_keys($foreignKeysToRemove) as $name) {
+            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+            $foreignKeysByName[$name] = new ForeignKeyCompareResult(
+                $name,
+                CompareResult::OPERATION_DELETE,
+                $existingForeignKeys[$name]['column'],
+                $existingForeignKeys[$name]['referencedTable'],
+                $existingForeignKeys[$name]['referencedColumn'],
+            );
+        }
+
+        $indexCompareResults = [];
+        foreach (array_keys($indexesToRemove) as $indexName) {
+            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+            $indexCompareResults[] = new IndexCompareResult(
+                $indexName,
+                CompareResult::OPERATION_DELETE,
+                $existingIndexes[$indexName]['columns'] ?? [],
+                false,
+            );
+        }
+
+        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
+            throw new EmptyPropertiesList($tableName);
+        }
+
+        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+            return null;
+        }
+
+        return new TableCompareResult(
+            $tableName,
+            $operation ?? CompareResult::OPERATION_UPDATE,
+            array_values($columnsCompareResults),
+            $indexCompareResults,
+            array_values($foreignKeysByName),
+            $definition['primaryColumns'],
+        );
     }
 }

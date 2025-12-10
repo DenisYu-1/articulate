@@ -22,3 +22,12 @@
 - Inverse-only: emits no columns or FKs; `mappedBy` is required and must reference a `ManyToOne` on the target pointing back.
 - Type: property should be an iterable/array collection; non-collection types are rejected.
 - Inverse must not declare `foreignKey`/ownership.
+
+# Many-to-Many
+
+- Owning side: `#[ManyToMany(targetEntity: Foo::class, inversedBy: 'inverseProp', mappingTable: new MappingTable(name: 'custom', properties: [new MappingTableProperty('created_at', 'datetime', true)]))]`
+- Inverse side: `#[ManyToMany(mappedBy: 'owningProp', targetEntity: Foo::class)]` (no mapping properties on inverse)
+- Default mapping table name: snake_case of both table names sorted; defaults to composite PK on both join columns
+- Join columns: `owner_table_id` + `target_table_id`; FKs reference the first primary key of each side
+- Extra mapping columns come from `MappingTableProperty`; collection access via `MappingCollection/MappingItem`
+- Validation: only one owning side (no `mappedBy`), inverse must point back via `mappedBy`; name mismatches or inverse missing property throw

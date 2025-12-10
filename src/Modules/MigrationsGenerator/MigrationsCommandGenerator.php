@@ -23,6 +23,9 @@ class MigrationsCommandGenerator {
                 $columns[] = $this->columnDefinition($column->name, $column->propertyData);
             }
             $parts = [implode(', ', $columns)];
+            if (!empty($compareResult->primaryColumns)) {
+                $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
+            }
             foreach ($compareResult->foreignKeys as $foreignKey) {
                 if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
                     continue;
@@ -49,7 +52,6 @@ class MigrationsCommandGenerator {
             $alterParts[] = implode(' ', $parts);
         }
 
-        // Handle Index modifications (ADD, DROP)
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_CREATE) {
                 $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
@@ -82,6 +84,9 @@ class MigrationsCommandGenerator {
                 $columns[] = $this->columnDefinition($column->name, $column->columnData);
             }
             $parts = [implode(', ', $columns)];
+            if (!empty($compareResult->primaryColumns)) {
+                $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
+            }
             foreach ($compareResult->foreignKeys as $foreignKey) {
                 if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
                     continue;
@@ -133,19 +138,20 @@ class MigrationsCommandGenerator {
     private function mapTypeLength(?PropertiesData $propertyData): string
     {
         if ($propertyData->type === 'string') {
-            return 'VARCHAR' . '('.($propertyData->length ?? '255').')';
+            return 'VARCHAR' . '(' . ($propertyData->length ?? '255') . ')';
         }
         return $propertyData->type;
     }
 
     private function columnDefinition($name, PropertiesData $column)
     {
+        $parts = [];
         $parts[] = $name;
         $parts[] = $this->mapTypeLength($column);
         if (!$column->isNullable) {
             $parts[] = 'NOT NULL';
         }
-        if ($column->defaultValue) {
+        if ($column->defaultValue !== null) {
             $parts[] = 'DEFAULT "' . $column->defaultValue . '"';
         }
         return implode(' ', $parts);
@@ -153,10 +159,7 @@ class MigrationsCommandGenerator {
 
     private function generateIndexSql(IndexCompareResult $index, string $tableName): string
     {
-        // Assuming a generic index creation statement. Modify based on the type of index (e.g., UNIQUE, FULLTEXT)
         $indexType = $index->isUnique ? 'UNIQUE' : '';
-
-        // Create the index definition
         $columns = implode(', ', array_map(fn($col) => '`' . $col . '`', $index->columns));
 
         return sprintf(
@@ -170,7 +173,7 @@ class MigrationsCommandGenerator {
     private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey, bool $withAdd = true): string
     {
         $template = $withAdd
-            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)'
+            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)' 
             : 'CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)';
 
         return sprintf(
