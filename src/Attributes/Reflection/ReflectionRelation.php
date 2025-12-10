@@ -65,7 +65,7 @@ class ReflectionRelation implements PropertyInterface
         $this->assertMappingConfigured();
 
         if ($this->getMappedByProperty() && $this->getInversedByProperty()) {
-            throw new Exception('mappedBy and inversedBy cannot be specified at the same time');
+            throw new Exception('ownedBy and referencedBy cannot be specified at the same time');
         }
         if ($this->getInversedByProperty()) {
             return $this->getInversedByProperty();
@@ -78,6 +78,10 @@ class ReflectionRelation implements PropertyInterface
     public function isForeignKeyRequired(): bool
     {
         if ($this->isOneToMany()) {
+            return false;
+        }
+
+        if ($this->isOneToOne() && $this->getMappedByProperty() !== null) {
             return false;
         }
 
@@ -159,23 +163,31 @@ class ReflectionRelation implements PropertyInterface
 
     public function isOwningSide(): bool
     {
-        return $this->isManyToOne() || ($this->isOneToOne() && $this->entityProperty->mainSide);
+        if ($this->isManyToOne()) {
+            return true;
+        }
+
+        if ($this->isOneToOne()) {
+            return $this->getMappedByProperty() === null;
+        }
+
+        return false;
     }
 
     public function getMappedByProperty(): ?string
     {
-        return property_exists($this->entityProperty, 'mappedBy') ? $this->entityProperty->mappedBy : null;
+        return property_exists($this->entityProperty, 'ownedBy') ? $this->entityProperty->ownedBy : null;
     }
 
     public function getInversedByProperty(): ?string
     {
-        return property_exists($this->entityProperty, 'inversedBy') ? $this->entityProperty->inversedBy : null;
+        return property_exists($this->entityProperty, 'referencedBy') ? $this->entityProperty->referencedBy : null;
     }
 
     private function assertMappingConfigured(): void
     {
         if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
-            throw new Exception('Either mappedBy or inversedBy is required');
+            throw new Exception('Either ownedBy or referencedBy is required');
         }
     }
 

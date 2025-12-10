@@ -20,7 +20,7 @@ class TestManyToOneOwnerMissingInverse
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'missingProperty')]
+    #[ManyToOne(referencedBy: 'missingProperty')]
     public TestManyToOneTargetMissingInverse $target;
 }
 
@@ -30,7 +30,7 @@ class TestManyToOneTargetMappedByMismatch
     #[Property]
     public int $id;
 
-    #[OneToMany(mappedBy: 'otherProperty', targetEntity: TestManyToOneOwnerMappedByMismatch::class)]
+    #[OneToMany(ownedBy: 'otherProperty', targetEntity: TestManyToOneOwnerMappedByMismatch::class)]
     public TestManyToOneOwnerMappedByMismatch $owners;
 }
 
@@ -40,7 +40,7 @@ class TestManyToOneOwnerMappedByMismatch
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'owners')]
+    #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTargetMappedByMismatch $targetMismatch;
 }
 
@@ -60,7 +60,7 @@ class TestManyToOneOwnerInverseIsOwning
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'owners')]
+    #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTargetInverseIsOwning $target;
 }
 

@@ -12,7 +12,7 @@ class TestRelatedEntityMisconfigured
     #[Property]
     public int $id;
 
-    #[OneToOne(mappedBy: 'wrong_property')]
+    #[OneToOne(ownedBy: 'wrong_property')]
     public TestRelatedMainEntity $name;
 }
 

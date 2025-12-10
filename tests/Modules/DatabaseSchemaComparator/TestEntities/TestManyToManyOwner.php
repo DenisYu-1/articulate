@@ -16,7 +16,7 @@ class TestManyToManyOwner
     #[Property]
     public int $id;
 
-    #[ManyToMany(targetEntity: TestManyToManyTarget::class, inversedBy: 'owners', mappingTable: new MappingTable(
+    #[ManyToMany(targetEntity: TestManyToManyTarget::class, referencedBy: 'owners', mappingTable: new MappingTable(
         name: 'owner_target_map',
         properties: [new MappingTableProperty('created_at', 'datetime', true)]
     ))]
@@ -30,6 +30,6 @@ class TestManyToManyTarget
     #[Property]
     public int $id;
 
-    #[ManyToMany(mappedBy: 'targets', targetEntity: TestManyToManyOwner::class)]
+    #[ManyToMany(ownedBy: 'targets', targetEntity: TestManyToManyOwner::class)]
     public array $owners;
 }

@@ -12,7 +12,7 @@ class TestManyToOneTargetMappedByMismatch
     #[Property]
     public int $id;
 
-    #[OneToMany(mappedBy: 'otherProperty', targetEntity: TestManyToOneOwnerMappedByMismatch::class)]
+    #[OneToMany(ownedBy: 'otherProperty', targetEntity: TestManyToOneOwnerMappedByMismatch::class)]
     public TestManyToOneOwnerMappedByMismatch $owners;
 }
 

@@ -12,7 +12,7 @@ class TestRelatedEntityInverseMain
     #[Property]
     public int $id;
 
-    #[OneToOne(mappedBy: 'name', mainSide: true)]
+    #[OneToOne] // misconfigured inverse: missing ownedBy
     public TestRelatedMainEntity $name;
 }
 

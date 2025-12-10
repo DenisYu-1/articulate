@@ -12,7 +12,7 @@ class TestManyToOneOwner
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'owners')]
+    #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTarget $target;
 }
 

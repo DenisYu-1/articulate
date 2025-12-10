@@ -12,7 +12,7 @@ class TestOneToManyInverseMissingOwner
     #[Property]
     public int $id;
 
-    #[OneToMany(mappedBy: 'missingOwner', targetEntity: TestManyToOneOwner::class)]
+    #[OneToMany(ownedBy: 'missingOwner', targetEntity: TestManyToOneOwner::class)]
     public TestManyToOneOwner $items;
 }
 

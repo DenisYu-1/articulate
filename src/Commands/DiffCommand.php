@@ -24,10 +24,10 @@ class DiffCommand extends Command
     public function __construct(
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
-    )
-    {
+        private readonly ?string $entitiesPath = null,
+    ) {
         parent::__construct();
-        $this->migrationGenerator = new MigrationGenerator( '/app/migrations' );
+        $this->migrationGenerator = new MigrationGenerator('/app/migrations');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -35,7 +35,8 @@ class DiffCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $classNames = [];
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(realpath('src/Entities')));
+        $entitiesDir = $this->resolveEntitiesDir();
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($entitiesDir));
 
         foreach ($files as $file) {
 
@@ -93,5 +94,25 @@ class DiffCommand extends Command
         $io->success('Migrations table created successfully.');
 
         return Command::SUCCESS;
+    }
+    private function resolveEntitiesDir(): string
+    {
+        if ($this->entitiesPath) {
+            $resolved = realpath($this->entitiesPath);
+            if ($resolved !== false) {
+                return $resolved;
+            }
+            throw new \RuntimeException(sprintf('Entities directory not found at configured path: %s', $this->entitiesPath));
+        }
+
+        $defaults = ['src/Entities', 'src/Entity'];
+        foreach ($defaults as $path) {
+            $resolved = realpath($path);
+            if ($resolved !== false) {
+                return $resolved;
+            }
+        }
+
+        throw new \RuntimeException('Entities directory is not found. Expected one of: src/Entities, src/Entity, or set a custom path.');
     }
 }

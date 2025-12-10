@@ -18,7 +18,7 @@ class TestManyToManySharedOwnerConflict
 
     #[ManyToMany(
         targetEntity: TestManyToManySharedTargetConflict::class,
-        inversedBy: 'ownersFirst',
+        referencedBy: 'ownersFirst',
         mappingTable: new MappingTable(
             name: 'shared_owner_conflict_map',
             properties: [
@@ -30,7 +30,7 @@ class TestManyToManySharedOwnerConflict
 
     #[ManyToMany(
         targetEntity: TestManyToManySharedTargetConflict::class,
-        inversedBy: 'ownersSecond',
+        referencedBy: 'ownersSecond',
         mappingTable: new MappingTable(
             name: 'shared_owner_conflict_map',
             properties: [
@@ -48,10 +48,10 @@ class TestManyToManySharedTargetConflict
     #[Property]
     public int $id;
 
-    #[ManyToMany(mappedBy: 'firstRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]
+    #[ManyToMany(ownedBy: 'firstRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]
     public array $ownersFirst;
 
-    #[ManyToMany(mappedBy: 'secondRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]
+    #[ManyToMany(ownedBy: 'secondRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]
     public array $ownersSecond;
 }
 

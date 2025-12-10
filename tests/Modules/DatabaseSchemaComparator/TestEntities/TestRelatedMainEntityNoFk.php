@@ -8,7 +8,7 @@ use Articulate\Attributes\Relations\OneToOne;
 #[Entity]
 class TestRelatedMainEntityNoFk
 {
-    #[OneToOne(inversedBy: 'test_main_entity_no_fk', mainSide: true, foreignKey: false)]
+    #[OneToOne(referencedBy: 'test_main_entity_no_fk', foreignKey: false)]
     public TestRelatedEntity $name;
 }
 

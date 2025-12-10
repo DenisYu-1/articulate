@@ -369,16 +369,27 @@ readonly class DatabaseSchemaComparator {
 
         $targetProperty = $attributes[0]->newInstance();
 
-        if ($targetProperty->mainSide) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: inverse side marked as main');
+        $inverseRequestsForeignKey = $targetProperty->ownedBy !== null && $targetProperty->foreignKey;
+
+        if ($inverseRequestsForeignKey) {
+            $ownerClass = $relation->getDeclaringClassName();
+            $ownerProperty = $relation->getPropertyName();
+            $inverseClass = $targetEntity->getName();
+            throw new RuntimeException(sprintf(
+                'One-to-one inverse side misconfigured: inverse side requests foreign key (%s::%s <-> %s::%s)',
+                $ownerClass,
+                $ownerProperty,
+                $inverseClass,
+                $inversedPropertyName,
+            ));
         }
 
-        if ($targetProperty->foreignKey) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: inverse side requests foreign key');
+        if ($targetProperty->ownedBy === null) {
+            throw new RuntimeException('One-to-one inverse side misconfigured: ownedBy is required on inverse side');
         }
 
-        if ($targetProperty->mappedBy && $targetProperty->mappedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: mappedBy does not reference main property');
+        if ($targetProperty->ownedBy !== $relation->getPropertyName()) {
+            throw new RuntimeException('One-to-one inverse side misconfigured: ownedBy does not reference owning property');
         }
     }
 
@@ -412,7 +423,7 @@ readonly class DatabaseSchemaComparator {
         $mappedBy = $inverseRelation->getMappedBy();
 
         if ($mappedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: mappedBy does not reference owning property');
+            throw new RuntimeException('Many-to-one inverse side misconfigured: ownedBy does not reference owning property');
         }
 
         if ($inverseRelation->getTargetEntity() !== $relation->getDeclaringClassName()) {
@@ -428,7 +439,7 @@ readonly class DatabaseSchemaComparator {
 
         $mappedBy = $relation->getMappedBy();
         if (!$mappedBy) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: mappedBy is required');
+            throw new RuntimeException('One-to-many inverse side misconfigured: ownedBy is required');
         }
 
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
@@ -458,7 +469,7 @@ readonly class DatabaseSchemaComparator {
     private function validateManyToManyRelation(ReflectionManyToMany $relation): void
     {
         if ($relation->getMappedBy() && $relation->getInversedBy()) {
-            throw new RuntimeException('Many-to-many misconfigured: mappedBy and inversedBy cannot be both defined');
+            throw new RuntimeException('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
         }
 
         if (!$relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
@@ -483,8 +494,9 @@ readonly class DatabaseSchemaComparator {
             }
             /** @var ManyToMany $targetAttr */
             $targetAttr = $attributes[0]->newInstance();
-            if ($targetAttr->mappedBy !== $relation->getPropertyName()) {
-                throw new RuntimeException('Many-to-many inverse side misconfigured: mappedBy does not reference owning property');
+            $targetOwnedBy = $targetAttr->ownedBy;
+            if ($targetOwnedBy !== $relation->getPropertyName()) {
+                throw new RuntimeException('Many-to-many inverse side misconfigured: ownedBy does not reference owning property');
             }
             if (
                 $targetAttr->mappingTable
@@ -498,7 +510,7 @@ readonly class DatabaseSchemaComparator {
         }
 
         if (!$mappedBy) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: mappedBy is required');
+            throw new RuntimeException('Many-to-many inverse side misconfigured: ownedBy is required');
         }
         if (!$targetEntity->hasProperty($mappedBy)) {
             throw new RuntimeException('Many-to-many inverse side misconfigured: owning property not found');
@@ -510,11 +522,11 @@ readonly class DatabaseSchemaComparator {
         }
         /** @var ManyToMany $targetAttr */
         $targetAttr = $attributes[0]->newInstance();
-        if ($targetAttr->mappedBy !== null) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property cannot declare mappedBy');
+        if ($targetAttr->ownedBy !== null) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property cannot declare ownedBy');
         }
-        if ($targetAttr->inversedBy && $targetAttr->inversedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: inversedBy does not reference inverse property');
+        if ($targetAttr->referencedBy && $targetAttr->referencedBy !== $relation->getPropertyName()) {
+            throw new RuntimeException('Many-to-many inverse side misconfigured: referencedBy does not reference inverse property');
         }
         if (
             $targetAttr->mappingTable

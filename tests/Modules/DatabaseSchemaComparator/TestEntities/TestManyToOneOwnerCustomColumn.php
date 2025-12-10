@@ -12,7 +12,7 @@ class TestManyToOneOwnerCustomColumn
     #[Property]
     public int $id;
 
-    #[ManyToOne(column: 'custom_column_id', inversedBy: 'customOwners', nullable: true)]
+    #[ManyToOne(column: 'custom_column_id', referencedBy: 'customOwners', nullable: true)]
     public TestManyToOneTarget $customTarget;
 }
 

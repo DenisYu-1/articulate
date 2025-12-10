@@ -12,13 +12,13 @@ class TestManyToOneTarget
     #[Property]
     public int $id;
 
-    #[OneToMany(mappedBy: 'target', targetEntity: TestManyToOneOwner::class)]
+    #[OneToMany(ownedBy: 'target', targetEntity: TestManyToOneOwner::class)]
     public array $owners;
 
-    #[OneToMany(mappedBy: 'nullableTarget', targetEntity: TestManyToOneOwnerNoFk::class)]
+    #[OneToMany(ownedBy: 'nullableTarget', targetEntity: TestManyToOneOwnerNoFk::class)]
     public array $nullableOwners;
 
-    #[OneToMany(mappedBy: 'customTarget', targetEntity: TestManyToOneOwnerCustomColumn::class)]
+    #[OneToMany(ownedBy: 'customTarget', targetEntity: TestManyToOneOwnerCustomColumn::class)]
     public array $customOwners;
 }
 

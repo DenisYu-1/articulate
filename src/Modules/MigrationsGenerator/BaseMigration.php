@@ -20,6 +20,7 @@ abstract class BaseMigration {
             $this->connection->commit();
         } catch (\Exception $e) {
             $this->connection->rollbackTransaction();
+            throw $e;
         }
     }
 
@@ -34,6 +35,7 @@ abstract class BaseMigration {
             $this->connection->commit();
         } catch (\Exception $e) {
             $this->connection->rollbackTransaction();
+            throw $e;
         }
     }
 

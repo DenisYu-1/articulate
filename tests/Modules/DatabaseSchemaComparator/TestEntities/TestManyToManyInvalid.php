@@ -14,7 +14,7 @@ class TestManyToManyInvalidOwner
     #[Property]
     public int $id;
 
-    #[ManyToMany(targetEntity: TestManyToManyInvalidTarget::class, inversedBy: 'owners')]
+    #[ManyToMany(targetEntity: TestManyToManyInvalidTarget::class, referencedBy: 'owners')]
     public array $targets;
 }
 

@@ -22,10 +22,10 @@ class RelatedEntity {
     #[Property]
     private int $id;
 
-    #[OneToMany(mappedBy: 'customColumn', targetEntity: ManyToOneTest::class)]
+    #[OneToMany(ownedBy: 'customColumn', targetEntity: ManyToOneTest::class)]
     private ManyToOneTest $owners;
 
-    #[OneToMany(mappedBy: 'relatedEntity3', targetEntity: ManyToOneTest::class)]
+    #[OneToMany(ownedBy: 'relatedEntity3', targetEntity: ManyToOneTest::class)]
     private ManyToOneTest $inverseRelated;
 }
 
@@ -44,10 +44,10 @@ class ManyToOneTest extends AbstractTestCase
     #[ManyToOne]
     private ?RelatedEntity $nullableByType;
 
-    #[ManyToOne(column: 'custom_fk', inversedBy: 'owners')]
+    #[ManyToOne(column: 'custom_fk', referencedBy: 'owners')]
     private RelatedEntity $customColumn;
 
-    #[ManyToOne(inversedBy: 'inverseRelated')]
+    #[ManyToOne(referencedBy: 'inverseRelated')]
     private RelatedEntity $relatedEntity3;
 
     #[ManyToOne(targetEntity: RelatedEntity::class)]

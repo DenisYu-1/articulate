@@ -7,13 +7,25 @@ use Attribute;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class ManyToOne implements RelationAttributeInterface
 {
+    public readonly ?string $targetEntity;
+    public readonly ?string $referencedBy;
+    public readonly ?string $column;
+    public readonly ?bool $nullable;
+    public readonly bool $foreignKey;
+
     public function __construct(
-        public readonly ?string $targetEntity = null,
-        public readonly ?string $inversedBy = null,
-        public readonly ?string $column = null,
-        public readonly ?bool $nullable = null,
-        public readonly bool $foreignKey = true,
-    ) {}
+        ?string $targetEntity = null,
+        ?string $referencedBy = null,
+        ?string $column = null,
+        ?bool $nullable = null,
+        bool $foreignKey = true,
+    ) {
+        $this->targetEntity = $targetEntity;
+        $this->referencedBy = $referencedBy;
+        $this->column = $column;
+        $this->nullable = $nullable;
+        $this->foreignKey = $foreignKey;
+    }
 
     public function getTargetEntity(): ?string
     {

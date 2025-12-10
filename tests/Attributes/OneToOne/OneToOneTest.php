@@ -36,7 +36,7 @@ class OneToOneTest extends AbstractTestCase
     #[Property]
     private int $id;
 
-    #[OneToOne(inversedBy: 'test')]
+    #[OneToOne(referencedBy: 'test')]
     private RelatedEntity $relatedEntity;
 
     public function testOneToOne()
@@ -104,7 +104,7 @@ class OneToOneTest extends AbstractTestCase
         $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
     }
 
-    #[OneToOne(mappedBy: 'relatedEntity')]
+    #[OneToOne(ownedBy: 'relatedEntity')]
     private RelatedEntity $relatedEntity3;
 
     public function testMappedBySpecified()
@@ -127,7 +127,7 @@ class OneToOneTest extends AbstractTestCase
         $this->assertEquals('one_to_one_test_id', $propertyToTest->getInversedBy());
     }
 
-    #[OneToOne(inversedBy: 'oneToOneTest')]
+    #[OneToOne(referencedBy: 'oneToOneTest')]
     private RelatedEntity $relatedEntity4;
 
     public function testInversedBySpecified()

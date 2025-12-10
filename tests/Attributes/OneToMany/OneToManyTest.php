@@ -38,7 +38,7 @@ class OneToManyTest extends AbstractTestCase
     #[Property]
     private int $id;
 
-    #[OneToMany(mappedBy: 'test', targetEntity: RelatedEntity::class)]
+    #[OneToMany(ownedBy: 'test', targetEntity: RelatedEntity::class)]
     private array $relatedEntity;
 
     public function testOneToMany()
@@ -99,7 +99,7 @@ class OneToManyTest extends AbstractTestCase
         $this->assertEquals(RelatedEntity::class, $propertyToTest->getTargetEntity());
     }
 
-    #[OneToMany(mappedBy: 'relatedEntity', targetEntity: RelatedEntity::class)]
+    #[OneToMany(ownedBy: 'relatedEntity', targetEntity: RelatedEntity::class)]
     private array $relatedEntity3;
 
     #[OneToMany(targetEntity: RelatedEntity::class)]

@@ -50,11 +50,11 @@ class ReflectionEntity extends ReflectionClass
             /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(OneToOne::class);
             if (!empty($entityProperty)) {
-                $propertyInstance = $entityProperty[0]->newInstance();
-                if (!$propertyInstance->mainSide) {
+                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                if (!$relation->isOwningSide()) {
                     continue;
                 }
-                yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+                yield $relation;
                 continue;
             }
             /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
@@ -79,12 +79,12 @@ class ReflectionEntity extends ReflectionClass
                 continue;
             }
 
-            $oneToOne = $entityProperty[0]->newInstance();
-            if (!$oneToOne->mainSide) {
+            $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+            if (!$relation->isOwningSide()) {
                 continue;
             }
 
-            yield new ReflectionRelation($oneToOne, $property, $this->schemaNaming);
+            yield $relation;
         }
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<Property>[] $entityProperty */

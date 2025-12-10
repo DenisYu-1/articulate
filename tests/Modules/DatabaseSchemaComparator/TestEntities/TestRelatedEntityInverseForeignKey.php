@@ -12,7 +12,7 @@ class TestRelatedEntityInverseForeignKey
     #[Property]
     public int $id;
 
-    #[OneToOne(mappedBy: 'name', foreignKey: true)]
+    #[OneToOne(ownedBy: 'name', foreignKey: true)]
     public TestRelatedMainEntity $name;
 }
 

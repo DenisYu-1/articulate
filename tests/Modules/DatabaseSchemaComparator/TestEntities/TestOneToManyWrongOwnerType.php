@@ -12,7 +12,7 @@ class TestOneToManyWrongOwnerType
     #[Property]
     public int $id;
 
-    #[OneToMany(mappedBy: 'target', targetEntity: TestOneToManyWrongOwner::class)]
+    #[OneToMany(ownedBy: 'target', targetEntity: TestOneToManyWrongOwner::class)]
     public TestOneToManyWrongOwner $items;
 }
 

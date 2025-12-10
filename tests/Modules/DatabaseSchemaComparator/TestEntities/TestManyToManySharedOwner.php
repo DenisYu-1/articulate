@@ -18,7 +18,7 @@ class TestManyToManySharedOwner
 
     #[ManyToMany(
         targetEntity: TestManyToManySharedTarget::class,
-        inversedBy: 'ownersFirst',
+        referencedBy: 'ownersFirst',
         mappingTable: new MappingTable(
             name: 'shared_owner_target_map',
             properties: [
@@ -31,7 +31,7 @@ class TestManyToManySharedOwner
 
     #[ManyToMany(
         targetEntity: TestManyToManySharedTarget::class,
-        inversedBy: 'ownersSecond',
+        referencedBy: 'ownersSecond',
         mappingTable: new MappingTable(
             name: 'shared_owner_target_map',
             properties: [
@@ -50,10 +50,10 @@ class TestManyToManySharedTarget
     #[Property]
     public int $id;
 
-    #[ManyToMany(mappedBy: 'firstRelations', targetEntity: TestManyToManySharedOwner::class)]
+    #[ManyToMany(ownedBy: 'firstRelations', targetEntity: TestManyToManySharedOwner::class)]
     public array $ownersFirst;
 
-    #[ManyToMany(mappedBy: 'secondRelations', targetEntity: TestManyToManySharedOwner::class)]
+    #[ManyToMany(ownedBy: 'secondRelations', targetEntity: TestManyToManySharedOwner::class)]
     public array $ownersSecond;
 }
 

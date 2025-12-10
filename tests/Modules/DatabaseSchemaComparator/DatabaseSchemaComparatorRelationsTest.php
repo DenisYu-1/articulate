@@ -136,7 +136,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('One-to-one inverse side misconfigured');
+        $this->expectExceptionMessage('One-to-one inverse side misconfigured: ownedBy does not reference owning property');
 
         iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityMisconfigured::class),
@@ -152,7 +152,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side marked as main');
+        $this->expectExceptionMessage('One-to-one inverse side misconfigured: ownedBy is required on inverse side');
 
         iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityInverseMain::class),
@@ -160,20 +160,19 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         ]));
     }
 
-    public function testOneToOneInverseRequestsForeignKeyThrows()
+    public function testOneToOneInverseRequestsForeignKeyIsIgnored()
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
             columns: fn() => [],
         );
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('One-to-one inverse side misconfigured: inverse side requests foreign key');
-
-        iterator_to_array($databaseSchemaComparator->compareAll([
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestRelatedMainEntityInverseForeignKey::class),
             new ReflectionEntity(TestRelatedEntityInverseForeignKey::class),
         ]));
+
+        $this->assertNotEmpty($result);
     }
 
     public function testOneToOneCustomColumnName()
@@ -373,7 +372,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         );
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Many-to-one inverse side misconfigured: mappedBy does not reference owning property');
+        $this->expectExceptionMessage('Many-to-one inverse side misconfigured: ownedBy does not reference owning property');
 
         iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestManyToOneOwnerMappedByMismatch::class),

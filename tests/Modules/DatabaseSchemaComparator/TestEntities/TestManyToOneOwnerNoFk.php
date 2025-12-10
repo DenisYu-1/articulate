@@ -12,7 +12,7 @@ class TestManyToOneOwnerNoFk
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'nullableOwners', nullable: true, foreignKey: false)]
+    #[ManyToOne(referencedBy: 'nullableOwners', nullable: true, foreignKey: false)]
     public ?TestManyToOneTarget $nullableTarget;
 }
 

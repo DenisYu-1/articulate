@@ -12,7 +12,7 @@ class TestManyToOneOwnerMissingInverse
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'missingProperty')]
+    #[ManyToOne(referencedBy: 'missingProperty')]
     public TestManyToOneTargetMissingInverse $target;
 }
 

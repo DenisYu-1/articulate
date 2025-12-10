@@ -7,10 +7,16 @@ use Attribute;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class OneToMany implements RelationAttributeInterface
 {
+    public readonly ?string $targetEntity;
+    public readonly ?string $ownedBy;
+
     public function __construct(
-        public readonly ?string $targetEntity = null,
-        public readonly ?string $mappedBy = null,
-    ) {}
+        ?string $targetEntity = null,
+        ?string $ownedBy = null,
+    ) {
+        $this->targetEntity = $targetEntity;
+        $this->ownedBy = $ownedBy;
+    }
 
     public function getTargetEntity(): ?string
     {

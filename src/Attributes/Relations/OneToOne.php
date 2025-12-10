@@ -7,14 +7,25 @@ use Attribute;
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class OneToOne implements RelationAttributeInterface
 {
+    public readonly ?string $targetEntity;
+    public readonly ?string $ownedBy;
+    public readonly ?string $referencedBy;
+    public readonly ?string $column;
+    public readonly bool $foreignKey;
+
     public function __construct(
-        public readonly ?string $targetEntity = null,
-        public readonly ?string $mappedBy = null,
-        public readonly ?string $inversedBy = null,
-        public readonly ?string $column = null,
-        public readonly bool $foreignKey = true,
-        public readonly bool $mainSide = false,
-    ) {}
+        ?string $targetEntity = null,
+        ?string $ownedBy = null,
+        ?string $referencedBy = null,
+        ?string $column = null,
+        bool $foreignKey = true,
+    ) {
+        $this->targetEntity = $targetEntity;
+        $this->ownedBy = $ownedBy;
+        $this->referencedBy = $referencedBy;
+        $this->column = $column;
+        $this->foreignKey = ($this->ownedBy !== null) ? false : $foreignKey;
+    }
 
     public function getTargetEntity(): ?string
     {
@@ -23,6 +34,6 @@ class OneToOne implements RelationAttributeInterface
 
     public function getColumn(): ?string
     {
-        return $this->column ?? $this->mappedBy;
+        return $this->column ?? $this->ownedBy;
     }
 }

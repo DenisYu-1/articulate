@@ -12,7 +12,7 @@ class TestRelatedMainEntityInverseForeignKey
     #[Property]
     public int $id;
 
-    #[OneToOne(inversedBy: 'name', mainSide: true)]
+    #[OneToOne(referencedBy: 'name')]
     public TestRelatedEntityInverseForeignKey $name;
 }
 

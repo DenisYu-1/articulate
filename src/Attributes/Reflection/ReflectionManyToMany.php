@@ -47,17 +47,17 @@ class ReflectionManyToMany
 
     public function isOwningSide(): bool
     {
-        return $this->attribute->mappedBy === null;
+        return $this->getMappedBy() === null;
     }
 
     public function getMappedBy(): ?string
     {
-        return $this->attribute->mappedBy;
+        return $this->attribute->ownedBy;
     }
 
     public function getInversedBy(): ?string
     {
-        return $this->attribute->inversedBy;
+        return $this->attribute->referencedBy;
     }
 
     public function getTableName(): string

@@ -12,7 +12,7 @@ class TestManyToOneOwnerMappedByMismatch
     #[Property]
     public int $id;
 
-    #[ManyToOne(inversedBy: 'owners')]
+    #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTargetMappedByMismatch $targetMismatch;
 }
 

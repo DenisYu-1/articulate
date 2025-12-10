@@ -12,7 +12,7 @@ class TestRelatedMainEntityCustomColumn
     #[Property]
     public int $id;
 
-    #[OneToOne(inversedBy: 'name', column: 'custom_fk', mainSide: true)]
+    #[OneToOne(referencedBy: 'name', column: 'custom_fk')]
     public TestRelatedEntity $name;
 }
 
