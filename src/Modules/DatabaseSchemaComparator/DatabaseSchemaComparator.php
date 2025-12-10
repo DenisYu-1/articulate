@@ -5,6 +5,7 @@ namespace Articulate\Modules\DatabaseSchemaComparator;
 use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
@@ -69,8 +70,7 @@ readonly class DatabaseSchemaComparator {
                 $columnsIndexed[$column->name] = $column;
             }
 
-            $entityIndexes =
-            $propertiesIndexed = [];
+            $entityIndexes = $propertiesIndexed = [];
 
             /** @var ReflectionEntity $entity */
             foreach ($entityGroup as $entity) {
@@ -82,7 +82,13 @@ readonly class DatabaseSchemaComparator {
                     $entityIndexes[$indexName] = $indexInstance;
                 }
                 foreach ($entity->getEntityProperties() as $property) {
-                    $propertiesIndexed[$property->getColumnName()] = $property;
+                    $columnName = $property->getColumnName();
+                    $propertiesIndexed = $this->mergeColumnDefinition(
+                        $propertiesIndexed,
+                        $columnName,
+                        $property,
+                        $tableName,
+                    );
                 }
             }
 
@@ -101,23 +107,23 @@ readonly class DatabaseSchemaComparator {
                     $columnName,
                     CompareResult::OPERATION_CREATE,
                     new PropertiesData(
-                        $propertiesIndexed[$columnName]->getType(),
-                        $propertiesIndexed[$columnName]->isNullable(),
-                        $propertiesIndexed[$columnName]->getDefaultValue(),
-                        $propertiesIndexed[$columnName]->getLength(),
+                        $data['type'],
+                        $data['nullable'],
+                        $data['default'],
+                        $data['length'],
                     ),
                     new PropertiesData(),
                 );
-                if ($data instanceof ReflectionRelation && $data->isForeignKeyRequired()) {
-                    $this->validateRelation($data);
-                    $targetEntity = new ReflectionEntity($data->getTargetEntity());
+                if ($data['relation'] && $data['foreignKeyRequired']) {
+                    $this->validateRelation($data['relation']);
+                    $targetEntity = new ReflectionEntity($data['relation']->getTargetEntity());
                     $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                     $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
                         $fkName,
                         CompareResult::OPERATION_CREATE,
                         $columnName,
                         $targetEntity->getTableName(),
-                        $data->getReferencedColumnName(),
+                        $data['referencedColumn'],
                     );
                     $createdColumnsWithForeignKeys[$columnName] = true;
                 }
@@ -129,10 +135,10 @@ readonly class DatabaseSchemaComparator {
                     $columnName,
                     CompareResult::OPERATION_UPDATE,
                     new PropertiesData(
-                        $propertiesIndexed[$columnName]->getType(),
-                        $propertiesIndexed[$columnName]->isNullable(),
-                        $propertiesIndexed[$columnName]->getDefaultValue(),
-                        $propertiesIndexed[$columnName]->getLength(),
+                        $data['type'],
+                        $data['nullable'],
+                        $data['default'],
+                        $data['length'],
                     ),
                     new PropertiesData(
                         $columnsIndexed[$columnName]->type,
@@ -196,30 +202,30 @@ readonly class DatabaseSchemaComparator {
             }
 
             if (isset($existingForeignKeys)) {
-                foreach ($propertiesIndexed as $property) {
+                foreach ($propertiesIndexed as $columnName => $propertyData) {
                     if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
                         continue;
                     }
-                    if (!$property instanceof ReflectionRelation) {
+                    if (!$propertyData['relation']) {
                         continue;
                     }
-                    $targetEntity = new ReflectionEntity($property->getTargetEntity());
-                    $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $property->getColumnName());
+                    $targetEntity = new ReflectionEntity($propertyData['relation']->getTargetEntity());
+                    $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
-                    if ($property->isForeignKeyRequired()) {
-                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$property->getColumnName()])) {
+                    if ($propertyData['foreignKeyRequired']) {
+                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
                             unset($foreignKeysToRemove[$foreignKeyName]);
                             continue;
                         }
-                        $this->validateRelation($property);
+                        $this->validateRelation($propertyData['relation']);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                         if (!$foreignKeyExists) {
                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
                                 $foreignKeyName,
                                 CompareResult::OPERATION_CREATE,
-                                $property->getColumnName(),
+                                $columnName,
                                 $targetEntity->getTableName(),
-                                $property->getReferencedColumnName(),
+                                $propertyData['referencedColumn'],
                             );
                         } else {
                             unset($foreignKeysToRemove[$foreignKeyName]);
@@ -741,5 +747,115 @@ readonly class DatabaseSchemaComparator {
         }
 
         return array_values($properties);
+    }
+
+    /**
+     * @param array<string, array{
+     *     type: string|null,
+     *     nullable: bool,
+     *     default: ?string,
+     *     length: ?int,
+     *     relation: ?ReflectionRelation,
+     *     foreignKeyRequired: bool,
+     *     referencedColumn: ?string,
+     * }> $propertiesIndexed
+     * @return array<string, array{
+     *     type: string|null,
+     *     nullable: bool,
+     *     default: ?string,
+     *     length: ?int,
+     *     relation: ?ReflectionRelation,
+     *     foreignKeyRequired: bool,
+     *     referencedColumn: ?string,
+     * }>
+     */
+    private function mergeColumnDefinition(array $propertiesIndexed, string $columnName, ReflectionProperty|ReflectionRelation $property, string $tableName): array
+    {
+        $incoming = [
+            'type' => $this->normalizeTypeName($property->getType()),
+            'nullable' => $property->isNullable(),
+            'default' => $property->getDefaultValue(),
+            'length' => $property->getLength(),
+            'relation' => $property instanceof ReflectionRelation ? $property : null,
+            'foreignKeyRequired' => $property instanceof ReflectionRelation ? $property->isForeignKeyRequired() : false,
+            'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
+        ];
+
+        if (!isset($propertiesIndexed[$columnName])) {
+            $propertiesIndexed[$columnName] = $incoming;
+            return $propertiesIndexed;
+        }
+
+        $existing = $propertiesIndexed[$columnName];
+
+        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
+            throw new RuntimeException(
+                sprintf(
+                    'Column "%s" on table "%s" conflicts between entities',
+                    $columnName,
+                    $tableName,
+                ),
+            );
+        }
+
+        if (($incoming['relation'] !== null) !== ($existing['relation'] !== null)) {
+            throw new RuntimeException(
+                sprintf(
+                    'Column "%s" on table "%s" conflicts between relation and scalar definitions',
+                    $columnName,
+                    $tableName,
+                ),
+            );
+        }
+
+        if ($incoming['relation'] && $existing['relation']) {
+            $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
+            $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
+            if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Relation column "%s" on table "%s" points to different targets',
+                        $columnName,
+                        $tableName,
+                    ),
+                );
+            }
+        }
+
+        $propertiesIndexed[$columnName] = [
+            'type' => $existing['type'],
+            'nullable' => $existing['nullable'] || $incoming['nullable'],
+            'default' => $existing['default'],
+            'length' => $existing['length'],
+            'relation' => $existing['relation'] ?? $incoming['relation'],
+            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
+            'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+        ];
+
+        return $propertiesIndexed;
+    }
+
+    private function normalizeTypeName(string|\ReflectionType|null $type): ?string
+    {
+        if ($type === null) {
+            return null;
+        }
+        if (is_string($type)) {
+            $clean = ltrim($type, '?');
+            $clean = str_replace('|null', '', $clean);
+            return $clean;
+        }
+        if ($type instanceof \ReflectionNamedType) {
+            return $type->getName();
+        }
+        if ($type instanceof \ReflectionUnionType) {
+            $nonNull = array_filter(
+                $type->getTypes(),
+                fn($t) => $t instanceof \ReflectionNamedType && $t->getName() !== 'null',
+            );
+            $first = reset($nonNull);
+            return $first ? $first->getName() : null;
+        }
+        return (string) $type;
     }
 }
