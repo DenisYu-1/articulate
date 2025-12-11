@@ -35,18 +35,23 @@ class DatabaseSchemaReader {
         $query = $this->buildQueryForIndexes($tableName);
 
         $statement = $this->connection->executeQuery($query);
-        $results = $statement->fetchAll();
+        $results = $statement->fetchAll(PDO::FETCH_ASSOC);
 
         $indexes = [];
 
         foreach ($results as $row) {
-            $indexName = $row['index_name'];
-            $columnName = $row['column_name'];
+            [$indexName, $columnName, $isUnique] = $this->normalizeIndexRow($row);
+            if ($indexName === null || $columnName === null) {
+                continue;
+            }
 
             if (!isset($indexes[$indexName])) {
-                $indexes[$indexName] = [];
+                $indexes[$indexName] = [
+                    'columns' => [],
+                    'unique' => $isUnique,
+                ];
             }
-            $indexes[$indexName][] = $columnName;
+            $indexes[$indexName]['columns'][] = $columnName;
         }
 
         return $indexes;
@@ -71,10 +76,14 @@ class DatabaseSchemaReader {
 
         $foreignKeys = [];
         foreach ($rows as $row) {
-            $foreignKeys[$row['constraint_name']] = [
-                'column' => $row['column_name'],
-                'referencedTable' => $row['referenced_table_name'],
-                'referencedColumn' => $row['referenced_column_name'],
+            [$name, $column, $referencedTable, $referencedColumn] = $this->normalizeForeignKeyRow($row);
+            if ($name === null || $column === null || $referencedTable === null || $referencedColumn === null) {
+                continue;
+            }
+            $foreignKeys[$name] = [
+                'column' => $column,
+                'referencedTable' => $referencedTable,
+                'referencedColumn' => $referencedColumn,
             ];
         }
 
@@ -91,5 +100,41 @@ class DatabaseSchemaReader {
     {
         // Assuming MySQL for now, can adjust for PostgreSQL or SQLite
         return "SHOW INDEXES FROM `$tableName`";
+    }
+
+    private function normalizeIndexRow(array $row): array
+    {
+        $normalized = array_change_key_case($row, CASE_LOWER);
+        $indexName = $normalized['index_name'] ?? $normalized['key_name'] ?? null;
+        $columnName = $normalized['column_name'] ?? $normalized['column'] ?? $normalized['columnname'] ?? null;
+        $isUnique = $this->isUniqueIndex($normalized);
+
+        return [$indexName, $columnName, $isUnique];
+    }
+
+    private function normalizeForeignKeyRow(array $row): array
+    {
+        $normalized = array_change_key_case($row, CASE_LOWER);
+        $name = $normalized['constraint_name'] ?? $normalized['name'] ?? null;
+        $column = $normalized['column_name'] ?? $normalized['column'] ?? null;
+        $referencedTable = $normalized['referenced_table_name'] ?? $normalized['referencedtable'] ?? null;
+        $referencedColumn = $normalized['referenced_column_name'] ?? $normalized['referencedcolumn'] ?? null;
+
+        return [$name, $column, $referencedTable, $referencedColumn];
+    }
+
+    private function isUniqueIndex(array $normalized): bool
+    {
+        if (array_key_exists('non_unique', $normalized)) {
+            return !(bool) $normalized['non_unique'];
+        }
+        if (array_key_exists('unique', $normalized)) {
+            return (bool) $normalized['unique'];
+        }
+        if (array_key_exists('indisunique', $normalized)) {
+            return (bool) $normalized['indisunique'];
+        }
+
+        return false;
     }
 }

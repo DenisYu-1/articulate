@@ -4,9 +4,7 @@ namespace Articulate\Commands;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\MigrationsGenerator\MigrationGenerator;
 use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
 use RecursiveDirectoryIterator;
@@ -55,34 +53,15 @@ class DiffCommand extends Command
 
         $compareResults = $this->databaseSchemaComparator->compareAll($entityClasses);
         $queries = $rollbacks = [];
-        $io->writeln('Entities: ');
         foreach ($compareResults as $compareResult) {
-            $io->writeln($compareResult->name);
-
-            $io->writeln('Should be: ' . match ($compareResult->operation) {
-                    CompareResult::OPERATION_CREATE => 'created',
-                    CompareResult::OPERATION_UPDATE => 'altered',
-                    CompareResult::OPERATION_DELETE => 'dropped',
-                });
-
-            $io->writeln(' Columns:');
-
-            foreach ($compareResult->columns as $columnInfo) {
-                $io->writeln('name: ' . $columnInfo->name);
-                $io->writeln('  operation: ' . $columnInfo->operation);
-
-                $io->writeln('  type: ' . ($columnInfo->typeMatch ? 'match' : 'not_match'));
-                $io->writeln('  nullable: ' . ($columnInfo->isNullableMatch ? 'match' : 'not_match'));
-            }
-
-            $io->writeln(' Indexes:');
-
-            foreach ($compareResult->indexes as $indexInfo) {
-                $io->writeln('name: ' . $indexInfo->name);
-                $io->writeln('  operation: ' . $indexInfo->operation);
-            }
             $queries[] = $this->migrationsCommandGenerator->generate($compareResult);
             $rollbacks[] = $this->migrationsCommandGenerator->rollback($compareResult);
+        }
+        $queries = array_values(array_filter($queries));
+        $rollbacks = array_values(array_filter($rollbacks));
+        if (empty($queries)) {
+            $io->success('Schema is already in sync.');
+            return Command::SUCCESS;
         }
         $upScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', $queries);
         $downScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', array_reverse($rollbacks));
@@ -92,8 +71,6 @@ class DiffCommand extends Command
             implode(PHP_EOL, $upScript),
             implode(PHP_EOL, $downScript),
         );
-
-        $io->success('Migrations table created successfully.');
 
         return Command::SUCCESS;
     }

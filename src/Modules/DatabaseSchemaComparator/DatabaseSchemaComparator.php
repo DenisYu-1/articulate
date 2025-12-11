@@ -42,8 +42,6 @@ readonly class DatabaseSchemaComparator {
         $manyToManyTables = $this->collectManyToManyTables($entities);
 
         $entitiesIndexed = $this->indexByTableName($entities);
-        $indexesFetched = false;
-
         foreach ($entitiesIndexed as $tableName => $entityGroup) {
             $operation = null;
 
@@ -54,11 +52,8 @@ readonly class DatabaseSchemaComparator {
             if (!in_array($tableName, $existingTables, true)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
             } else {
-                if (!$indexesFetched) {
-                    $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
-                    $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
-                    $indexesFetched = true;
-                }
+                $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
+                $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
                 $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
                 $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
             }
@@ -71,6 +66,7 @@ readonly class DatabaseSchemaComparator {
             }
 
             $entityIndexes = $propertiesIndexed = [];
+            $primaryColumns = $entityGroup[0]->getPrimaryKeyColumns();
 
             /** @var ReflectionEntity $entity */
             foreach ($entityGroup as $entity) {
@@ -170,13 +166,6 @@ readonly class DatabaseSchemaComparator {
 
             $indexCompareResults = [];
 
-            if (!empty($entityIndexes) || !empty($indexesToRemove)) {
-                if (!$existingIndexesLoaded) {
-                    $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
-                    $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
-                    $existingIndexesLoaded = true;
-                }
-            }
             foreach ($entityIndexes as $indexName => $indexInstance) {
                 if (!isset($existingIndexes[$indexName])) {
                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
@@ -192,12 +181,16 @@ readonly class DatabaseSchemaComparator {
             }
 
             foreach (array_keys($indexesToRemove) as $indexName) {
+                if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys ?? [])) {
+                    unset($indexesToRemove[$indexName]);
+                    continue;
+                }
                 $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                 $indexCompareResults[] = new IndexCompareResult(
                     $indexName,
                     CompareResult::OPERATION_DELETE,
                     $existingIndexes[$indexName]['columns'],
-                    false,
+                    $existingIndexes[$indexName]['unique'] ?? false,
                 );
             }
 
@@ -602,7 +595,7 @@ readonly class DatabaseSchemaComparator {
             }
             $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
             $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
-            $existingIndexes = $this->databaseSchemaReader->getTableIndexes($tableName);
+            $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
             $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
         }
 
@@ -694,12 +687,16 @@ readonly class DatabaseSchemaComparator {
 
         $indexCompareResults = [];
         foreach (array_keys($indexesToRemove) as $indexName) {
+            if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
+                unset($indexesToRemove[$indexName]);
+                continue;
+            }
             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
             $indexCompareResults[] = new IndexCompareResult(
                 $indexName,
                 CompareResult::OPERATION_DELETE,
                 $existingIndexes[$indexName]['columns'] ?? [],
-                false,
+                $existingIndexes[$indexName]['unique'] ?? false,
             );
         }
 
@@ -845,6 +842,44 @@ readonly class DatabaseSchemaComparator {
         ];
 
         return $propertiesIndexed;
+    }
+
+
+    private function removePrimaryIndex(array $indexes): array
+    {
+        foreach (array_keys($indexes) as $name) {
+            if (strtolower($name) === 'primary') {
+                unset($indexes[$name]);
+            }
+        }
+        return $indexes;
+    }
+
+
+    private function shouldSkipIndexDeletion(string $indexName, array $indexData, array $primaryColumns, array $existingForeignKeys): bool
+    {
+        $columns = $indexData['columns'] ?? [];
+        if (empty($columns)) {
+            return false;
+        }
+        $columnsLower = array_map('strtolower', $columns);
+
+        if (!empty($primaryColumns)) {
+            $primaryLower = array_map('strtolower', $primaryColumns);
+            if ($columnsLower === $primaryLower) {
+                return true;
+            }
+        }
+
+        $fkColumns = array_map(
+            static fn(array $fk) => strtolower($fk['column']),
+            $existingForeignKeys,
+        );
+        if (count($columnsLower) === 1 && in_array($columnsLower[0], $fkColumns, true)) {
+            return true;
+        }
+
+        return false;
     }
 
     private function normalizeTypeName(string|\ReflectionType|null $type): ?string

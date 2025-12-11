@@ -36,10 +36,10 @@ class Connection {
         return $this->pdo instanceof PDO;
     }
 
-    public function executeQuery(string $sql): PDOStatement
+    public function executeQuery(string $sql, array $parameters = []): PDOStatement
     {
         $statement = $this->pdo->prepare($sql);
-        $statement->execute();
+        $statement->execute($parameters);
         return $statement;
     }
 

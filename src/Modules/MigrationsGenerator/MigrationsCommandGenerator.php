@@ -68,6 +68,10 @@ class MigrationsCommandGenerator {
             }
         }
 
+        if (empty($alterParts)) {
+            return '';
+        }
+
         return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
     }
 
@@ -130,6 +134,10 @@ class MigrationsCommandGenerator {
             } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
                 $alterParts[] = $this->foreignKeyDefinition($foreignKey);
             }
+        }
+
+        if (empty($alterParts)) {
+            return '';
         }
 
         return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
