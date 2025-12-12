@@ -11,7 +11,7 @@ use Articulate\Schema\SchemaNaming;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
-class ReflectionRelation implements PropertyInterface
+class ReflectionRelation implements PropertyInterface, RelationInterface
 {
     public function __construct(
         private readonly RelationAttributeInterface $entityProperty,

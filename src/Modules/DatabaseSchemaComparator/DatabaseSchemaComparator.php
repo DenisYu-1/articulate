@@ -19,6 +19,7 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
@@ -27,6 +28,7 @@ readonly class DatabaseSchemaComparator {
     public function __construct(
         private DatabaseSchemaReader $databaseSchemaReader,
         private SchemaNaming $schemaNaming,
+        private RelationValidatorFactory $relationValidatorFactory = new RelationValidatorFactory(),
     ) {}
 
     /**
@@ -111,7 +113,8 @@ readonly class DatabaseSchemaComparator {
                     new PropertiesData(),
                 );
                 if ($data['relation'] && $data['foreignKeyRequired']) {
-                    $this->validateRelation($data['relation']);
+                    $validator = $this->relationValidatorFactory->getValidator($data['relation']);
+                    $validator->validate($data['relation']);
                     $targetEntity = new ReflectionEntity($data['relation']->getTargetEntity());
                     $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                     $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
@@ -210,7 +213,8 @@ readonly class DatabaseSchemaComparator {
                             unset($foreignKeysToRemove[$foreignKeyName]);
                             continue;
                         }
-                        $this->validateRelation($propertyData['relation']);
+                        $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
+                        $validator->validate($propertyData['relation']);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                         if (!$foreignKeyExists) {
                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
@@ -308,228 +312,12 @@ readonly class DatabaseSchemaComparator {
     {
         foreach ($entities as $entity) {
             foreach ($entity->getEntityRelationProperties() as $relation) {
-                if ($relation instanceof ReflectionManyToMany) {
-                    $this->validateManyToManyRelation($relation);
-                    continue;
-                }
-                $this->validateRelation($relation);
+                $validator = $this->relationValidatorFactory->getValidator($relation);
+                $validator->validate($relation);
             }
         }
     }
 
-    private function validateRelation(ReflectionRelation $relation): void
-    {
-        if ($relation->isOneToOne()) {
-            $this->validateOneToOneRelation($relation);
-            return;
-        }
-
-        if ($relation->isManyToOne()) {
-            $this->validateManyToOneRelation($relation);
-            return;
-        }
-
-        if ($relation->isOneToMany()) {
-            $this->validateOneToManyRelation($relation);
-        }
-    }
-
-    private function validateOneToOneRelation(ReflectionRelation $relation): void
-    {
-        if (!$relation->isForeignKeyRequired()) {
-            return;
-        }
-        if (!$relation->isOwningSide()) {
-            return;
-        }
-        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        $inversedPropertyName = $relation->getInversedBy();
-
-        if (!$inversedPropertyName) {
-            return;
-        }
-
-        if (!$targetEntity->hasProperty($inversedPropertyName)) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: property not found');
-        }
-
-        $property = $targetEntity->getProperty($inversedPropertyName);
-        $attributes = $property->getAttributes(OneToOne::class);
-
-        if (empty($attributes)) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: attribute missing');
-        }
-
-        $targetProperty = $attributes[0]->newInstance();
-
-        $inverseRequestsForeignKey = $targetProperty->ownedBy !== null && $targetProperty->foreignKey;
-
-        if ($inverseRequestsForeignKey) {
-            $ownerClass = $relation->getDeclaringClassName();
-            $ownerProperty = $relation->getPropertyName();
-            $inverseClass = $targetEntity->getName();
-            throw new RuntimeException(sprintf(
-                'One-to-one inverse side misconfigured: inverse side requests foreign key (%s::%s <-> %s::%s)',
-                $ownerClass,
-                $ownerProperty,
-                $inverseClass,
-                $inversedPropertyName,
-            ));
-        }
-
-        if ($targetProperty->ownedBy === null) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: ownedBy is required on inverse side');
-        }
-
-        if ($targetProperty->ownedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('One-to-one inverse side misconfigured: ownedBy does not reference owning property');
-        }
-    }
-
-    private function validateManyToOneRelation(ReflectionRelation $relation): void
-    {
-        if (!$relation->isManyToOne()) {
-            return;
-        }
-
-        $inversedPropertyName = $relation->getInversedBy();
-        if (!$inversedPropertyName) {
-            return;
-        }
-
-        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        if (!$targetEntity->hasProperty($inversedPropertyName)) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: property not found');
-        }
-
-        $targetProperty = $targetEntity->getProperty($inversedPropertyName);
-        if (!empty($targetProperty->getAttributes(ManyToOne::class))) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: inverse side marked as owner');
-        }
-        $attributes = $targetProperty->getAttributes(OneToMany::class);
-
-        if (empty($attributes)) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: attribute missing');
-        }
-
-        $inverseRelation = new ReflectionRelation($attributes[0]->newInstance(), $targetProperty);
-        $mappedBy = $inverseRelation->getMappedBy();
-
-        if ($mappedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: ownedBy does not reference owning property');
-        }
-
-        if ($inverseRelation->getTargetEntity() !== $relation->getDeclaringClassName()) {
-            throw new RuntimeException('Many-to-one inverse side misconfigured: target entity mismatch');
-        }
-    }
-
-    private function validateOneToManyRelation(ReflectionRelation $relation): void
-    {
-        if (!$relation->isOneToMany()) {
-            return;
-        }
-
-        $mappedBy = $relation->getMappedBy();
-        if (!$mappedBy) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: ownedBy is required');
-        }
-
-        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        if (!$targetEntity->hasProperty($mappedBy)) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: owning property not found');
-        }
-
-        $targetProperty = $targetEntity->getProperty($mappedBy);
-        $attributes = $targetProperty->getAttributes(ManyToOne::class);
-
-        if (empty($attributes)) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: owning property not many-to-one');
-        }
-
-        $owningRelation = new ReflectionRelation($attributes[0]->newInstance(), $targetProperty);
-
-        if ($owningRelation->getTargetEntity() !== $relation->getDeclaringClassName()) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: target entity mismatch');
-        }
-
-        $inversedBy = $owningRelation->getInversedBy();
-        if ($inversedBy && $inversedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('One-to-many inverse side misconfigured: inversedBy does not reference inverse property');
-        }
-    }
-
-    private function validateManyToManyRelation(ReflectionManyToMany $relation): void
-    {
-        if ($relation->getMappedBy() && $relation->getInversedBy()) {
-            throw new RuntimeException('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
-        }
-
-        if (!$relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
-            throw new RuntimeException('Many-to-many misconfigured: inverse side cannot define extra mapping properties');
-        }
-
-        $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        $mappedBy = $relation->getMappedBy();
-        $inversedBy = $relation->getInversedBy();
-
-        if ($relation->isOwningSide()) {
-            if (!$inversedBy) {
-                return;
-            }
-            if (!$targetEntity->hasProperty($inversedBy)) {
-                throw new RuntimeException('Many-to-many inverse side misconfigured: property not found');
-            }
-            $targetProperty = $targetEntity->getProperty($inversedBy);
-            $attributes = $targetProperty->getAttributes(ManyToMany::class);
-            if (empty($attributes)) {
-                throw new RuntimeException('Many-to-many inverse side misconfigured: attribute missing');
-            }
-            /** @var ManyToMany $targetAttr */
-            $targetAttr = $attributes[0]->newInstance();
-            $targetOwnedBy = $targetAttr->ownedBy;
-            if ($targetOwnedBy !== $relation->getPropertyName()) {
-                throw new RuntimeException('Many-to-many inverse side misconfigured: ownedBy does not reference owning property');
-            }
-            if (
-                $targetAttr->mappingTable
-                && $targetAttr->mappingTable->name
-                && $relation->getAttribute()->mappingTable?->name
-                && $targetAttr->mappingTable->name !== $relation->getTableName()
-            ) {
-                throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
-            }
-            return;
-        }
-
-        if (!$mappedBy) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: ownedBy is required');
-        }
-        if (!$targetEntity->hasProperty($mappedBy)) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property not found');
-        }
-        $targetProperty = $targetEntity->getProperty($mappedBy);
-        $attributes = $targetProperty->getAttributes(ManyToMany::class);
-        if (empty($attributes)) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property attribute missing');
-        }
-        /** @var ManyToMany $targetAttr */
-        $targetAttr = $attributes[0]->newInstance();
-        if ($targetAttr->ownedBy !== null) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: owning property cannot declare ownedBy');
-        }
-        if ($targetAttr->referencedBy && $targetAttr->referencedBy !== $relation->getPropertyName()) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: referencedBy does not reference inverse property');
-        }
-        if (
-            $targetAttr->mappingTable
-            && $targetAttr->mappingTable->name
-            && $relation->getAttribute()->mappingTable?->name
-            && $targetAttr->mappingTable->name !== $relation->getTableName()
-        ) {
-            throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
-        }
-    }
 
     private function collectManyToManyTables(array $entities): array
     {
