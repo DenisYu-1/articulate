@@ -25,7 +25,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
         );
         $this->assertEquals(
             $query,
-            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
         );
     }
 

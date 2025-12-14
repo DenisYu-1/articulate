@@ -72,7 +72,8 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
             ],
         );
 
-        $sql = (new MigrationsCommandGenerator($databaseName))->generate($compareResult);
+        $generator = MigrationsCommandGenerator::forDatabase($databaseName);
+        $sql = $generator->generate($compareResult);
         $connection->executeQuery($sql);
 
         // Verify table and columns exist

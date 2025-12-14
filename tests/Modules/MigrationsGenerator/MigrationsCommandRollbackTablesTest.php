@@ -25,7 +25,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
         );
         $this->assertEquals(
             $query,
-            (new MigrationsCommandGenerator())->rollback($tableCompareResult)
+            (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
         );
     }
 

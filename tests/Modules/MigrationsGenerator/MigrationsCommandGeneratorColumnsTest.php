@@ -25,7 +25,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
         );
         $this->assertEquals(
             $query,
-            (new MigrationsCommandGenerator())->generate($tableCompareResult)
+            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
         );
     }
 
@@ -115,7 +115,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
             []
         );
 
-        $result = (new MigrationsCommandGenerator())->generate($tableCompareResult);
+        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
         $this->assertStringContainsString('ADD `user_id`', $result);
         $this->assertStringContainsString('DROP `old_column`', $result);
     }
