@@ -45,6 +45,16 @@ readonly class ReflectionProperty implements PropertyInterface
         return $this->entityProperty->maxLength;
     }
 
+    public function isAutoIncrement(): bool
+    {
+        return $this->autoIncrement;
+    }
+
+    public function isPrimaryKey(): bool
+    {
+        return $this->primaryKey;
+    }
+
     private function parseColumnName(): string
     {
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', $this->property->getName()));

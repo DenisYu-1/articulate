@@ -5,7 +5,7 @@ namespace Articulate\Tests;
 use Articulate\Connection;
 
 /**
- * Example test demonstrating how to use the multi-database testing setup
+ * Example test demonstrating how to use the multi-database testing setup.
  *
  * This test shows various patterns for testing across multiple databases:
  * 1. Testing all databases with databaseProvider()
@@ -15,7 +15,7 @@ use Articulate\Connection;
 class ExampleMultiDatabaseTest extends DatabaseTestCase
 {
     /**
-     * Test that runs against all available databases
+     * Test that runs against all available databases.
      *
      * This test will be executed once for each available database.
      * The test method receives the database name as parameter and gets the connection itself.
@@ -41,6 +41,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
             'pgsql' => "DROP TABLE IF EXISTS \"{$tableName}\"",
             'sqlite' => "DROP TABLE IF EXISTS {$tableName}"
         };
+
         try {
             $connection->executeQuery($dropSql);
         } catch (\Exception $e) {
@@ -68,7 +69,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
     }
 
     /**
-     * Test that runs against all databases with data insertion and retrieval
+     * Test that runs against all databases with data insertion and retrieval.
      *
      * @dataProvider databaseProvider
      * @group database
@@ -115,7 +116,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
     }
 
     /**
-     * Test that runs only on MySQL
+     * Test that runs only on MySQL.
      *
      * @dataProvider mysqlProvider
      * @group mysql
@@ -140,7 +141,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
     }
 
     /**
-     * Test that runs only on PostgreSQL
+     * Test that runs only on PostgreSQL.
      *
      * @dataProvider pgsqlProvider
      * @group pgsql
@@ -168,7 +169,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
     }
 
     /**
-     * Test that runs only on SQLite
+     * Test that runs only on SQLite.
      *
      * @dataProvider sqliteProvider
      * @group sqlite
@@ -186,13 +187,13 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
 
         // Test SQLite's AUTOINCREMENT behavior
         $connection->executeQuery("INSERT INTO {$tableName} (data) VALUES (?)", ['test']);
-        $result = $connection->executeQuery("SELECT last_insert_rowid() as id")->fetch();
+        $result = $connection->executeQuery('SELECT last_insert_rowid() as id')->fetch();
 
         $this->assertGreaterThan(0, (int) $result['id']);
     }
 
     /**
-     * Example of a test that can be run on a single database for debugging
+     * Example of a test that can be run on a single database for debugging.
      */
     public function testSingleDatabaseExample(): void
     {
@@ -214,7 +215,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
     }
 
     /**
-     * Test foreign key constraints across databases
+     * Test foreign key constraints across databases.
      *
      * @dataProvider databaseProvider
      * @group database
@@ -227,7 +228,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
         // Clean up any existing tables
         $this->cleanUpTables([
             $this->getTableName('parent_table', $databaseName),
-            $this->getTableName('child_table', $databaseName)
+            $this->getTableName('child_table', $databaseName),
         ]);
 
         $parentTable = $this->getTableName('parent_table', $databaseName);
@@ -262,9 +263,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
 
         // Get parent ID
         $parentIdResult = match ($databaseName) {
-            'mysql' => $connection->executeQuery("SELECT LAST_INSERT_ID() as id"),
+            'mysql' => $connection->executeQuery('SELECT LAST_INSERT_ID() as id'),
             'pgsql' => $connection->executeQuery("SELECT currval(pg_get_serial_sequence('\"{$parentTable}\"', 'id')) as id"),
-            'sqlite' => $connection->executeQuery("SELECT last_insert_rowid() as id")
+            'sqlite' => $connection->executeQuery('SELECT last_insert_rowid() as id')
         };
 
         $parentId = $parentIdResult->fetch()['id'];
