@@ -2,3 +2,4 @@
 .idea
 .env
 .phpunit.cache
+.php-cs-fixer.cache
