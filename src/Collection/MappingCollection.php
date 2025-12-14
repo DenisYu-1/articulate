@@ -43,6 +43,7 @@ class MappingCollection implements IteratorAggregate
                 return $item->pivot;
             }
         }
+
         return null;
     }
 

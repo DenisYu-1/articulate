@@ -10,19 +10,22 @@ use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Tests\AbstractTestCase;
 use RuntimeException;
 
-class NonEntity {
+class NonEntity
+{
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class RelatedEntity {
+class RelatedEntity
+{
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class OneToOneRelatedEntity {
+class OneToOneRelatedEntity
+{
     #[Property]
     private int $id;
 
@@ -50,6 +53,7 @@ class OneToOneTest extends AbstractTestCase
                 /** @var OneToOne $attribute */
                 $attribute = $property->getAttributes(OneToOne::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -76,6 +80,7 @@ class OneToOneTest extends AbstractTestCase
                 /** @var OneToOne $attribute */
                 $attribute = $property->getAttributes(OneToOne::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -97,6 +102,7 @@ class OneToOneTest extends AbstractTestCase
                 /** @var OneToOne $attribute */
                 $attribute = $property->getAttributes(OneToOne::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -118,6 +124,7 @@ class OneToOneTest extends AbstractTestCase
                 /** @var OneToOne $attribute */
                 $attribute = $property->getAttributes(OneToOne::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -141,6 +148,7 @@ class OneToOneTest extends AbstractTestCase
                 /** @var OneToOne $attribute */
                 $attribute = $property->getAttributes(OneToOne::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }

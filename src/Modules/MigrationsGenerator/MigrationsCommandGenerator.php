@@ -8,8 +8,8 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 
-class MigrationsCommandGenerator {
-
+class MigrationsCommandGenerator
+{
     public function generate(TableCompareResult $compareResult): string
     {
         if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
@@ -23,7 +23,7 @@ class MigrationsCommandGenerator {
                 $columns[] = $this->columnDefinition($column->name, $column->propertyData);
             }
             $parts = [implode(', ', $columns)];
-            if (!empty($compareResult->primaryColumns)) {
+            if (! empty($compareResult->primaryColumns)) {
                 $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
             }
             foreach ($compareResult->foreignKeys as $foreignKey) {
@@ -33,6 +33,7 @@ class MigrationsCommandGenerator {
                 $parts[] = $this->foreignKeyDefinition($foreignKey, false);
             }
             $query .= implode(', ', $parts) . ')';
+
             return $query;
         }
 
@@ -40,6 +41,7 @@ class MigrationsCommandGenerator {
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_DELETE) {
                 $alterParts[] = 'DROP ' . $column->name;
+
                 continue;
             }
             $parts = [];
@@ -88,7 +90,7 @@ class MigrationsCommandGenerator {
                 $columns[] = $this->columnDefinition($column->name, $column->columnData);
             }
             $parts = [implode(', ', $columns)];
-            if (!empty($compareResult->primaryColumns)) {
+            if (! empty($compareResult->primaryColumns)) {
                 $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
             }
             foreach ($compareResult->foreignKeys as $foreignKey) {
@@ -101,6 +103,7 @@ class MigrationsCommandGenerator {
             foreach ($compareResult->indexes as $index) {
                 $query .= ', ' . $this->generateIndexSql($index, $compareResult->name);
             }
+
             return $query;
         }
 
@@ -108,6 +111,7 @@ class MigrationsCommandGenerator {
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_CREATE) {
                 $alterParts[] = 'DROP COLUMN ' . $column->name;
+
                 continue;
             }
             $columnParts = [];
@@ -148,6 +152,7 @@ class MigrationsCommandGenerator {
         if ($propertyData->type === 'string') {
             return 'VARCHAR' . '(' . ($propertyData->length ?? '255') . ')';
         }
+
         return $propertyData->type;
     }
 
@@ -156,19 +161,20 @@ class MigrationsCommandGenerator {
         $parts = [];
         $parts[] = $name;
         $parts[] = $this->mapTypeLength($column);
-        if (!$column->isNullable) {
+        if (! $column->isNullable) {
             $parts[] = 'NOT NULL';
         }
         if ($column->defaultValue !== null) {
             $parts[] = 'DEFAULT "' . $column->defaultValue . '"';
         }
+
         return implode(' ', $parts);
     }
 
     private function generateIndexSql(IndexCompareResult $index, string $tableName): string
     {
         $indexType = $index->isUnique ? 'UNIQUE' : '';
-        $columns = implode(', ', array_map(fn($col) => '`' . $col . '`', $index->columns));
+        $columns = implode(', ', array_map(fn ($col) => '`' . $col . '`', $index->columns));
 
         return sprintf(
             'ADD %s INDEX `%s` (%s)',
@@ -181,7 +187,7 @@ class MigrationsCommandGenerator {
     private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey, bool $withAdd = true): string
     {
         $template = $withAdd
-            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)' 
+            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)'
             : 'CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)';
 
         return sprintf(

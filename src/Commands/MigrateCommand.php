@@ -4,7 +4,6 @@ namespace Articulate\Commands;
 
 use Articulate\Connection;
 use Articulate\Modules\MigrationsGenerator\BaseMigration;
-use Articulate\Commands\InitCommand;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -22,8 +21,7 @@ class MigrateCommand extends Command
         private readonly Connection $connection,
         private readonly InitCommand $initCommand,
         private readonly ?string $migrationsPath = null,
-    )
-    {
+    ) {
         parent::__construct();
     }
 
@@ -47,8 +45,9 @@ class MigrateCommand extends Command
 
         $directory = $this->migrationsPath ?: '/app/migrations';
 
-        if (!is_dir($directory)) {
+        if (! is_dir($directory)) {
             $io->warning("Migrations directory does not exist: $directory");
+
             return Command::SUCCESS;
         }
 
@@ -78,21 +77,22 @@ class MigrateCommand extends Command
                 $namespace = getNamespaceFromFile($filePath);
                 $fullClassName = $namespace . '\\' . $className;
 
-                if (!$isRollback && isset($executedMigrations[$fullClassName])) {
+                if (! $isRollback && isset($executedMigrations[$fullClassName])) {
                     continue;
-                } elseif ($isRollback && !isset($executedMigrations[$fullClassName])) {
+                } elseif ($isRollback && ! isset($executedMigrations[$fullClassName])) {
                     continue;
                 }
 
                 if (class_exists($fullClassName)) {
                     $migrationInstance = new $fullClassName($this->connection);
 
-                    if (!($migrationInstance instanceof BaseMigration)) {
+                    if (! ($migrationInstance instanceof BaseMigration)) {
                         $io->warning("Class $fullClassName is not a valid migration");
+
                         continue;
                     }
 
-                    if (!$isRollback) {
+                    if (! $isRollback) {
                         $migrationInstance->runMigration();
                         $io->writeln("Executed migration: $fullClassName");
                         $executedCount++;
@@ -120,7 +120,8 @@ class MigrateCommand extends Command
     }
 }
 
-function getNamespaceFromFile(string $filePath): ?string {
+function getNamespaceFromFile(string $filePath): ?string
+{
     $namespace = null;
     $handle = fopen($filePath, 'r');
 
@@ -128,6 +129,7 @@ function getNamespaceFromFile(string $filePath): ?string {
         while (($line = fgets($handle)) !== false) {
             if (preg_match('/^namespace\s+(.+?);$/', trim($line), $matches)) {
                 $namespace = $matches[1];
+
                 break;
             }
         }

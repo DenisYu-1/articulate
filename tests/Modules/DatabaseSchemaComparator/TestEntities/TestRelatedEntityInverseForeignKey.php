@@ -15,4 +15,3 @@ class TestRelatedEntityInverseForeignKey
     #[OneToOne(ownedBy: 'name', foreignKey: true)]
     public TestRelatedMainEntity $name;
 }
-

@@ -11,7 +11,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
 {
-
     #[DataProvider('cases')]
     public function testFieldMigration($query, $params)
     {

@@ -8,9 +8,13 @@ use Attribute;
 class OneToOne implements RelationAttributeInterface
 {
     public readonly ?string $targetEntity;
+
     public readonly ?string $ownedBy;
+
     public readonly ?string $referencedBy;
+
     public readonly ?string $column;
+
     public readonly bool $foreignKey;
 
     public function __construct(

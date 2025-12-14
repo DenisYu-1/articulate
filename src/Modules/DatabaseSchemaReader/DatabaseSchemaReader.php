@@ -6,8 +6,11 @@ use Articulate\Connection;
 use PDO;
 use PDOException;
 
-class DatabaseSchemaReader {
-    public function __construct(private readonly Connection $connection) {}
+class DatabaseSchemaReader
+{
+    public function __construct(private readonly Connection $connection)
+    {
+    }
 
     /**
      * @return iterable<DatabaseColumn>
@@ -15,18 +18,22 @@ class DatabaseSchemaReader {
     public function getTableColumns(string $tableName): array
     {
         $result = [];
+
         try {
             $stmt = $this->connection->executeQuery("SHOW COLUMNS FROM `$tableName`");
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $columnInfo) {
-                $result[] = new DatabaseColumn($columnInfo['Field'], $columnInfo['Type'], $columnInfo['Null'] !== 'NO', $columnInfo['Default'],);
+                $result[] = new DatabaseColumn($columnInfo['Field'], $columnInfo['Type'], $columnInfo['Null'] !== 'NO', $columnInfo['Default']);
             }
-        } catch (PDOException) {}
+        } catch (PDOException) {
+        }
+
         return $result;
     }
 
     public function getTables(): array
     {
         $stmt = $this->connection->executeQuery("SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name != 'migrations'");
+
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -45,7 +52,7 @@ class DatabaseSchemaReader {
                 continue;
             }
 
-            if (!isset($indexes[$indexName])) {
+            if (! isset($indexes[$indexName])) {
                 $indexes[$indexName] = [
                     'columns' => [],
                     'unique' => $isUnique,
@@ -59,7 +66,7 @@ class DatabaseSchemaReader {
 
     public function getTableForeignKeys(string $tableName): array
     {
-        $query = "
+        $query = '
             SELECT
                 constraint_name,
                 column_name,
@@ -69,7 +76,7 @@ class DatabaseSchemaReader {
             WHERE table_schema = DATABASE()
               AND table_name = :table
               AND referenced_table_name IS NOT NULL
-        ";
+        ';
 
         $statement = $this->connection->executeQuery($query, ['table' => $tableName]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
@@ -126,7 +133,7 @@ class DatabaseSchemaReader {
     private function isUniqueIndex(array $normalized): bool
     {
         if (array_key_exists('non_unique', $normalized)) {
-            return !(bool) $normalized['non_unique'];
+            return ! (bool) $normalized['non_unique'];
         }
         if (array_key_exists('unique', $normalized)) {
             return (bool) $normalized['unique'];

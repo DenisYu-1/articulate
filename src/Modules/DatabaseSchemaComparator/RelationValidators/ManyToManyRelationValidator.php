@@ -12,7 +12,7 @@ class ManyToManyRelationValidator implements RelationValidatorInterface
 {
     public function validate(RelationInterface $relation): void
     {
-        if (!$relation instanceof ReflectionManyToMany) {
+        if (! $relation instanceof ReflectionManyToMany) {
             return;
         }
 
@@ -20,7 +20,7 @@ class ManyToManyRelationValidator implements RelationValidatorInterface
             throw new RuntimeException('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
         }
 
-        if (!$relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
+        if (! $relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
             throw new RuntimeException('Many-to-many misconfigured: inverse side cannot define extra mapping properties');
         }
 
@@ -29,10 +29,10 @@ class ManyToManyRelationValidator implements RelationValidatorInterface
         $inversedBy = $relation->getInversedBy();
 
         if ($relation->isOwningSide()) {
-            if (!$inversedBy) {
+            if (! $inversedBy) {
                 return;
             }
-            if (!$targetEntity->hasProperty($inversedBy)) {
+            if (! $targetEntity->hasProperty($inversedBy)) {
                 throw new RuntimeException('Many-to-many inverse side misconfigured: property not found');
             }
             $targetProperty = $targetEntity->getProperty($inversedBy);
@@ -54,13 +54,14 @@ class ManyToManyRelationValidator implements RelationValidatorInterface
             ) {
                 throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
             }
+
             return;
         }
 
-        if (!$mappedBy) {
+        if (! $mappedBy) {
             throw new RuntimeException('Many-to-many inverse side misconfigured: ownedBy is required');
         }
-        if (!$targetEntity->hasProperty($mappedBy)) {
+        if (! $targetEntity->hasProperty($mappedBy)) {
             throw new RuntimeException('Many-to-many inverse side misconfigured: owning property not found');
         }
         $targetProperty = $targetEntity->getProperty($mappedBy);

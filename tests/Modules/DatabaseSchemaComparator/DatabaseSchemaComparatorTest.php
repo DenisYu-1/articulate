@@ -35,7 +35,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestEntity::class)
+            new ReflectionEntity(TestEntity::class),
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals('test_entity', $result[0]->name);
@@ -72,7 +72,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestEntity::class)
+            new ReflectionEntity(TestEntity::class),
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals('update', $result[0]->operation);
@@ -97,7 +97,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestEntity::class)
+            new ReflectionEntity(TestEntity::class),
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals(2, count($result[0]->columns));

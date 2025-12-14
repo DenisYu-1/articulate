@@ -56,4 +56,3 @@ class MigrationsCommandGeneratorDatabaseTest extends AbstractTestCase
         $this->assertSame('related_entity_id', $foreignKeys[0]['from']);
     }
 }
-

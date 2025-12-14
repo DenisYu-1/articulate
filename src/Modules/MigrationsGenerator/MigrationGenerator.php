@@ -4,13 +4,15 @@ namespace Articulate\Modules\MigrationsGenerator;
 
 use DateTimeImmutable;
 
-class MigrationGenerator {
+class MigrationGenerator
+{
     private string $templatePath;
+
     private string $outputDirectory;
 
-    public function __construct( string $outputDirectory)
+    public function __construct(string $outputDirectory)
     {
-        $this->templatePath = __DIR__.'/migration_template.php.dist';
+        $this->templatePath = __DIR__ . '/migration_template.php.dist';
         $this->outputDirectory = $outputDirectory;
     }
 
@@ -29,7 +31,7 @@ class MigrationGenerator {
         );
 
         $directory = sprintf('%s/%s/%s', $this->outputDirectory, $date->format('Y'), $date->format('m'));
-        if (!file_exists($directory)) {
+        if (! file_exists($directory)) {
             mkdir($directory, 0755, true);
         }
         $fileName = sprintf('%s/%s.php', $directory, $className);

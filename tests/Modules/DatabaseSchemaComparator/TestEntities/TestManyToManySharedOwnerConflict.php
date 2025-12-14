@@ -5,9 +5,9 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
-use Articulate\Attributes\Relations\ManyToMany;
 
 #[Entity(tableName: 'shared_mapping_owner_conflict')]
 class TestManyToManySharedOwnerConflict
@@ -54,4 +54,3 @@ class TestManyToManySharedTargetConflict
     #[ManyToMany(ownedBy: 'secondRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]
     public array $ownersSecond;
 }
-

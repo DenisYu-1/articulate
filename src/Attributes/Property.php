@@ -13,5 +13,6 @@ class Property
         public ?bool $nullable = null,
         public ?string $defaultValue = null,
         public ?int $maxLength = null,
-    ) {}
+    ) {
+    }
 }

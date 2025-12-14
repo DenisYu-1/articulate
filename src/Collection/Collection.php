@@ -2,9 +2,8 @@
 
 namespace Articulate\Collection;
 
-use Iterator;
-
-class Collection {
+class Collection
+{
     private $items = [];
 
     public function __construct($items)

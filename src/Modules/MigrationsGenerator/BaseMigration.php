@@ -5,14 +5,17 @@ namespace Articulate\Modules\MigrationsGenerator;
 use Articulate\Connection;
 use Throwable;
 
-abstract class BaseMigration {
+abstract class BaseMigration
+{
     public function __construct(
         private readonly Connection $connection
-    ) {}
+    ) {
+    }
 
     public function runMigration(): void
     {
         $this->connection->beginTransaction();
+
         try {
             $begin = microtime(true);
             $this->up();
@@ -21,6 +24,7 @@ abstract class BaseMigration {
             $this->connection->commit();
         } catch (Throwable $e) {
             $this->connection->rollbackTransaction();
+
             throw $e;
         }
     }
@@ -28,6 +32,7 @@ abstract class BaseMigration {
     public function rollbackMigration(): void
     {
         $this->connection->beginTransaction();
+
         try {
             $begin = microtime(true);
             $this->down();
@@ -36,6 +41,7 @@ abstract class BaseMigration {
             $this->connection->commit();
         } catch (Throwable $e) {
             $this->connection->rollbackTransaction();
+
             throw $e;
         }
     }
@@ -46,13 +52,16 @@ abstract class BaseMigration {
     }
 
     abstract protected function up(): void;
-    protected function down(): void {}
+
+    protected function down(): void
+    {
+    }
 
     private function addMigration(float $runningTime)
     {
         $this->connection->executeQuery('
             INSERT INTO migrations (name, executed_at, running_time) 
-            VALUES("'.str_replace('\\', '\\\\', static::class).'", "'.date('Y-m-d H:i:s').'", "'.$runningTime.'")
+            VALUES("' . str_replace('\\', '\\\\', static::class) . '", "' . date('Y-m-d H:i:s') . '", "' . $runningTime . '")
         ');
     }
 
@@ -60,7 +69,7 @@ abstract class BaseMigration {
     {
         $this->connection->executeQuery('
             DELETE FROM migrations 
-            WHERE name = "'.str_replace('\\', '\\\\', static::class).'"
+            WHERE name = "' . str_replace('\\', '\\\\', static::class) . '"
         ');
     }
 }

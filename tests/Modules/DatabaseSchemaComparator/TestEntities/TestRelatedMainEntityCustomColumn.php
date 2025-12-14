@@ -15,4 +15,3 @@ class TestRelatedMainEntityCustomColumn
     #[OneToOne(referencedBy: 'name', column: 'custom_fk')]
     public TestRelatedEntity $name;
 }
-

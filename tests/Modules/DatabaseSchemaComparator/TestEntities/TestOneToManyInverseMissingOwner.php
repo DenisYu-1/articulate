@@ -15,4 +15,3 @@ class TestOneToManyInverseMissingOwner
     #[OneToMany(ownedBy: 'missingOwner', targetEntity: TestManyToOneOwner::class)]
     public TestManyToOneOwner $items;
 }
-

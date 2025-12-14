@@ -15,4 +15,3 @@ class TestManyToOneTargetMappedByMismatch
     #[OneToMany(ownedBy: 'otherProperty', targetEntity: TestManyToOneOwnerMappedByMismatch::class)]
     public TestManyToOneOwnerMappedByMismatch $owners;
 }
-

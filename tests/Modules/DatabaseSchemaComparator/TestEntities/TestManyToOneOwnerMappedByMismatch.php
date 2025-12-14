@@ -15,4 +15,3 @@ class TestManyToOneOwnerMappedByMismatch
     #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTargetMappedByMismatch $targetMismatch;
 }
-

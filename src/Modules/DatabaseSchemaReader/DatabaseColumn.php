@@ -2,9 +2,12 @@
 
 namespace Articulate\Modules\DatabaseSchemaReader;
 
-class DatabaseColumn {
+class DatabaseColumn
+{
     public readonly ?int $length;
+
     public readonly string $type;
+
     public function __construct(
         public readonly string $name,
         string $type,
@@ -14,6 +17,7 @@ class DatabaseColumn {
         if (preg_match('/^(\w+)\((\d+)\)$/', $type, $matches)) {
             $this->type = 'string';
             $this->length = (int) $matches[2];
+
             return;
         }
         $this->type = $type;

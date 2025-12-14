@@ -13,6 +13,7 @@ class EntityDefaultTest extends AbstractTestCase
 {
     #[Property]
     private int $propertyWithAttribute;
+
     private int $propertyWithoutAttribute;
 
     public function testEntity()

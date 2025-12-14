@@ -14,4 +14,3 @@ class TestOneToManyWrongOwner
     #[Property]
     public int $target;
 }
-

@@ -65,6 +65,6 @@ class ExistingTablesTest extends AbstractTestCase
         $result = $connection->executeQuery($resultQuery);
 
         $tables = $result->fetchAll();
-        $this->assertNotEmpty($tables, "Migrations table not found in database.");
+        $this->assertNotEmpty($tables, 'Migrations table not found in database.');
     }
 }

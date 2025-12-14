@@ -2,14 +2,16 @@
 
 namespace Articulate\Tests;
 
-use Dotenv\Dotenv;
 use Articulate\Connection;
+use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 
 abstract class AbstractTestCase extends TestCase
 {
     protected Connection $mysqlConnection;
+
     protected Connection $pgsqlConnection;
+
     protected Connection $sqliteConnection;
 
     protected function setUp(): void

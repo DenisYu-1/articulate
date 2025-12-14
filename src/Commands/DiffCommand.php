@@ -4,7 +4,6 @@ namespace Articulate\Commands;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
 use Articulate\Modules\MigrationsGenerator\MigrationGenerator;
 use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
 use RecursiveDirectoryIterator;
@@ -19,6 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class DiffCommand extends Command
 {
     private readonly MigrationGenerator $migrationGenerator;
+
     public function __construct(
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
@@ -51,7 +51,7 @@ class DiffCommand extends Command
                 }
             }
         }
-        $entityClasses = array_map(fn(string $className) => new ReflectionEntity($className), $classNames);
+        $entityClasses = array_map(fn (string $className) => new ReflectionEntity($className), $classNames);
 
         $compareResults = $this->databaseSchemaComparator->compareAll($entityClasses);
         $queries = $rollbacks = [];
@@ -63,19 +63,21 @@ class DiffCommand extends Command
         $rollbacks = array_values(array_filter($rollbacks));
         if (empty($queries)) {
             $io->success('Schema is already in sync.');
+
             return Command::SUCCESS;
         }
-        $upScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', $queries);
-        $downScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', array_reverse($rollbacks));
+        $upScript = array_map(fn ($query) => '$this->addSql("' . $query . '");', $queries);
+        $downScript = array_map(fn ($query) => '$this->addSql("' . $query . '");', array_reverse($rollbacks));
         $this->migrationGenerator->generate(
             $this->migrationsNamespace ?: 'App\Migrations',
-            'MigrationFrom'.time(),
+            'MigrationFrom' . time(),
             implode(PHP_EOL, $upScript),
             implode(PHP_EOL, $downScript),
         );
 
         return Command::SUCCESS;
     }
+
     private function resolveEntitiesDir(): string
     {
         if ($this->entitiesPath) {
@@ -83,6 +85,7 @@ class DiffCommand extends Command
             if ($resolved !== false) {
                 return $resolved;
             }
+
             throw new \RuntimeException(sprintf('Entities directory not found at configured path: %s', $this->entitiesPath));
         }
 

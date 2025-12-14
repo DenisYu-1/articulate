@@ -7,5 +7,4 @@ use Articulate\Attributes\Entity;
 #[Entity]
 class TestEmptyEntity
 {
-
 }

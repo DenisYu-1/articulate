@@ -2,16 +2,17 @@
 
 namespace Articulate\Tests\Attributes;
 
-use Exception;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Tests\AbstractTestCase;
+use Exception;
 use ReflectionClass;
 
 class PropertyTest extends AbstractTestCase
 {
     #[Property(type: 'string')]
     private int $typeOverwriteCheck;
+
     #[Property()]
     private int $defaultCheck;
 
@@ -117,10 +118,11 @@ class PropertyTest extends AbstractTestCase
                 /** @var Property $attribute */
                 $attribute = $property->getAttributes(Property::class);
                 $propertyToTest = new ReflectionProperty($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
-        if (!$propertyToTest) {
+        if (! $propertyToTest) {
             throw new Exception('no attribute');
         }
 

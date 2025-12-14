@@ -15,4 +15,3 @@ class TestRelatedMainEntityInverseForeignKey
     #[OneToOne(referencedBy: 'name')]
     public TestRelatedEntityInverseForeignKey $name;
 }
-

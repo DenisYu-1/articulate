@@ -6,12 +6,16 @@ use PDO;
 use PDOException;
 use PDOStatement;
 
-class Connection {
+class Connection
+{
     public const MYSQL = 'mysql';
+
     public const PGSQL = 'pgsql';
+
     public const SQLITE = 'sqlite';
 
     private readonly PDO $pdo;
+
     public function __construct(
         private readonly string $dsn,
         private readonly string $user,
@@ -27,7 +31,7 @@ class Connection {
         try {
             $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
         } catch (PDOException $e) {
-            throw new PDOException($e->getMessage(), (int)$e->getCode());
+            throw new PDOException($e->getMessage(), (int) $e->getCode());
         }
     }
 
@@ -40,6 +44,7 @@ class Connection {
     {
         $statement = $this->pdo->prepare($sql);
         $statement->execute($parameters);
+
         return $statement;
     }
 
@@ -50,7 +55,7 @@ class Connection {
 
     public function beginTransaction()
     {
-        if (!$this->pdo->inTransaction()) {
+        if (! $this->pdo->inTransaction()) {
             $this->pdo->beginTransaction();
         }
     }

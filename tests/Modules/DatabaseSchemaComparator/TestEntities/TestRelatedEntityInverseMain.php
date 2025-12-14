@@ -15,4 +15,3 @@ class TestRelatedEntityInverseMain
     #[OneToOne] // misconfigured inverse: missing ownedBy
     public TestRelatedMainEntity $name;
 }
-

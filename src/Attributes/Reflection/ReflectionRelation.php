@@ -2,12 +2,12 @@
 
 namespace Articulate\Attributes\Reflection;
 
-use Exception;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
 use Articulate\Schema\SchemaNaming;
+use Exception;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
@@ -24,12 +24,13 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
     {
         if ($this->entityProperty->getTargetEntity()) {
             $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
-            if (!$reflectionEntity->isEntity()) {
+            if (! $reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
             if ($this->isOneToMany()) {
                 $this->assertOneToManyCollectionType();
             }
+
             return $this->entityProperty->getTargetEntity();
         }
         if ($this->isOneToMany()) {
@@ -37,13 +38,15 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         }
         $type = $this->property->getType();
 
-        if ($type && !$type->isBuiltin()) {
+        if ($type && ! $type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
-            if (!$reflectionEntity->isEntity()) {
+            if (! $reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
+
             return $type->getName();
         }
+
         throw new Exception('Target entity is misconfigured');
     }
 
@@ -72,6 +75,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         }
         $class = $this->property->class;
         $array = explode('\\', $class);
+
         return $this->getInversedByProperty() ?? $this->parseColumnName(end($array));
     }
 
@@ -105,6 +109,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         if ($this->entityProperty instanceof ManyToOne && $this->entityProperty->nullable !== null) {
             return $this->entityProperty->nullable;
         }
+
         return $this->property->getType()?->allowsNull() ?? false;
     }
 
@@ -126,6 +131,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
     public function getReferencedTableName(): string
     {
         $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+
         return $reflectionEntity->getTableName();
     }
 
@@ -133,6 +139,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
     {
         $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
         $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
+
         return $primaryColumns[0] ?? 'id';
     }
 
@@ -199,7 +206,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         }
         if ($type->isBuiltin()) {
             $allowed = ['array', 'iterable'];
-            if (!in_array($type->getName(), $allowed, true)) {
+            if (! in_array($type->getName(), $allowed, true)) {
                 throw new RuntimeException('One-to-many property must be iterable collection');
             }
         }

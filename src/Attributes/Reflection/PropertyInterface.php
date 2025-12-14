@@ -2,9 +2,6 @@
 
 namespace Articulate\Attributes\Reflection;
 
-use Articulate\Attributes\Property;
-use ReflectionProperty as BaseReflectionProperty;
-
 interface PropertyInterface
 {
     public function getColumnName(): string;

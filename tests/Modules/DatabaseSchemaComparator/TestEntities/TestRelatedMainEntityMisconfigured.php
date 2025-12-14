@@ -15,4 +15,3 @@ class TestRelatedMainEntityMisconfigured
     #[OneToOne(referencedBy: 'name')]
     public TestRelatedEntityMisconfigured $name;
 }
-

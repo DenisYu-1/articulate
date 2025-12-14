@@ -21,4 +21,3 @@ class TestManyToOneTarget
     #[OneToMany(ownedBy: 'customTarget', targetEntity: TestManyToOneOwnerCustomColumn::class)]
     public array $customOwners;
 }
-

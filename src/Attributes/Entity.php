@@ -9,5 +9,6 @@ class Entity
 {
     public function __construct(
         public ?string $tableName = null
-    ) {}
+    ) {
+    }
 }

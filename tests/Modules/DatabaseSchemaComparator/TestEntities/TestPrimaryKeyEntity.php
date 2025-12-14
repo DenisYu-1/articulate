@@ -12,6 +12,7 @@ class TestPrimaryKeyEntity
     #[PrimaryKey]
     #[Property]
     public string $id;
+
     #[Property]
     public string $name;
 }

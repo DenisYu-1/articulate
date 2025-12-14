@@ -2,8 +2,8 @@
 
 namespace Articulate\Attributes\Reflection;
 
-use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\ManyToMany;
+use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use Exception;
@@ -22,21 +22,24 @@ class ReflectionManyToMany implements RelationInterface
     {
         if ($this->attribute->getTargetEntity()) {
             $reflectionEntity = new ReflectionEntity($this->attribute->getTargetEntity());
-            if (!$reflectionEntity->isEntity()) {
+            if (! $reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
             $this->assertCollectionType();
+
             return $this->attribute->getTargetEntity();
         }
         $this->assertCollectionType();
         $type = $this->property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type && ! $type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
-            if (!$reflectionEntity->isEntity()) {
+            if (! $reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
+
             return $type->getName();
         }
+
         throw new Exception('Target entity is misconfigured');
     }
 
@@ -67,18 +70,21 @@ class ReflectionManyToMany implements RelationInterface
         }
         $ownerEntity = new ReflectionEntity($this->getDeclaringClassName());
         $targetEntity = new ReflectionEntity($this->getTargetEntity());
+
         return $this->schemaNaming->mappingTableName($ownerEntity->getTableName(), $targetEntity->getTableName());
     }
 
     public function getOwnerJoinColumn(): string
     {
         $ownerEntity = new ReflectionEntity($this->getDeclaringClassName());
+
         return $this->schemaNaming->relationColumn($ownerEntity->getTableName());
     }
 
     public function getTargetJoinColumn(): string
     {
         $targetEntity = new ReflectionEntity($this->getTargetEntity());
+
         return $this->schemaNaming->relationColumn($targetEntity->getTableName());
     }
 
@@ -94,6 +100,7 @@ class ReflectionManyToMany implements RelationInterface
     {
         $entity = new ReflectionEntity($this->getTargetEntity());
         $columns = $entity->getPrimaryKeyColumns();
+
         return $columns[0] ?? 'id';
     }
 
@@ -101,6 +108,7 @@ class ReflectionManyToMany implements RelationInterface
     {
         $entity = new ReflectionEntity($this->getDeclaringClassName());
         $columns = $entity->getPrimaryKeyColumns();
+
         return $columns[0] ?? 'id';
     }
 
@@ -130,13 +138,14 @@ class ReflectionManyToMany implements RelationInterface
         }
         if ($type->isBuiltin()) {
             $allowed = ['array', 'iterable'];
-            if (!in_array($type->getName(), $allowed, true)) {
+            if (! in_array($type->getName(), $allowed, true)) {
                 throw new RuntimeException('Many-to-many property must be iterable collection');
             }
+
             return;
         }
         $name = $type->getName();
-        if ($name !== MappingCollection::class && !is_subclass_of($name, MappingCollection::class)) {
+        if ($name !== MappingCollection::class && ! is_subclass_of($name, MappingCollection::class)) {
             return;
         }
     }

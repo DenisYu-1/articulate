@@ -15,4 +15,3 @@ class TestManyToOneOwnerCustomColumn
     #[ManyToOne(column: 'custom_column_id', referencedBy: 'customOwners', nullable: true)]
     public TestManyToOneTarget $customTarget;
 }
-

@@ -2,10 +2,14 @@
 
 namespace Articulate\Modules\DatabaseSchemaComparator\Models;
 
-class ColumnCompareResult extends CompareResult{
+class ColumnCompareResult extends CompareResult
+{
     public readonly bool $typeMatch;
+
     public readonly bool $isNullableMatch;
+
     public readonly bool $isDefaultValueMatch;
+
     public readonly bool $isLengthMatch;
 
     public function __construct(

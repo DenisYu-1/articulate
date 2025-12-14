@@ -2,22 +2,23 @@
 
 namespace Articulate\Attributes\Indexes;
 
-use Attribute;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use Attribute;
 use ReflectionAttribute;
-use ReflectionClass;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class Index
 {
     public array $columns = [];
+
     public function __construct(
         public readonly array $fields,
         public readonly bool $unique = false,
         public readonly ?string $name = null
-    ) {}
+    ) {
+    }
 
     public function resolveColumns(ReflectionEntity $entity): array
     {
@@ -27,13 +28,14 @@ class Index
 
             /** @var ReflectionAttribute<Property>[] $attributes */
             $attributes = $property->getAttributes(Property::class);
-            if (!empty($attributes)) {
+            if (! empty($attributes)) {
                 /** @var Property $entityProperty */
                 $entityProperty = $attributes[0]->newInstance();
                 $reflectionProperty = new ReflectionProperty($entityProperty, $property);
                 $this->columns[] = $reflectionProperty->getColumnName();
             }
         }
+
         return $this->columns;
     }
 
@@ -49,6 +51,7 @@ class Index
             // Shorten the index name if needed, typically by using a hash
             $indexName = md5($indexName);
         }
+
         return $indexName;
     }
 }

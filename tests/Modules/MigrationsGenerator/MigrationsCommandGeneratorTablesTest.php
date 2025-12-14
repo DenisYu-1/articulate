@@ -11,7 +11,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
 {
-
     #[DataProvider('cases')]
     public function testCreateTable(string $query, string $operation, array $parameters)
     {

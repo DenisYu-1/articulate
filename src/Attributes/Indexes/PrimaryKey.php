@@ -8,5 +8,6 @@ use Attribute;
 class PrimaryKey
 {
     public function __construct(
-    ) {}
+    ) {
+    }
 }

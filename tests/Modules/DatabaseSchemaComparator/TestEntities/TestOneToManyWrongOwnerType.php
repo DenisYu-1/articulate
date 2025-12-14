@@ -15,4 +15,3 @@ class TestOneToManyWrongOwnerType
     #[OneToMany(ownedBy: 'target', targetEntity: TestOneToManyWrongOwner::class)]
     public TestOneToManyWrongOwner $items;
 }
-

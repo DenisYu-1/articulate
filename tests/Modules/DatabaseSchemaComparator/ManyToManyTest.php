@@ -30,7 +30,7 @@ class ManyToManyTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $results = iterator_to_array($comparator->compareAll([
@@ -40,13 +40,13 @@ class ManyToManyTest extends AbstractTestCase
 
         $mappingTable = array_values(array_filter(
             $results,
-            fn($table) => $table->name === 'owner_target_map'
+            fn ($table) => $table->name === 'owner_target_map'
         ))[0] ?? null;
 
         $this->assertNotNull($mappingTable);
         $this->assertEquals(CompareResult::OPERATION_CREATE, $mappingTable->operation);
         $this->assertCount(3, $mappingTable->columns);
-        $columnNames = array_map(fn($c) => $c->name, $mappingTable->columns);
+        $columnNames = array_map(fn ($c) => $c->name, $mappingTable->columns);
         $this->assertContains('test_many_to_many_owner_id', $columnNames);
         $this->assertContains('test_many_to_many_target_id', $columnNames);
         $this->assertContains('created_at', $columnNames);
@@ -62,7 +62,7 @@ class ManyToManyTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $results = iterator_to_array($comparator->compareAll([
@@ -72,7 +72,7 @@ class ManyToManyTest extends AbstractTestCase
 
         $mappingTable = array_values(array_filter(
             $results,
-            fn($table) => $table->name === 'shared_owner_target_map'
+            fn ($table) => $table->name === 'shared_owner_target_map'
         ))[0] ?? null;
 
         $this->assertNotNull($mappingTable);
@@ -91,7 +91,7 @@ class ManyToManyTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -105,7 +105,7 @@ class ManyToManyTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $this->expectException(RuntimeException::class);

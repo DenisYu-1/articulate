@@ -8,8 +8,11 @@ use Attribute;
 class ManyToMany implements RelationAttributeInterface
 {
     public readonly ?string $targetEntity;
+
     public readonly ?string $ownedBy;
+
     public readonly ?string $referencedBy;
+
     public readonly ?MappingTable $mappingTable;
 
     public function __construct(

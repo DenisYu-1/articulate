@@ -15,4 +15,3 @@ class TestManyToOneOwnerNoFk
     #[ManyToOne(referencedBy: 'nullableOwners', nullable: true, foreignKey: false)]
     public ?TestManyToOneTarget $nullableTarget;
 }
-

@@ -15,4 +15,3 @@ class TestRelatedEntityMisconfigured
     #[OneToOne(ownedBy: 'wrong_property')]
     public TestRelatedMainEntity $name;
 }
-

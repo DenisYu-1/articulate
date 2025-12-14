@@ -23,6 +23,7 @@ class SchemaNaming
     {
         $parts = [$ownerTable, $targetTable];
         sort($parts, SORT_STRING);
+
         return $this->snakeCase(implode('_', $parts));
     }
 }

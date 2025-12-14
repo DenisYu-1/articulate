@@ -8,9 +8,13 @@ use Attribute;
 class ManyToOne implements RelationAttributeInterface
 {
     public readonly ?string $targetEntity;
+
     public readonly ?string $referencedBy;
+
     public readonly ?string $column;
+
     public readonly ?bool $nullable;
+
     public readonly bool $foreignKey;
 
     public function __construct(

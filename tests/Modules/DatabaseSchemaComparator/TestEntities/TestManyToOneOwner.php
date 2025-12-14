@@ -15,4 +15,3 @@ class TestManyToOneOwner
     #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTarget $target;
 }
-

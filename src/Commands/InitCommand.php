@@ -45,30 +45,30 @@ class InitCommand extends Command
     private function getCreateTableSql(string $driverName): string
     {
         return match ($driverName) {
-            Connection::MYSQL => "
+            Connection::MYSQL => '
                 CREATE TABLE IF NOT EXISTS migrations (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     executed_at DATETIME NOT NULL,
                     running_time INT NOT NULL
                 ) ENGINE=InnoDB;
-            ",
-            Connection::SQLITE => "
+            ',
+            Connection::SQLITE => '
                 CREATE TABLE IF NOT EXISTS migrations (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
                     executed_at TEXT NOT NULL,
                     running_time INT NOT NULL
                 );
-            ",
-            Connection::PGSQL => "
+            ',
+            Connection::PGSQL => '
                 CREATE TABLE IF NOT EXISTS migrations (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
                     executed_at TIMESTAMPTZ NOT NULL,
                     running_time INT NOT NULL
                 );
-            ",
+            ',
             default => throw new \Exception("Unsupported database driver: $driverName"),
         };
     }

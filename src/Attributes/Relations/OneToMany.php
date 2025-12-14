@@ -8,6 +8,7 @@ use Attribute;
 class OneToMany implements RelationAttributeInterface
 {
     public readonly ?string $targetEntity;
+
     public readonly ?string $ownedBy;
 
     public function __construct(

@@ -6,8 +6,8 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
+use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwner;
@@ -24,15 +24,15 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToMany
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwnerType;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntity;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityMisconfigured;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityInverseMain;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityInverseForeignKey;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityMisconfigured;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseMain;
-use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseForeignKey;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityInverseMain;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedEntityMisconfigured;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityCustomColumn;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseForeignKey;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityInverseMain;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityMisconfigured;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
 use RuntimeException;
 
 class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
@@ -41,17 +41,17 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
      * 1. создание релейшена
      * 2. апдейт релейшена
      * 3. создание релейшена без фк
-     * 4. апдейт релейшена без фк
+     * 4. апдейт релейшена без фк.
      */
     public function testCreateMainOneToOneSide()
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestRelatedMainEntity::class)
+            new ReflectionEntity(TestRelatedMainEntity::class),
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals('create', $result[0]->operation);
@@ -71,11 +71,11 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestRelatedEntity::class)
+            new ReflectionEntity(TestRelatedEntity::class),
         ]));
         $this->assertInstanceOf(TableCompareResult::class, $result[0]);
         $this->assertEquals('create', $result[0]->operation);
@@ -87,11 +87,11 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestRelatedMainEntityNoFk::class)
+            new ReflectionEntity(TestRelatedMainEntityNoFk::class),
         ]));
         $this->assertCount(1, $result);
         $this->assertEquals('create', $result[0]->operation);
@@ -103,9 +103,9 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: ['test_related_main_entity_no_fk'],
-            columns: fn() => [new DatabaseColumn('name_id', 'int', false, null)],
+            columns: fn () => [new DatabaseColumn('name_id', 'int', false, null)],
             indexes: [],
-            foreignKeys: fn() => [
+            foreignKeys: fn () => [
                 'fk_test_related_main_entity_no_fk_test_related_entity_name_id' => [
                     'column' => 'name_id',
                     'referencedTable' => 'test_related_entity',
@@ -117,7 +117,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestRelatedMainEntityNoFk::class)
+            new ReflectionEntity(TestRelatedMainEntityNoFk::class),
         ]));
 
         $this->assertCount(1, $result);
@@ -132,10 +132,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('One-to-one inverse side misconfigured: ownedBy does not reference owning property');
 
         iterator_to_array($databaseSchemaComparator->compareAll([
@@ -148,10 +148,10 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('One-to-one inverse side misconfigured: ownedBy is required on inverse side');
 
         iterator_to_array($databaseSchemaComparator->compareAll([
@@ -164,7 +164,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -179,11 +179,11 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         /** @var TableCompareResult[] $result */
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(TestRelatedMainEntityCustomColumn::class)
+            new ReflectionEntity(TestRelatedMainEntityCustomColumn::class),
         ]));
 
         $this->assertEquals('create', $result[0]->operation);
@@ -195,7 +195,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestManyToOneOwner::class),
@@ -204,7 +204,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
         $ownerTable = array_values(array_filter(
             $result,
-            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
+            fn (TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
         ))[0];
 
         $this->assertEquals('create', $ownerTable->operation);
@@ -219,7 +219,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestManyToOneOwnerNoFk::class),
@@ -228,7 +228,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
         $ownerTable = array_values(array_filter(
             $result,
-            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
+            fn (TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
         ))[0];
 
         $this->assertEquals('create', $ownerTable->operation);
@@ -241,14 +241,14 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: ['test_many_to_one_owner', 'test_many_to_one_target'],
-            columns: fn(string $table) => $table === 'test_many_to_one_owner'
+            columns: fn (string $table) => $table === 'test_many_to_one_owner'
                 ? [
                     new DatabaseColumn('id', 'int', false, null),
                     new DatabaseColumn('target_id', 'int', false, null),
                 ]
                 : [new DatabaseColumn('id', 'int', false, null)],
             indexes: [],
-            foreignKeys: fn() => [],
+            foreignKeys: fn () => [],
             indexesExpectation: 'any',
         );
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -258,7 +258,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
         $ownerTable = array_values(array_filter(
             $result,
-            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
+            fn (TableCompareResult $table) => $table->name === 'test_many_to_one_owner'
         ))[0];
 
         $this->assertEquals('update', $ownerTable->operation);
@@ -271,14 +271,14 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: ['test_many_to_one_owner_no_fk', 'test_many_to_one_target'],
-            columns: fn(string $table) => $table === 'test_many_to_one_owner_no_fk'
+            columns: fn (string $table) => $table === 'test_many_to_one_owner_no_fk'
                 ? [
                     new DatabaseColumn('id', 'int', false, null),
                     new DatabaseColumn('nullable_target_id', 'int', true, null),
                 ]
                 : [new DatabaseColumn('id', 'int', false, null)],
             indexes: [],
-            foreignKeys: fn(string $table) => $table === 'test_many_to_one_owner_no_fk'
+            foreignKeys: fn (string $table) => $table === 'test_many_to_one_owner_no_fk'
                 ? [
                     'fk_test_many_to_one_owner_no_fk_test_many_to_one_target_nullable_target_id' => [
                         'column' => 'nullable_target_id',
@@ -297,7 +297,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
         $ownerTable = array_values(array_filter(
             $result,
-            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
+            fn (TableCompareResult $table) => $table->name === 'test_many_to_one_owner_no_fk'
         ))[0];
 
         $this->assertEquals('update', $ownerTable->operation);
@@ -310,14 +310,14 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: ['test_many_to_one_owner_custom_column', 'test_many_to_one_target'],
-            columns: fn(string $table) => $table === 'test_many_to_one_owner_custom_column'
+            columns: fn (string $table) => $table === 'test_many_to_one_owner_custom_column'
                 ? [
                     new DatabaseColumn('id', 'int', false, null),
                     new DatabaseColumn('target_id', 'int', false, null),
                 ]
                 : [new DatabaseColumn('id', 'int', false, null)],
             indexes: [],
-            foreignKeys: fn(string $table) => $table === 'test_many_to_one_owner_custom_column'
+            foreignKeys: fn (string $table) => $table === 'test_many_to_one_owner_custom_column'
                 ? [
                     'fk_test_many_to_one_owner_custom_column_test_many_to_one_target_target_id' => [
                         'column' => 'target_id',
@@ -336,12 +336,12 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
 
         $ownerTable = array_values(array_filter(
             $result,
-            fn(TableCompareResult $table) => $table->name === 'test_many_to_one_owner_custom_column'
+            fn (TableCompareResult $table) => $table->name === 'test_many_to_one_owner_custom_column'
         ))[0];
 
         $this->assertEquals('update', $ownerTable->operation);
-        $created = array_filter($ownerTable->columns, fn($c) => $c->name === 'custom_column_id');
-        $deleted = array_filter($ownerTable->columns, fn($c) => $c->name === 'target_id' && $c->operation === CompareResult::OPERATION_DELETE);
+        $created = array_filter($ownerTable->columns, fn ($c) => $c->name === 'custom_column_id');
+        $deleted = array_filter($ownerTable->columns, fn ($c) => $c->name === 'target_id' && $c->operation === CompareResult::OPERATION_DELETE);
         $this->assertNotEmpty($created);
         $this->assertTrue(reset($created)->propertyData->isNullable);
         $this->assertNotEmpty($deleted);
@@ -352,7 +352,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -368,7 +368,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -384,7 +384,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -400,7 +400,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -416,7 +416,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
     {
         $databaseSchemaComparator = $this->comparator(
             tables: [],
-            columns: fn() => [],
+            columns: fn () => [],
         );
 
         $this->expectException(RuntimeException::class);

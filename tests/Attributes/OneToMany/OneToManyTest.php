@@ -9,22 +9,24 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Tests\AbstractTestCase;
-use Articulate\Tests\Attributes\OneToOne\OneToOneRelatedEntity;
 use RuntimeException;
 
-class NonEntity {
+class NonEntity
+{
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class RelatedEntity {
+class RelatedEntity
+{
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class OneToManyRelatedEntity {
+class OneToManyRelatedEntity
+{
     #[Property]
     private int $id;
 
@@ -52,6 +54,7 @@ class OneToManyTest extends AbstractTestCase
                 /** @var OneToMany $attribute */
                 $attribute = $property->getAttributes(OneToMany::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -92,6 +95,7 @@ class OneToManyTest extends AbstractTestCase
                 /** @var OneToMany $attribute */
                 $attribute = $property->getAttributes(OneToMany::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }
@@ -116,6 +120,7 @@ class OneToManyTest extends AbstractTestCase
                 /** @var OneToMany $attribute */
                 $attribute = $property->getAttributes(OneToMany::class);
                 $propertyToTest = new ReflectionRelation($attribute[0]->newInstance(), $property);
+
                 break;
             }
         }

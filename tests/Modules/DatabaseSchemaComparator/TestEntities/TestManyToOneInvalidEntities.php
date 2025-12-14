@@ -63,4 +63,3 @@ class TestManyToOneOwnerInverseIsOwning
     #[ManyToOne(referencedBy: 'owners')]
     public TestManyToOneTargetInverseIsOwning $target;
 }
-

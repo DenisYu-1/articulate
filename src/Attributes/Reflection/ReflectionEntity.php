@@ -6,10 +6,10 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\ManyToMany;
-use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -25,41 +25,44 @@ class ReflectionEntity extends ReflectionClass
 
     public function isEntity(): bool
     {
-        return !empty($this->getAttributes(Entity::class));
+        return ! empty($this->getAttributes(Entity::class));
     }
 
     public function getEntityProperties(): iterable
     {
-        if (!$this->isEntity()) {
+        if (! $this->isEntity()) {
             yield from [];
+
             return;
         }
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<Property>[] $entityProperty */
             $entityProperty = $property->getAttributes(Property::class);
 
-            if (!empty($entityProperty)) {
+            if (! empty($entityProperty)) {
                 yield new ReflectionProperty(
                     $entityProperty[0]->newInstance(),
                     $property,
                     isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
                     isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,
                 );
+
                 continue;
             }
             /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(OneToOne::class);
-            if (!empty($entityProperty)) {
+            if (! empty($entityProperty)) {
                 $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-                if (!$relation->isOwningSide()) {
+                if (! $relation->isOwningSide()) {
                     continue;
                 }
                 yield $relation;
+
                 continue;
             }
             /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
             $entityProperty = $property->getAttributes(ManyToOne::class);
-            if (!empty($entityProperty)) {
+            if (! empty($entityProperty)) {
                 $propertyInstance = $entityProperty[0]->newInstance();
                 yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
             }
@@ -68,8 +71,9 @@ class ReflectionEntity extends ReflectionClass
 
     public function getEntityFieldsProperties(): iterable
     {
-        if (!$this->isEntity()) {
+        if (! $this->isEntity()) {
             yield from [];
+
             return;
         }
         foreach ($this->getProperties() as $property) {
@@ -80,7 +84,7 @@ class ReflectionEntity extends ReflectionClass
             }
 
             $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-            if (!$relation->isOwningSide()) {
+            if (! $relation->isOwningSide()) {
                 continue;
             }
 
@@ -99,32 +103,33 @@ class ReflectionEntity extends ReflectionClass
 
     public function getEntityRelationProperties(): iterable
     {
-        if (!$this->isEntity()) {
+        if (! $this->isEntity()) {
             yield from [];
+
             return;
         }
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<OneToOne>[] $oneToOne */
             $oneToOne = $property->getAttributes(OneToOne::class);
-            if (!empty($oneToOne)) {
+            if (! empty($oneToOne)) {
                 yield new ReflectionRelation($oneToOne[0]->newInstance(), $property, $this->schemaNaming);
             }
 
             /** @var ReflectionAttribute<ManyToOne>[] $manyToOne */
             $manyToOne = $property->getAttributes(ManyToOne::class);
-            if (!empty($manyToOne)) {
+            if (! empty($manyToOne)) {
                 yield new ReflectionRelation($manyToOne[0]->newInstance(), $property, $this->schemaNaming);
             }
 
             /** @var ReflectionAttribute<OneToMany>[] $oneToMany */
             $oneToMany = $property->getAttributes(OneToMany::class);
-            if (!empty($oneToMany)) {
+            if (! empty($oneToMany)) {
                 yield new ReflectionRelation($oneToMany[0]->newInstance(), $property, $this->schemaNaming);
             }
 
             /** @var ReflectionAttribute<ManyToMany>[] $manyToMany */
             $manyToMany = $property->getAttributes(ManyToMany::class);
-            if (!empty($manyToMany)) {
+            if (! empty($manyToMany)) {
                 yield new ReflectionManyToMany($manyToMany[0]->newInstance(), $property, $this->schemaNaming);
             }
         }
@@ -132,7 +137,7 @@ class ReflectionEntity extends ReflectionClass
 
     public function getPrimaryKeyColumns(): array
     {
-        if (!$this->isEntity()) {
+        if (! $this->isEntity()) {
             return [];
         }
         $columns = [];
@@ -144,20 +149,23 @@ class ReflectionEntity extends ReflectionClass
             $columns[] = $property->getName();
         }
         sort($columns);
+
         return $columns;
     }
 
     public function getTableName()
     {
-        if (!$this->isEntity()) {
+        if (! $this->isEntity()) {
             return null;
         }
+
         return $this->getAttributes(Entity::class)[0]->newInstance()->tableName ?? $this->parseTableName();
     }
 
     private function parseTableName(): string
     {
         $className = explode('\\', $this->getName());
+
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', end($className)));
     }
 }

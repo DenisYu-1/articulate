@@ -26,7 +26,7 @@ class SharedTableTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $results = iterator_to_array($comparator->compareAll([
@@ -36,7 +36,7 @@ class SharedTableTest extends AbstractTestCase
 
         $table = array_values(array_filter(
             $results,
-            fn($table) => $table->name === 'shared_table_base'
+            fn ($table) => $table->name === 'shared_table_base'
         ))[0] ?? null;
 
         $this->assertNotNull($table);
@@ -55,7 +55,7 @@ class SharedTableTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $this->expectException(RuntimeException::class);
@@ -69,7 +69,7 @@ class SharedTableTest extends AbstractTestCase
     {
         $comparator = $this->comparator(
             tables: [],
-            columns: fn(string $table) => [],
+            columns: fn (string $table) => [],
         );
 
         $results = iterator_to_array($comparator->compareAll([
@@ -80,7 +80,7 @@ class SharedTableTest extends AbstractTestCase
 
         $table = array_values(array_filter(
             $results,
-            fn($table) => $table->name === 'shared_table_rel'
+            fn ($table) => $table->name === 'shared_table_rel'
         ))[0] ?? null;
 
         $this->assertNotNull($table);
@@ -106,4 +106,3 @@ class SharedTableTest extends AbstractTestCase
         return new DatabaseSchemaComparator($reader, new SchemaNaming());
     }
 }
-
