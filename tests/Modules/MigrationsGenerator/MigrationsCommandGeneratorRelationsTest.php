@@ -34,7 +34,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
     {
         return [
             [
-                'query' => 'ALTER TABLE `test_table` ADD id VARCHAR(255) NOT NULL',
+                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL',
                 'params' => [
                     'id',
                     'create',
@@ -42,7 +42,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` DROP id',
+                'query' => 'ALTER TABLE `test_table` DROP `id`',
                 'params' => [
                     'id',
                     'delete',
@@ -50,7 +50,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
                 'params' => [
                     'id',
                     'update',
@@ -58,7 +58,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL DEFAULT "test"',
                 'params' => [
                     'id',
                     'update',
@@ -66,7 +66,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(254) NOT NULL DEFAULT "test"',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(254) NOT NULL DEFAULT "test"',
                 'params' => [
                     'id',
                     'update',
@@ -102,7 +102,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
+            'ALTER TABLE `test_table` ADD `related_entity_id` int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
@@ -125,7 +125,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD related_entity_id int NOT NULL',
+            'ALTER TABLE `test_table` ADD `related_entity_id` int NOT NULL',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
@@ -178,7 +178,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` DROP related_entity_id, DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`',
+            'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`, DROP `related_entity_id`',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
@@ -208,7 +208,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'CREATE TABLE `test_table` (related_entity_id int NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
+            'CREATE TABLE `test_table` (`related_entity_id` int NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
             (new MigrationsCommandGenerator())->rollback($tableCompareResult)
         );
     }

@@ -144,7 +144,7 @@ readonly class DatabaseSchemaComparator
                         $columnsIndexed[$columnName]->length,
                     ),
                 );
-                if (! $column->typeMatch || ! $column->isNullableMatch) {
+                if (! $column->typeMatch || ! $column->isNullableMatch || ! $column->isDefaultValueMatch || ! $column->isLengthMatch) {
                     $columnsCompareResults[] = $column;
                 }
             }

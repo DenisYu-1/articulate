@@ -64,56 +64,94 @@ class MigrateCommand extends Command
             $executedMigrations[$row['name']] = $row;
         }
 
-        $executedCount = 0;
-        $lastMigrationInstance = null;
+        if ($isRollback) {
+            // Find the latest executed migration from database
+            $latestMigration = $this->connection
+                ->executeQuery('SELECT name FROM migrations ORDER BY id DESC LIMIT 1')
+                ->fetch();
 
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $filePath = $file->getPathname();
+            if (!$latestMigration) {
+                $io->info('No migrations to rollback.');
+                return Command::SUCCESS;
+            }
 
-                include_once $filePath;
+            $migrationToRollback = $latestMigration['name'];
 
-                $className = pathinfo($filePath, PATHINFO_FILENAME);
-                $namespace = getNamespaceFromFile($filePath);
-                $fullClassName = $namespace . '\\' . $className;
+            // Find the migration file
+            $migrationFileFound = false;
+            $migrationInstance = null;
 
-                if (! $isRollback && isset($executedMigrations[$fullClassName])) {
-                    continue;
-                } elseif ($isRollback && ! isset($executedMigrations[$fullClassName])) {
-                    continue;
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $filePath = $file->getPathname();
+
+                    include_once $filePath;
+
+                    $className = pathinfo($filePath, PATHINFO_FILENAME);
+                    $namespace = getNamespaceFromFile($filePath);
+                    $fullClassName = $namespace . '\\' . $className;
+
+                    if ($fullClassName === $migrationToRollback && class_exists($fullClassName)) {
+                        $migrationInstance = new $fullClassName($this->connection);
+
+                        if ($migrationInstance instanceof BaseMigration) {
+                            $migrationFileFound = true;
+                            break;
+                        } else {
+                            $io->warning("Class $fullClassName is not a valid migration");
+                            return Command::FAILURE;
+                        }
+                    }
                 }
+            }
 
-                if (class_exists($fullClassName)) {
-                    $migrationInstance = new $fullClassName($this->connection);
+            if (!$migrationFileFound || !$migrationInstance) {
+                $io->warning("Migration file for $migrationToRollback not found");
+                return Command::FAILURE;
+            }
 
-                    if (! ($migrationInstance instanceof BaseMigration)) {
-                        $io->warning("Class $fullClassName is not a valid migration");
+            $migrationInstance->rollbackMigration();
+            $io->success("Migration $migrationToRollback rolled back successfully.");
+        } else {
+            // Regular migration execution
+            $executedCount = 0;
 
+            foreach ($iterator as $file) {
+                if ($file->isFile() && $file->getExtension() === 'php') {
+                    $filePath = $file->getPathname();
+
+                    include_once $filePath;
+
+                    $className = pathinfo($filePath, PATHINFO_FILENAME);
+                    $namespace = getNamespaceFromFile($filePath);
+                    $fullClassName = $namespace . '\\' . $className;
+
+                    if (isset($executedMigrations[$fullClassName])) {
                         continue;
                     }
 
-                    if (! $isRollback) {
+                    if (class_exists($fullClassName)) {
+                        $migrationInstance = new $fullClassName($this->connection);
+
+                        if (! ($migrationInstance instanceof BaseMigration)) {
+                            $io->warning("Class $fullClassName is not a valid migration");
+                            continue;
+                        }
+
                         $migrationInstance->runMigration();
                         $io->writeln("Executed migration: $fullClassName");
                         $executedCount++;
                     } else {
-                        $lastMigrationInstance = $migrationInstance;
+                        $io->warning("Class $className does not exist in file $filePath");
                     }
-                } else {
-                    $io->warning("Class $className does not exist in file $filePath");
                 }
             }
-        }
 
-        if ($isRollback && $lastMigrationInstance) {
-            $lastMigrationInstance->rollbackMigration();
-            $io->success('Last migration rolled back successfully.');
-        } elseif ($isRollback) {
-            $io->info('No migrations to rollback.');
-        } elseif ($executedCount > 0) {
-            $io->success("Executed $executedCount migration(s) successfully.");
-        } else {
-            $io->info('No new migrations to execute.');
+            if ($executedCount > 0) {
+                $io->success("Executed $executedCount migration(s) successfully.");
+            } else {
+                $io->info('No new migrations to execute.');
+            }
         }
 
         return Command::SUCCESS;

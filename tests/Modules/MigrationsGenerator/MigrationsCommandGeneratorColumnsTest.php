@@ -33,7 +33,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
     {
         return [
             [
-                'query' => 'ALTER TABLE `test_table` ADD id VARCHAR(255) NOT NULL',
+                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL',
                 'params' => [
                     'id',
                     'create',
@@ -41,7 +41,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` DROP id',
+                'query' => 'ALTER TABLE `test_table` DROP `id`',
                 'params' => [
                     'id',
                     'delete',
@@ -49,7 +49,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
                 'params' => [
                     'id',
                     'update',
@@ -57,7 +57,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL DEFAULT "test"',
                 'params' => [
                     'id',
                     'update',
@@ -65,14 +65,58 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(254) NOT NULL DEFAULT "test"',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(254) NOT NULL DEFAULT "test"',
                 'params' => [
                     'id',
                     'update',
                     new PropertiesData('string', false, 'test', 254),
                     new PropertiesData(),
                 ],
+            ], [
+                'query' => 'ALTER TABLE `test_table` ADD `user_id` int NOT NULL',
+                'params' => [
+                    'user_id',
+                    'create',
+                    new PropertiesData('int', false),
+                    new PropertiesData(),
+                ],
+            ], [
+                'query' => 'ALTER TABLE `test_table` DROP `old_column`',
+                'params' => [
+                    'old_column',
+                    'delete',
+                    new PropertiesData('string', true),
+                    new PropertiesData(),
+                ],
             ],
         ];
+    }
+
+    public function testColumnQuotingInSql()
+    {
+        $tableCompareResult = new TableCompareResult(
+            'test_table',
+            'update',
+            [
+                new ColumnCompareResult(
+                    'user_id',
+                    'create',
+                    new PropertiesData('int', false),
+                    new PropertiesData()
+                ),
+                new ColumnCompareResult(
+                    'old_column',
+                    'delete',
+                    new PropertiesData('string', true),
+                    new PropertiesData()
+                ),
+            ],
+            [],
+            []
+        );
+
+        $result = (new MigrationsCommandGenerator())->generate($tableCompareResult);
+        $this->assertStringContainsString('ADD `user_id`', $result);
+        $this->assertStringContainsString('DROP `old_column`', $result);
     }
 }

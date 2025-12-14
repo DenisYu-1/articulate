@@ -58,7 +58,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL, DROP INDEX `idx_test_table_id`',
+            'ALTER TABLE `test_table` DROP INDEX `idx_test_table_id`, MODIFY `id` VARCHAR(255) NOT NULL',
             (new MigrationsCommandGenerator())->generate($tableCompareResult)
         );
     }
@@ -87,7 +87,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD id VARCHAR(255) NOT NULL, ADD  INDEX `idx_test_table_id` (`id`)',
+            'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL, ADD INDEX `idx_test_table_id` (`id`)',
             (new MigrationsCommandGenerator())->rollback($tableCompareResult)
         );
     }

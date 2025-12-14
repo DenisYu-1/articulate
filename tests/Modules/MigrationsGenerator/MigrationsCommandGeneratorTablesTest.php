@@ -33,7 +33,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
     {
         return [
             [
-                'query' => 'CREATE TABLE `test_table` (id VARCHAR(255) NOT NULL)',
+                'query' => 'CREATE TABLE `test_table` (`id` VARCHAR(255) NOT NULL)',
                 'operation' => 'create',
                 'parameters' => [
                     'name' => 'id',
@@ -53,7 +53,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` MODIFY id VARCHAR(255) NOT NULL',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -63,7 +63,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD id VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL DEFAULT "test"',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -73,7 +73,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD id VARCHAR(255)',
+                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255)',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -83,7 +83,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD id VARCHAR(254)',
+                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(254)',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

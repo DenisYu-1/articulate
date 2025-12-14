@@ -43,7 +43,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'CREATE TABLE `test_table` (id VARCHAR(255) NOT NULL)',
+                'query' => 'CREATE TABLE `test_table` (`id` VARCHAR(255) NOT NULL)',
                 'operation' => 'delete',
                 'parameters' => [
                     'name' => 'id',
@@ -53,7 +53,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` MODIFY id int NOT NULL',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` int NOT NULL',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -63,7 +63,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` DROP COLUMN id',
+                'query' => 'ALTER TABLE `test_table` DROP `id`',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -73,7 +73,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` DROP COLUMN id',
+                'query' => 'ALTER TABLE `test_table` DROP `id`',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

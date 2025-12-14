@@ -38,10 +38,28 @@ class MigrationsCommandGenerator
         }
 
         $alterParts = [];
+
+        // For DROP operations, process foreign keys and indexes before columns
+        // For ADD operations, process columns before indexes and foreign keys
+
+        // First, handle foreign key deletions
+        foreach ($compareResult->foreignKeys as $foreignKey) {
+            if ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
+                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+            }
+        }
+
+        // Then, handle index deletions
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
+                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
+            }
+        }
+
+        // Then, handle column operations
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP ' . $column->name;
-
+                $alterParts[] = 'DROP `' . $column->name . '`';
                 continue;
             }
             $parts = [];
@@ -54,19 +72,16 @@ class MigrationsCommandGenerator
             $alterParts[] = implode(' ', $parts);
         }
 
+        // Finally, handle additions: indexes then foreign keys
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_CREATE) {
                 $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
-            } elseif ($index->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
             }
         }
 
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
                 $alterParts[] = $this->foreignKeyDefinition($foreignKey);
-            } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
             }
         }
 
@@ -108,10 +123,29 @@ class MigrationsCommandGenerator
         }
 
         $alterParts = [];
+
+        // For rollback operations, we need to reverse the order of the forward migration
+        // Since forward migration does: DROP FKs -> DROP indexes -> DROP columns -> ADD columns -> ADD indexes -> ADD FKs
+        // Rollback should do: DROP FKs -> DROP indexes -> DROP columns -> ADD columns -> ADD indexes -> ADD FKs
+
+        // First, handle foreign key deletions (for rollback of ADD FK operations)
+        foreach ($compareResult->foreignKeys as $foreignKey) {
+            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
+                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+            }
+        }
+
+        // Then, handle index deletions (for rollback of ADD INDEX operations)
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_CREATE) {
+                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
+            }
+        }
+
+        // Then, handle column operations
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP COLUMN ' . $column->name;
-
+                $alterParts[] = 'DROP `' . $column->name . '`';
                 continue;
             }
             $columnParts = [];
@@ -124,18 +158,15 @@ class MigrationsCommandGenerator
             $alterParts[] = implode(' ', $columnParts);
         }
 
+        // Finally, handle additions: indexes then foreign keys (for rollback of DROP operations)
         foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
-            } elseif ($index->operation === CompareResult::OPERATION_DELETE) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
                 $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
             }
         }
 
         foreach ($compareResult->foreignKeys as $foreignKey) {
-            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
-            } elseif ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
+            if ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
                 $alterParts[] = $this->foreignKeyDefinition($foreignKey);
             }
         }
@@ -159,7 +190,7 @@ class MigrationsCommandGenerator
     private function columnDefinition($name, PropertiesData $column)
     {
         $parts = [];
-        $parts[] = $name;
+        $parts[] = '`' . $name . '`';
         $parts[] = $this->mapTypeLength($column);
         if (! $column->isNullable) {
             $parts[] = 'NOT NULL';
@@ -173,11 +204,11 @@ class MigrationsCommandGenerator
 
     private function generateIndexSql(IndexCompareResult $index, string $tableName): string
     {
-        $indexType = $index->isUnique ? 'UNIQUE' : '';
+        $indexType = $index->isUnique ? 'UNIQUE ' : '';
         $columns = implode(', ', array_map(fn ($col) => '`' . $col . '`', $index->columns));
 
         return sprintf(
-            'ADD %s INDEX `%s` (%s)',
+            'ADD %sINDEX `%s` (%s)',
             $indexType,
             $index->name,
             $columns
