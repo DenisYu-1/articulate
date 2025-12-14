@@ -10,21 +10,28 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator
 {
+    public function __construct(
+        private readonly string $databaseType = 'mysql'
+    ) {}
+
     public function generate(TableCompareResult $compareResult): string
     {
         if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
-            return 'DROP TABLE `' . $compareResult->name . '`';
+            $tableQuote = $this->getIdentifierQuote();
+            return 'DROP TABLE ' . $tableQuote . $compareResult->name . $tableQuote;
         }
 
         if ($compareResult->operation === CompareResult::OPERATION_CREATE) {
-            $query = 'CREATE TABLE `' . $compareResult->name . '` (';
+            $tableQuote = $this->getIdentifierQuote();
+            $query = 'CREATE TABLE ' . $tableQuote . $compareResult->name . $tableQuote . ' (';
             $columns = [];
             foreach ($compareResult->columns as $column) {
                 $columns[] = $this->columnDefinition($column->name, $column->propertyData);
             }
             $parts = [implode(', ', $columns)];
             if (! empty($compareResult->primaryColumns)) {
-                $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
+                $quotedColumns = array_map(fn($col) => $tableQuote . $col . $tableQuote, $compareResult->primaryColumns);
+                $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
             }
             foreach ($compareResult->foreignKeys as $foreignKey) {
                 if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
@@ -45,28 +52,32 @@ class MigrationsCommandGenerator
         // First, handle foreign key deletions
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $dropType = $this->databaseType === 'mysql' ? 'FOREIGN KEY' : 'CONSTRAINT';
+                $alterParts[] = 'DROP ' . $dropType . ' ' . $quote . $foreignKey->name . $quote;
             }
         }
 
         // Then, handle index deletions
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $alterParts[] = 'DROP INDEX ' . $quote . $index->name . $quote;
             }
         }
 
         // Then, handle column operations
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP `' . $column->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $alterParts[] = 'DROP ' . $quote . $column->name . $quote;
                 continue;
             }
             $parts = [];
             if ($column->operation === CompareResult::OPERATION_CREATE) {
                 $parts[] = 'ADD';
             } else {
-                $parts[] = 'MODIFY';
+                $parts[] = $this->databaseType === 'mysql' ? 'MODIFY' : 'ALTER COLUMN';
             }
             $parts[] = $this->columnDefinition($column->name, $column->propertyData);
             $alterParts[] = implode(' ', $parts);
@@ -89,24 +100,28 @@ class MigrationsCommandGenerator
             return '';
         }
 
-        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
+        $tableQuote = $this->getIdentifierQuote();
+        return 'ALTER TABLE ' . $tableQuote . $compareResult->name . $tableQuote . ' ' . implode(', ', $alterParts);
     }
 
     public function rollback(TableCompareResult $compareResult): string
     {
         if ($compareResult->operation === TableCompareResult::OPERATION_CREATE) {
-            return 'DROP TABLE `' . $compareResult->name . '`';
+            $tableQuote = $this->getIdentifierQuote();
+            return 'DROP TABLE ' . $tableQuote . $compareResult->name . $tableQuote;
         }
 
         if ($compareResult->operation === TableCompareResult::OPERATION_DELETE) {
-            $query = 'CREATE TABLE `' . $compareResult->name . '` (';
+            $tableQuote = $this->getIdentifierQuote();
+            $query = 'CREATE TABLE ' . $tableQuote . $compareResult->name . $tableQuote . ' (';
             $columns = [];
             foreach ($compareResult->columns as $column) {
                 $columns[] = $this->columnDefinition($column->name, $column->columnData);
             }
             $parts = [implode(', ', $columns)];
             if (! empty($compareResult->primaryColumns)) {
-                $parts[] = 'PRIMARY KEY (`' . implode('`, `', $compareResult->primaryColumns) . '`)';
+                $quotedColumns = array_map(fn($col) => $tableQuote . $col . $tableQuote, $compareResult->primaryColumns);
+                $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
             }
             foreach ($compareResult->foreignKeys as $foreignKey) {
                 if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
@@ -131,28 +146,32 @@ class MigrationsCommandGenerator
         // First, handle foreign key deletions (for rollback of ADD FK operations)
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP FOREIGN KEY `' . $foreignKey->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $dropType = $this->databaseType === 'mysql' ? 'FOREIGN KEY' : 'CONSTRAINT';
+                $alterParts[] = 'DROP ' . $dropType . ' ' . $quote . $foreignKey->name . $quote;
             }
         }
 
         // Then, handle index deletions (for rollback of ADD INDEX operations)
         foreach ($compareResult->indexes as $index) {
             if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP INDEX `' . $index->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $alterParts[] = 'DROP INDEX ' . $quote . $index->name . $quote;
             }
         }
 
         // Then, handle column operations
         foreach ($compareResult->columns as $column) {
             if ($column->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP `' . $column->name . '`';
+                $quote = $this->getIdentifierQuote();
+                $alterParts[] = 'DROP ' . $quote . $column->name . $quote;
                 continue;
             }
             $columnParts = [];
             if ($column->operation === CompareResult::OPERATION_DELETE) {
                 $columnParts[] = 'ADD';
             } else {
-                $columnParts[] = 'MODIFY';
+                $columnParts[] = $this->databaseType === 'mysql' ? 'MODIFY' : 'ALTER COLUMN';
             }
             $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
             $alterParts[] = implode(' ', $columnParts);
@@ -175,7 +194,8 @@ class MigrationsCommandGenerator
             return '';
         }
 
-        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
+        $tableQuote = $this->getIdentifierQuote();
+        return 'ALTER TABLE ' . $tableQuote . $compareResult->name . $tableQuote . ' ' . implode(', ', $alterParts);
     }
 
     private function mapTypeLength(?PropertiesData $propertyData): string
@@ -189,8 +209,9 @@ class MigrationsCommandGenerator
 
     private function columnDefinition($name, PropertiesData $column)
     {
+        $quote = $this->getIdentifierQuote();
         $parts = [];
-        $parts[] = '`' . $name . '`';
+        $parts[] = $quote . $name . $quote;
         $parts[] = $this->mapTypeLength($column);
         if (! $column->isNullable) {
             $parts[] = 'NOT NULL';
@@ -204,22 +225,26 @@ class MigrationsCommandGenerator
 
     private function generateIndexSql(IndexCompareResult $index, string $tableName): string
     {
+        $quote = $this->getIdentifierQuote();
         $indexType = $index->isUnique ? 'UNIQUE ' : '';
-        $columns = implode(', ', array_map(fn ($col) => '`' . $col . '`', $index->columns));
+        $columns = implode(', ', array_map(fn ($col) => $quote . $col . $quote, $index->columns));
 
         return sprintf(
-            'ADD %sINDEX `%s` (%s)',
+            'ADD %sINDEX %s%s%s (%s)',
             $indexType,
+            $quote,
             $index->name,
+            $quote,
             $columns
         );
     }
 
     private function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey, bool $withAdd = true): string
     {
+        $quote = $this->getIdentifierQuote();
         $template = $withAdd
-            ? 'ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)'
-            : 'CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`)';
+            ? 'ADD CONSTRAINT ' . $quote . '%s' . $quote . ' FOREIGN KEY (' . $quote . '%s' . $quote . ') REFERENCES ' . $quote . '%s' . $quote . '(' . $quote . '%s' . $quote . ')'
+            : 'CONSTRAINT ' . $quote . '%s' . $quote . ' FOREIGN KEY (' . $quote . '%s' . $quote . ') REFERENCES ' . $quote . '%s' . $quote . '(' . $quote . '%s' . $quote . ')';
 
         return sprintf(
             $template,
@@ -228,5 +253,15 @@ class MigrationsCommandGenerator
             $foreignKey->referencedTable,
             $foreignKey->referencedColumn,
         );
+    }
+
+    private function getIdentifierQuote(): string
+    {
+        return match ($this->databaseType) {
+            'mysql' => '`',
+            'pgsql' => '"',
+            'sqlite' => '"', // SQLite also uses double quotes for identifiers
+            default => '`',
+        };
     }
 }

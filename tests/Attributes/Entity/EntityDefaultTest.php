@@ -50,8 +50,9 @@ class EntityDefaultTest extends AbstractTestCase
         $properties = iterator_to_array($entity->getEntityProperties());
         $properties = iterator_to_array($entity->getEntityFieldsProperties());
 
-        $this->assertEquals(1, count($properties));
+        $this->assertEquals(2, count($properties));
         $this->assertEquals('property_with_attribute', $properties[0]->getColumnName());
+        $this->assertEquals('custom_pk', $properties[1]->getColumnName());
     }
 
     public function testPrimaryKeyColumnsUseColumnName()
