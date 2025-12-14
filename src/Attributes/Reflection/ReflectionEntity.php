@@ -142,11 +142,20 @@ class ReflectionEntity extends ReflectionClass
         }
         $columns = [];
         foreach ($this->getProperties() as $property) {
-            $entityProperty = $property->getAttributes(PrimaryKey::class);
-            if (empty($entityProperty)) {
+            $primaryKeyAttribute = $property->getAttributes(PrimaryKey::class);
+            if (empty($primaryKeyAttribute)) {
                 continue;
             }
-            $columns[] = $property->getName();
+
+            // Check if property has Property attribute for custom column name
+            $propertyAttribute = $property->getAttributes(Property::class);
+            if (!empty($propertyAttribute)) {
+                $reflectionProperty = new ReflectionProperty($propertyAttribute[0]->newInstance(), $property);
+                $columns[] = $reflectionProperty->getColumnName();
+            } else {
+                // Fall back to default column name parsing
+                $columns[] = strtolower(preg_replace('/\B([A-Z])/', '_$1', $property->getName()));
+            }
         }
         sort($columns);
 

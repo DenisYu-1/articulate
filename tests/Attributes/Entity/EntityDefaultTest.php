@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Attributes\Entity;
 
 use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
@@ -15,6 +16,10 @@ class EntityDefaultTest extends AbstractTestCase
     private int $propertyWithAttribute;
 
     private int $propertyWithoutAttribute;
+
+    #[PrimaryKey]
+    #[Property(name: 'custom_pk')]
+    public int $id;
 
     public function testEntity()
     {
@@ -47,5 +52,14 @@ class EntityDefaultTest extends AbstractTestCase
 
         $this->assertEquals(1, count($properties));
         $this->assertEquals('property_with_attribute', $properties[0]->getColumnName());
+    }
+
+    public function testPrimaryKeyColumnsUseColumnName()
+    {
+        $entity = new ReflectionEntity(static::class);
+
+        $primaryKeyColumns = $entity->getPrimaryKeyColumns();
+
+        $this->assertEquals(['custom_pk'], $primaryKeyColumns);
     }
 }
