@@ -24,7 +24,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
     {
         if ($this->entityProperty->getTargetEntity()) {
             $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
-            if (! $reflectionEntity->isEntity()) {
+            if (!$reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
             if ($this->isOneToMany()) {
@@ -38,9 +38,9 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         }
         $type = $this->property->getType();
 
-        if ($type && ! $type->isBuiltin()) {
+        if ($type && !$type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
-            if (! $reflectionEntity->isEntity()) {
+            if (!$reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
             }
 
@@ -206,7 +206,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         }
         if ($type->isBuiltin()) {
             $allowed = ['array', 'iterable'];
-            if (! in_array($type->getName(), $allowed, true)) {
+            if (!in_array($type->getName(), $allowed, true)) {
                 throw new RuntimeException('One-to-many property must be iterable collection');
             }
         }

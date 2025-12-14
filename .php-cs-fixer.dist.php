@@ -103,7 +103,7 @@ return $config
         'no_whitespace_before_comma_in_array' => true,
         'no_whitespace_in_blank_line' => true,
         'normalize_index_brace' => true,
-        'not_operator_with_successor_space' => true,
+        'not_operator_with_successor_space' => false,
         'object_operator_without_whitespace' => true,
         'ordered_imports' => ['sort_algorithm' => 'alpha'],
         'phpdoc_indent' => true,

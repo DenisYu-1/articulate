@@ -12,21 +12,21 @@ class OneToOneRelationValidator implements RelationValidatorInterface
 {
     public function validate(RelationInterface $relation): void
     {
-        if (! $relation->isForeignKeyRequired()) {
+        if (!$relation->isForeignKeyRequired()) {
             return;
         }
-        if (! $relation->isOwningSide()) {
+        if (!$relation->isOwningSide()) {
             return;
         }
 
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
         $inversedPropertyName = $relation->getInversedBy();
 
-        if (! $inversedPropertyName) {
+        if (!$inversedPropertyName) {
             return;
         }
 
-        if (! $targetEntity->hasProperty($inversedPropertyName)) {
+        if (!$targetEntity->hasProperty($inversedPropertyName)) {
             throw new RuntimeException('One-to-one inverse side misconfigured: property not found');
         }
 

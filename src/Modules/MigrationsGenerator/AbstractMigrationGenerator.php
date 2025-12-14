@@ -83,7 +83,7 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
     {
         $quote = $this->getIdentifierQuote();
         $indexType = $index->isUnique ? 'UNIQUE ' : '';
-        $columns = implode(', ', array_map(fn($col) => $quote . $col . $quote, $index->columns));
+        $columns = implode(', ', array_map(fn ($col) => $quote . $col . $quote, $index->columns));
 
         return sprintf(
             'ADD %sINDEX %s%s%s (%s)',

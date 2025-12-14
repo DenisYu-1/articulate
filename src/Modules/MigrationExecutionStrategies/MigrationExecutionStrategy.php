@@ -39,8 +39,9 @@ class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface
                 if (class_exists($fullClassName)) {
                     $migrationInstance = new $fullClassName($this->connection);
 
-                    if (! ($migrationInstance instanceof BaseMigration)) {
+                    if (!($migrationInstance instanceof BaseMigration)) {
                         $io->warning("Class $fullClassName is not a valid migration");
+
                         continue;
                     }
 

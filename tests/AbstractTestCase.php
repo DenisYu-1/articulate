@@ -29,6 +29,7 @@ abstract class AbstractTestCase extends TestCase
             if (file_exists($path)) {
                 $dotenv = Dotenv::createImmutable(dirname($path));
                 $dotenv->load();
+
                 break;
             }
         }
@@ -94,7 +95,7 @@ abstract class AbstractTestCase extends TestCase
     }
 
     /**
-     * Get a database connection by name
+     * Get a database connection by name.
      */
     protected function getConnection(string $databaseName): Connection
     {
@@ -107,12 +108,13 @@ abstract class AbstractTestCase extends TestCase
     }
 
     /**
-     * Check if a specific database is available
+     * Check if a specific database is available.
      */
     protected function isDatabaseAvailable(string $databaseName): bool
     {
         try {
             $connection = $this->getConnection($databaseName);
+
             return $connection->testConnection();
         } catch (\Exception $e) {
             return false;
@@ -120,7 +122,7 @@ abstract class AbstractTestCase extends TestCase
     }
 
     /**
-     * Skip test if database is not available
+     * Skip test if database is not available.
      */
     protected function skipIfDatabaseNotAvailable(string $databaseName): void
     {

@@ -52,7 +52,7 @@ class DatabaseSchemaReader
                 continue;
             }
 
-            if (! isset($indexes[$indexName])) {
+            if (!isset($indexes[$indexName])) {
                 $indexes[$indexName] = [
                     'columns' => [],
                     'unique' => $isUnique,
@@ -133,7 +133,7 @@ class DatabaseSchemaReader
     private function isUniqueIndex(array $normalized): bool
     {
         if (array_key_exists('non_unique', $normalized)) {
-            return ! (bool) $normalized['non_unique'];
+            return !(bool) $normalized['non_unique'];
         }
         if (array_key_exists('unique', $normalized)) {
             return (bool) $normalized['unique'];

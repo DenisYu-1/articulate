@@ -28,7 +28,7 @@ class Index
 
             /** @var ReflectionAttribute<Property>[] $attributes */
             $attributes = $property->getAttributes(Property::class);
-            if (! empty($attributes)) {
+            if (!empty($attributes)) {
                 /** @var Property $entityProperty */
                 $entityProperty = $attributes[0]->newInstance();
                 $reflectionProperty = new ReflectionProperty($entityProperty, $property);

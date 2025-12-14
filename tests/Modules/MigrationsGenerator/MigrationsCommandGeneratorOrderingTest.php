@@ -187,8 +187,11 @@ class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase
 
         // Verify ordering is correct
         for ($i = 1; $i < count($positions); $i++) {
-            $this->assertLessThan($positions[$i], $positions[$i-1],
-                "Operation '{$expectedOrder[$i]}' should come before '{$expectedOrder[$i-1]}'");
+            $this->assertLessThan(
+                $positions[$i],
+                $positions[$i - 1],
+                "Operation '{$expectedOrder[$i]}' should come before '{$expectedOrder[$i - 1]}'"
+            );
         }
     }
 }

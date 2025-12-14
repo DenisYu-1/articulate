@@ -49,7 +49,7 @@ readonly class DatabaseSchemaComparator
             $existingForeignKeys = [];
             $foreignKeysToRemove = [];
 
-            if (! in_array($tableName, $existingTables, true)) {
+            if (!in_array($tableName, $existingTables, true)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
             } else {
                 $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
@@ -144,7 +144,7 @@ readonly class DatabaseSchemaComparator
                         $columnsIndexed[$columnName]->length,
                     ),
                 );
-                if (! $column->typeMatch || ! $column->isNullableMatch || ! $column->isDefaultValueMatch || ! $column->isLengthMatch) {
+                if (!$column->typeMatch || !$column->isNullableMatch || !$column->isDefaultValueMatch || !$column->isLengthMatch) {
                     $columnsCompareResults[] = $column;
                 }
             }
@@ -167,7 +167,7 @@ readonly class DatabaseSchemaComparator
             $indexCompareResults = [];
 
             foreach ($entityIndexes as $indexName => $indexInstance) {
-                if (! isset($existingIndexes[$indexName])) {
+                if (!isset($existingIndexes[$indexName])) {
                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                     $indexCompareResults[] = new IndexCompareResult(
                         $indexName,
@@ -200,7 +200,7 @@ readonly class DatabaseSchemaComparator
                     if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
                         continue;
                     }
-                    if (! $propertyData['relation']) {
+                    if (!$propertyData['relation']) {
                         continue;
                     }
                     $targetEntity = new ReflectionEntity($propertyData['relation']->getTargetEntity());
@@ -215,7 +215,7 @@ readonly class DatabaseSchemaComparator
                         $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
                         $validator->validate($propertyData['relation']);
                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-                        if (! $foreignKeyExists) {
+                        if (!$foreignKeyExists) {
                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
                                 $foreignKeyName,
                                 CompareResult::OPERATION_CREATE,
@@ -258,7 +258,7 @@ readonly class DatabaseSchemaComparator
                 throw new EmptyPropertiesList($tableName);
             }
 
-            if (! $operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {
+            if (!$operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {
                 yield from [];
 
                 continue;
@@ -296,11 +296,11 @@ readonly class DatabaseSchemaComparator
     {
         $entitiesIndexed = [];
         foreach ($entities as $entity) {
-            if (! $entity->isEntity()) {
+            if (!$entity->isEntity()) {
                 continue;
             }
             $tableName = $entity->getTableName();
-            if (! isset($entitiesIndexed[$tableName])) {
+            if (!isset($entitiesIndexed[$tableName])) {
                 $entitiesIndexed[$tableName] = [];
             }
             $entitiesIndexed[$tableName][] = $entity;
@@ -324,17 +324,17 @@ readonly class DatabaseSchemaComparator
         $definitions = [];
         foreach ($entities as $entity) {
             foreach ($entity->getEntityRelationProperties() as $relation) {
-                if (! $relation instanceof ReflectionManyToMany) {
+                if (!$relation instanceof ReflectionManyToMany) {
                     continue;
                 }
-                if (! $relation->isOwningSide()) {
+                if (!$relation->isOwningSide()) {
                     continue;
                 }
                 $ownerEntity = new ReflectionEntity($relation->getDeclaringClassName());
                 $targetEntity = new ReflectionEntity($relation->getTargetEntity());
                 $tableName = $relation->getTableName();
 
-                if (! isset($definitions[$tableName])) {
+                if (!isset($definitions[$tableName])) {
                     $definitions[$tableName] = [
                         'tableName' => $tableName,
                         'ownerTable' => $ownerEntity->getTableName(),
@@ -376,7 +376,7 @@ readonly class DatabaseSchemaComparator
         $existingIndexes = [];
         $indexesToRemove = [];
 
-        if (! in_array($tableName, $existingTables, true)) {
+        if (!in_array($tableName, $existingTables, true)) {
             $operation = TableCompareResult::OPERATION_CREATE;
         } else {
             $existingColumns = $this->databaseSchemaReader->getTableColumns($tableName);
@@ -420,7 +420,7 @@ readonly class DatabaseSchemaComparator
                 $property,
                 new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
             );
-            if (! $result->typeMatch || ! $result->isNullableMatch || ! $result->isDefaultValueMatch || ! $result->isLengthMatch) {
+            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
                 $columnsCompareResults[] = $result;
             }
         }
@@ -450,7 +450,7 @@ readonly class DatabaseSchemaComparator
         ];
 
         foreach ($desiredForeignKeys as $name => $fk) {
-            if (! isset($existingForeignKeys[$name])) {
+            if (!isset($existingForeignKeys[$name])) {
                 $operation = $operation ?? CompareResult::OPERATION_UPDATE;
                 $foreignKeysByName[$name] = new ForeignKeyCompareResult(
                     $name,
@@ -495,7 +495,7 @@ readonly class DatabaseSchemaComparator
             throw new EmptyPropertiesList($tableName);
         }
 
-        if (! $operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
             return null;
         }
 
@@ -521,7 +521,7 @@ readonly class DatabaseSchemaComparator
             $properties[$property->name] = $property;
         }
         foreach ($incoming as $property) {
-            if (! isset($properties[$property->name])) {
+            if (!isset($properties[$property->name])) {
                 $properties[$property->name] = $property;
 
                 continue;
@@ -536,7 +536,7 @@ readonly class DatabaseSchemaComparator
                     ),
                 );
             }
-            if ($property->nullable && ! $current->nullable) {
+            if ($property->nullable && !$current->nullable) {
                 $properties[$property->name] = new MappingTableProperty(
                     name: $current->name,
                     type: $current->type,
@@ -582,7 +582,7 @@ readonly class DatabaseSchemaComparator
             'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
         ];
 
-        if (! isset($propertiesIndexed[$columnName])) {
+        if (!isset($propertiesIndexed[$columnName])) {
             $propertiesIndexed[$columnName] = $incoming;
 
             return $propertiesIndexed;
@@ -656,7 +656,7 @@ readonly class DatabaseSchemaComparator
         }
         $columnsLower = array_map('strtolower', $columns);
 
-        if (! empty($primaryColumns)) {
+        if (!empty($primaryColumns)) {
             $primaryLower = array_map('strtolower', $primaryColumns);
             if ($columnsLower === $primaryLower) {
                 return true;

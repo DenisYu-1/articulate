@@ -150,6 +150,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
+        // Clean up any existing table
+        $this->cleanUpTables([$this->getTableName('test_pgsql', $databaseName)]);
+
         // Test PostgreSQL-specific features
         $tableName = $this->getTableName('test_pgsql', $databaseName);
         $sql = "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, data JSONB)";

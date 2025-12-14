@@ -31,7 +31,7 @@ class MigrationGenerator
         );
 
         $directory = sprintf('%s/%s/%s', $this->outputDirectory, $date->format('Y'), $date->format('m'));
-        if (! file_exists($directory)) {
+        if (!file_exists($directory)) {
             mkdir($directory, 0755, true);
         }
         $fileName = sprintf('%s/%s.php', $directory, $className);

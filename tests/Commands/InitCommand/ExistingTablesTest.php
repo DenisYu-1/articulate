@@ -10,7 +10,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 class ExistingTablesTest extends DatabaseTestCase
 {
     /**
-     * Test init command execution with existing migrations table
+     * Test init command execution with existing migrations table.
      *
      * @dataProvider databaseProvider
      * @group database
@@ -19,6 +19,9 @@ class ExistingTablesTest extends DatabaseTestCase
     {
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
+
+        // Clean up any existing migrations table first
+        $this->cleanUpTables(['migrations']);
 
         // Create migrations table manually first
         $createTableSql = match ($databaseName) {
@@ -37,6 +40,15 @@ class ExistingTablesTest extends DatabaseTestCase
         };
 
         $this->runTestWithConnection($connection, $existenceQuery);
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->currentConnection && $this->currentDatabaseName) {
+            $this->cleanUpTables(['migrations']);
+        }
+
+        parent::tearDown();
     }
 
     private function runTestWithConnection(Connection $connection, string $existenceQuery): void

@@ -13,22 +13,22 @@ class ManyToOneRelationValidator implements RelationValidatorInterface
 {
     public function validate(RelationInterface $relation): void
     {
-        if (! $relation->isManyToOne()) {
+        if (!$relation->isManyToOne()) {
             return;
         }
 
         $inversedPropertyName = $relation->getInversedBy();
-        if (! $inversedPropertyName) {
+        if (!$inversedPropertyName) {
             return;
         }
 
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        if (! $targetEntity->hasProperty($inversedPropertyName)) {
+        if (!$targetEntity->hasProperty($inversedPropertyName)) {
             throw new RuntimeException('Many-to-one inverse side misconfigured: property not found');
         }
 
         $targetProperty = $targetEntity->getProperty($inversedPropertyName);
-        if (! empty($targetProperty->getAttributes(ManyToOne::class))) {
+        if (!empty($targetProperty->getAttributes(ManyToOne::class))) {
             throw new RuntimeException('Many-to-one inverse side misconfigured: inverse side marked as owner');
         }
 

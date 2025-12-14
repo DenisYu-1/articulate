@@ -8,7 +8,8 @@ class MigrationsCommandGenerator
 {
     public function __construct(
         private readonly MigrationGeneratorStrategy $strategy
-    ) {}
+    ) {
+    }
 
     public function generate(TableCompareResult $compareResult): string
     {

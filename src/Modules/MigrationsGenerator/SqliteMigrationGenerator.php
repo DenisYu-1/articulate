@@ -3,8 +3,6 @@
 namespace Articulate\Modules\MigrationsGenerator;
 
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 
@@ -29,7 +27,7 @@ class SqliteMigrationGenerator extends AbstractMigrationGenerator
         }
         $parts = [implode(', ', $columns)];
         if (!empty($compareResult->primaryColumns)) {
-            $quotedColumns = array_map(fn($col) => '"' . $col . '"', $compareResult->primaryColumns);
+            $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
         foreach ($compareResult->foreignKeys as $foreignKey) {
@@ -66,7 +64,7 @@ class SqliteMigrationGenerator extends AbstractMigrationGenerator
         }
         $parts = [implode(', ', $columns)];
         if (!empty($compareResult->primaryColumns)) {
-            $quotedColumns = array_map(fn($col) => '"' . $col . '"', $compareResult->primaryColumns);
+            $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
         foreach ($compareResult->foreignKeys as $foreignKey) {

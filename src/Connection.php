@@ -55,7 +55,7 @@ class Connection
 
     public function beginTransaction()
     {
-        if (! $this->pdo->inTransaction()) {
+        if (!$this->pdo->inTransaction()) {
             $this->pdo->beginTransaction();
         }
     }

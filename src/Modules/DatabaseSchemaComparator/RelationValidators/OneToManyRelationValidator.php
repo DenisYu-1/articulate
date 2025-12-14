@@ -12,17 +12,17 @@ class OneToManyRelationValidator implements RelationValidatorInterface
 {
     public function validate(RelationInterface $relation): void
     {
-        if (! $relation->isOneToMany()) {
+        if (!$relation->isOneToMany()) {
             return;
         }
 
         $mappedBy = $relation->getMappedBy();
-        if (! $mappedBy) {
+        if (!$mappedBy) {
             throw new RuntimeException('One-to-many inverse side misconfigured: ownedBy is required');
         }
 
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
-        if (! $targetEntity->hasProperty($mappedBy)) {
+        if (!$targetEntity->hasProperty($mappedBy)) {
             throw new RuntimeException('One-to-many inverse side misconfigured: owning property not found');
         }
 

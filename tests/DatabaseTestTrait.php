@@ -5,7 +5,7 @@ namespace Articulate\Tests;
 use Articulate\Connection;
 
 /**
- * Trait for running tests across multiple database systems
+ * Trait for running tests across multiple database systems.
  *
  * This trait provides data providers and utilities to automatically run
  * the same test method against MySQL, PostgreSQL, and SQLite databases.
@@ -13,7 +13,7 @@ use Articulate\Connection;
 trait DatabaseTestTrait
 {
     /**
-     * Data provider that returns all database types
+     * Data provider that returns all database types.
      *
      * @return array<array{string}> Array of [database_name] tuples
      */
@@ -27,7 +27,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Data provider for MySQL only
+     * Data provider for MySQL only.
      *
      * @return array<array{string}>
      */
@@ -37,7 +37,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Data provider for PostgreSQL only
+     * Data provider for PostgreSQL only.
      *
      * @return array<array{string}>
      */
@@ -47,7 +47,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Data provider for SQLite only
+     * Data provider for SQLite only.
      *
      * @return array<array{string}>
      */
@@ -57,7 +57,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Check if a database connection is available
+     * Check if a database connection is available.
      */
     protected function isConnectionAvailable(Connection $connection): bool
     {
@@ -69,7 +69,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Get the current database connection based on the database name
+     * Get the current database connection based on the database name.
      */
     protected function getConnection(string $databaseName): Connection
     {
@@ -82,7 +82,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Skip test if specific database is not available
+     * Skip test if specific database is not available.
      */
     protected function skipIfDatabaseNotAvailable(string $databaseName): void
     {
@@ -99,7 +99,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Get database-specific table name to avoid conflicts
+     * Get database-specific table name to avoid conflicts.
      */
     protected function getTableName(string $baseName, string $databaseName): string
     {
@@ -107,7 +107,7 @@ trait DatabaseTestTrait
     }
 
     /**
-     * Clean up database state between tests
+     * Clean up database state between tests.
      */
     protected function cleanDatabase(Connection $connection, string $databaseName): void
     {
@@ -119,7 +119,7 @@ trait DatabaseTestTrait
         try {
             // Get all tables and drop them
             $tables = match ($databaseName) {
-                'mysql' => $connection->executeQuery("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN),
+                'mysql' => $connection->executeQuery('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN),
                 'pgsql' => $connection->executeQuery("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")->fetchAll(\PDO::FETCH_COLUMN),
                 default => []
             };

@@ -28,6 +28,7 @@ class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface
 
         if (!$latestMigration) {
             $io->info('No migrations to rollback.');
+
             return Command::SUCCESS;
         }
 
@@ -52,9 +53,11 @@ class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface
 
                     if ($migrationInstance instanceof BaseMigration) {
                         $migrationFileFound = true;
+
                         break;
                     } else {
                         $io->warning("Class $fullClassName is not a valid migration");
+
                         return Command::FAILURE;
                     }
                 }
@@ -63,6 +66,7 @@ class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface
 
         if (!$migrationFileFound || !$migrationInstance) {
             $io->warning("Migration file for $migrationToRollback not found");
+
             return Command::FAILURE;
         }
 

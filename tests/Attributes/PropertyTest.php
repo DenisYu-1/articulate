@@ -122,7 +122,7 @@ class PropertyTest extends AbstractTestCase
                 break;
             }
         }
-        if (! $propertyToTest) {
+        if (!$propertyToTest) {
             throw new Exception('no attribute');
         }
 

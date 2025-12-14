@@ -2,7 +2,6 @@
 
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
-use Articulate\Connection;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
@@ -13,7 +12,7 @@ use Articulate\Tests\DatabaseTestCase;
 class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
 {
     /**
-     * Test table creation with foreign keys across all databases
+     * Test table creation with foreign keys across all databases.
      *
      * @dataProvider databaseProvider
      * @group database
@@ -27,7 +26,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
         // Clean up any existing tables
         $this->cleanUpTables([
             'test_table',
-            $this->getTableName('related_entity', $databaseName)
+            $this->getTableName('related_entity', $databaseName),
         ]);
 
         // Enable foreign keys for SQLite
@@ -78,7 +77,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
 
         // Verify table and columns exist
         $verifyColumnsSql = match ($databaseName) {
-            'mysql' => "SHOW COLUMNS FROM test_table",
+            'mysql' => 'SHOW COLUMNS FROM test_table',
             'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = 'test_table' ORDER BY ordinal_position",
             'sqlite' => "PRAGMA table_info('test_table')"
         };

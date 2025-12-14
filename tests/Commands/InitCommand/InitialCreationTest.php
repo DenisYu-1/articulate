@@ -10,7 +10,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 class InitialCreationTest extends DatabaseTestCase
 {
     /**
-     * Test that init command creates migrations table
+     * Test that init command creates migrations table.
      *
      * @dataProvider databaseProvider
      * @group database
@@ -45,7 +45,7 @@ class InitialCreationTest extends DatabaseTestCase
     }
 
     /**
-     * Test that init command does nothing when migrations table already exists
+     * Test that init command does nothing when migrations table already exists.
      *
      * @dataProvider databaseProvider
      * @group database

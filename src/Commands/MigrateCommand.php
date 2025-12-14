@@ -4,7 +4,6 @@ namespace Articulate\Commands;
 
 use Articulate\Connection;
 use Articulate\Modules\MigrationExecutionStrategies\MigrationExecutionStrategy;
-use Articulate\Modules\MigrationExecutionStrategies\MigrationExecutionStrategyInterface;
 use Articulate\Modules\MigrationExecutionStrategies\RollbackExecutionStrategy;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -47,8 +46,9 @@ class MigrateCommand extends Command
 
         $directory = $this->migrationsPath ?: '/app/migrations';
 
-        if (! is_dir($directory)) {
+        if (!is_dir($directory)) {
             $io->warning("Migrations directory does not exist: $directory");
+
             return Command::SUCCESS;
         }
 
@@ -72,4 +72,3 @@ class MigrateCommand extends Command
         return $strategy->execute($io, $executedMigrations, $iterator, $directory);
     }
 }
-

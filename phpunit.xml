@@ -7,31 +7,8 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
 >
   <testsuites>
-    <testsuite name="ORM Test Suite">
-      <exclude>./tests/Modules</exclude>
-      <exclude>./tests/Commands</exclude>
-      <exclude>./tests/ExampleMultiDatabaseTest.php</exclude>
+    <testsuite name="All Tests">
       <directory>./tests</directory>
-    </testsuite>
-    <testsuite name="Database Tests">
-      <directory>./tests</directory>
-      <exclude>./tests/Attributes</exclude>
-      <exclude>./tests/Commands</exclude>
-    </testsuite>
-    <testsuite name="MySQL Tests">
-      <directory>./tests</directory>
-      <exclude>./tests/Attributes</exclude>
-      <exclude>./tests/Commands</exclude>
-    </testsuite>
-    <testsuite name="PostgreSQL Tests">
-      <directory>./tests</directory>
-      <exclude>./tests/Attributes</exclude>
-      <exclude>./tests/Commands</exclude>
-    </testsuite>
-    <testsuite name="SQLite Tests">
-      <directory>./tests</directory>
-      <exclude>./tests/Attributes</exclude>
-      <exclude>./tests/Commands</exclude>
     </testsuite>
   </testsuites>
 
