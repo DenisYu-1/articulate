@@ -23,9 +23,11 @@ class DiffCommand extends Command
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
         private readonly ?string $entitiesPath = null,
+        private readonly ?string $migrationsPath = null,
+        private readonly ?string $migrationsNamespace = null,
     ) {
         parent::__construct();
-        $this->migrationGenerator = new MigrationGenerator('/app/migrations');
+        $this->migrationGenerator = new MigrationGenerator($migrationsPath ?: '/app/migrations');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -66,7 +68,7 @@ class DiffCommand extends Command
         $upScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', $queries);
         $downScript = array_map(fn ($query) => '$this->addSql("'.$query.'");', array_reverse($rollbacks));
         $this->migrationGenerator->generate(
-            'App\Migrations',
+            $this->migrationsNamespace ?: 'App\Migrations',
             'MigrationFrom'.time(),
             implode(PHP_EOL, $upScript),
             implode(PHP_EOL, $downScript),
