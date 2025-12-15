@@ -55,10 +55,10 @@ jobs:
       - name: Create .env file
         run: |
           cat > .env << EOF
-          DATABASE_HOST=${{ env.DATABASE_HOST }}
-          DATABASE_USER=${{ env.DATABASE_USER }}
+          DATABASE_HOST=${{ vars.DATABASE_HOST }}
+          DATABASE_USER=${{ vars.DATABASE_USER }}
           DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
-          DATABASE_NAME=${{ env.DATABASE_NAME }}
+          DATABASE_NAME=${{ vars.DATABASE_NAME }}
           EOF
 
       - name: Run QA checks
