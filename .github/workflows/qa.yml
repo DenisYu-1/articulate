@@ -61,21 +61,5 @@ jobs:
           DATABASE_NAME=${{ env.DATABASE_NAME }}
           EOF
 
-      - name: Wait for MySQL
-        run: |
-          while ! mysqladmin ping -h"${{ env.DATABASE_HOST }}" -P"3306" -u"${{ env.DATABASE_USER }}" -p"${{ env.DATABASE_PASSWORD }}" --silent; do
-            echo "Waiting for MySQL..."
-            sleep 2
-          done
-          echo "MySQL is ready!"
-
-      - name: Wait for PostgreSQL
-        run: |
-          while ! pg_isready -h "${{ env.DATABASE_HOST }}" -p "5432" -U "${{ env.DATABASE_USER }}"; do
-            echo "Waiting for PostgreSQL..."
-            sleep 2
-          done
-          echo "PostgreSQL is ready!"
-
       - name: Run QA checks
         run: composer qa
