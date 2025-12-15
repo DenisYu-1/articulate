@@ -45,14 +45,14 @@ abstract class AbstractTestCase extends TestCase
         }
 
         try {
-            $this->mysqlConnection = new Connection('mysql:host=' . ($_ENV['DATABASE_HOST'] ?? 'mysql') . ';dbname=' . $databaseName . ';charset=utf8mb4', $_ENV['DATABASE_USER'] ?? 'root', $_ENV['DATABASE_PASSWORD'] ?? 'rootpassword');
+            $this->mysqlConnection = new Connection('mysql:host=' . ($_ENV['DATABASE_HOST']) . ';dbname=' . $databaseName . ';charset=utf8mb4', $_ENV['DATABASE_USER'] ?? 'root', $_ENV['DATABASE_PASSWORD']);
             $this->mysqlConnection->beginTransaction();
         } catch (\Exception $e) {
             $this->mysqlConnection = null;
         }
 
         try {
-            $this->pgsqlConnection = new Connection('pgsql:host=pgsql;port=5432;dbname=' . $databaseName, $_ENV['DATABASE_USER'] ?? 'postgres', $_ENV['DATABASE_PASSWORD'] ?? 'rootpassword');
+            $this->pgsqlConnection = new Connection('pgsql:host=' . $_ENV['DATABASE_HOST'] . ';port=5432;dbname=' . $databaseName, $_ENV['DATABASE_USER'] ?? 'postgres', $_ENV['DATABASE_PASSWORD']);
             $this->pgsqlConnection->beginTransaction();
         } catch (\Exception $e) {
             $this->pgsqlConnection = null;
@@ -91,7 +91,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function getDatabaseName(): string
     {
-        return $_ENV['DATABASE_NAME'] ?? 'articulate_test';
+        return $_ENV['DATABASE_NAME'];
     }
 
     /**

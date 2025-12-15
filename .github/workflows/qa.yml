@@ -12,7 +12,7 @@ jobs:
 
     env:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_HOST: localhost
+      DATABASE_HOST: 127.0.0.1
       DATABASE_USER: ${{ vars.DATABASE_USER }}
       DATABASE_NAME: ${{ vars.DATABASE_NAME }}
 
@@ -55,65 +55,11 @@ jobs:
       - name: Create .env file
         run: |
           cat > .env << EOF
-          DATABASE_HOST=${{ vars.DATABASE_HOST }}
-          DATABASE_USER=${{ vars.DATABASE_USER }}
+          DATABASE_HOST=${{ env.DATABASE_HOST }}
+          DATABASE_USER=${{ env.DATABASE_USER }}
           DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
-          DATABASE_NAME=${{ vars.DATABASE_NAME }}
+          DATABASE_NAME=${{ env.DATABASE_NAME }}
           EOF
-
-      - name: Wait for MySQL to be ready
-        run: |
-          for i in {1..30}; do
-            if mysqladmin ping -h"127.0.0.1" -uroot -p"${{ env.DATABASE_PASSWORD }}" --silent 2>/dev/null; then
-              echo "MySQL is ready"
-              break
-            fi
-            echo "Waiting for MySQL... ($i/30)"
-            sleep 2
-          done
-
-      - name: 'Debug: Check database connectivity'
-        run: |
-          echo "🔍 Checking database connectivity..."
-          echo "DATABASE_HOST: ${{ vars.DATABASE_HOST }}"
-          echo "DATABASE_USER: ${{ vars.DATABASE_USER }}"
-          echo "DATABASE_NAME: ${{ vars.DATABASE_NAME }}"
-
-          # Check MySQL connectivity
-          echo "Testing MySQL connection..."
-          if php -r "
-            try {
-              \$pdo = new PDO('mysql:host=127.0.0.1;port=3306;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
-              echo '✅ MySQL connection successful';
-            } catch (Exception \$e) {
-              echo '❌ MySQL connection failed: ' . \$e->getMessage();
-              exit(1);
-            }
-          "; then
-            echo "✅ PHP can connect to MySQL"
-          else
-            echo "❌ PHP cannot connect to MySQL"
-            exit 1
-          fi
-
-          # Check PostgreSQL connectivity
-          echo "Testing PostgreSQL connection..."
-          if php -r "
-            try {
-              \$pdo = new PDO('pgsql:host=127.0.0.1;port=5432;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
-              echo '✅ PostgreSQL connection successful';
-            } catch (Exception \$e) {
-              echo '❌ PostgreSQL connection failed: ' . \$e->getMessage();
-              exit(1);
-            }
-          "; then
-            echo "✅ PHP can connect to PostgreSQL"
-          else
-            echo "❌ PHP cannot connect to PostgreSQL"
-            exit 1
-          fi
-
-          echo "🎉 All database connections verified!"
 
       - name: Run QA checks
         run: composer qa
