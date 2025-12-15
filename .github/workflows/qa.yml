@@ -10,14 +10,20 @@ jobs:
   qa:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          MYSQL_DATABASE: ${{ secrets.DATABASE_NAME }}
-          MYSQL_USER: ${{ secrets.DATABASE_USER }}
-          MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          MYSQL_DATABASE: ${{ env.DATABASE_NAME }}
+          MYSQL_USER: ${{ env.DATABASE_USER }}
+          MYSQL_PASSWORD: ${{ env.DATABASE_PASSWORD }}
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
@@ -25,18 +31,12 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
-          POSTGRES_USER: ${{ secrets.DATABASE_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_DB: ${{ env.DATABASE_NAME }}
+          POSTGRES_USER: ${{ env.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
         ports:
           - 5432:5432
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
-
-    env:
-      DATABASE_HOST: localhost
-      DATABASE_USER: ${{ secrets.DATABASE_USER }}
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
 
     steps:
       - name: Checkout code
