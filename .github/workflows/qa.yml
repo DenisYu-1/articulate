@@ -61,6 +61,17 @@ jobs:
           DATABASE_NAME=${{ vars.DATABASE_NAME }}
           EOF
 
+      - name: Wait for MySQL to be ready
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h"127.0.0.1" -uroot -p"${{ env.DATABASE_PASSWORD }}" --silent 2>/dev/null; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
       - name: 'Debug: Check database connectivity'
         run: |
           echo "🔍 Checking database connectivity..."
