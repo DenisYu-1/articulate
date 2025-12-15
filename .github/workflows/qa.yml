@@ -12,17 +12,17 @@ jobs:
 
     env:
       DATABASE_HOST: localhost
-      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_USER: ${{ vars.DATABASE_USER }}
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+      DATABASE_NAME: ${{ vars.DATABASE_NAME }}
 
     services:
       mysql:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: ${{ env.DATABASE_PASSWORD }}
-          MYSQL_DATABASE: ${{ env.DATABASE_NAME }}
-          MYSQL_USER: ${{ env.DATABASE_USER }}
+          MYSQL_DATABASE: ${{ vars.DATABASE_NAME }}
+          MYSQL_USER: ${{ vars.DATABASE_USER }}
           MYSQL_PASSWORD: ${{ env.DATABASE_PASSWORD }}
         ports:
           - 3306:3306
@@ -31,8 +31,8 @@ jobs:
       pgsql:
         image: postgres:15
         env:
-          POSTGRES_DB: ${{ env.DATABASE_NAME }}
-          POSTGRES_USER: ${{ env.DATABASE_USER }}
+          POSTGRES_DB: ${{ vars.DATABASE_NAME }}
+          POSTGRES_USER: ${{ vars.DATABASE_USER }}
           POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
         ports:
           - 5432:5432
@@ -55,10 +55,10 @@ jobs:
       - name: Create .env file
         run: |
           cat > .env << EOF
-          DATABASE_HOST=${{ env.DATABASE_HOST }}
-          DATABASE_USER=${{ env.DATABASE_USER }}
+          DATABASE_HOST=${{ vars.DATABASE_HOST }}
+          DATABASE_USER=${{ vars.DATABASE_USER }}
           DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
-          DATABASE_NAME=${{ env.DATABASE_NAME }}
+          DATABASE_NAME=${{ vars.DATABASE_NAME }}
           EOF
 
       - name: Run QA checks
