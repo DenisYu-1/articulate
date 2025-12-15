@@ -1,0 +1,81 @@
+name: QA
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.DATABASE_NAME }}
+          MYSQL_USER: ${{ secrets.DATABASE_USER }}
+          MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ secrets.DATABASE_NAME }}
+          POSTGRES_USER: ${{ secrets.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_USER: ${{ secrets.DATABASE_USER }}
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_NAME: ${{ secrets.DATABASE_NAME }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          DATABASE_HOST=${{ env.DATABASE_HOST }}
+          DATABASE_USER=${{ env.DATABASE_USER }}
+          DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
+          DATABASE_NAME=${{ env.DATABASE_NAME }}
+          EOF
+
+      - name: Wait for MySQL
+        run: |
+          while ! mysqladmin ping -h"${{ env.DATABASE_HOST }}" -P"3306" -u"${{ env.DATABASE_USER }}" -p"${{ env.DATABASE_PASSWORD }}" --silent; do
+            echo "Waiting for MySQL..."
+            sleep 2
+          done
+          echo "MySQL is ready!"
+
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h "${{ env.DATABASE_HOST }}" -p "5432" -U "${{ env.DATABASE_USER }}"; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Run QA checks
+        run: composer qa
