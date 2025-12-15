@@ -1,6 +1,10 @@
 # Articulate
 
-A business-oriented PHP ORM library that provides context-aware entity management and memory-efficient operations.
+<p align="center">
+  <img src="logo.svg" alt="Articulate Logo" width="80" height="80">
+</p>
+
+A context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts.
 
 ## Main Concepts
 
@@ -87,9 +91,21 @@ The `composer qa` command runs the following checks:
 
 To set up CI/CD, configure the following in your GitHub repository settings under **Secrets and variables**:
 
-- `DATABASE_USER`: Database username (e.g., `root` for MySQL, `postgres` for PostgreSQL)
-- `DATABASE_PASSWORD`: Database password (e.g., `rootpassword`)
+#### Required Variables (non-sensitive configuration):
+- `DATABASE_USER`: Database username (e.g., `user`)
 - `DATABASE_NAME`: Database name for test databases (e.g., `articulate_test`)
+
+**Note:** `DATABASE_HOST` is hardcoded to `127.0.0.1` in the workflow (GitHub Actions service containers are accessible via localhost).
+
+#### Required Secrets (encrypted, sensitive):
+- `DATABASE_PASSWORD`: Database password (e.g., `userpassword`)
+
+**Setup steps:**
+1. Go to **Settings** → **Secrets and variables** → **Actions**
+2. Add variables: `DATABASE_USER` and `DATABASE_NAME`
+3. Add secret: `DATABASE_PASSWORD`
+
+**Important:** All values must be set and non-empty. The workflow will validate this and fail early with clear error messages if any configuration is missing.
 
 The workflow will automatically:
 - Validate that all required secrets are configured
