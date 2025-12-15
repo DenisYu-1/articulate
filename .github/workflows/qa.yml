@@ -12,8 +12,6 @@ jobs:
 
     env:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-
-    vars:
       DATABASE_HOST: localhost
       DATABASE_USER: ${{ vars.DATABASE_USER }}
       DATABASE_NAME: ${{ vars.DATABASE_NAME }}
