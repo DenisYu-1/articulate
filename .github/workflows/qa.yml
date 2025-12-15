@@ -63,7 +63,7 @@ jobs:
           DATABASE_NAME=${{ vars.DATABASE_NAME }}
           EOF
 
-      - name: Debug: Check database connectivity
+      - name: 'Debug: Check database connectivity'
         run: |
           echo "🔍 Checking database connectivity..."
           echo "DATABASE_HOST: ${{ vars.DATABASE_HOST }}"
