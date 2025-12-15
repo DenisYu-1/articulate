@@ -72,7 +72,7 @@ jobs:
           echo "Testing MySQL connection..."
           if php -r "
             try {
-              \$pdo = new PDO('mysql:host=${{ vars.DATABASE_HOST }};port=3306;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
+              \$pdo = new PDO('mysql:host=localhost;port=3306;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
               echo '✅ MySQL connection successful';
             } catch (Exception \$e) {
               echo '❌ MySQL connection failed: ' . \$e->getMessage();
@@ -89,7 +89,7 @@ jobs:
           echo "Testing PostgreSQL connection..."
           if php -r "
             try {
-              \$pdo = new PDO('pgsql:host=${{ vars.DATABASE_HOST }};port=5432;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
+              \$pdo = new PDO('pgsql:host=localhost;port=5432;dbname=${{ vars.DATABASE_NAME }}', '${{ vars.DATABASE_USER }}', '${{ env.DATABASE_PASSWORD }}');
               echo '✅ PostgreSQL connection successful';
             } catch (Exception \$e) {
               echo '❌ PostgreSQL connection failed: ' . \$e->getMessage();
