@@ -93,7 +93,7 @@ You can register mappings for PHP classes and interfaces:
 ```php
 use Articulate\Utils\TypeRegistry;
 
-// Register DateTimeInterface (done automatically)
+// Register DateTimeInterface (done automatically with high priority)
 $registry->registerClassMapping(\DateTimeInterface::class, 'DATETIME');
 
 // All classes implementing DateTimeInterface will use DATETIME
@@ -106,9 +106,12 @@ class Event {
     public \DateTimeImmutable $endTime; // DATETIME column
 }
 
-// Custom class mappings
-$registry->registerClassMapping(MyClass::class, 'JSON', new MyConverter());
+// Custom class mappings with priority (lower number = higher priority)
+$registry->registerClassMapping(MyInterface::class, 'JSON', null, 5);
+$registry->registerClassMapping(MyClass::class, 'TEXT', null, 10); // Lower priority
 ```
+
+**Priority System:** When a class implements multiple interfaces or extends multiple classes with registered mappings, the mapping with the lowest priority number is used.
 
 ### Custom Type Converters
 

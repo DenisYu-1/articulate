@@ -3,12 +3,12 @@
 namespace Articulate\Utils;
 
 /**
- * Converter for boolean values to/from TINYINT(1)
+ * Converter for boolean values to/from TINYINT(1).
  */
 class BoolTypeConverter implements TypeConverterInterface
 {
     /**
-     * Convert PHP boolean to database TINYINT(1)
+     * Convert PHP boolean to database TINYINT(1).
      */
     public function convertToDatabase(mixed $value): mixed
     {
@@ -20,7 +20,7 @@ class BoolTypeConverter implements TypeConverterInterface
     }
 
     /**
-     * Convert database TINYINT(1) to PHP boolean
+     * Convert database TINYINT(1) to PHP boolean.
      */
     public function convertToPHP(mixed $value): mixed
     {

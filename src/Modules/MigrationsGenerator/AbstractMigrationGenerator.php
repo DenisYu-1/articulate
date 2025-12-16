@@ -15,6 +15,7 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
         private readonly TypeRegistry $typeRegistry = new TypeRegistry()
     ) {
     }
+
     public function generate(TableCompareResult $compareResult): string
     {
         if ($compareResult->operation === CompareResult::OPERATION_DELETE) {

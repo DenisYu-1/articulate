@@ -3,12 +3,12 @@
 namespace Articulate\Utils;
 
 /**
- * Converter for Point objects to/from database POINT type
+ * Converter for Point objects to/from database POINT type.
  */
 class PointTypeConverter implements TypeConverterInterface
 {
     /**
-     * Convert Point object to database representation
+     * Convert Point object to database representation.
      */
     public function convertToDatabase(mixed $value): mixed
     {
@@ -24,7 +24,7 @@ class PointTypeConverter implements TypeConverterInterface
     }
 
     /**
-     * Convert database POINT string to Point object
+     * Convert database POINT string to Point object.
      */
     public function convertToPHP(mixed $value): mixed
     {

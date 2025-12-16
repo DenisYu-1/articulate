@@ -9,9 +9,16 @@ namespace Articulate\Utils;
 class TypeRegistry
 {
     private array $phpToDb = [];
+
     private array $dbToPhp = [];
+
     private array $converters = [];
-    private array $classMappings = []; // class/interface => db_type
+
+    private array $classMappings = []; // class/interface => ['type' => db_type, 'priority' => int]
+
+    private array $inheritanceCache = []; // class/interface => ['interfaces' => [], 'parents' => []]
+
+    private array $mappingCache = []; // resolved php_type => db_type
 
     public function __construct()
     {
@@ -19,7 +26,7 @@ class TypeRegistry
     }
 
     /**
-     * Register a PHP type to database type mapping
+     * Register a PHP type to database type mapping.
      */
     public function registerType(string $phpType, string $dbType, ?TypeConverterInterface $converter = null): void
     {
@@ -33,82 +40,140 @@ class TypeRegistry
         if ($converter) {
             $this->converters[$phpType] = $converter;
         }
+
+        // Clear mapping cache when new mappings are registered
+        $this->mappingCache = [];
     }
 
     /**
      * Register a PHP class or interface to database type mapping
-     * All classes implementing/extending this will use the mapping
+     * All classes implementing/extending this will use the mapping.
+     *
+     * @param int $priority Higher priority mappings are chosen first when multiple apply (default: 0)
      */
-    public function registerClassMapping(string $classOrInterface, string $dbType, ?TypeConverterInterface $converter = null): void
-    {
-        $this->classMappings[$classOrInterface] = $dbType;
+    public function registerClassMapping(
+        string $classOrInterface,
+        string $dbType,
+        ?TypeConverterInterface $converter = null,
+        int $priority = 0
+    ): void {
+        if (!class_exists($classOrInterface) && !interface_exists($classOrInterface)) {
+            throw new \InvalidArgumentException(
+                "Cannot register mapping for unknown class or interface: {$classOrInterface}"
+            );
+        }
+
+        $this->classMappings[$classOrInterface] = [
+            'type' => $dbType,
+            'priority' => $priority,
+        ];
 
         // Register converter if provided
         if ($converter) {
             $this->converters[$classOrInterface] = $converter;
         }
+
+        // Clear mapping cache when new mappings are registered
+        $this->mappingCache = [];
     }
 
     /**
-     * Get database type for a PHP type
+     * Clear all internal caches
+     * Useful for testing or when class loading changes.
+     */
+    public function clearCaches(): void
+    {
+        $this->inheritanceCache = [];
+        $this->mappingCache = [];
+    }
+
+    /**
+     * Get database type for a PHP type.
      */
     public function getDatabaseType(string $phpType): string
     {
+        // Check cache first
+        if (isset($this->mappingCache[$phpType])) {
+            return $this->mappingCache[$phpType];
+        }
+
         // First check direct type mappings
         if (isset($this->phpToDb[$phpType])) {
-            return $this->phpToDb[$phpType];
+            return $this->mappingCache[$phpType] = $this->phpToDb[$phpType];
         }
 
         // Check if it's a class that implements/extends registered interfaces/classes
         $mappedType = $this->findClassMapping($phpType);
         if ($mappedType !== null) {
-            return $mappedType;
+            return $this->mappingCache[$phpType] = $mappedType;
         }
 
         // Fall back to the type itself (for custom database types)
-        return $phpType;
+        return $this->mappingCache[$phpType] = $phpType;
     }
 
     /**
-     * Find database type mapping for a class based on implemented interfaces/extended classes
+     * Find database type mapping for a class based on implemented interfaces/extended classes.
      */
     private function findClassMapping(string $className): ?string
     {
-        // Check if class exists
-        if (!class_exists($className) && !interface_exists($className)) {
+        // Get inheritance information (cached)
+        $inheritance = $this->getInheritanceInfo($className);
+
+        // Collect all applicable mappings with their priorities
+        $candidates = [];
+
+        // Check direct class mapping
+        if (isset($this->classMappings[$className])) {
+            $candidates[] = $this->classMappings[$className];
+        }
+
+        // Check interfaces
+        foreach ($inheritance['interfaces'] as $interface) {
+            if (isset($this->classMappings[$interface])) {
+                $candidates[] = $this->classMappings[$interface];
+            }
+        }
+
+        // Check parent classes
+        foreach ($inheritance['parents'] as $parent) {
+            if (isset($this->classMappings[$parent])) {
+                $candidates[] = $this->classMappings[$parent];
+            }
+        }
+
+        if (empty($candidates)) {
             return null;
         }
 
-        // Check direct class mapping first
-        if (isset($this->classMappings[$className])) {
-            return $this->classMappings[$className];
-        }
+        // Return the mapping with highest priority (lowest priority number)
+        // If priorities are equal, return the first one found
+        usort($candidates, fn ($a, $b) => $a['priority'] <=> $b['priority']);
 
-        // Check if class implements any registered interfaces
-        $interfaces = class_implements($className);
-        if ($interfaces) {
-            foreach ($interfaces as $interface) {
-                if (isset($this->classMappings[$interface])) {
-                    return $this->classMappings[$interface];
-                }
-            }
-        }
-
-        // Check if class extends any registered parent classes
-        $parents = class_parents($className);
-        if ($parents) {
-            foreach ($parents as $parent) {
-                if (isset($this->classMappings[$parent])) {
-                    return $this->classMappings[$parent];
-                }
-            }
-        }
-
-        return null;
+        return $candidates[0]['type'];
     }
 
     /**
-     * Get PHP type for a database type
+     * Get cached inheritance information for a class.
+     */
+    private function getInheritanceInfo(string $className): array
+    {
+        if (!isset($this->inheritanceCache[$className])) {
+            if (!class_exists($className) && !interface_exists($className)) {
+                $this->inheritanceCache[$className] = ['interfaces' => [], 'parents' => []];
+            } else {
+                $this->inheritanceCache[$className] = [
+                    'interfaces' => class_implements($className) ?: [],
+                    'parents' => class_parents($className) ?: [],
+                ];
+            }
+        }
+
+        return $this->inheritanceCache[$className];
+    }
+
+    /**
+     * Get PHP type for a database type.
      */
     public function getPhpType(string $dbType): string
     {
@@ -124,7 +189,7 @@ class TypeRegistry
     }
 
     /**
-     * Get type converter for a PHP type
+     * Get type converter for a PHP type.
      */
     public function getConverter(string $phpType): ?TypeConverterInterface
     {
@@ -132,7 +197,7 @@ class TypeRegistry
     }
 
     /**
-     * Check if a PHP type has a converter
+     * Check if a PHP type has a converter.
      */
     public function hasConverter(string $phpType): bool
     {
@@ -140,7 +205,7 @@ class TypeRegistry
     }
 
     /**
-     * Extract base type from parameterized type like VARCHAR(255)
+     * Extract base type from parameterized type like VARCHAR(255).
      */
     private function extractBaseType(string $dbType): string
     {
@@ -153,7 +218,7 @@ class TypeRegistry
     }
 
     /**
-     * Infer PHP type from database type when no explicit mapping exists
+     * Infer PHP type from database type when no explicit mapping exists.
      */
     private function inferPhpType(string $dbType): string
     {
@@ -170,7 +235,7 @@ class TypeRegistry
     }
 
     /**
-     * Register built-in type mappings
+     * Register built-in type mappings.
      */
     private function registerBuiltInTypes(): void
     {
@@ -189,7 +254,7 @@ class TypeRegistry
         $this->registerType(Point::class, 'POINT', new PointTypeConverter());
 
         // Class/Interface mappings
-        $this->registerClassMapping(\DateTimeInterface::class, 'DATETIME');
+        $this->registerClassMapping(\DateTimeInterface::class, 'DATETIME', null, 10); // High priority for DateTime
 
         // Nullable versions (these override the db->php mapping for reverse lookups)
         $this->registerType('?int', 'INT');

@@ -114,6 +114,48 @@ class TypeRegistryTest extends AbstractTestCase
         // (We can't easily test this without creating a test class, but the logic is there)
     }
 
+    public function testClassMappingPriority(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Register conflicting mappings with different priorities
+        $registry->registerClassMapping(\Serializable::class, 'TEXT', null, 5); // Lower priority
+        $registry->registerClassMapping(\JsonSerializable::class, 'JSON', null, 1); // Higher priority
+
+        // Create a mock class that implements both interfaces
+        $mockClass = 'TestPriorityClass';
+
+        if (!class_exists($mockClass)) {
+            eval("
+                class $mockClass implements Serializable, JsonSerializable {
+                    public function serialize() { return ''; }
+                    public function unserialize(\$data) {}
+                    public function jsonSerialize(): mixed { return []; }
+                }
+            ");
+        }
+
+        try {
+            // Should use JsonSerializable mapping due to higher priority (lower number)
+            $this->assertEquals('JSON', $registry->getDatabaseType($mockClass));
+        } finally {
+            // Clean up
+            if (class_exists($mockClass)) {
+                // Note: Can't actually remove class in PHP, but test is isolated
+            }
+        }
+    }
+
+    public function testInvalidClassMapping(): void
+    {
+        $registry = new TypeRegistry();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot register mapping for unknown class or interface');
+
+        $registry->registerClassMapping('NonExistentClass', 'TEXT');
+    }
+
     public function testClassMappingInheritance(): void
     {
         $registry = new TypeRegistry();

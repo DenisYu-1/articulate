@@ -11,7 +11,7 @@ use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestBoolEntity;
 
 /**
- * Integration test to verify type mapping works end-to-end
+ * Integration test to verify type mapping works end-to-end.
  */
 class TypeMappingIntegrationTest extends AbstractTestCase
 {
@@ -49,7 +49,7 @@ class TypeMappingIntegrationTest extends AbstractTestCase
         $connection->executeQuery($sql);
 
         // Verify the table was created with correct column types
-        $columns = $connection->executeQuery("SHOW COLUMNS FROM `test_bool_entity`")->fetchAll();
+        $columns = $connection->executeQuery('SHOW COLUMNS FROM `test_bool_entity`')->fetchAll();
 
         $columnMap = [];
         foreach ($columns as $column) {

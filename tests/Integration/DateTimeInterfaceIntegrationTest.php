@@ -11,7 +11,7 @@ use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestDateTimeEntity;
 
 /**
- * Integration test to verify DateTimeInterface support works end-to-end
+ * Integration test to verify DateTimeInterface support works end-to-end.
  */
 class DateTimeInterfaceIntegrationTest extends AbstractTestCase
 {
@@ -40,7 +40,7 @@ class DateTimeInterfaceIntegrationTest extends AbstractTestCase
         $connection->executeQuery($sql);
 
         // Verify the table was created with correct column types
-        $columns = $connection->executeQuery("SHOW COLUMNS FROM `test_date_time_entity`")->fetchAll();
+        $columns = $connection->executeQuery('SHOW COLUMNS FROM `test_date_time_entity`')->fetchAll();
 
         $columnMap = [];
         foreach ($columns as $column) {

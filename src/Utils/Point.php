@@ -3,7 +3,7 @@
 namespace Articulate\Utils;
 
 /**
- * Example Point class for spatial data
+ * Example Point class for spatial data.
  */
 class Point
 {
