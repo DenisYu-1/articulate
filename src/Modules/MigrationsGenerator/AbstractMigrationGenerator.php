@@ -7,9 +7,14 @@ use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
+use Articulate\Utils\TypeRegistry;
 
 abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
 {
+    public function __construct(
+        private readonly TypeRegistry $typeRegistry = new TypeRegistry()
+    ) {
+    }
     public function generate(TableCompareResult $compareResult): string
     {
         if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
@@ -97,11 +102,18 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
 
     private function mapTypeLength(?PropertiesData $propertyData): string
     {
-        if ($propertyData->type === 'string') {
-            return 'VARCHAR' . ($propertyData->length ? '(' . $propertyData->length . ')' : '(255)');
+        if (!$propertyData->type) {
+            return 'TEXT'; // fallback for unknown types
         }
 
-        return $propertyData->type;
+        $dbType = $this->typeRegistry->getDatabaseType($propertyData->type);
+
+        // Handle string types with length
+        if ($propertyData->type === 'string' && $propertyData->length) {
+            return 'VARCHAR(' . $propertyData->length . ')';
+        }
+
+        return $dbType;
     }
 
     abstract protected function getForeignKeyKeyword(): string;

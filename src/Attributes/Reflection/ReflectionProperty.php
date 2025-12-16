@@ -32,7 +32,7 @@ readonly class ReflectionProperty implements PropertyInterface
 
     public function getType(): string
     {
-        return $this->entityProperty->type ?? $this->property->getType();
+        return $this->entityProperty->type ?? $this->property->getType()?->getName() ?? 'mixed';
     }
 
     public function getDefaultValue(): ?string
