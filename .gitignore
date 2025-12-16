@@ -4,3 +4,4 @@
 .phpunit.cache
 .php-cs-fixer.cache
 build
+mutation-badge.json

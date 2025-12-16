@@ -6,6 +6,13 @@
 
 A context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts.
 
+## Badges
+
+[![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
+[![codecov](https://codecov.io/gh/DenisYu-1/articulate/branch/main/graph/badge.svg)](https://codecov.io/gh/DenisYu-1/articulate)
+[![Mutation testing](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/DenisYu-1/articulate/main/mutation-badge.json)](https://github.com/DenisYu-1/articulate/actions)
+[![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
+
 ## Main Concepts
 
 ### Context-Bounded Entities
@@ -86,31 +93,3 @@ The `composer qa` command runs the following checks:
 - **Code style**: `php-cs-fixer fix --dry-run --diff --allow-risky=yes`
 - **Unit tests**: `phpunit` (requires MySQL and PostgreSQL)
 - **Mutation testing**: `infection --threads=max`
-
-### GitHub Actions Setup
-
-To set up CI/CD, configure the following in your GitHub repository settings under **Secrets and variables**:
-
-#### Required Variables (non-sensitive configuration):
-- `DATABASE_USER`: Database username (e.g., `user`)
-- `DATABASE_NAME`: Database name for test databases (e.g., `articulate_test`)
-- `DATABASE_HOST_PGSQL`: PostgreSQL host (e.g., `127.0.0.1`)
-
-**Note:** `DATABASE_HOST` is hardcoded to `127.0.0.1` in the workflow for MySQL (GitHub Actions service containers are accessible via localhost). PostgreSQL uses the separate `DATABASE_HOST_PGSQL` variable.
-
-#### Required Secrets (encrypted, sensitive):
-- `DATABASE_PASSWORD`: Database password (e.g., `userpassword`)
-
-**Setup steps:**
-1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. Add variables: `DATABASE_USER`, `DATABASE_NAME`, and `DATABASE_HOST_PGSQL`
-3. Add secret: `DATABASE_PASSWORD`
-
-**Important:** All values must be set and non-empty. The workflow will validate this and fail early with clear error messages if any configuration is missing.
-
-The workflow will automatically:
-- Validate that all required secrets are configured
-- Set up PHP 8.4 with required extensions (PDO, MySQL, PostgreSQL, SQLite)
-- Start MySQL 8.0 and PostgreSQL 15 services with proper authentication
-- Create a `.env` file with the required environment variables
-- Run the QA checks
