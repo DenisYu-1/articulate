@@ -43,34 +43,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Verify configuration
-        run: |
-          echo "🔍 Checking GitHub Variables configuration..."
-          echo "DATABASE_USER: '${{ vars.DATABASE_USER }}'"
-          echo "DATABASE_NAME: '${{ vars.DATABASE_NAME }}'"
-          echo "DATABASE_HOST_PGSQL: '${{ vars.DATABASE_HOST_PGSQL }}'"
-          echo "DATABASE_PASSWORD: '${{ secrets.DATABASE_PASSWORD }}'"
-
-          # Check if required variables are set
-          if [ -z "${{ vars.DATABASE_USER }}" ]; then
-            echo "❌ DATABASE_USER variable is not set in GitHub repository variables"
-            exit 1
-          fi
-          if [ -z "${{ vars.DATABASE_NAME }}" ]; then
-            echo "❌ DATABASE_NAME variable is not set in GitHub repository variables"
-            exit 1
-          fi
-          if [ -z "${{ vars.DATABASE_HOST_PGSQL }}" ]; then
-            echo "❌ DATABASE_HOST_PGSQL variable is not set in GitHub repository variables"
-            exit 1
-          fi
-          if [ -z "${{ secrets.DATABASE_PASSWORD }}" ]; then
-            echo "❌ DATABASE_PASSWORD secret is not set in GitHub repository secrets"
-            exit 1
-          fi
-
-          echo "✅ All GitHub variables and secrets are configured correctly"
-
       - name: Create .env file
         run: |
           cat > .env << EOF
@@ -80,8 +52,6 @@ jobs:
           DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
           DATABASE_NAME=${{ env.DATABASE_NAME }}
           EOF
-          echo "✅ .env file created. Contents:"
-          cat .env
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -95,9 +65,3 @@ jobs:
 
       - name: Run QA checks
         run: composer qa
-        env:
-          DATABASE_HOST: ${{ env.DATABASE_HOST }}
-          DATABASE_HOST_PGSQL: ${{ vars.DATABASE_HOST_PGSQL }}
-          DATABASE_USER: ${{ vars.DATABASE_USER }}
-          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-          DATABASE_NAME: ${{ env.DATABASE_NAME }}
