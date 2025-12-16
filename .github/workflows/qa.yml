@@ -65,39 +65,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
-      - name: 'Debug: Verify .env loading'
-        run: |
-          echo "🔍 Verifying .env file and PHP environment..."
-          echo "📍 Current directory: $(pwd)"
-          echo "📄 .env file exists: $(ls -la .env 2>/dev/null || echo 'NOT FOUND')"
-          echo "📄 .env contents:"
-          cat .env 2>/dev/null || echo "Could not read .env"
-
-          echo "🧪 Testing PHP .env loading:"
-          php -r "
-            // Simulate AbstractTestCase .env loading
-            \$possiblePaths = [
-                __DIR__ . '/../.env',
-                __DIR__ . '/../../.env',
-                __DIR__ . '/../../../.env',
-            ];
-
-            echo 'Looking for .env in:' . PHP_EOL;
-            foreach (\$possiblePaths as \$path) {
-                echo '  ' . \$path . ' -> ' . (file_exists(\$path) ? 'EXISTS' : 'NOT FOUND') . PHP_EOL;
-            }
-
-            echo 'Attempting to load .env...' . PHP_EOL;
-            foreach (\$possiblePaths as \$path) {
-                if (file_exists(\$path)) {
-                    echo 'Loading from: ' . \$path . PHP_EOL;
-                    \$dotenv = \Dotenv\Dotenv::createImmutable(dirname(\$path));
-                    \$dotenv->load();
-                    echo 'DATABASE_NAME after loading: ' . (\$_ENV['DATABASE_NAME'] ?? 'NOT_SET') . PHP_EOL;
-                    break;
-                }
-            }
-          "
-
       - name: Run QA checks
         run: composer qa
+        env:
+          DATABASE_HOST: ${{ env.DATABASE_HOST }}
+          DATABASE_HOST_PGSQL: ${{ env.DATABASE_HOST_PGSQL }}
+          DATABASE_USER: ${{ env.DATABASE_USER }}
+          DATABASE_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          DATABASE_NAME: ${{ env.DATABASE_NAME }}
