@@ -66,6 +66,9 @@ jobs:
       - name: Run code style check
         run: composer cs:check
 
+      - name: Create build directory
+        run: mkdir -p build/coverage
+
       - name: Run tests with coverage
         run: composer test:coverage
 
