@@ -95,7 +95,7 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
         );
     }
 
-    protected function mapTypeLength(?PropertiesData $propertyData): string
+    private function mapTypeLength(?PropertiesData $propertyData): string
     {
         if ($propertyData->type === 'string') {
             return 'VARCHAR' . ($propertyData->length ? '(' . $propertyData->length . ')' : '(255)');

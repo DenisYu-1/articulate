@@ -1,0 +1,67 @@
+name: QA
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_HOST_PGSQL: ${{ vars.DATABASE_HOST_PGSQL }}
+      DATABASE_USER: ${{ vars.DATABASE_USER }}
+      DATABASE_NAME: ${{ vars.DATABASE_NAME }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          MYSQL_DATABASE: ${{ vars.DATABASE_NAME }}
+          MYSQL_USER: ${{ vars.DATABASE_USER }}
+          MYSQL_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      pgsql:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ vars.DATABASE_NAME }}
+          POSTGRES_USER: ${{ vars.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          DATABASE_HOST=${{ env.DATABASE_HOST }}
+          DATABASE_HOST_PGSQL=${{ env.DATABASE_HOST_PGSQL }}
+          DATABASE_USER=${{ env.DATABASE_USER }}
+          DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
+          DATABASE_NAME=${{ env.DATABASE_NAME }}
+          EOF
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, pdo_pgsql, pdo_sqlite
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Run QA checks
+        run: composer qa

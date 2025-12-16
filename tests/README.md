@@ -1,6 +1,31 @@
-# Multi-Database Testing Setup
+# Testing Strategy
 
-This document explains how to use the multi-database testing setup that allows you to run the same tests across MySQL, PostgreSQL, and SQLite databases automatically.
+This document outlines the comprehensive testing approach for Articulate, including multi-database testing and end-to-end flow validation.
+
+## End-to-End Testing
+
+Tests must cover complete end-to-end flows: **attributes → reflection → comparator → migration SQL**, plus negative cases for misconfigurations.
+
+### Core Flow Testing
+
+The primary testing focus is validating the complete pipeline from PHP attributes through to generated SQL:
+
+1. **Attributes**: Entity, Property, and Relation attributes are correctly defined
+2. **Reflection**: Attributes are properly parsed and metadata extracted
+3. **Comparator**: Schema differences are accurately identified between entities and database
+4. **Migration SQL**: Generated SQL statements correctly implement the schema changes
+
+### Test Categories
+
+- **Entity Definition Tests**: Validate attribute parsing and metadata extraction
+- **Schema Comparison Tests**: Test comparator logic with various entity configurations
+- **Migration Generation Tests**: Verify SQL output matches expected schema changes
+- **Integration Tests**: Full end-to-end flows with real database operations
+- **Negative Tests**: Misconfiguration scenarios and error handling
+
+## Multi-Database Testing Setup
+
+The multi-database testing setup allows running the same tests across MySQL, PostgreSQL, and SQLite databases automatically.
 
 ## Overview
 
