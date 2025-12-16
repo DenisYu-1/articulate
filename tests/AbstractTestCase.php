@@ -45,14 +45,14 @@ abstract class AbstractTestCase extends TestCase
         }
 
         try {
-            $this->mysqlConnection = new Connection('mysql:host=' . ($_ENV['DATABASE_HOST']) . ';dbname=' . $databaseName . ';charset=utf8mb4', $_ENV['DATABASE_USER'] ?? 'root', $_ENV['DATABASE_PASSWORD']);
+            $this->mysqlConnection = new Connection('mysql:host=' . (getenv('DATABASE_HOST')) . ';dbname=' . $databaseName . ';charset=utf8mb4', getenv('DATABASE_USER') ?? 'root', getenv('DATABASE_PASSWORD'));
             $this->mysqlConnection->beginTransaction();
         } catch (\Exception $e) {
             $this->mysqlConnection = null;
         }
 
         try {
-            $this->pgsqlConnection = new Connection('pgsql:host=' . $_ENV['DATABASE_HOST_PGSQL'] . ';port=5432;dbname=' . $databaseName, $_ENV['DATABASE_USER'] ?? 'postgres', $_ENV['DATABASE_PASSWORD']);
+            $this->pgsqlConnection = new Connection('pgsql:host=' . getenv('DATABASE_HOST_PGSQL') . ';port=5432;dbname=' . $databaseName, getenv('DATABASE_USER') ?? 'postgres', getenv('DATABASE_PASSWORD'));
             $this->pgsqlConnection->beginTransaction();
         } catch (\Exception $e) {
             $this->pgsqlConnection = null;
