@@ -239,7 +239,7 @@ class TypeRegistry
      */
     private function registerBuiltInTypes(): void
     {
-        // Basic types (register non-nullable first)
+        // Basic types (register non-nullable first) - using uppercase SQL standard
         $this->registerType('int', 'INT');
         $this->registerType('float', 'FLOAT');
         $this->registerType('string', 'VARCHAR(255)');

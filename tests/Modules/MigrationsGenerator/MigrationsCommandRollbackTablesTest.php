@@ -53,7 +53,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` int NOT NULL',
+                'query' => 'ALTER TABLE `test_table` MODIFY `id` INT NOT NULL',
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

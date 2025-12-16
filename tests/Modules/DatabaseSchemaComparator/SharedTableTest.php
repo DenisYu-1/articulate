@@ -48,7 +48,7 @@ class SharedTableTest extends AbstractTestCase
         $this->assertTrue($columnsByName['shared_field']->propertyData->isNullable);
 
         $sql = MigrationsCommandGenerator::forMySql()->generate($table);
-        $this->assertStringContainsString('`shared_field` int', $sql);
+        $this->assertStringContainsString('`shared_field` INT', $sql);
     }
 
     public function testConflictingDefinitionsThrow()

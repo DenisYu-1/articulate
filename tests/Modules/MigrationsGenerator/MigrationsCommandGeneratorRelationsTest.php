@@ -102,7 +102,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD `related_entity_id` int NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
+            'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
             (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
         );
     }
@@ -125,7 +125,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD `related_entity_id` int NOT NULL',
+            'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL',
             (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
         );
     }
@@ -208,7 +208,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase
         );
 
         $this->assertEquals(
-            'CREATE TABLE `test_table` (`related_entity_id` int NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
+            'CREATE TABLE `test_table` (`related_entity_id` INT NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
             (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
         );
     }

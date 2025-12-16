@@ -73,7 +73,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` ADD `user_id` int NOT NULL',
+                'query' => 'ALTER TABLE `test_table` ADD `user_id` INT NOT NULL',
                 'params' => [
                     'user_id',
                     'create',

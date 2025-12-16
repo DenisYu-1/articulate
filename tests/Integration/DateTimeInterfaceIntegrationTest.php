@@ -47,6 +47,7 @@ class DateTimeInterfaceIntegrationTest extends AbstractTestCase
             $columnMap[$column['Field']] = $column;
         }
 
+        // MySQL returns lowercase in SHOW COLUMNS
         $this->assertEquals('datetime', $columnMap['created_at']['Type']);
         $this->assertEquals('datetime', $columnMap['updated_at']['Type']);
         $this->assertEquals('datetime', $columnMap['published_at']['Type']);
