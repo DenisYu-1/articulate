@@ -111,6 +111,9 @@ jobs:
           # Create badge JSON for shields.io
           echo "{\"schemaVersion\":1,\"label\":\"Mutation Score\",\"message\":\"$MSI%\",\"color\":\"$COLOR\"}" > mutation-badge.json
 
+          # Update README.md with the current badge
+          sed -i.bak "s|https://img.shields.io/badge/Mutation%20Score-[0-9]*\.[0-9]*%25-[a-z]*|https://img.shields.io/badge/Mutation%20Score-$MSI%25-$COLOR|g" README.md && rm README.md.bak
+
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add mutation-badge.json || true
