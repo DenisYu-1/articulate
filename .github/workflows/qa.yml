@@ -79,7 +79,7 @@ jobs:
         run: composer test:mutation
 
       - name: Generate and commit mutation badge
-        if: contains('refs/heads/main,refs/heads/master,refs/heads/develop', github.ref)
+        if: github.ref == 'refs/heads/main'
         run: |
           # Extract MSI (Mutation Score Indicator) from infection log
           MSI=$(grep "MSI" infection.log | tail -1 | grep -o "[0-9]*\.[0-9]*" || echo "0.0")
