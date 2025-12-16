@@ -52,7 +52,7 @@ abstract class AbstractTestCase extends TestCase
         }
 
         try {
-            $this->pgsqlConnection = new Connection('pgsql:host=' . $_ENV['DATABASE_HOST'] . ';port=5432;dbname=' . $databaseName, $_ENV['DATABASE_USER'] ?? 'postgres', $_ENV['DATABASE_PASSWORD']);
+            $this->pgsqlConnection = new Connection('pgsql:host=' . $_ENV['DATABASE_HOST_PGSQL'] . ';port=5432;dbname=' . $databaseName, $_ENV['DATABASE_USER'] ?? 'postgres', $_ENV['DATABASE_PASSWORD']);
             $this->pgsqlConnection->beginTransaction();
         } catch (\Exception $e) {
             $this->pgsqlConnection = null;

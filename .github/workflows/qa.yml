@@ -13,6 +13,7 @@ jobs:
     env:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
       DATABASE_HOST: 127.0.0.1
+      DATABASE_HOST_PGSQL: ${{ vars.DATABASE_HOST_PGSQL }}
       DATABASE_USER: ${{ vars.DATABASE_USER }}
       DATABASE_NAME: ${{ vars.DATABASE_NAME }}
 
@@ -55,10 +56,11 @@ jobs:
       - name: Create .env file
         run: |
           cat > .env << EOF
-          DATABASE_HOST=${{ vars.DATABASE_HOST }}
-          DATABASE_USER=${{ vars.DATABASE_USER }}
+          DATABASE_HOST=${{ env.DATABASE_HOST }}
+          DATABASE_HOST_PGSQL=${{ env.DATABASE_HOST_PGSQL }}
+          DATABASE_USER=${{ env.DATABASE_USER }}
           DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
-          DATABASE_NAME=${{ vars.DATABASE_NAME }}
+          DATABASE_NAME=${{ env.DATABASE_NAME }}
           EOF
 
       - name: Run QA checks

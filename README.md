@@ -94,15 +94,16 @@ To set up CI/CD, configure the following in your GitHub repository settings unde
 #### Required Variables (non-sensitive configuration):
 - `DATABASE_USER`: Database username (e.g., `user`)
 - `DATABASE_NAME`: Database name for test databases (e.g., `articulate_test`)
+- `DATABASE_HOST_PGSQL`: PostgreSQL host (e.g., `127.0.0.1`)
 
-**Note:** `DATABASE_HOST` is hardcoded to `127.0.0.1` in the workflow (GitHub Actions service containers are accessible via localhost).
+**Note:** `DATABASE_HOST` is hardcoded to `127.0.0.1` in the workflow for MySQL (GitHub Actions service containers are accessible via localhost). PostgreSQL uses the separate `DATABASE_HOST_PGSQL` variable.
 
 #### Required Secrets (encrypted, sensitive):
 - `DATABASE_PASSWORD`: Database password (e.g., `userpassword`)
 
 **Setup steps:**
 1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. Add variables: `DATABASE_USER` and `DATABASE_NAME`
+2. Add variables: `DATABASE_USER`, `DATABASE_NAME`, and `DATABASE_HOST_PGSQL`
 3. Add secret: `DATABASE_PASSWORD`
 
 **Important:** All values must be set and non-empty. The workflow will validate this and fail early with clear error messages if any configuration is missing.
