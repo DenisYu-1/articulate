@@ -81,8 +81,22 @@ jobs:
       - name: Generate and commit mutation badge
         if: github.ref == 'refs/heads/main'
         run: |
-          # Extract MSI (Mutation Score Indicator) from infection log
-          MSI=$(grep "MSI" infection.log | tail -1 | grep -o "[0-9]*\.[0-9]*" || echo "0.0")
+          # Calculate MSI (Mutation Score Indicator) from infection summary
+          if [ -f "build/infection/summary.txt" ]; then
+            TOTAL=$(grep "^Total:" build/infection/summary.txt | grep -o "[0-9]*" || echo "0")
+            ESCAPED=$(grep "^Escaped:" build/infection/summary.txt | grep -o "[0-9]*" || echo "0")
+            TIMED_OUT=$(grep "^Timed Out:" build/infection/summary.txt | grep -o "[0-9]*" || echo "0")
+            SKIPPED=$(grep "^Skipped:" build/infection/summary.txt | grep -o "[0-9]*" || echo "0")
+
+            if [ "$TOTAL" -gt 0 ]; then
+              KILLED=$((TOTAL - ESCAPED - TIMED_OUT - SKIPPED))
+              MSI=$(awk "BEGIN {printf \"%.2f\", ($KILLED / $TOTAL) * 100}")
+            else
+              MSI="0.00"
+            fi
+          else
+            MSI="0.00"
+          fi
           echo "MSI=$MSI" >> $GITHUB_ENV
 
           # Determine color based on MSI score
