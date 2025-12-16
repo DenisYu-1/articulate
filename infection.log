@@ -1,0 +1,1956 @@
+Note: Pass `--log-verbosity=all` to log information about killed and errored mutants.
+Note: Pass `--debug` to log test-framework output.
+
+Escaped mutants:
+================
+
+1) /app/src/Attributes/Reflection/ReflectionEntity.php:46    [M] FalseValue [ID] bf71d31bd3fb4e7499647f6f772b7548
+
+@@ @@
+                 yield new ReflectionProperty(
+                     $entityProperty[0]->newInstance(),
+                     $property,
+-                    isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
++                    isset($property->getAttributes(AutoIncrement::class)[0]) ?? true,
+                     isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,
+                 );
+
+
+2) /app/src/Attributes/Reflection/ReflectionEntity.php:47    [M] FalseValue [ID] ca382828acc4a239a6fb05005bda6a75
+
+@@ @@
+                     $entityProperty[0]->newInstance(),
+                     $property,
+                     isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
+-                    isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,
++                    isset($property->getAttributes(PrimaryKey::class)[0]) ?? true,
+                 );
+
+                 continue;
+
+
+3) /app/src/Attributes/Reflection/ReflectionEntity.php:57    [M] Continue_ [ID] fa718f991fe6431eca181fc2e8fc629d
+
+@@ @@
+             if (!empty($entityProperty)) {
+                 $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                 if (!$relation->isOwningSide()) {
+-                    continue;
++                    break;
+                 }
+                 yield $relation;
+
+
+4) /app/src/Attributes/Reflection/ReflectionEntity.php:61    [M] Continue_ [ID] 7311a422e82b4446483fef5c9eaa1bc6
+
+@@ @@
+                 }
+                 yield $relation;
+
+-                continue;
++                break;
+             }
+             /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
+             $entityProperty = $property->getAttributes(ManyToOne::class);
+
+
+5) /app/src/Attributes/Reflection/ReflectionEntity.php:79    [M] Foreach_ [ID] 85403b34d8a44b40e53ec9a6d1a5745a
+
+@@ @@
+
+             return;
+         }
+-        foreach ($this->getProperties() as $property) {
++        foreach ([] as $property) {
+             /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
+             $entityProperty = $property->getAttributes(OneToOne::class);
+             if (empty($entityProperty)) {
+                 continue;
+             }
+-
+             $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+             if (!$relation->isOwningSide()) {
+                 continue;
+             }
+-
+             yield $relation;
+         }
+         foreach ($this->getProperties() as $property) {
+
+
+6) /app/src/Attributes/Reflection/ReflectionEntity.php:83    [M] Continue_ [ID] 5d6e9a8c95d60a993575108b6d1faa90
+
+@@ @@
+             /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
+             $entityProperty = $property->getAttributes(OneToOne::class);
+             if (empty($entityProperty)) {
+-                continue;
++                break;
+             }
+
+             $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+
+
+7) /app/src/Attributes/Reflection/ReflectionEntity.php:141    [M] ReturnRemoval [ID] 08f40781901677828cc2d8d51524a1f3
+
+@@ @@
+     public function getPrimaryKeyColumns(): array
+     {
+         if (!$this->isEntity()) {
+-            return [];
++
+         }
+         $columns = [];
+         foreach ($this->getProperties() as $property) {
+
+
+8) /app/src/Attributes/Reflection/ReflectionEntity.php:157    [M] UnwrapStrToLower [ID] 5f97e20e1b46058099197e1a473d393a
+
+@@ @@
+                 $columns[] = $reflectionProperty->getColumnName();
+             } else {
+                 // Fall back to default column name parsing
+-                $columns[] = strtolower(preg_replace('/\B([A-Z])/', '_$1', $property->getName()));
++                $columns[] = preg_replace('/\B([A-Z])/', '_$1', $property->getName());
+             }
+         }
+         sort($columns);
+
+
+9) /app/src/Attributes/Reflection/ReflectionManyToMany.php:28    [M] MethodCallRemoval [ID] e19a7f9ca45385c16d22fcf101cebb8e
+
+@@ @@
+             if (!$reflectionEntity->isEntity()) {
+                 throw new RuntimeException('Non-entity found in relation');
+             }
+-            $this->assertCollectionType();
++
+
+             return $this->attribute->getTargetEntity();
+         }
+
+
+10) /app/src/Attributes/Reflection/ReflectionManyToMany.php:68    [M] NullSafePropertyCall [ID] 028f55f5b540d8d86bf2be3a557d5beb
+
+@@ @@
+
+     public function getTableName(): string
+     {
+-        if ($this->attribute->mappingTable?->name) {
++        if ($this->attribute->mappingTable->name) {
+             return $this->attribute->mappingTable->name;
+         }
+         $ownerEntity = new ReflectionEntity($this->getDeclaringClassName());
+
+
+11) /app/src/Attributes/Reflection/ReflectionManyToMany.php:96    [M] NullSafePropertyCall [ID] 7c09fe7d548532191d15bf9c635aab82
+
+@@ @@
+      */
+     public function getExtraProperties(): array
+     {
+-        return $this->attribute->mappingTable?->properties ?? [];
++        return $this->attribute->mappingTable->properties ?? [];
+     }
+
+     public function getTargetPrimaryColumn(): string
+
+
+12) /app/src/Attributes/Reflection/ReflectionManyToMany.php:104    [M] Coalesce [ID] b5108e0484e557ed2df74bc9bce283ae
+
+@@ @@
+         $entity = new ReflectionEntity($this->getTargetEntity());
+         $columns = $entity->getPrimaryKeyColumns();
+
+-        return $columns[0] ?? 'id';
++        return 'id' ?? $columns[0];
+     }
+
+     public function getOwnerPrimaryColumn(): string
+
+
+13) /app/src/Attributes/Reflection/ReflectionManyToMany.php:112    [M] IncrementInteger [ID] 488125490fd95a2a059049275edbbde8
+
+@@ @@
+         $entity = new ReflectionEntity($this->getDeclaringClassName());
+         $columns = $entity->getPrimaryKeyColumns();
+
+-        return $columns[0] ?? 'id';
++        return $columns[1] ?? 'id';
+     }
+
+     /**
+
+
+14) /app/src/Attributes/Reflection/ReflectionManyToMany.php:112    [M] Coalesce [ID] 99e000dcd0a100600cb1d51a9f3c684c
+
+@@ @@
+         $entity = new ReflectionEntity($this->getDeclaringClassName());
+         $columns = $entity->getPrimaryKeyColumns();
+
+-        return $columns[0] ?? 'id';
++        return 'id' ?? $columns[0];
+     }
+
+     /**
+
+
+15) /app/src/Attributes/Reflection/ReflectionManyToMany.php:136    [M] Identical [ID] 3bbb831ac0e8e7701a1d95e59da0f7be
+
+@@ @@
+     private function assertCollectionType(): void
+     {
+         $type = $this->property->getType();
+-        if ($type === null) {
++        if ($type !== null) {
+             return;
+         }
+         if ($type->isBuiltin()) {
+
+
+16) /app/src/Attributes/Reflection/ReflectionManyToMany.php:139    [M] IfNegation [ID] ff4758a66bf846bd1c51fa32a693748f
+
+@@ @@
+         if ($type === null) {
+             return;
+         }
+-        if ($type->isBuiltin()) {
++        if (!$type->isBuiltin()) {
+             $allowed = ['array', 'iterable'];
+             if (!in_array($type->getName(), $allowed, true)) {
+                 throw new RuntimeException('Many-to-many property must be iterable collection');
+             }
+-
+             return;
+         }
+         $name = $type->getName();
+
+
+17) /app/src/Attributes/Reflection/ReflectionManyToMany.php:145    [M] ReturnRemoval [ID] e301601b07f8b30894028920744ec991
+
+@@ @@
+                 throw new RuntimeException('Many-to-many property must be iterable collection');
+             }
+
+-            return;
++
+         }
+         $name = $type->getName();
+         if ($name !== MappingCollection::class && !is_subclass_of($name, MappingCollection::class)) {
+
+
+18) /app/src/Attributes/Reflection/ReflectionRelation.php:36    [M] IfNegation [ID] 837cf7b455d497ed873ed30785c72179
+
+@@ @@
+
+             return $this->entityProperty->getTargetEntity();
+         }
+-        if ($this->isOneToMany()) {
++        if (!$this->isOneToMany()) {
+             $this->assertOneToManyCollectionType();
+         }
+         $type = $this->property->getType();
+
+
+19) /app/src/Attributes/Reflection/ReflectionRelation.php:41    [M] LogicalAnd [ID] a73fb1d3ac0597a4de7af93443788d20
+
+@@ @@
+         }
+         $type = $this->property->getType();
+
+-        if ($type && !$type->isBuiltin()) {
++        if ($type || !$type->isBuiltin()) {
+             $reflectionEntity = new ReflectionEntity($type->getName());
+             if (!$reflectionEntity->isEntity()) {
+                 throw new RuntimeException('Non-entity found in relation');
+
+
+20) /app/src/Attributes/Reflection/ReflectionRelation.php:58    [M] MethodCallRemoval [ID] 5d4f5b4da09f686a78e07a99f028b80b
+
+@@ @@
+         if ($this->isManyToOne()) {
+             return $this->getMappedByProperty();
+         }
+-        $this->assertMappingConfigured();
++
+
+         return $this->getMappedByProperty() ?? $this->parseColumnName($this->property->getName());
+     }
+
+
+21) /app/src/Attributes/Reflection/ReflectionRelation.php:68    [M] MethodCallRemoval [ID] e63404fdbf098a055cbb2d0f680abed3
+
+@@ @@
+         if ($this->isManyToOne()) {
+             return $this->getInversedByProperty();
+         }
+-        $this->assertMappingConfigured();
++
+
+         if ($this->getMappedByProperty() && $this->getInversedByProperty()) {
+             throw new Exception('ownedBy and referencedBy cannot be specified at the same time');
+
+
+22) /app/src/Attributes/Reflection/ReflectionRelation.php:70    [M] LogicalAndAllSubExprNegation [ID] 6c8d701cfad45ae76d237c0d45f068db
+
+@@ @@
+         }
+         $this->assertMappingConfigured();
+
+-        if ($this->getMappedByProperty() && $this->getInversedByProperty()) {
++        if (!$this->getMappedByProperty() && !$this->getInversedByProperty()) {
+             throw new Exception('ownedBy and referencedBy cannot be specified at the same time');
+         }
+         if ($this->getInversedByProperty()) {
+
+
+23) /app/src/Attributes/Reflection/ReflectionRelation.php:74    [M] ReturnRemoval [ID] 123355dc3084a9688bb51c034c6b4537
+
+@@ @@
+             throw new Exception('ownedBy and referencedBy cannot be specified at the same time');
+         }
+         if ($this->getInversedByProperty()) {
+-            return $this->getInversedByProperty();
++
+         }
+         $class = $this->property->class;
+         $array = explode('\\', $class);
+
+
+24) /app/src/Attributes/Reflection/ReflectionRelation.php:79    [M] Coalesce [ID] c8326f00c23999c49e0ed08c0461536d
+
+@@ @@
+         $class = $this->property->class;
+         $array = explode('\\', $class);
+
+-        return $this->getInversedByProperty() ?? $this->parseColumnName(end($array));
++        return $this->parseColumnName(end($array)) ?? $this->getInversedByProperty();
+     }
+
+     public function isForeignKeyRequired(): bool
+
+
+25) /app/src/Attributes/Reflection/ReflectionRelation.php:88    [M] LogicalAndSingleSubExprNegation [ID] 668cc0b3587bf647a45bcc951a521969
+
+@@ @@
+             return false;
+         }
+
+-        if ($this->isOneToOne() && $this->getMappedByProperty() !== null) {
++        if (!$this->isOneToOne() && $this->getMappedByProperty() !== null) {
+             return false;
+         }
+
+
+26) /app/src/Attributes/Reflection/ReflectionRelation.php:89    [M] FalseValue [ID] 5ca04b53cd4394a9420e9b80dce6c52d
+
+@@ @@
+         }
+
+         if ($this->isOneToOne() && $this->getMappedByProperty() !== null) {
+-            return false;
++            return true;
+         }
+
+         return property_exists($this->entityProperty, 'foreignKey')
+
+
+27) /app/src/Attributes/Reflection/ReflectionRelation.php:89    [M] ReturnRemoval [ID] 41589577d3edef4fa70429e9fc864f23
+
+@@ @@
+         }
+
+         if ($this->isOneToOne() && $this->getMappedByProperty() !== null) {
+-            return false;
++
+         }
+
+         return property_exists($this->entityProperty, 'foreignKey')
+
+
+28) /app/src/Attributes/Reflection/ReflectionRelation.php:94    [M] TrueValue [ID] f329bdc75d847d7242f4bbe4db40b4f4
+
+@@ @@
+
+         return property_exists($this->entityProperty, 'foreignKey')
+             ? ($this->entityProperty->foreignKey ?? true)
+-            : true;
++            : false;
+     }
+
+     private function parseColumnName(string $name): string
+
+
+29) /app/src/Attributes/Reflection/ReflectionRelation.php:113    [M] NullSafeMethodCall [ID] cdc79ad86f6466420f93be5abbef5968
+
+@@ @@
+             return $this->entityProperty->nullable;
+         }
+
+-        return $this->property->getType()?->allowsNull() ?? false;
++        return $this->property->getType()->allowsNull() ?? false;
+     }
+
+     public function getType(): string
+
+
+30) /app/src/Attributes/Reflection/ReflectionRelation.php:113    [M] FalseValue [ID] e121307bc82615ededab2b5f3318f793
+
+@@ @@
+             return $this->entityProperty->nullable;
+         }
+
+-        return $this->property->getType()?->allowsNull() ?? false;
++        return $this->property->getType()?->allowsNull() ?? true;
+     }
+
+     public function getType(): string
+
+
+31) /app/src/Attributes/Reflection/ReflectionRelation.php:143    [M] IncrementInteger [ID] b7a1ff3f1b7ab3a329d2459390930df2
+
+@@ @@
+         $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+         $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
+
+-        return $primaryColumns[0] ?? 'id';
++        return $primaryColumns[1] ?? 'id';
+     }
+
+     public function getPropertyName(): string
+
+
+32) /app/src/Attributes/Reflection/ReflectionRelation.php:143    [M] Coalesce [ID] 3b330cbaabc053236d4729e3fed047ef
+
+@@ @@
+         $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+         $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
+
+-        return $primaryColumns[0] ?? 'id';
++        return 'id' ?? $primaryColumns[0];
+     }
+
+     public function getPropertyName(): string
+
+
+33) /app/src/Attributes/Reflection/ReflectionRelation.php:184    [M] PublicVisibility [ID] 6ac09c0bf3f2ccc72ce2a93677bd6836
+
+@@ @@
+         return false;
+     }
+
+-    public function getMappedByProperty(): ?string
++    protected function getMappedByProperty(): ?string
+     {
+         return property_exists($this->entityProperty, 'ownedBy') ? $this->entityProperty->ownedBy : null;
+     }
+
+
+34) /app/src/Attributes/Reflection/ReflectionRelation.php:189    [M] PublicVisibility [ID] 1af93b9bb04404ed2511616906d36387
+
+@@ @@
+         return property_exists($this->entityProperty, 'ownedBy') ? $this->entityProperty->ownedBy : null;
+     }
+
+-    public function getInversedByProperty(): ?string
++    protected function getInversedByProperty(): ?string
+     {
+         return property_exists($this->entityProperty, 'referencedBy') ? $this->entityProperty->referencedBy : null;
+     }
+
+
+35) /app/src/Attributes/Reflection/ReflectionRelation.php:196    [M] LogicalAndAllSubExprNegation [ID] 4901777cedfa34f469ed21cb16ba2fba
+
+@@ @@
+
+     private function assertMappingConfigured(): void
+     {
+-        if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
++        if (!empty($this->getMappedByProperty()) && !empty($this->getInversedByProperty())) {
+             throw new Exception('Either ownedBy or referencedBy is required');
+         }
+     }
+
+
+36) /app/src/Attributes/Relations/MappingTableProperty.php:10    [M] FalseValue [ID] 68d3302c1912e2858b8266d1c7cd6dd3
+
+@@ @@
+     public function __construct(
+         public readonly string $name,
+         public readonly string $type = 'string',
+-        public readonly bool $nullable = false,
++        public readonly bool $nullable = true,
+         public readonly ?int $length = null,
+         public readonly ?string $defaultValue = null,
+     ) {
+
+
+37) /app/src/Attributes/Relations/OneToOne.php:41    [M] Coalesce [ID] cacc16eb23ca9ba84d2527e7a429446f
+
+@@ @@
+
+     public function getColumn(): ?string
+     {
+-        return $this->column ?? $this->ownedBy;
++        return $this->ownedBy ?? $this->column;
+     }
+ }
+
+
+38) /app/src/Commands/InitCommand.php:47    [M] MatchArmRemoval [ID] 76afa26f08a5e7e89540983c26851e74
+
+@@ @@
+                     running_time INT NOT NULL
+                 );
+             ',
+-            default => throw new \Exception("Unsupported database driver: $driverName"),
+         };
+     }
+ }
+
+
+39) /app/src/Exceptions/EmptyPropertiesList.php:9    [M] DecrementInteger [ID] ab72f5b38a85c0dacc2256a9a09aeb3e
+
+@@ @@
+
+ class EmptyPropertiesList extends Exception
+ {
+-    public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
++    public function __construct(string $tableName, int $code = -1, ?Exception $previous = null)
+     {
+         parent::__construct('No columns specified for ' . $tableName, $code, $previous);
+     }
+
+
+40) /app/src/Exceptions/EmptyPropertiesList.php:9    [M] IncrementInteger [ID] b53f0e73ef74c94d9086a0a5aeb1e06f
+
+@@ @@
+
+ class EmptyPropertiesList extends Exception
+ {
+-    public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
++    public function __construct(string $tableName, int $code = 1, ?Exception $previous = null)
+     {
+         parent::__construct('No columns specified for ' . $tableName, $code, $previous);
+     }
+
+
+41) /app/src/Exceptions/EmptyPropertiesList.php:11    [M] Concat [ID] 4e76b3a0d6b933c44e2136849eeec17a
+
+@@ @@
+ {
+     public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
+     {
+-        parent::__construct('No columns specified for ' . $tableName, $code, $previous);
++        parent::__construct($tableName . 'No columns specified for ', $code, $previous);
+     }
+ }
+
+
+42) /app/src/Exceptions/EmptyPropertiesList.php:11    [M] ConcatOperandRemoval [ID] d43d405b9cd3790d0f37dcae8a03cf0e
+
+@@ @@
+ {
+     public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
+     {
+-        parent::__construct('No columns specified for ' . $tableName, $code, $previous);
++        parent::__construct('No columns specified for ', $code, $previous);
+     }
+ }
+
+
+43) /app/src/Exceptions/EmptyPropertiesList.php:11    [M] ConcatOperandRemoval [ID] 24d502266db887fb8f1922220f2d490c
+
+@@ @@
+ {
+     public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
+     {
+-        parent::__construct('No columns specified for ' . $tableName, $code, $previous);
++        parent::__construct($tableName, $code, $previous);
+     }
+ }
+
+
+44) /app/src/Exceptions/EmptyPropertiesList.php:11    [M] MethodCallRemoval [ID] dc95a129aaab201d0a1e2c795157953e
+
+@@ @@
+ {
+     public function __construct(string $tableName, int $code = 0, ?Exception $previous = null)
+     {
+-        parent::__construct('No columns specified for ' . $tableName, $code, $previous);
++
+     }
+ }
+
+
+45) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:56    [M] UnwrapArrayKeys [ID] c69949fd94e85a2bb13b048b108baa05
+
+@@ @@
+                 $operation = TableCompareResult::OPERATION_CREATE;
+             } else {
+                 $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
+-                $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
++                $indexesToRemove = array_fill_keys($existingIndexes, true);
+                 $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
+                 $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
+             }
+
+
+46) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:73    [M] Foreach_ [ID] 49efb02e7f5cdbf3cf67644b038cb266
+
+@@ @@
+
+             /** @var ReflectionEntity $entity */
+             foreach ($entityGroup as $entity) {
+-                foreach ($entity->getAttributes(Index::class) as $indexAttribute) {
++                foreach ([] as $indexAttribute) {
+                     /** @var Index $indexInstance */
+                     $indexInstance = $indexAttribute->newInstance();
+                     $indexInstance->resolveColumns($entity);
+
+
+47) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:115    [M] MethodCallRemoval [ID] 32b6d0dfbcd953745c19021bdc9f88c1
+
+@@ @@
+                 );
+                 if ($data['relation'] && $data['foreignKeyRequired']) {
+                     $validator = $this->relationValidatorFactory->getValidator($data['relation']);
+-                    $validator->validate($data['relation']);
++
+                     $targetEntity = new ReflectionEntity($data['relation']->getTargetEntity());
+                     $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                     $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
+
+
+48) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:125    [M] TrueValue [ID] dc4346776c11a5f568cb42afd60e03e5
+
+@@ @@
+                         $targetEntity->getTableName(),
+                         $data['referencedColumn'],
+                     );
+-                    $createdColumnsWithForeignKeys[$columnName] = true;
++                    $createdColumnsWithForeignKeys[$columnName] = false;
+                 }
+             }
+
+
+49) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:130    [M] Coalesce [ID] b779a798f4feac28a2195e8aa236db8a
+
+@@ @@
+             }
+
+             foreach ($columnsToUpdate as $columnName => $data) {
+-                $operation = $operation ?? CompareResult::OPERATION_UPDATE;
++                $operation = CompareResult::OPERATION_UPDATE ?? $operation;
+                 $column = new ColumnCompareResult(
+                     $columnName,
+                     CompareResult::OPERATION_UPDATE,
+
+
+50) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:147    [M] LogicalOr [ID] 6ae6e305905b565db98ee8495f1dfc97
+
+@@ @@
+                         $columnsIndexed[$columnName]->length,
+                     ),
+                 );
+-                if (!$column->typeMatch || !$column->isNullableMatch || !$column->isDefaultValueMatch || !$column->isLengthMatch) {
++                if (!$column->typeMatch && !$column->isNullableMatch || !$column->isDefaultValueMatch || !$column->isLengthMatch) {
+                     $columnsCompareResults[] = $column;
+                 }
+             }
+
+
+51) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:147    [M] LogicalOr [ID] 53048cc33623311d7eff221bde896e76
+
+@@ @@
+                         $columnsIndexed[$columnName]->length,
+                     ),
+                 );
+-                if (!$column->typeMatch || !$column->isNullableMatch || !$column->isDefaultValueMatch || !$column->isLengthMatch) {
++                if (!$column->typeMatch || !$column->isNullableMatch && !$column->isDefaultValueMatch || !$column->isLengthMatch) {
+                     $columnsCompareResults[] = $column;
+                 }
+             }
+
+
+52) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:147    [M] LogicalOr [ID] 618d50a9f586a25facebfed5fcd2ea84
+
+@@ @@
+                         $columnsIndexed[$columnName]->length,
+                     ),
+                 );
+-                if (!$column->typeMatch || !$column->isNullableMatch || !$column->isDefaultValueMatch || !$column->isLengthMatch) {
++                if (!$column->typeMatch || !$column->isNullableMatch || !$column->isDefaultValueMatch && !$column->isLengthMatch) {
+                     $columnsCompareResults[] = $column;
+                 }
+             }
+
+
+53) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:153    [M] Coalesce [ID] d6b2c84dfda5a6a549aafde0eb27a0a2
+
+@@ @@
+             }
+
+             foreach ($columnsToDelete as $columnName => $data) {
+-                $operation = $operation ?? CompareResult::OPERATION_UPDATE;
++                $operation = CompareResult::OPERATION_UPDATE ?? $operation;
+                 $columnsCompareResults[] = new ColumnCompareResult(
+                     $columnName,
+                     CompareResult::OPERATION_DELETE,
+
+
+54) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:169    [M] Foreach_ [ID] d40706ae63549cd62427ce39cd9520a1
+
+@@ @@
+
+             $indexCompareResults = [];
+
+-            foreach ($entityIndexes as $indexName => $indexInstance) {
++            foreach ([] as $indexName => $indexInstance) {
+                 if (!isset($existingIndexes[$indexName])) {
+                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                     $indexCompareResults[] = new IndexCompareResult(
+
+
+55) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:183    [M] UnwrapArrayKeys [ID] b8d3f96d37f8c3adefbceaa0b3848ff7
+
+@@ @@
+                 }
+             }
+
+-            foreach (array_keys($indexesToRemove) as $indexName) {
++            foreach ($indexesToRemove as $indexName) {
+                 if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys ?? [])) {
+                     unset($indexesToRemove[$indexName]);
+
+
+56) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:183    [M] Foreach_ [ID] b58a4f3a024862dce2265c123055eb39
+
+@@ @@
+                 }
+             }
+
+-            foreach (array_keys($indexesToRemove) as $indexName) {
++            foreach ([] as $indexName) {
+                 if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys ?? [])) {
+                     unset($indexesToRemove[$indexName]);
+
+
+57) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:200    [M] LogicalAndAllSubExprNegation [ID] a27c612be5c68e2251c3d17f115bb929
+
+@@ @@
+
+             if (isset($existingForeignKeys)) {
+                 foreach ($propertiesIndexed as $columnName => $propertyData) {
+-                    if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
++                    if (!empty($existingForeignKeys) && !($operation === TableCompareResult::OPERATION_CREATE)) {
+                         continue;
+                     }
+                     if (!$propertyData['relation']) {
+
+
+58) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:201    [M] Continue_ [ID] bfd6da44264a42b9642e260d61550c4f
+
+@@ @@
+             if (isset($existingForeignKeys)) {
+                 foreach ($propertiesIndexed as $columnName => $propertyData) {
+                     if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
+-                        continue;
++                        break;
+                     }
+                     if (!$propertyData['relation']) {
+                         continue;
+
+
+59) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:210    [M] NotIdentical [ID] 6f7eb725c7c90164c7284469a06dd92a
+
+@@ @@
+                     $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
+                     if ($propertyData['foreignKeyRequired']) {
+-                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
++                        if ($operation === TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
+                             unset($foreignKeysToRemove[$foreignKeyName]);
+
+                             continue;
+
+
+60) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:210    [M] LogicalAndAllSubExprNegation [ID] 13c9e8437df8150cf59dda4f3b1ef5a2
+
+@@ @@
+                     $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
+                     if ($propertyData['foreignKeyRequired']) {
+-                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
++                        if (!($operation !== TableCompareResult::OPERATION_CREATE) && !isset($createdColumnsWithForeignKeys[$columnName])) {
+                             unset($foreignKeysToRemove[$foreignKeyName]);
+
+                             continue;
+
+
+61) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:213    [M] Continue_ [ID] 14f4509d4d9dce8e3f1a88eb302ec86c
+
+@@ @@
+                         if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
+                             unset($foreignKeysToRemove[$foreignKeyName]);
+
+-                            continue;
++                            break;
+                         }
+                         $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
+                         $validator->validate($propertyData['relation']);
+
+
+62) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:216    [M] MethodCallRemoval [ID] 1aa8da26bd5536e07aa3e49bba143afb
+
+@@ @@
+                             continue;
+                         }
+                         $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
+-                        $validator->validate($propertyData['relation']);
++
+                         $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                         if (!$foreignKeyExists) {
+                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+
+
+63) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:217    [M] Coalesce [ID] f91269b50395d299b4fcb73f4524e609
+
+@@ @@
+                         }
+                         $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
+                         $validator->validate($propertyData['relation']);
+-                        $operation = $operation ?? CompareResult::OPERATION_UPDATE;
++                        $operation = CompareResult::OPERATION_UPDATE ?? $operation;
+                         if (!$foreignKeyExists) {
+                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                                 $foreignKeyName,
+
+
+64) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:231    [M] Coalesce [ID] 9c8308dfd32669481888c0dee663a4de
+
+@@ @@
+                         }
+                     } else {
+                         if ($foreignKeyExists) {
+-                            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
++                            $operation = CompareResult::OPERATION_UPDATE ?? $operation;
+                             unset($foreignKeysToRemove[$foreignKeyName]);
+                             $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                                 $foreignKeyName,
+
+
+65) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:245    [M] Coalesce [ID] 50e56d739c47727739d97cfd22fa969d
+
+@@ @@
+                 }
+
+                 foreach (array_keys($foreignKeysToRemove ?? []) as $foreignKeyName) {
+-                    $operation = $operation ?? CompareResult::OPERATION_UPDATE;
++                    $operation = CompareResult::OPERATION_UPDATE ?? $operation;
+                     $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                         $foreignKeyName,
+                         CompareResult::OPERATION_DELETE,
+
+
+66) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:264    [M] Continue_ [ID] 8c6ddbb6d10905afd59ff6d123529d69
+
+@@ @@
+             if (!$operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {
+                 yield from [];
+
+-                continue;
++                break;
+             }
+             yield new TableCompareResult(
+                 $tableName,
+
+
+67) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:309    [M] ArrayOneItem [ID] 25f37b799c653e6e3b16dd4bcc363d25
+
+@@ @@
+             $entitiesIndexed[$tableName][] = $entity;
+         }
+
+-        return $entitiesIndexed;
++        return count($entitiesIndexed) > 1 ? array_slice($entitiesIndexed, 0, 1, true) : $entitiesIndexed;
+     }
+
+     private function validateRelations(array $entities): void
+
+
+68) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:328    [M] Continue_ [ID] 9d115afffa126eb13af4c3d9b34c4c64
+
+@@ @@
+         foreach ($entities as $entity) {
+             foreach ($entity->getEntityRelationProperties() as $relation) {
+                 if (!$relation instanceof ReflectionManyToMany) {
+-                    continue;
++                    break;
+                 }
+                 if (!$relation->isOwningSide()) {
+                     continue;
+
+
+69) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:331    [M] Continue_ [ID] 2ebc367f22e35662b0f8c8967df7a06f
+
+@@ @@
+                     continue;
+                 }
+                 if (!$relation->isOwningSide()) {
+-                    continue;
++                    break;
+                 }
+                 $ownerEntity = new ReflectionEntity($relation->getDeclaringClassName());
+                 $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+
+
+70) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:354    [M] LogicalOr [ID] 7b7bd46f59cb42dad0a98ee593f3672e
+
+@@ @@
+                 }
+
+                 $existing = $definitions[$tableName];
+-                if ($existing['ownerJoinColumn'] !== $relation->getOwnerJoinColumn() || $existing['targetJoinColumn'] !== $relation->getTargetJoinColumn()) {
++                if ($existing['ownerJoinColumn'] !== $relation->getOwnerJoinColumn() && $existing['targetJoinColumn'] !== $relation->getTargetJoinColumn()) {
+                     throw new RuntimeException('Many-to-many misconfigured: conflicting mapping table definition');
+                 }
+                 $definitions[$tableName]['extraProperties'] = $this->mergeMappingTableProperties(
+
+
+71) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:365    [M] ArrayOneItem [ID] ecf2748ec97913a754862860a085a71e
+
+@@ @@
+             }
+         }
+
+-        return $definitions;
++        return count($definitions) > 1 ? array_slice($definitions, 0, 1, true) : $definitions;
+     }
+
+     private function compareMappingTable(array $definition, array $existingTables): ?TableCompareResult
+
+
+72) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:393    [M] FalseValue [ID] 205bd589988292743dec9411f399cca8
+
+@@ @@
+         }
+
+         $requiredProperties = [];
+-        $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null);
++        $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', true, null, null);
+         $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null);
+         foreach ($definition['extraProperties'] as $extra) {
+             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
+
+
+73) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:394    [M] FalseValue [ID] 0e3c48b3c87232aec7ff710b4b4718e4
+
+@@ @@
+
+         $requiredProperties = [];
+         $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null);
+-        $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null);
++        $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', true, null, null);
+         foreach ($definition['extraProperties'] as $extra) {
+             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
+         }
+
+
+74) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:400    [M] UnwrapArrayDiffKey [ID] a257e3214b43f7fda3478c8e9cbcc1e2
+
+@@ @@
+         }
+
+         $columnsCompareResults = [];
+-        $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
++        $columnsToDelete = $columnsIndexed;
+         $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
+         $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
+
+
+75) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:401    [M] UnwrapArrayDiffKey [ID] 6809eaf70cd9293962f4b1fe341bbf09
+
+@@ @@
+
+         $columnsCompareResults = [];
+         $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
+-        $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
++        $columnsToCreate = $requiredProperties;
+         $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
+
+         foreach ($columnsToCreate as $name => $property) {
+
+
+76) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:402    [M] UnwrapArrayIntersectKey [ID] d9b6d5fece1da49e182757423be24067
+
+@@ @@
+         $columnsCompareResults = [];
+         $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
+         $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
+-        $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
++        $columnsToUpdate = $columnsIndexed;
+
+         foreach ($columnsToCreate as $name => $property) {
+             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+
+
+77) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:414    [M] Foreach_ [ID] 5223d0d3d78df79437b2340b6bdc94dc
+
+@@ @@
+             );
+         }
+
+-        foreach ($columnsToUpdate as $name => $property) {
++        foreach ([] as $name => $property) {
+             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+             $column = $columnsIndexed[$name];
+             $result = new ColumnCompareResult(
+
+
+78) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:428    [M] Foreach_ [ID] f96cfc2164130a1b35a7e4ebd76a6dca
+
+@@ @@
+             }
+         }
+
+-        foreach ($columnsToDelete as $name => $column) {
++        foreach ([] as $name => $column) {
+             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+             $columnsCompareResults[] = new ColumnCompareResult(
+                 $name,
+
+
+79) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:467    [M] UnwrapArrayKeys [ID] 6090fd3d9119b58a871a2969314d5962
+
+@@ @@
+             }
+         }
+
+-        foreach (array_keys($foreignKeysToRemove) as $name) {
++        foreach ($foreignKeysToRemove as $name) {
+             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+             $foreignKeysByName[$name] = new ForeignKeyCompareResult(
+                 $name,
+
+
+80) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:467    [M] Foreach_ [ID] ac7ea269bca7aef6f3d64c14561a1ed3
+
+@@ @@
+             }
+         }
+
+-        foreach (array_keys($foreignKeysToRemove) as $name) {
++        foreach ([] as $name) {
+             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+             $foreignKeysByName[$name] = new ForeignKeyCompareResult(
+                 $name,
+
+
+81) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:479    [M] UnwrapArrayKeys [ID] 6872f11b43128130ac081a584b7177a6
+
+@@ @@
+         }
+
+         $indexCompareResults = [];
+-        foreach (array_keys($indexesToRemove) as $indexName) {
++        foreach ($indexesToRemove as $indexName) {
+             if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
+                 unset($indexesToRemove[$indexName]);
+
+
+82) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:479    [M] Foreach_ [ID] 744655484239c705817e0e47a0a387d2
+
+@@ @@
+         }
+
+         $indexCompareResults = [];
+-        foreach (array_keys($indexesToRemove) as $indexName) {
++        foreach ([] as $indexName) {
+             if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
+                 unset($indexesToRemove[$indexName]);
+
+
+83) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:494    [M] Identical [ID] eabb48055a71f7646961fbe399a87455
+
+@@ @@
+             );
+         }
+
+-        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
++        if ($operation !== CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
+             throw new EmptyPropertiesList($tableName);
+         }
+
+
+84) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:494    [M] LogicalAndAllSubExprNegation [ID] 4bc5cbaa2698c6d10538be868c727255
+
+@@ @@
+             );
+         }
+
+-        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
++        if (!($operation === CompareResult::OPERATION_CREATE) && !empty($columnsCompareResults)) {
+             throw new EmptyPropertiesList($tableName);
+         }
+
+
+85) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:498    [M] LogicalNot [ID] 3bdcca349e058fbd87489fee2d8995cc
+
+@@ @@
+             throw new EmptyPropertiesList($tableName);
+         }
+
+-        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
++        if ($operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+             return null;
+         }
+
+
+86) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:498    [M] LogicalAnd [ID] cb71e1c5521eb75c6b88dafcd8c3caa2
+
+@@ @@
+             throw new EmptyPropertiesList($tableName);
+         }
+
+-        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
++        if ((!$operation && empty($columnsCompareResults) || empty($foreignKeysByName)) && empty($indexCompareResults)) {
+             return null;
+         }
+
+
+87) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:498    [M] LogicalAnd [ID] 3d456b3d17fe384ef8605f8606d6f037
+
+@@ @@
+             throw new EmptyPropertiesList($tableName);
+         }
+
+-        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
++        if ((!$operation || empty($columnsCompareResults)) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+             return null;
+         }
+
+
+88) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:498    [M] LogicalAndAllSubExprNegation [ID] c9b8484baa068da5b228fce28cc2e3de
+
+@@ @@
+             throw new EmptyPropertiesList($tableName);
+         }
+
+-        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
++        if ($operation && !empty($columnsCompareResults) && !empty($foreignKeysByName) && !empty($indexCompareResults)) {
+             return null;
+         }
+
+
+89) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:505    [M] UnwrapArrayValues [ID] 5e9ab444d94278ae0036b6b24c1b3e15
+
+@@ @@
+         return new TableCompareResult(
+             $tableName,
+             $operation ?? CompareResult::OPERATION_UPDATE,
+-            array_values($columnsCompareResults),
++            $columnsCompareResults,
+             $indexCompareResults,
+             array_values($foreignKeysByName),
+             $definition['primaryColumns'],
+
+
+90) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:507    [M] UnwrapArrayValues [ID] c06a1dbc42f436ac5371644c97cf95f2
+
+@@ @@
+             $operation ?? CompareResult::OPERATION_UPDATE,
+             array_values($columnsCompareResults),
+             $indexCompareResults,
+-            array_values($foreignKeysByName),
++            $foreignKeysByName,
+             $definition['primaryColumns'],
+         );
+     }
+
+
+91) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:527    [M] Continue_ [ID] da18ceed39d929dbd13ecda862ab16dc
+
+@@ @@
+             if (!isset($properties[$property->name])) {
+                 $properties[$property->name] = $property;
+
+-                continue;
++                break;
+             }
+             $current = $properties[$property->name];
+             if ($current->type !== $property->type || $current->length !== $property->length || $current->defaultValue !== $property->defaultValue) {
+
+
+92) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:530    [M] LogicalOr [ID] 2dbe1186333959a5ec15d4e3a1a71825
+
+@@ @@
+                 continue;
+             }
+             $current = $properties[$property->name];
+-            if ($current->type !== $property->type || $current->length !== $property->length || $current->defaultValue !== $property->defaultValue) {
++            if ($current->type !== $property->type || $current->length !== $property->length && $current->defaultValue !== $property->defaultValue) {
+                 throw new RuntimeException(
+                     sprintf(
+                         'Many-to-many misconfigured: mapping table "%s" property "%s" conflicts between relations',
+
+
+93) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:581    [M] FalseValue [ID] 000a90bf02685653c1a01f55e968171d
+
+@@ @@
+             'default' => $property->getDefaultValue(),
+             'length' => $property->getLength(),
+             'relation' => $property instanceof ReflectionRelation ? $property : null,
+-            'foreignKeyRequired' => $property instanceof ReflectionRelation ? $property->isForeignKeyRequired() : false,
++            'foreignKeyRequired' => $property instanceof ReflectionRelation ? $property->isForeignKeyRequired() : true,
+             'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
+         ];
+
+
+94) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:588    [M] ReturnRemoval [ID] 7d53584da9e24be5e5ca9ef0b3b78295
+
+@@ @@
+         if (!isset($propertiesIndexed[$columnName])) {
+             $propertiesIndexed[$columnName] = $incoming;
+
+-            return $propertiesIndexed;
++
+         }
+
+         $existing = $propertiesIndexed[$columnName];
+
+
+95) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:613    [M] LogicalAnd [ID] 5ef3c9bb16c8492f2cac92900a828258
+
+@@ @@
+             );
+         }
+
+-        if ($incoming['relation'] && $existing['relation']) {
++        if ($incoming['relation'] || $existing['relation']) {
+             $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
+             $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
+             if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+
+
+96) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:613    [M] LogicalAndSingleSubExprNegation [ID] 8c3a426404123ba446dd5b75006dc4a7
+
+@@ @@
+             );
+         }
+
+-        if ($incoming['relation'] && $existing['relation']) {
++        if (!$incoming['relation'] && $existing['relation']) {
+             $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
+             $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
+             if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+
+
+97) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:613    [M] LogicalAndSingleSubExprNegation [ID] 48dd4e6aa8740d865c81ea7f1f6e4f9e
+
+@@ @@
+             );
+         }
+
+-        if ($incoming['relation'] && $existing['relation']) {
++        if ($incoming['relation'] && !$existing['relation']) {
+             $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
+             $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
+             if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+
+
+98) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:616    [M] LogicalOr [ID] af1aaad2374c5d37a5b2ebd175ef555d
+
+@@ @@
+         if ($incoming['relation'] && $existing['relation']) {
+             $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
+             $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
+-            if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
++            if ($incomingTarget->getTableName() !== $existingTarget->getTableName() && $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+                 throw new RuntimeException(
+                     sprintf(
+                         'Relation column "%s" on table "%s" points to different targets',
+
+
+99) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:629    [M] LogicalOrAllSubExprNegation [ID] 9c0765606a885d368fffe0eee1fd9df0
+
+@@ @@
+
+         $propertiesIndexed[$columnName] = [
+             'type' => $existing['type'],
+-            'nullable' => $existing['nullable'] || $incoming['nullable'],
++            'nullable' => !$existing['nullable'] || !$incoming['nullable'],
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+
+
+100) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:642    [M] UnwrapArrayKeys [ID] 667bf88f11c681111ff0020e61a8d026
+
+@@ @@
+
+     private function removePrimaryIndex(array $indexes): array
+     {
+-        foreach (array_keys($indexes) as $name) {
++        foreach ($indexes as $name) {
+             if (strtolower($name) === 'primary') {
+                 unset($indexes[$name]);
+             }
+
+
+101) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:642    [M] Foreach_ [ID] 85b9d0a480f39e93d80de3b2e2358229
+
+@@ @@
+
+     private function removePrimaryIndex(array $indexes): array
+     {
+-        foreach (array_keys($indexes) as $name) {
++        foreach ([] as $name) {
+             if (strtolower($name) === 'primary') {
+                 unset($indexes[$name]);
+             }
+
+
+102) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:648    [M] ArrayOneItem [ID] 37713c50d45e9e08cd6ff3decb56e18d
+
+@@ @@
+             }
+         }
+
+-        return $indexes;
++        return count($indexes) > 1 ? array_slice($indexes, 0, 1, true) : $indexes;
+     }
+
+     private function shouldSkipIndexDeletion(string $indexName, array $indexData, array $primaryColumns, array $existingForeignKeys): bool
+
+
+103) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:684    [M] UnwrapStrReplace [ID] e14d448d854616dbf5657c4babb14668
+
+@@ @@
+         }
+         if (is_string($type)) {
+             $clean = ltrim($type, '?');
+-            $clean = str_replace('|null', '', $clean);
++            $clean = $clean;
+
+             return $clean;
+         }
+
+
+104) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:19    [M] LogicalAndAllSubExprNegation [ID] d6274707bb1bd2b394d36e37310a4303
+
+@@ @@
+             return;
+         }
+
+-        if ($relation->getMappedBy() && $relation->getInversedBy()) {
++        if (!$relation->getMappedBy() && !$relation->getInversedBy()) {
+             throw new RuntimeException('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
+         }
+
+
+105) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:23    [M] LogicalAndAllSubExprNegation [ID] 23b432f90291baa33fb5608c5b9548c5
+
+@@ @@
+             throw new RuntimeException('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
+         }
+
+-        if (!$relation->isOwningSide() && count($relation->getExtraProperties()) > 0) {
++        if ($relation->isOwningSide() && !(count($relation->getExtraProperties()) > 0)) {
+             throw new RuntimeException('Many-to-many misconfigured: inverse side cannot define extra mapping properties');
+         }
+
+
+106) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:52    [M] NullSafePropertyCall [ID] 1b62734ac41ecaf6d98152318b6d2264
+
+@@ @@
+             if (
+                 $targetAttr->mappingTable
+                 && $targetAttr->mappingTable->name
+-                && $relation->getAttribute()->mappingTable?->name
++                && $relation->getAttribute()->mappingTable->name
+                 && $targetAttr->mappingTable->name !== $relation->getTableName()
+             ) {
+                 throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+
+
+107) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:53    [M] NotIdentical [ID] 0de1c9639293e83b9670f8d2f739533e
+
+@@ @@
+                 $targetAttr->mappingTable
+                 && $targetAttr->mappingTable->name
+                 && $relation->getAttribute()->mappingTable?->name
+-                && $targetAttr->mappingTable->name !== $relation->getTableName()
++                && $targetAttr->mappingTable->name === $relation->getTableName()
+             ) {
+                 throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+             }
+
+
+108) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:77    [M] LogicalAndAllSubExprNegation [ID] fc1436b637bd9b992664072251ea2b10
+
+@@ @@
+         if ($targetAttr->ownedBy !== null) {
+             throw new RuntimeException('Many-to-many inverse side misconfigured: owning property cannot declare ownedBy');
+         }
+-        if ($targetAttr->referencedBy && $targetAttr->referencedBy !== $relation->getPropertyName()) {
++        if (!$targetAttr->referencedBy && !($targetAttr->referencedBy !== $relation->getPropertyName())) {
+             throw new RuntimeException('Many-to-many inverse side misconfigured: referencedBy does not reference inverse property');
+         }
+         if (
+
+
+109) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:81    [M] LogicalAnd [ID] ecbd3c860b62b357e8645fb9bdd8477a
+
+@@ @@
+             throw new RuntimeException('Many-to-many inverse side misconfigured: referencedBy does not reference inverse property');
+         }
+         if (
+-            $targetAttr->mappingTable
+-            && $targetAttr->mappingTable->name
++            ($targetAttr->mappingTable || $targetAttr->mappingTable->name)
+             && $relation->getAttribute()->mappingTable?->name
+             && $targetAttr->mappingTable->name !== $relation->getTableName()
+         ) {
+
+
+110) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:81    [M] LogicalAndAllSubExprNegation [ID] 4a86dc2411bf4b75d196e18257c096c0
+
+@@ @@
+             throw new RuntimeException('Many-to-many inverse side misconfigured: referencedBy does not reference inverse property');
+         }
+         if (
+-            $targetAttr->mappingTable
+-            && $targetAttr->mappingTable->name
+-            && $relation->getAttribute()->mappingTable?->name
+-            && $targetAttr->mappingTable->name !== $relation->getTableName()
++            !$targetAttr->mappingTable && !$targetAttr->mappingTable->name && !$relation->getAttribute()->mappingTable?->name && !($targetAttr->mappingTable->name !== $relation->getTableName())
+         ) {
+             throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+         }
+
+
+111) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/ManyToManyRelationValidator.php:84    [M] NotIdentical [ID] 8201b1623b6147920148492696dc1c72
+
+@@ @@
+             $targetAttr->mappingTable
+             && $targetAttr->mappingTable->name
+             && $relation->getAttribute()->mappingTable?->name
+-            && $targetAttr->mappingTable->name !== $relation->getTableName()
++            && $targetAttr->mappingTable->name === $relation->getTableName()
+         ) {
+             throw new RuntimeException('Many-to-many inverse side misconfigured: mapping table name mismatch');
+         }
+
+
+112) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/OneToManyRelationValidator.php:43    [M] LogicalAndAllSubExprNegation [ID] dc9cfa778c49bb9d0724957a598e7431
+
+@@ @@
+         }
+
+         $inversedBy = $owningRelation->getInversedBy();
+-        if ($inversedBy && $inversedBy !== $relation->getPropertyName()) {
++        if (!$inversedBy && !($inversedBy !== $relation->getPropertyName())) {
+             throw new RuntimeException('One-to-many inverse side misconfigured: inversedBy does not reference inverse property');
+         }
+     }
+
+
+113) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/OneToManyRelationValidator.php:43    [M] LogicalAndSingleSubExprNegation [ID] aeaaadc5124f0bd1a9f893bd5877e4e6
+
+@@ @@
+         }
+
+         $inversedBy = $owningRelation->getInversedBy();
+-        if ($inversedBy && $inversedBy !== $relation->getPropertyName()) {
++        if (!$inversedBy && $inversedBy !== $relation->getPropertyName()) {
+             throw new RuntimeException('One-to-many inverse side misconfigured: inversedBy does not reference inverse property');
+         }
+     }
+
+
+114) /app/src/Modules/DatabaseSchemaComparator/RelationValidators/OneToOneRelationValidator.php:42    [M] LogicalAndAllSubExprNegation [ID] 3f37449ca23ff1cbb439e3792c666aec
+
+@@ @@
+
+         $targetProperty = $attributes[0]->newInstance();
+
+-        $inverseRequestsForeignKey = $targetProperty->ownedBy !== null && $targetProperty->foreignKey;
++        $inverseRequestsForeignKey = !($targetProperty->ownedBy !== null) && !$targetProperty->foreignKey;
+
+         if ($inverseRequestsForeignKey) {
+             $ownerClass = $relation->getDeclaringClassName();
+
+
+115) /app/src/Modules/DatabaseSchemaReader/DatabaseColumn.php:17    [M] PregMatchRemoveCaret [ID] 586604a7b288b8227a6f2085903647f4
+
+@@ @@
+         public readonly bool $isNullable,
+         public readonly ?string $defaultValue,
+     ) {
+-        if (preg_match('/^(\w+)\((\d+)\)$/', $type, $matches)) {
++        if (preg_match('/(\w+)\((\d+)\)$/', $type, $matches)) {
+             $this->type = 'string';
+             $this->length = (int) $matches[2];
+
+
+116) /app/src/Modules/DatabaseSchemaReader/DatabaseColumn.php:17    [M] PregMatchMatches [ID] 1e061453ad5b321b0956e8e2cee2a9da
+
+@@ @@
+         public readonly bool $isNullable,
+         public readonly ?string $defaultValue,
+     ) {
+-        if (preg_match('/^(\w+)\((\d+)\)$/', $type, $matches)) {
++        if ((int) $matches = []) {
+             $this->type = 'string';
+             $this->length = (int) $matches[2];
+
+
+117) /app/src/Modules/DatabaseSchemaReader/DatabaseColumn.php:17    [M] PregMatchRemoveDollar [ID] a3855dfed78b6f32e91d1b0a38110e43
+
+@@ @@
+         public readonly bool $isNullable,
+         public readonly ?string $defaultValue,
+     ) {
+-        if (preg_match('/^(\w+)\((\d+)\)$/', $type, $matches)) {
++        if (preg_match('/^(\w+)\((\d+)\)/', $type, $matches)) {
+             $this->type = 'string';
+             $this->length = (int) $matches[2];
+
+
+118) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:51    [M] LogicalOr [ID] 776e5516a7fe6d546dd726bc215b7355
+
+@@ @@
+
+         foreach ($results as $row) {
+             [$indexName, $columnName, $isUnique] = $this->normalizeIndexRow($row);
+-            if ($indexName === null || $columnName === null) {
++            if ($indexName === null && $columnName === null) {
+                 continue;
+             }
+
+
+119) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:56    [M] ArrayItemRemoval [ID] 29605069dd5af49f63c1778c9f639e89
+
+@@ @@
+
+             if (!isset($indexes[$indexName])) {
+                 $indexes[$indexName] = [
+-                    'columns' => [],
+                     'unique' => $isUnique,
+                 ];
+             }
+
+
+120) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:115    [M] Coalesce [ID] 40c3bb86c7a4a2de070954d9bdd35234
+
+@@ @@
+     private function normalizeIndexRow(array $row): array
+     {
+         $normalized = array_change_key_case($row, CASE_LOWER);
+-        $indexName = $normalized['index_name'] ?? $normalized['key_name'] ?? null;
++        $indexName = $normalized['key_name'] ?? $normalized['index_name'] ?? null;
+         $columnName = $normalized['column_name'] ?? $normalized['column'] ?? $normalized['columnname'] ?? null;
+         $isUnique = $this->isUniqueIndex($normalized);
+
+
+121) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:116    [M] Coalesce [ID] c44cadad6fa2f3a6872494fce590c888
+
+@@ @@
+     {
+         $normalized = array_change_key_case($row, CASE_LOWER);
+         $indexName = $normalized['index_name'] ?? $normalized['key_name'] ?? null;
+-        $columnName = $normalized['column_name'] ?? $normalized['column'] ?? $normalized['columnname'] ?? null;
++        $columnName = $normalized['column_name'] ?? $normalized['columnname'] ?? $normalized['column'] ?? null;
+         $isUnique = $this->isUniqueIndex($normalized);
+
+         return [$indexName, $columnName, $isUnique];
+
+
+122) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:116    [M] Coalesce [ID] 5c3b1f2437cd70cb20b13afac47f6317
+
+@@ @@
+     {
+         $normalized = array_change_key_case($row, CASE_LOWER);
+         $indexName = $normalized['index_name'] ?? $normalized['key_name'] ?? null;
+-        $columnName = $normalized['column_name'] ?? $normalized['column'] ?? $normalized['columnname'] ?? null;
++        $columnName = $normalized['column'] ?? $normalized['column_name'] ?? $normalized['columnname'] ?? null;
+         $isUnique = $this->isUniqueIndex($normalized);
+
+         return [$indexName, $columnName, $isUnique];
+
+
+123) /app/src/Modules/DatabaseSchemaReader/DatabaseSchemaReader.php:136    [M] CastBool [ID] 082f37245c3dee3500dd5ae561abfed9
+
+@@ @@
+     private function isUniqueIndex(array $normalized): bool
+     {
+         if (array_key_exists('non_unique', $normalized)) {
+-            return !(bool) $normalized['non_unique'];
++            return !$normalized['non_unique'];
+         }
+         if (array_key_exists('unique', $normalized)) {
+             return (bool) $normalized['unique'];
+
+
+124) /app/src/Modules/MigrationsGenerator/MySqlMigrationGenerator.php:67    [M] Continue_ [ID] ee6d05bedda275e98763660af3b6f5fc
+
+@@ @@
+             if ($column->operation === CompareResult::OPERATION_DELETE) {
+                 $alterParts[] = 'DROP `' . $column->name . '`';
+
+-                continue;
++                break;
+             }
+             $parts = [];
+             if ($column->operation === CompareResult::OPERATION_CREATE) {
+
+
+125) /app/src/Modules/MigrationsGenerator/MySqlMigrationGenerator.php:175    [M] Foreach_ [ID] c14a8ad8cf271c23b57391b85ef71868
+
+@@ @@
+         $query .= implode(', ', $parts) . ')';
+
+         // Add indexes
+-        foreach ($compareResult->indexes as $index) {
++        foreach ([] as $index) {
+             if ($index->operation === CompareResult::OPERATION_DELETE) {
+                 $query .= ', ' . $this->generateIndexSql($index, $compareResult->name);
+             }
+
+
+Timed Out mutants:
+==================
+
+1) /app/src/Connection.php:27    [M] FalseValue [ID] b0ac72de4fa1a082f9d159d9bccee00d
+
+@@ @@
+         $options = [
+             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+-            PDO::ATTR_EMULATE_PREPARES => false,
++            PDO::ATTR_EMULATE_PREPARES => true,
+             PDO::ATTR_AUTOCOMMIT => false,
+         ];
+
+
+2) /app/src/Connection.php:58    [M] LogicalNot [ID] f0a73701c29017092e0553427d05c4a8
+
+@@ @@
+
+     public function beginTransaction()
+     {
+-        if (!$this->pdo->inTransaction()) {
++        if ($this->pdo->inTransaction()) {
+             $this->pdo->beginTransaction();
+         }
+     }
+
+
+3) /app/src/Connection.php:59    [M] MethodCallRemoval [ID] 759ca66da5ade558e428101c1b519276
+
+@@ @@
+     public function beginTransaction()
+     {
+         if (!$this->pdo->inTransaction()) {
+-            $this->pdo->beginTransaction();
++
+         }
+     }
+
+
+4) /app/src/Connection.php:71    [M] MethodCallRemoval [ID] c3801157f49cf4855a38fa9b7da11705
+
+@@ @@
+     public function rollbackTransaction()
+     {
+         if ($this->pdo->inTransaction()) {
+-            $this->pdo->rollBack();
++
+         }
+     }
+ }
+
+
+5) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:523    [M] Foreach_ [ID] ed389167e1539d2e1de927f18e1d7494
+
+@@ @@
+         foreach ($existing as $property) {
+             $properties[$property->name] = $property;
+         }
+-        foreach ($incoming as $property) {
++        foreach ([] as $property) {
+             if (!isset($properties[$property->name])) {
+                 $properties[$property->name] = $property;
+
+
+6) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:531    [M] Throw_ [ID] f9711e9cda6b2d2377709752c44eec4b
+
+@@ @@
+             }
+             $current = $properties[$property->name];
+             if ($current->type !== $property->type || $current->length !== $property->length || $current->defaultValue !== $property->defaultValue) {
+-                throw new RuntimeException(
++                new RuntimeException(
+                     sprintf(
+                         'Many-to-many misconfigured: mapping table "%s" property "%s" conflicts between relations',
+                         $tableName,
+
+
+7) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:539    [M] LogicalNot [ID] 11aba9512d7750b8449d578ece89c169
+
+@@ @@
+                     ),
+                 );
+             }
+-            if ($property->nullable && !$current->nullable) {
++            if ($property->nullable && $current->nullable) {
+                 $properties[$property->name] = new MappingTableProperty(
+                     name: $current->name,
+                     type: $current->type,
+
+
+8) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:539    [M] LogicalAnd [ID] 129d359a90d0d439874369c7fbc5b1e3
+
+@@ @@
+                     ),
+                 );
+             }
+-            if ($property->nullable && !$current->nullable) {
++            if ($property->nullable || !$current->nullable) {
+                 $properties[$property->name] = new MappingTableProperty(
+                     name: $current->name,
+                     type: $current->type,
+
+
+9) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:539    [M] LogicalAndAllSubExprNegation [ID] f6138bb6b3be0885673d125d763746f8
+
+@@ @@
+                     ),
+                 );
+             }
+-            if ($property->nullable && !$current->nullable) {
++            if (!$property->nullable && $current->nullable) {
+                 $properties[$property->name] = new MappingTableProperty(
+                     name: $current->name,
+                     type: $current->type,
+
+
+10) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:539    [M] LogicalAndNegation [ID] 43473fb5441097c7f277d95b2b0630ce
+
+@@ @@
+                     ),
+                 );
+             }
+-            if ($property->nullable && !$current->nullable) {
++            if (!($property->nullable && !$current->nullable)) {
+                 $properties[$property->name] = new MappingTableProperty(
+                     name: $current->name,
+                     type: $current->type,
+
+
+11) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:543    [M] TrueValue [ID] 94f11c837137c53a78b18103f98f4745
+
+@@ @@
+                 $properties[$property->name] = new MappingTableProperty(
+                     name: $current->name,
+                     type: $current->type,
+-                    nullable: true,
++                    nullable: false,
+                     length: $current->length,
+                     defaultValue: $current->defaultValue,
+                 );
+
+
+12) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:550    [M] UnwrapArrayValues [ID] 3a8afe4d0490a1f2dbd8d896b662412e
+
+@@ @@
+             }
+         }
+
+-        return array_values($properties);
++        return $properties;
+     }
+
+     /**
+
+
+13) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:576    [M] ArrayItem [ID] 8bb0a78e5fa6456bea5702196e1369aa
+
+@@ @@
+     private function mergeColumnDefinition(array $propertiesIndexed, string $columnName, ReflectionProperty|ReflectionRelation $property, string $tableName): array
+     {
+         $incoming = [
+-            'type' => $this->normalizeTypeName($property->getType()),
++            'type' > $this->normalizeTypeName($property->getType()),
+             'nullable' => $property->isNullable(),
+             'default' => $property->getDefaultValue(),
+             'length' => $property->getLength(),
+
+
+14) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:593    [M] LogicalOr [ID] 1cbd6ede44acc14a7e50dbbe41aed247
+
+@@ @@
+
+         $existing = $propertiesIndexed[$columnName];
+
+-        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
++        if ($incoming['type'] !== $existing['type'] && $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
+             throw new RuntimeException(
+                 sprintf(
+                     'Column "%s" on table "%s" conflicts between entities',
+
+
+15) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:593    [M] NotIdentical [ID] 1fdd9a72e700913a13482be9c045359e
+
+@@ @@
+
+         $existing = $propertiesIndexed[$columnName];
+
+-        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
++        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] === $existing['default']) {
+             throw new RuntimeException(
+                 sprintf(
+                     'Column "%s" on table "%s" conflicts between entities',
+
+
+16) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:593    [M] LogicalOr [ID] 18ba328f2e2ceb79a533c0a0247d2676
+
+@@ @@
+
+         $existing = $propertiesIndexed[$columnName];
+
+-        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
++        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] && $incoming['default'] !== $existing['default']) {
+             throw new RuntimeException(
+                 sprintf(
+                     'Column "%s" on table "%s" conflicts between entities',
+
+
+17) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:593    [M] LogicalOrAllSubExprNegation [ID] 57e9c1fe555dbce5e17c7fb6e4b2ef9e
+
+@@ @@
+
+         $existing = $propertiesIndexed[$columnName];
+
+-        if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
++        if (!($incoming['type'] !== $existing['type']) || !($incoming['length'] !== $existing['length']) || !($incoming['default'] !== $existing['default'])) {
+             throw new RuntimeException(
+                 sprintf(
+                     'Column "%s" on table "%s" conflicts between entities',
+
+
+18) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:629    [M] LogicalOrSingleSubExprNegation [ID] e426bdcb76c55e1081030ad9a70669a7
+
+@@ @@
+
+         $propertiesIndexed[$columnName] = [
+             'type' => $existing['type'],
+-            'nullable' => $existing['nullable'] || $incoming['nullable'],
++            'nullable' => !$existing['nullable'] || $incoming['nullable'],
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+
+
+19) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:629    [M] LogicalOrSingleSubExprNegation [ID] 00ba440c72d07c16eb23fe5e0e81abfa
+
+@@ @@
+
+         $propertiesIndexed[$columnName] = [
+             'type' => $existing['type'],
+-            'nullable' => $existing['nullable'] || $incoming['nullable'],
++            'nullable' => $existing['nullable'] || !$incoming['nullable'],
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+
+
+20) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:632    [M] Coalesce [ID] dcefa356021335987b8844a70184ea21
+
+@@ @@
+             'nullable' => $existing['nullable'] || $incoming['nullable'],
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+-            'relation' => $existing['relation'] ?? $incoming['relation'],
++            'relation' => $incoming['relation'] ?? $existing['relation'],
+             'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+21) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:633    [M] LogicalOr [ID] 982651c4f4752d86975ee5626c7b9686
+
+@@ @@
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+-            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
++            'foreignKeyRequired' => $existing['foreignKeyRequired'] && $incoming['foreignKeyRequired'],
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+22) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:633    [M] LogicalOrAllSubExprNegation [ID] 07bdda45e6edc45376e2710771a99347
+
+@@ @@
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+-            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
++            'foreignKeyRequired' => !$existing['foreignKeyRequired'] || !$incoming['foreignKeyRequired'],
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+23) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:633    [M] LogicalOrNegation [ID] d830630e94dfa21eef649cba15c7350f
+
+@@ @@
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+-            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
++            'foreignKeyRequired' => !($existing['foreignKeyRequired'] || $incoming['foreignKeyRequired']),
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+24) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:633    [M] LogicalOrSingleSubExprNegation [ID] d51b36df482943a6511c43ed3e5ad587
+
+@@ @@
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+-            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
++            'foreignKeyRequired' => !$existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+25) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:633    [M] LogicalOrSingleSubExprNegation [ID] 8ec8fe4af66fcbcdfa7d1bcb28e57290
+
+@@ @@
+             'default' => $existing['default'],
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+-            'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
++            'foreignKeyRequired' => $existing['foreignKeyRequired'] || !$incoming['foreignKeyRequired'],
+             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+         ];
+
+
+26) /app/src/Modules/DatabaseSchemaComparator/DatabaseSchemaComparator.php:634    [M] Coalesce [ID] fab3865efa2a03d6142358687596fcb3
+
+@@ @@
+             'length' => $existing['length'],
+             'relation' => $existing['relation'] ?? $incoming['relation'],
+             'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
+-            'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
++            'referencedColumn' => $incoming['referencedColumn'] ?? $existing['referencedColumn'],
+         ];
+
+         return $propertiesIndexed;
+
+
+Skipped mutants:
+================
