@@ -83,6 +83,57 @@ This approach is particularly valuable when:
 
 - One-to-one relations: `src/Attributes/Relations/README.md`
 
+## Local Development & Testing
+
+### Prerequisites
+
+- Docker & Docker Compose (for database testing)
+
+### Database Setup
+
+For running tests locally, start the required databases:
+
+```bash
+docker compose up -d
+```
+
+### Environment Configuration
+
+1. **Creating a `.env` file**:
+   ```env
+   # For local development (outside Docker)
+   DATABASE_HOST=127.0.0.1
+   DATABASE_HOST_PGSQL=127.0.0.1
+   DATABASE_USER=articulate_user
+   DATABASE_PASSWORD=articulate_pass
+   DATABASE_NAME=articulate_test
+   ```
+
+2. **Modifying `docker-compose.override.yml`** for custom local configuration
+
+### Running Tests
+
+#### Local Development (without Docker)
+```bash
+# Install dependencies
+composer install
+
+# Run all QA checks (code style + tests + mutation testing)
+composer qa
+
+# Run only unit tests
+composer test
+
+# Run tests with coverage
+composer test:coverage
+
+# Run mutation tests
+composer test:mutation
+
+# Fix code style issues
+composer cs:fix
+```
+
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration. The QA workflow runs on every push and pull request to main/master/develop branches.
