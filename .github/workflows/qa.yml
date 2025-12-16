@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+permissions:
+  contents: write
+
 jobs:
   qa:
     runs-on: ubuntu-latest
@@ -63,5 +66,39 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
-      - name: Run QA checks
-        run: composer qa
+      - name: Run code style check
+        run: composer cs:check
+
+      - name: Create build directory
+        run: mkdir -p build/coverage
+
+      - name: Run tests with coverage
+        run: composer test:coverage
+
+      - name: Run mutation tests
+        run: composer test:mutation
+
+      - name: Generate and commit mutation badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Extract MSI (Mutation Score Indicator) from infection log
+          MSI=$(grep "MSI" infection.log | tail -1 | grep -o "[0-9]*\.[0-9]*" || echo "0.0")
+          echo "MSI=$MSI" >> $GITHUB_ENV
+
+          # Determine color based on MSI score
+          if [ "$(echo "$MSI >= 80" | awk '{print ($1 >= 80) ? "1" : "0"}')" = "1" ]; then
+            COLOR="brightgreen"
+          elif [ "$(echo "$MSI >= 60" | awk '{print ($1 >= 60) ? "1" : "0"}')" = "1" ]; then
+            COLOR="yellow"
+          else
+            COLOR="red"
+          fi
+
+          # Create badge JSON for shields.io
+          echo "{\"schemaVersion\":1,\"label\":\"Mutation Score\",\"message\":\"$MSI%\",\"color\":\"$COLOR\"}" > mutation-badge.json
+
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add mutation-badge.json || true
+          git commit -m "Update mutation testing badge [MSI: ${MSI}%]" || true
+          git push || true

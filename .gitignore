@@ -4,3 +4,5 @@
 .phpunit.cache
 .php-cs-fixer.cache
 build
+mutation-badge.json
+docker-compose.override.yml
