@@ -91,7 +91,7 @@ abstract class AbstractTestCase extends TestCase
 
     protected function getDatabaseName(): string
     {
-        return 'articulate_test';
+        return $_ENV['DATABASE_NAME'];
     }
 
     /**
