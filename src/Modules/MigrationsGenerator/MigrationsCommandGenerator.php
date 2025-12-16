@@ -26,12 +26,12 @@ class MigrationsCommandGenerator
         return new self(new MySqlMigrationGenerator());
     }
 
-    public static function forPostgresql(): self
+    private static function forPostgresql(): self
     {
         return new self(new PostgresqlMigrationGenerator());
     }
 
-    public static function forSqlite(): self
+    private static function forSqlite(): self
     {
         return new self(new SqliteMigrationGenerator());
     }
