@@ -23,7 +23,7 @@ class DiffCommand extends Command
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
         private readonly ?string $entitiesPath = null,
-        private readonly ?string $migrationsPath = null,
+        ?string $migrationsPath = null,
         private readonly ?string $migrationsNamespace = null,
     ) {
         parent::__construct();
@@ -100,3 +100,6 @@ class DiffCommand extends Command
         throw new \RuntimeException('Entities directory is not found. Expected one of: src/Entities, src/Entity, or set a custom path.');
     }
 }
+
+
+

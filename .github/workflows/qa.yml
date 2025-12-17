@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   qa:
@@ -85,6 +86,7 @@ jobs:
         with:
           commit-message: "style fix applied"
           files: "."
+          token: ${{ secrets.GITHUB_TOKEN_PAT || github.token }}
 
       - name: Exit on style fixes applied
         if: steps.cs-fix.outputs.changes_detected == 'true'

@@ -13,6 +13,9 @@ inputs:
     description: 'Allow empty commits'
     required: false
     default: 'false'
+  token:
+    description: 'GitHub token for authentication (use PAT to trigger workflows)'
+    required: false
 
 runs:
   using: 'composite'
@@ -38,4 +41,6 @@ runs:
 
     - name: Push changes
       shell: bash
-      run: git push origin HEAD:${{ github.head_ref || github.ref_name }}
+      run: |
+        git remote set-url origin https://${{ inputs.token }}@github.com/${{ github.repository }}.git
+        git push origin HEAD:${{ github.head_ref || github.ref_name }}
