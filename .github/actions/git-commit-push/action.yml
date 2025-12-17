@@ -38,4 +38,4 @@ runs:
 
     - name: Push changes
       shell: bash
-      run: git push
+      run: git push origin HEAD:${{ github.head_ref || github.ref_name }}
