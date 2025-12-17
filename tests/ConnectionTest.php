@@ -40,4 +40,3 @@ class ConnectionTest extends AbstractTestCase
         $connection->rollbackTransaction();
     }
 }
-

@@ -21,4 +21,3 @@ interface MigrationGeneratorStrategy
      */
     public function getIdentifierQuote(): string;
 }
-

@@ -289,7 +289,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         ]);
         // Test with index that has empty columns array - covers UnwrapArrayKeys mutation on line 183
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([
-            'test_index' => ['columns' => [], 'unique' => false]
+            'test_index' => ['columns' => [], 'unique' => false],
         ]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -362,7 +362,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity31']);
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([
-            'PRIMARY' => ['columns' => ['id', 'name'], 'unique' => true] // Primary key index
+            'PRIMARY' => ['columns' => ['id', 'name'], 'unique' => true], // Primary key index
         ]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -421,7 +421,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         // Validation happens in validateRelations() before table processing
         $this->expectException(\RuntimeException::class);
         iterator_to_array($databaseSchemaComparator->compareAll([
-            new ReflectionEntity(\Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwner::class),
+            new ReflectionEntity(TestEntities\TestManyToOneOwner::class),
         ]));
     }
 
@@ -502,7 +502,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         ]);
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
         $databaseSchemaReader->expects($this->once())->method('getTableForeignKeys')->willReturn([
-            'fk_test' => ['column' => 'id', 'referencedTable' => 'other_table', 'referencedColumn' => 'id']
+            'fk_test' => ['column' => 'id', 'referencedTable' => 'other_table', 'referencedColumn' => 'id'],
         ]);
 
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
@@ -526,7 +526,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         ]);
         // Test index that should NOT be deleted (primary key index)
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([
-            'PRIMARY' => ['columns' => ['id'], 'unique' => true]
+            'PRIMARY' => ['columns' => ['id'], 'unique' => true],
         ]);
         $databaseSchemaReader->expects($this->once())->method('getTableForeignKeys')->willReturn([]);
 

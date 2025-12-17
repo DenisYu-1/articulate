@@ -201,4 +201,3 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator
         return 'ALTER COLUMN "' . $columnName . '" TYPE ' . $this->mapTypeLength($column);
     }
 }
-

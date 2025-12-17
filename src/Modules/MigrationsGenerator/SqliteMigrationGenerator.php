@@ -105,4 +105,3 @@ class SqliteMigrationGenerator extends AbstractMigrationGenerator
         return '-- SQLite column modification requires table recreation';
     }
 }
-

@@ -234,7 +234,6 @@ class ReflectionRelationTest extends AbstractTestCase
         $this->assertFalse($reflection->isNullable());
     }
 
-
     public function testIsOwningSideForManyToOne()
     {
         $schemaNaming = new SchemaNaming();
@@ -251,7 +250,7 @@ class ReflectionRelationTest extends AbstractTestCase
     public function testIsOwningSideForOneToOneWithoutMappedBy()
     {
         $schemaNaming = new SchemaNaming();
-        $attribute = new \Articulate\Attributes\Relations\OneToOne(targetEntity: TestEntity::class);
+        $attribute = new OneToOne(targetEntity: TestEntity::class);
 
         $mockProperty = $this->createMock(ReflectionProperty::class);
 
@@ -264,7 +263,7 @@ class ReflectionRelationTest extends AbstractTestCase
     public function testIsOwningSideForOneToOneWithMappedBy()
     {
         $schemaNaming = new SchemaNaming();
-        $attribute = new \Articulate\Attributes\Relations\OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
+        $attribute = new OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
 
         $mockProperty = $this->createMock(ReflectionProperty::class);
 
@@ -277,7 +276,7 @@ class ReflectionRelationTest extends AbstractTestCase
     public function testIsOwningSideForOneToMany()
     {
         $schemaNaming = new SchemaNaming();
-        $attribute = new \Articulate\Attributes\Relations\OneToMany(targetEntity: TestEntity::class);
+        $attribute = new OneToMany(targetEntity: TestEntity::class);
 
         $mockProperty = $this->createMock(ReflectionProperty::class);
 
@@ -290,7 +289,7 @@ class ReflectionRelationTest extends AbstractTestCase
     public function testGetMappedByProperty()
     {
         $schemaNaming = new SchemaNaming();
-        $attribute = new \Articulate\Attributes\Relations\OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
+        $attribute = new OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
 
         $mockProperty = $this->createMock(ReflectionProperty::class);
 

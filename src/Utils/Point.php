@@ -33,4 +33,3 @@ class Point
         return $this->toString();
     }
 }
-
