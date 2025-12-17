@@ -39,11 +39,20 @@ runs:
           git commit -m "${{ inputs.commit-message }}"
         fi
 
-    - name: Push changes
+    - name: Push changes with custom token
+      if: inputs.token != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        # Clear existing credentials
+        git config --unset-all http.https://github.com/.extraheader || true
+        # Set new remote with PAT
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+        git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
+
+    - name: Push changes with default token
+      if: inputs.token == ''
       shell: bash
       run: |
-        if [[ -n "${{ inputs.token }}" ]]; then
-          # Use custom token - this will trigger workflows
-          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
-        fi
         git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
