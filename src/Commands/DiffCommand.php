@@ -100,3 +100,5 @@ class DiffCommand extends Command
         throw new \RuntimeException('Entities directory is not found. Expected one of: src/Entities, src/Entity, or set a custom path.');
     }
 }
+
+
