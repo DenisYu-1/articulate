@@ -73,6 +73,7 @@ jobs:
 
       - name: Run code style fix
         id: cs-fix
+        if: "!contains(github.event.head_commit.message, 'Apply CS fixes')"
         run: |
           composer cs:fix
           if [[ -n $(git status --porcelain) ]]; then
@@ -85,7 +86,7 @@ jobs:
         if: steps.cs-fix.outputs.changes_detected == 'true'
         uses: ./.github/actions/git-commit-push
         with:
-          commit-message: "style fix applied"
+          commit-message: "Apply CS fixes"
           files: "."
           token: ${{ secrets.AUTO_PUSH_TOKEN }}
 
