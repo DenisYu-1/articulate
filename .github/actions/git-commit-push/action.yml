@@ -42,5 +42,8 @@ runs:
     - name: Push changes
       shell: bash
       run: |
-        git remote set-url origin https://${{ inputs.token }}@github.com/${{ github.repository }}.git
-        git push origin HEAD:${{ github.head_ref || github.ref_name }}
+        echo "Setting up git remote with token..."
+        git remote set-url origin https://oauth2:${{ inputs.token }}@github.com/${{ github.repository }}.git
+        echo "Pushing to branch: ${{ github.event.pull_request.head.ref || github.ref_name }}"
+        git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
+        echo "Push completed successfully"
