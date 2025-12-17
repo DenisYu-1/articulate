@@ -16,3 +16,4 @@ class TestCustomPrimaryKeyEntity
     #[Property]
     public string $name;
 }
+

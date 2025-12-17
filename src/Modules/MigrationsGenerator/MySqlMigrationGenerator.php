@@ -201,3 +201,4 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator
         return 'MODIFY `' . $columnName . '` ' . $this->mapTypeLength($column);
     }
 }
+

@@ -1,0 +1,41 @@
+name: 'Git Commit and Push'
+description: 'Configure git, commit files, and push changes'
+
+inputs:
+  commit-message:
+    description: 'Commit message'
+    required: true
+  files:
+    description: 'Files to add (defaults to all files with ".")'
+    required: false
+    default: '.'
+  allow-empty:
+    description: 'Allow empty commits'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Add files
+      shell: bash
+      run: git add ${{ inputs.files }}
+
+    - name: Commit changes
+      shell: bash
+      run: |
+        if [[ "${{ inputs.allow-empty }}" == "true" ]]; then
+          git commit -m "${{ inputs.commit-message }}" --allow-empty
+        else
+          git commit -m "${{ inputs.commit-message }}"
+        fi
+
+    - name: Push changes
+      shell: bash
+      run: git push

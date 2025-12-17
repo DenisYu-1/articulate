@@ -7,6 +7,8 @@ use Articulate\Utils\BoolTypeConverter;
 use Articulate\Utils\Point;
 use Articulate\Utils\PointTypeConverter;
 use Articulate\Utils\TypeRegistry;
+use Iterator;
+use JsonSerializable;
 use ReflectionMethod;
 use ReflectionProperty;
 use Serializable;
@@ -108,10 +110,10 @@ class TypeRegistryTest extends AbstractTestCase
         $registry = new TypeRegistry();
 
         // Register a custom interface mapping
-        $registry->registerClassMapping(\JsonSerializable::class, 'JSON');
+        $registry->registerClassMapping(JsonSerializable::class, 'JSON');
 
         // Classes implementing the interface should use the mapping
-        $this->assertEquals('JSON', $registry->getDatabaseType(\JsonSerializable::class));
+        $this->assertEquals('JSON', $registry->getDatabaseType(JsonSerializable::class));
 
         // Test with a custom class that implements the interface
         // (We can't easily test this without creating a test class, but the logic is there)
@@ -122,17 +124,20 @@ class TypeRegistryTest extends AbstractTestCase
         $registry = new TypeRegistry();
 
         // Register conflicting mappings with different priorities
-        $registry->registerClassMapping(Serializable::class, 'TEXT', null, 5); // Lower priority
-        $registry->registerClassMapping(\JsonSerializable::class, 'JSON', null, 1); // Higher priority
+        $registry->registerClassMapping(Iterator::class, 'TEXT', null, 5); // Lower priority
+        $registry->registerClassMapping(JsonSerializable::class, 'JSON', null, 1); // Higher priority
 
         // Create a mock class that implements both interfaces
         $mockClass = 'TestPriorityClass';
 
         if (!class_exists($mockClass)) {
             eval("
-                class $mockClass implements Serializable, JsonSerializable {
-                    public function serialize() { return ''; }
-                    public function unserialize(\$data) {}
+                class $mockClass implements Iterator, JsonSerializable {
+                    public function current(): mixed { return null; }
+                    public function key(): mixed { return null; }
+                    public function next(): void {}
+                    public function rewind(): void {}
+                    public function valid(): bool { return false; }
                     public function jsonSerialize(): mixed { return []; }
                 }
             ");

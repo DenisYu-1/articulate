@@ -20,3 +20,4 @@ class TestBoolEntity
     #[Property]
     public ?bool $isFeatured;
 }
+

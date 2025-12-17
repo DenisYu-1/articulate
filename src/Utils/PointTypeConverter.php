@@ -39,3 +39,4 @@ class PointTypeConverter implements TypeConverterInterface
         throw new \InvalidArgumentException('Database value must be a POINT string');
     }
 }
+

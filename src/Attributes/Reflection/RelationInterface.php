@@ -16,3 +16,4 @@ interface RelationInterface
 
     public function getPropertyName(): string;
 }
+

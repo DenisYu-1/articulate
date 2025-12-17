@@ -64,3 +64,4 @@ class DatabaseColumnTest extends AbstractTestCase
         $this->assertTrue($column->isNullable);
     }
 }
+

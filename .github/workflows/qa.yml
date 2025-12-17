@@ -66,8 +66,28 @@ jobs:
       - name: Install dependencies
         run: composer install --no-progress --prefer-dist --optimize-autoloader
 
-      - name: Run code style check
-        run: composer cs:check
+      - name: Run code style fix
+        id: cs-fix
+        run: |
+          composer cs:fix
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push style fixes
+        if: steps.cs-fix.outputs.changes_detected == 'true'
+        uses: ./.github/actions/git-commit-push
+        with:
+          commit-message: "style fix applied"
+          files: "."
+
+      - name: Exit on style fixes applied
+        if: steps.cs-fix.outputs.changes_detected == 'true'
+        run: |
+          echo "Style fixes applied and pushed. Stopping workflow."
+          exit 1
 
       - name: Create build directory
         run: mkdir -p build/coverage
@@ -111,8 +131,10 @@ jobs:
           # Update README.md with the current badge
           sed -i.bak "s|https://img.shields.io/badge/Mutation%20Score-[0-9]*\.[0-9]*%25-[a-z]*|https://img.shields.io/badge/Mutation%20Score-$MSI%25-$COLOR|g" README.md && rm README.md.bak
 
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add README.md
-          git commit -m "Update mutation testing badge [MSI: ${MSI}%]" || true
-          git push || true
+      - name: Commit and push mutation badge update
+        if: github.ref == 'refs/heads/main'
+        uses: ./.github/actions/git-commit-push
+        with:
+          commit-message: "Update mutation testing badge [MSI: ${MSI}%]"
+          files: "README.md"
+          allow-empty: true
