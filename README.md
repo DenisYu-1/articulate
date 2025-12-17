@@ -9,7 +9,7 @@ A context-driven PHP ORM library that enables domain-aware entity management and
 ## Badges
 
 [![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
-[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-82.25%25-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
+[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-82.78%25-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
 
 ## Main Concepts
