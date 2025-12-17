@@ -10,14 +10,31 @@ class MigrationsCommandGenerator
     private MigrationGeneratorStrategy $strategy;
 
     public function __construct(
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly ?string $forcedDriver = null
     ) {
         $this->strategy = $this->createStrategy();
     }
 
+    public static function forMySql(): self
+    {
+        // Create a test connection with forced MySQL driver
+        $connection = new Connection('sqlite::memory:', '', '');
+
+        return new self($connection, Connection::MYSQL);
+    }
+
+    public static function forDatabase(string $driver): self
+    {
+        // Create a test connection with forced driver
+        $connection = new Connection('sqlite::memory:', '', '');
+
+        return new self($connection, $driver);
+    }
+
     private function createStrategy(): MigrationGeneratorStrategy
     {
-        $driverName = $this->connection->getDriverName();
+        $driverName = $this->forcedDriver ?? $this->connection->getDriverName();
 
         return match ($driverName) {
             Connection::MYSQL => new MySqlMigrationGenerator(),
@@ -36,5 +53,4 @@ class MigrationsCommandGenerator
     {
         return $this->strategy->rollback($compareResult);
     }
-
 }

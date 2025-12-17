@@ -8,9 +8,11 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Attributes\Relations\MorphMany;
 use Articulate\Attributes\Relations\MorphOne;
 use Articulate\Attributes\Relations\MorphTo;
+use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
@@ -169,6 +171,18 @@ class ReflectionEntity extends ReflectionClass
             $manyToMany = $property->getAttributes(ManyToMany::class);
             if (!empty($manyToMany)) {
                 yield new ReflectionManyToMany($manyToMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphToMany>[] $morphToMany */
+            $morphToMany = $property->getAttributes(MorphToMany::class);
+            if (!empty($morphToMany)) {
+                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphedByMany>[] $morphedByMany */
+            $morphedByMany = $property->getAttributes(MorphedByMany::class);
+            if (!empty($morphedByMany)) {
+                yield new ReflectionMorphedByMany($morphedByMany[0]->newInstance(), $property, $this->schemaNaming);
             }
         }
     }

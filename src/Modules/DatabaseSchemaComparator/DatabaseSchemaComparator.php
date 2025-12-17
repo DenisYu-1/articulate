@@ -5,6 +5,7 @@ namespace Articulate\Modules\DatabaseSchemaComparator;
 use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\MappingTableProperty;
@@ -40,6 +41,7 @@ readonly class DatabaseSchemaComparator
 
         $this->validateRelations($entities);
         $manyToManyTables = $this->collectManyToManyTables($entities);
+        $morphToManyTables = $this->collectMorphToManyTables($entities);
 
         $entitiesIndexed = $this->indexByTableName($entities);
         foreach ($entitiesIndexed as $tableName => $entityGroup) {
@@ -302,6 +304,14 @@ readonly class DatabaseSchemaComparator
             }
         }
 
+        foreach ($morphToManyTables as $definition) {
+            unset($tablesToRemove[$definition['tableName']]);
+            $compareResult = $this->compareMorphToManyTable($definition, $existingTables);
+            if ($compareResult !== null) {
+                yield $compareResult;
+            }
+        }
+
         foreach (array_keys($tablesToRemove) as $tableName) {
             yield new TableCompareResult(
                 $tableName,
@@ -375,6 +385,53 @@ readonly class DatabaseSchemaComparator
                 if ($existing['ownerJoinColumn'] !== $relation->getOwnerJoinColumn() || $existing['targetJoinColumn'] !== $relation->getTargetJoinColumn()) {
                     throw new RuntimeException('Many-to-many misconfigured: conflicting mapping table definition');
                 }
+                $definitions[$tableName]['extraProperties'] = $this->mergeMappingTableProperties(
+                    $existing['extraProperties'],
+                    $relation->getExtraProperties(),
+                    $tableName,
+                );
+            }
+        }
+
+        return $definitions;
+    }
+
+    private function collectMorphToManyTables(array $entities): array
+    {
+        $definitions = [];
+        foreach ($entities as $entity) {
+            foreach ($entity->getEntityRelationProperties() as $relation) {
+                if (!$relation instanceof ReflectionMorphToMany) {
+                    continue;
+                }
+
+                $tableName = $relation->getTableName();
+                $targetEntity = new ReflectionEntity($relation->getTargetEntity());
+
+                if (!isset($definitions[$tableName])) {
+                    $definitions[$tableName] = [
+                        'tableName' => $tableName,
+                        'morphName' => $relation->getMorphName(),
+                        'typeColumn' => $relation->getTypeColumn(),
+                        'idColumn' => $relation->getOwnerJoinColumn(),
+                        'targetColumn' => $relation->getTargetJoinColumn(),
+                        'targetTable' => $targetEntity->getTableName(),
+                        'targetReferencedColumn' => $relation->getTargetPrimaryColumn(),
+                        'extraProperties' => $relation->getExtraProperties(),
+                        'primaryColumns' => $relation->getPrimaryColumns(),
+                        'relations' => [$relation],
+                    ];
+
+                    continue;
+                }
+
+                // Merge relations for the same table (should have same morph name)
+                $existing = $definitions[$tableName];
+                if ($existing['morphName'] !== $relation->getMorphName()) {
+                    throw new RuntimeException("Morph-to-many misconfigured: conflicting morph names for table '{$tableName}'");
+                }
+
+                $definitions[$tableName]['relations'][] = $relation;
                 $definitions[$tableName]['extraProperties'] = $this->mergeMappingTableProperties(
                     $existing['extraProperties'],
                     $relation->getExtraProperties(),
@@ -509,6 +566,168 @@ readonly class DatabaseSchemaComparator
                 CompareResult::OPERATION_DELETE,
                 $existingIndexes[$indexName]['columns'] ?? [],
                 $existingIndexes[$indexName]['unique'] ?? false,
+            );
+        }
+
+        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
+            throw new EmptyPropertiesList($tableName);
+        }
+
+        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+            return null;
+        }
+
+        return new TableCompareResult(
+            $tableName,
+            $operation ?? CompareResult::OPERATION_UPDATE,
+            array_values($columnsCompareResults),
+            $indexCompareResults,
+            array_values($foreignKeysByName),
+            $definition['primaryColumns'],
+        );
+    }
+
+    private function compareMorphToManyTable(array $definition, array $existingTables): ?TableCompareResult
+    {
+        $tableName = $definition['tableName'];
+        $operation = null;
+
+        $columnsIndexed = [];
+        $existingForeignKeys = [];
+        $foreignKeysToRemove = [];
+        $existingIndexes = [];
+        $indexesToRemove = [];
+
+        if (!in_array($tableName, $existingTables, true)) {
+            $operation = TableCompareResult::OPERATION_CREATE;
+        } else {
+            $existingColumns = $this->databaseSchemaReader->getTableColumns($tableName);
+            foreach ($existingColumns as $column) {
+                $columnsIndexed[$column->name] = $column;
+            }
+            $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
+            $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
+            $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
+            $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
+        }
+
+        $requiredProperties = [];
+        // Add ID column (auto-increment primary key)
+        $requiredProperties['id'] = new PropertiesData('int', false, null, null);
+        // Add morph columns
+        $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
+        $requiredProperties[$definition['idColumn']] = new PropertiesData('int', false, null, null);
+        $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null);
+        // Add extra properties
+        foreach ($definition['extraProperties'] as $extra) {
+            $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
+        }
+
+        $columnsCompareResults = [];
+        $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
+        $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
+        $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
+
+        foreach ($columnsToCreate as $name => $property) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $columnsCompareResults[] = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_CREATE,
+                $property,
+                new PropertiesData(),
+            );
+        }
+
+        foreach ($columnsToUpdate as $name => $property) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $column = $columnsIndexed[$name];
+            $result = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_UPDATE,
+                $property,
+                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+            );
+            if ($result->hasChanges()) {
+                $columnsCompareResults[] = $result;
+            }
+        }
+
+        foreach ($columnsToDelete as $name => $column) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $columnsCompareResults[] = new ColumnCompareResult(
+                $name,
+                CompareResult::OPERATION_DELETE,
+                new PropertiesData(),
+                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+            );
+        }
+
+        // Handle foreign keys - only create FK to target table for polymorphic relationships
+        $foreignKeysByName = [];
+        $requiredForeignKeys = [
+            $definition['targetColumn'] => [
+                'table' => $definition['targetTable'],
+                'column' => $definition['targetReferencedColumn'],
+            ],
+        ];
+
+        foreach ($requiredForeignKeys as $column => $target) {
+            $fkName = $this->schemaNaming->foreignKeyName($tableName, $target['table'], $column);
+            unset($foreignKeysToRemove[$fkName]);
+            if (!isset($existingForeignKeys[$fkName])) {
+                $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+                $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
+                    $fkName,
+                    CompareResult::OPERATION_CREATE,
+                    $column,
+                    $target['table'],
+                    $target['column'],
+                );
+            }
+        }
+
+        foreach ($foreignKeysToRemove as $fkName => $_) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $existingFk = $existingForeignKeys[$fkName];
+            $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
+                $fkName,
+                CompareResult::OPERATION_DELETE,
+                $existingFk->column,
+                $existingFk->referencedTable,
+                $existingFk->referencedColumn,
+            );
+        }
+
+        // Handle indexes
+        $indexCompareResults = [];
+        $requiredIndexes = [
+            $definition['typeColumn'] . '_' . $definition['idColumn'] . '_index' => [
+                'columns' => [$definition['typeColumn'], $definition['idColumn']],
+                'unique' => false,
+            ],
+        ];
+
+        foreach ($requiredIndexes as $indexName => $indexDef) {
+            unset($indexesToRemove[$indexName]);
+            if (!isset($existingIndexes[$indexName])) {
+                $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+                $indexCompareResults[] = new IndexCompareResult(
+                    $indexName,
+                    CompareResult::OPERATION_CREATE,
+                    $indexDef['columns'],
+                    $indexDef['unique'],
+                );
+            }
+        }
+
+        foreach ($indexesToRemove as $indexName => $_) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+            $existingIndex = $existingIndexes[$indexName];
+            $indexCompareResults[] = new IndexCompareResult(
+                $indexName,
+                CompareResult::OPERATION_DELETE,
+                $existingIndex->columns,
+                $existingIndex->isUnique,
             );
         }
 

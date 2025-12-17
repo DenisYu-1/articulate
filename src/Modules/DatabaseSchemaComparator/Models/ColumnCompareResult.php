@@ -24,4 +24,9 @@ class ColumnCompareResult extends CompareResult
         $this->isDefaultValueMatch = $this->propertyData->defaultValue === $this->columnData->defaultValue;
         $this->isLengthMatch = $this->propertyData->length === $this->columnData->length;
     }
+
+    public function hasChanges(): bool
+    {
+        return !$this->typeMatch || !$this->isNullableMatch || !$this->isDefaultValueMatch || !$this->isLengthMatch;
+    }
 }
