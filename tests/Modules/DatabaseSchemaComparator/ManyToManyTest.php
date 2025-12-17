@@ -8,8 +8,11 @@ require_once __DIR__ . '/TestEntities/TestManyToManySharedOwner.php';
 require_once __DIR__ . '/TestEntities/TestManyToManySharedOwnerConflict.php';
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
+use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\ManyToManyRelationValidator;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
@@ -113,6 +116,95 @@ class ManyToManyTest extends AbstractTestCase
             new ReflectionEntity(TestManyToManySharedOwnerConflict::class),
             new ReflectionEntity(TestManyToManySharedTargetConflict::class),
         ]));
+    }
+
+    public function testManyToManyRelationValidatorWithBothMappedByAndInversedBy()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        // Create a mock ReflectionManyToMany with both mappedBy and inversedBy set
+        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation->method('getMappedBy')->willReturn('mappedProperty');
+        $mockRelation->method('getInversedBy')->willReturn('inverseProperty');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-many misconfigured: ownedBy and referencedBy cannot be both defined');
+        $validator->validate($mockRelation);
+    }
+
+    public function testManyToManyRelationValidatorInverseSideWithExtraProperties()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        // Create a mock ReflectionManyToMany for inverse side with extra properties
+        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation->method('getMappedBy')->willReturn(null);
+        $mockRelation->method('getInversedBy')->willReturn(null);
+        $mockRelation->method('isOwningSide')->willReturn(false);
+        $mockRelation->method('getExtraProperties')->willReturn([new \stdClass()]); // Has extra properties
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-many misconfigured: inverse side cannot define extra mapping properties');
+        $validator->validate($mockRelation);
+    }
+
+    public function testManyToManyRelationValidatorOwningSideValidation()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        // Create mocks for owning side validation
+        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation->method('getMappedBy')->willReturn(null);
+        $mockRelation->method('getInversedBy')->willReturn(null);
+        $mockRelation->method('isOwningSide')->willReturn(true);
+        $mockRelation->method('getExtraProperties')->willReturn([]);
+        $mockRelation->method('getTargetEntity')->willReturn(\stdClass::class); // Use a valid class
+
+        // Should not throw exception for valid owning side without inversedBy
+        $validator->validate($mockRelation);
+
+        // If we get here without exception, the validation passed
+        $this->assertTrue($validator->supports($mockRelation));
+    }
+
+    public function testManyToManyRelationValidatorInverseSideValidation()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation->method('getMappedBy')->willReturn(null);
+        $mockRelation->method('getInversedBy')->willReturn(null);
+        $mockRelation->method('isOwningSide')->willReturn(false);
+        $mockRelation->method('getExtraProperties')->willReturn([]); // No extra properties
+        $mockRelation->method('getTargetEntity')->willReturn('NonExistentClass'); // This will cause ReflectionException
+
+        // The validator tries to create ReflectionEntity which throws ReflectionException for non-existent class
+        $this->expectException(\ReflectionException::class);
+        $validator->validate($mockRelation);
+    }
+
+    public function testManyToManyRelationValidatorSupports()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        $mockManyToMany = $this->createMock(ReflectionManyToMany::class);
+        $mockOtherRelation = $this->createMock(RelationInterface::class);
+
+        $this->assertTrue($validator->supports($mockManyToMany));
+        $this->assertFalse($validator->supports($mockOtherRelation));
+    }
+
+    public function testManyToManyRelationValidatorNonManyToManyRelation()
+    {
+        $validator = new ManyToManyRelationValidator();
+
+        $mockRelation = $this->createMock(RelationInterface::class);
+
+        // Should return early without validation for non-ManyToMany relations
+        $validator->validate($mockRelation);
+
+        // Verify that this validator doesn't support other relation types
+        $this->assertFalse($validator->supports($mockRelation));
     }
 
     private function comparator(

@@ -74,6 +74,61 @@ This approach is particularly valuable when:
 - Performing complex business operations that span multiple contexts
 - Managing long-running processes with varying entity lifecycles
 
+## Type Mapping System
+
+Articulate provides a flexible type mapping system that automatically converts between PHP types and database types.
+
+### Built-in Type Mappings
+
+- `bool` ↔ `TINYINT(1)` (with automatic conversion)
+- `int` ↔ `INT`
+- `float` ↔ `FLOAT`
+- `string` ↔ `VARCHAR(255)` (configurable length)
+- `DateTimeInterface` implementations ↔ `DATETIME`
+
+### Class and Interface Mappings
+
+You can register mappings for PHP classes and interfaces:
+
+```php
+use Articulate\Utils\TypeRegistry;
+
+// Register DateTimeInterface (done automatically with high priority)
+$registry->registerClassMapping(\DateTimeInterface::class, 'DATETIME');
+
+// All classes implementing DateTimeInterface will use DATETIME
+#[Entity]
+class Event {
+    #[Property]
+    public \DateTime $startTime;      // DATETIME column
+
+    #[Property]
+    public \DateTimeImmutable $endTime; // DATETIME column
+}
+
+// Custom class mappings with priority (lower number = higher priority)
+$registry->registerClassMapping(MyInterface::class, 'JSON', null, 5);
+$registry->registerClassMapping(MyClass::class, 'TEXT', null, 10); // Lower priority
+```
+
+**Priority System:** When a class implements multiple interfaces or extends multiple classes with registered mappings, the mapping with the lowest priority number is used.
+
+### Custom Type Converters
+
+Implement `TypeConverterInterface` for complex type conversions:
+
+```php
+class MoneyConverter implements TypeConverterInterface {
+    public function convertToDatabase(mixed $value): mixed {
+        return $value?->amount . ' ' . $value?->currency;
+    }
+
+    public function convertToPHP(mixed $value): mixed {
+        // Parse and return Money object
+    }
+}
+```
+
 ## Current gaps / known issues
 
 - Schema reader is MySQL-only: it swallows errors, returns empty columns on PostgreSQL/SQLite, and treats lengthed types (e.g., `int(11)`) as `string`.

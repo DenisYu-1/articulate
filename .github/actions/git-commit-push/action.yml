@@ -1,0 +1,58 @@
+name: 'Git Commit and Push'
+description: 'Configure git, commit files, and push changes'
+
+inputs:
+  commit-message:
+    description: 'Commit message'
+    required: true
+  files:
+    description: 'Files to add (defaults to all files with ".")'
+    required: false
+    default: '.'
+  allow-empty:
+    description: 'Allow empty commits'
+    required: false
+    default: 'false'
+  token:
+    description: 'GitHub token for authentication (use PAT to trigger workflows)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+    - name: Add files
+      shell: bash
+      run: git add ${{ inputs.files }}
+
+    - name: Commit changes
+      shell: bash
+      run: |
+        if [[ "${{ inputs.allow-empty }}" == "true" ]]; then
+          git commit -m "${{ inputs.commit-message }}" --allow-empty
+        else
+          git commit -m "${{ inputs.commit-message }}"
+        fi
+
+    - name: Push changes with custom token
+      if: inputs.token != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        # Clear existing credentials
+        git config --unset-all http.https://github.com/.extraheader || true
+        # Set new remote with PAT
+        git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git
+        git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
+
+    - name: Push changes with default token
+      if: inputs.token == ''
+      shell: bash
+      run: |
+        git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}

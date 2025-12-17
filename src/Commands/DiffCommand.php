@@ -23,7 +23,7 @@ class DiffCommand extends Command
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
         private readonly ?string $entitiesPath = null,
-        private readonly ?string $migrationsPath = null,
+        ?string $migrationsPath = null,
         private readonly ?string $migrationsNamespace = null,
     ) {
         parent::__construct();
