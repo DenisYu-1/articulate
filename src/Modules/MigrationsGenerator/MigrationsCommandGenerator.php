@@ -36,5 +36,4 @@ class MigrationsCommandGenerator
     {
         return $this->strategy->rollback($compareResult);
     }
-
 }
