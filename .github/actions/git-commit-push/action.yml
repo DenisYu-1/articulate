@@ -42,5 +42,8 @@ runs:
     - name: Push changes
       shell: bash
       run: |
-        git remote set-url origin https://oauth2:${{ inputs.token }}@github.com/${{ github.repository }}.git
+        if [[ -n "${{ inputs.token }}" ]]; then
+          # Use custom token - this will trigger workflows
+          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+        fi
         git push origin HEAD:${{ github.event.pull_request.head.ref || github.ref_name }}
