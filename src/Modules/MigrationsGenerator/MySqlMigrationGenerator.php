@@ -30,6 +30,12 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator
             $quotedColumns = array_map(fn ($col) => '`' . $col . '`', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation !== CompareResult::OPERATION_CREATE) {
+                continue;
+            }
+            $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
+        }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
                 continue;

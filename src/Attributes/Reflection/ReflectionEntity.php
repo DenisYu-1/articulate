@@ -8,6 +8,9 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphMany;
+use Articulate\Attributes\Relations\MorphOne;
+use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
@@ -65,6 +68,41 @@ class ReflectionEntity extends ReflectionClass
             if (!empty($entityProperty)) {
                 $propertyInstance = $entityProperty[0]->newInstance();
                 yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphTo>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphTo::class);
+            if (!empty($entityProperty)) {
+                $propertyInstance = $entityProperty[0]->newInstance();
+                yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphOne>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphOne::class);
+            if (!empty($entityProperty)) {
+                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                if (!$relation->isOwningSide()) {
+                    continue;
+                }
+                yield $relation;
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphMany>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphMany::class);
+            if (!empty($entityProperty)) {
+                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                if (!$relation->isOwningSide()) {
+                    continue;
+                }
+                yield $relation;
+
+                continue;
             }
         }
     }

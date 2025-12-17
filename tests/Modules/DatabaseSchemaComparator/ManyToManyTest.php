@@ -19,6 +19,7 @@ use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyInvalidOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyInvalidTarget;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyNoReferencedBy;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManySharedOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManySharedOwnerConflict;
@@ -158,13 +159,29 @@ class ManyToManyTest extends AbstractTestCase
         $mockRelation->method('getInversedBy')->willReturn(null);
         $mockRelation->method('isOwningSide')->willReturn(true);
         $mockRelation->method('getExtraProperties')->willReturn([]);
-        $mockRelation->method('getTargetEntity')->willReturn(\stdClass::class); // Use a valid class
+        $mockRelation->method('getTargetEntity')->willReturn(\stdClass::class);
+        $mockRelation->method('getDeclaringClassName')->willReturn('TestClass');
+        $mockRelation->method('getPropertyName')->willReturn('testProperty');
 
-        // Should not throw exception for valid owning side without inversedBy
+        // Should throw exception for owning side without referencedBy
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-many owning side must specify referencedBy to define the inverse property');
         $validator->validate($mockRelation);
+    }
 
-        // If we get here without exception, the validation passed
-        $this->assertTrue($validator->supports($mockRelation));
+    public function testOwningSideMustHaveReferencedByIntegration()
+    {
+        $comparator = $this->comparator(
+            tables: [],
+            columns: fn (string $table) => [],
+        );
+
+        // TestManyToManyNoReferencedBy has owning side without referencedBy - should fail
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Many-to-many owning side must specify referencedBy');
+        iterator_to_array($comparator->compareAll([
+            new ReflectionEntity(TestManyToManyNoReferencedBy::class),
+        ]));
     }
 
     public function testManyToManyRelationValidatorInverseSideValidation()

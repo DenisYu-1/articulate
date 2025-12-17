@@ -173,8 +173,8 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator
 
         // Add indexes
         foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $query .= ', ' . $this->generateIndexSql($index, $compareResult->name);
+            if ($index->operation !== CompareResult::OPERATION_DELETE) {
+                $query .= ', ' . $this->generateIndexSql($index, $compareResult->name, false);
             }
         }
 

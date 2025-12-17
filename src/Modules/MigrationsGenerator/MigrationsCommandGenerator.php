@@ -2,13 +2,29 @@
 
 namespace Articulate\Modules\MigrationsGenerator;
 
+use Articulate\Connection;
 use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator
 {
+    private MigrationGeneratorStrategy $strategy;
+
     public function __construct(
-        private readonly MigrationGeneratorStrategy $strategy
+        private readonly Connection $connection
     ) {
+        $this->strategy = $this->createStrategy();
+    }
+
+    private function createStrategy(): MigrationGeneratorStrategy
+    {
+        $driverName = $this->connection->getDriverName();
+
+        return match ($driverName) {
+            Connection::MYSQL => new MySqlMigrationGenerator(),
+            Connection::PGSQL => new PostgresqlMigrationGenerator(),
+            Connection::SQLITE => new SqliteMigrationGenerator(),
+            default => throw new \InvalidArgumentException("Unsupported database driver: {$driverName}"),
+        };
     }
 
     public function generate(TableCompareResult $compareResult): string
@@ -21,28 +37,4 @@ class MigrationsCommandGenerator
         return $this->strategy->rollback($compareResult);
     }
 
-    public static function forMySql(): self
-    {
-        return new self(new MySqlMigrationGenerator());
-    }
-
-    private static function forPostgresql(): self
-    {
-        return new self(new PostgresqlMigrationGenerator());
-    }
-
-    private static function forSqlite(): self
-    {
-        return new self(new SqliteMigrationGenerator());
-    }
-
-    public static function forDatabase(string $databaseType): self
-    {
-        return match ($databaseType) {
-            'mysql' => self::forMySql(),
-            'pgsql', 'postgresql' => self::forPostgresql(),
-            'sqlite' => self::forSqlite(),
-            default => throw new \InvalidArgumentException("Unsupported database type: {$databaseType}"),
-        };
-    }
 }

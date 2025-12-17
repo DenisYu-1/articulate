@@ -133,6 +133,7 @@ class MoneyConverter implements TypeConverterInterface {
 
 - Schema reader is MySQL-only: it swallows errors, returns empty columns on PostgreSQL/SQLite, and treats lengthed types (e.g., `int(11)`) as `string`.
 - Query builder classes are still missing.
+- Polymorphic relations: `src/Attributes/Relations/README.md`
 ### Documentation
 
 - One-to-one relations: `src/Attributes/Relations/README.md`

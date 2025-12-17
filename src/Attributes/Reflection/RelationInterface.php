@@ -4,7 +4,7 @@ namespace Articulate\Attributes\Reflection;
 
 interface RelationInterface
 {
-    public function getTargetEntity(): string;
+    public function getTargetEntity(): ?string;
 
     public function getDeclaringClassName(): string;
 

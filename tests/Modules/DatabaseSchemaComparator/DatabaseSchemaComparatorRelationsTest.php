@@ -20,6 +20,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOne
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetInverseIsOwning;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetMappedByMismatch;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneTargetMissingInverse;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMorphToEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyInverseMissingOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestOneToManyWrongOwnerType;
@@ -455,5 +456,53 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
         }
 
         return new DatabaseSchemaComparator($reader, new SchemaNaming());
+    }
+
+    public function testPolymorphicRelationCreatesCorrectColumns()
+    {
+        $databaseSchemaComparator = $this->comparator(
+            tables: [],
+            columns: fn () => [],
+        );
+        /** @var TableCompareResult[] $result */
+        $result = iterator_to_array($databaseSchemaComparator->compareAll([
+            new ReflectionEntity(TestMorphToEntity::class),
+        ]));
+
+        $this->assertCount(1, $result);
+        $this->assertEquals('create', $result[0]->operation);
+        $this->assertEquals('test_morph_to_entity', $result[0]->name);
+
+        // Should have 4 columns: id, title, pollable_type, pollable_id
+        $this->assertCount(4, $result[0]->columns);
+
+        // Check id column
+        $this->assertEquals('id', $result[0]->columns[0]->name);
+        $this->assertEquals('create', $result[0]->columns[0]->operation);
+
+        // Check title column
+        $this->assertEquals('title', $result[0]->columns[1]->name);
+        $this->assertEquals('create', $result[0]->columns[1]->operation);
+
+        // Check pollable_type column
+        $this->assertEquals('pollable_type', $result[0]->columns[2]->name);
+        $this->assertEquals('create', $result[0]->columns[2]->operation);
+        $this->assertEquals('string', $result[0]->columns[2]->propertyData->type);
+        $this->assertEquals(255, $result[0]->columns[2]->propertyData->length);
+        $this->assertFalse($result[0]->columns[2]->propertyData->isNullable);
+
+        // Check pollable_id column
+        $this->assertEquals('pollable_id', $result[0]->columns[3]->name);
+        $this->assertEquals('create', $result[0]->columns[3]->operation);
+        $this->assertEquals('int', $result[0]->columns[3]->propertyData->type);
+        $this->assertFalse($result[0]->columns[3]->propertyData->isNullable);
+
+        // Polymorphic relations should not create foreign keys
+        $this->assertCount(0, $result[0]->foreignKeys);
+
+        // Should automatically generate an index for the polymorphic columns
+        $this->assertCount(1, $result[0]->indexes);
+        $this->assertEquals('pollable_morph_index', $result[0]->indexes[0]->name);
+        $this->assertEquals(['pollable_type', 'pollable_id'], $result[0]->indexes[0]->columns);
     }
 }

@@ -18,7 +18,7 @@ class ReflectionManyToMany implements RelationInterface
     ) {
     }
 
-    public function getTargetEntity(): string
+    public function getTargetEntity(): ?string
     {
         if ($this->attribute->getTargetEntity()) {
             $reflectionEntity = new ReflectionEntity($this->attribute->getTargetEntity());
@@ -146,7 +146,7 @@ class ReflectionManyToMany implements RelationInterface
         }
         $name = $type->getName();
         if ($name !== MappingCollection::class && !is_subclass_of($name, MappingCollection::class)) {
-            return;
+            throw new RuntimeException('Many-to-many property must be array, iterable, or MappingCollection');
         }
     }
 }

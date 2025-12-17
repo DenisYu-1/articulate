@@ -18,6 +18,7 @@ class RelationValidatorFactory
             new ManyToOneRelationValidator(),
             new OneToManyRelationValidator(),
             new ManyToManyRelationValidator(),
+            new PolymorphicRelationValidator(),
         ];
     }
 

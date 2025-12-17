@@ -3,6 +3,9 @@
 namespace Articulate\Attributes\Reflection;
 
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphMany;
+use Articulate\Attributes\Relations\MorphOne;
+use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
@@ -18,10 +21,34 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         private readonly BaseReflectionProperty $property,
         private readonly SchemaNaming $schemaNaming = new SchemaNaming(),
     ) {
+        // Resolve column names for polymorphic relations
+        if (method_exists($this->entityProperty, 'resolveColumnNames')) {
+            $this->entityProperty->resolveColumnNames($this->property->getName());
+        }
     }
 
-    public function getTargetEntity(): string
+    public function getTargetEntity(): ?string
     {
+        // Handle polymorphic relations
+        if ($this->isMorphTo()) {
+            // MorphTo can target any entity at runtime - no single target entity
+            // We return null since the target is determined by the morph_type column at runtime
+            return null;
+        }
+
+        if ($this->isMorphOne() || $this->isMorphMany()) {
+            $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
+            if (!$reflectionEntity->isEntity()) {
+                throw new RuntimeException('Non-entity found in relation');
+            }
+            if ($this->isMorphMany()) {
+                $this->assertOneToManyCollectionType();
+            }
+
+            return $this->entityProperty->getTargetEntity();
+        }
+
+        // Handle regular relations
         if ($this->entityProperty->getTargetEntity()) {
             $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
             if (!$reflectionEntity->isEntity()) {
@@ -137,7 +164,13 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
 
     public function getReferencedColumnName(): string
     {
-        $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+        $targetEntity = $this->getTargetEntity();
+        if ($targetEntity === null) {
+            // For MorphTo relations that don't have a specific target entity
+            return 'id';
+        }
+
+        $reflectionEntity = new ReflectionEntity($targetEntity);
         $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
 
         return $primaryColumns[0] ?? 'id';
@@ -146,6 +179,50 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
     public function getPropertyName(): string
     {
         return $this->property->getName();
+    }
+
+    /**
+     * Get the morph type column name for polymorphic relations.
+     */
+    public function getMorphTypeColumnName(): string
+    {
+        if (!$this->isPolymorphic()) {
+            throw new RuntimeException('Not a polymorphic relation');
+        }
+
+        return $this->entityProperty->getTypeColumn();
+    }
+
+    /**
+     * Get the morph ID column name for polymorphic relations.
+     */
+    public function getMorphIdColumnName(): string
+    {
+        if (!$this->isPolymorphic()) {
+            throw new RuntimeException('Not a polymorphic relation');
+        }
+
+        return $this->entityProperty->getIdColumn();
+    }
+
+    /**
+     * Check if this is any kind of polymorphic relation.
+     */
+    public function isPolymorphic(): bool
+    {
+        return $this->isMorphTo() || $this->isMorphOne() || $this->isMorphMany();
+    }
+
+    /**
+     * Get the morph type identifier for owning polymorphic relations.
+     */
+    public function getMorphType(): string
+    {
+        if ($this->isMorphOne() || $this->isMorphMany()) {
+            return $this->entityProperty->getMorphType();
+        }
+
+        throw new RuntimeException('Not an owning polymorphic relation');
     }
 
     public function getDeclaringClassName(): string
@@ -168,6 +245,21 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
         return $this->entityProperty instanceof OneToMany;
     }
 
+    public function isMorphTo(): bool
+    {
+        return $this->entityProperty instanceof MorphTo;
+    }
+
+    public function isMorphOne(): bool
+    {
+        return $this->entityProperty instanceof MorphOne;
+    }
+
+    public function isMorphMany(): bool
+    {
+        return $this->entityProperty instanceof MorphMany;
+    }
+
     public function isOwningSide(): bool
     {
         if ($this->isManyToOne()) {
@@ -176,6 +268,14 @@ class ReflectionRelation implements PropertyInterface, RelationInterface
 
         if ($this->isOneToOne()) {
             return $this->getMappedByProperty() === null;
+        }
+
+        if ($this->isMorphTo()) {
+            return true; // MorphTo is always the owning side (contains the columns)
+        }
+
+        if ($this->isMorphOne() || $this->isMorphMany()) {
+            return false; // MorphOne/MorphMany are inverse sides
         }
 
         return false;

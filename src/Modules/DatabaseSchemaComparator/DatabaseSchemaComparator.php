@@ -78,13 +78,26 @@ readonly class DatabaseSchemaComparator
                     $entityIndexes[$indexName] = $indexInstance;
                 }
                 foreach ($entity->getEntityProperties() as $property) {
-                    $columnName = $property->getColumnName();
-                    $propertiesIndexed = $this->mergeColumnDefinition(
-                        $propertiesIndexed,
-                        $columnName,
-                        $property,
-                        $tableName,
-                    );
+                    if ($property instanceof ReflectionRelation && $property->isMorphTo()) {
+                        // Handle MorphTo relations specially - they generate two columns
+                        $propertiesIndexed = $this->addMorphToColumns($propertiesIndexed, $property, $tableName);
+
+                        // Auto-generate index for polymorphic relations
+                        $this->addPolymorphicIndex($entityIndexes, $property, $tableName);
+                    } elseif ($property instanceof ReflectionRelation && ($property->isMorphOne() || $property->isMorphMany())) {
+                        // MorphOne and MorphMany are inverse relations - they don't generate columns
+                        // Just validate them
+                        $validator = $this->relationValidatorFactory->getValidator($property);
+                        $validator->validate($property);
+                    } else {
+                        $columnName = $property->getColumnName();
+                        $propertiesIndexed = $this->mergeColumnDefinition(
+                            $propertiesIndexed,
+                            $columnName,
+                            $property,
+                            $tableName,
+                        );
+                    }
                 }
             }
 
@@ -113,7 +126,11 @@ readonly class DatabaseSchemaComparator
                 if ($data['relation'] && $data['foreignKeyRequired']) {
                     $validator = $this->relationValidatorFactory->getValidator($data['relation']);
                     $validator->validate($data['relation']);
-                    $targetEntity = new ReflectionEntity($data['relation']->getTargetEntity());
+                    $targetEntityClass = $data['relation']->getTargetEntity();
+                    if ($targetEntityClass === null) {
+                        continue;
+                    }
+                    $targetEntity = new ReflectionEntity($targetEntityClass);
                     $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                     $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
                         $fkName,
@@ -203,7 +220,11 @@ readonly class DatabaseSchemaComparator
                     if (!$propertyData['relation']) {
                         continue;
                     }
-                    $targetEntity = new ReflectionEntity($propertyData['relation']->getTargetEntity());
+                    $targetEntityClass = $propertyData['relation']->getTargetEntity();
+                    if ($targetEntityClass === null) {
+                        continue;
+                    }
+                    $targetEntity = new ReflectionEntity($targetEntityClass);
                     $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                     $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
                     if ($propertyData['foreignKeyRequired']) {
@@ -611,16 +632,22 @@ readonly class DatabaseSchemaComparator
         }
 
         if ($incoming['relation'] && $existing['relation']) {
-            $incomingTarget = new ReflectionEntity($incoming['relation']->getTargetEntity());
-            $existingTarget = new ReflectionEntity($existing['relation']->getTargetEntity());
-            if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
-                throw new RuntimeException(
-                    sprintf(
-                        'Relation column "%s" on table "%s" points to different targets',
-                        $columnName,
-                        $tableName,
-                    ),
-                );
+            $incomingTargetClass = $incoming['relation']->getTargetEntity();
+            $existingTargetClass = $existing['relation']->getTargetEntity();
+
+            // Skip comparison for relations that don't have specific target entities (like MorphTo)
+            if ($incomingTargetClass !== null && $existingTargetClass !== null) {
+                $incomingTarget = new ReflectionEntity($incomingTargetClass);
+                $existingTarget = new ReflectionEntity($existingTargetClass);
+                if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
+                    throw new RuntimeException(
+                        sprintf(
+                            'Relation column "%s" on table "%s" points to different targets',
+                            $columnName,
+                            $tableName,
+                        ),
+                    );
+                }
             }
         }
 
@@ -635,6 +662,86 @@ readonly class DatabaseSchemaComparator
         ];
 
         return $propertiesIndexed;
+    }
+
+    private function addMorphToColumns(array $propertiesIndexed, ReflectionRelation $relation, string $tableName): array
+    {
+        // Add the morph type column
+        $typeColumnName = $relation->getMorphTypeColumnName();
+        $typeColumnData = [
+            'type' => 'string',
+            'nullable' => false,
+            'default' => null,
+            'length' => 255,
+            'relation' => null, // Type column has no relation
+            'foreignKeyRequired' => false,
+            'referencedColumn' => null,
+        ];
+
+        if (isset($propertiesIndexed[$typeColumnName])) {
+            // Merge with existing definition
+            $existing = $propertiesIndexed[$typeColumnName];
+            if ($typeColumnData['type'] !== $existing['type'] || $typeColumnData['length'] !== $existing['length']) {
+                throw new RuntimeException(
+                    sprintf('Morph type column "%s" conflicts on table "%s"', $typeColumnName, $tableName)
+                );
+            }
+        } else {
+            $propertiesIndexed[$typeColumnName] = $typeColumnData;
+        }
+
+        // Add the morph ID column
+        $idColumnName = $relation->getMorphIdColumnName();
+        $idColumnData = [
+            'type' => 'int',
+            'nullable' => false,
+            'default' => null,
+            'length' => null,
+            'relation' => $relation, // ID column has the relation for potential future FK generation
+            'foreignKeyRequired' => false, // Polymorphic relations don't use traditional FK constraints
+            'referencedColumn' => $relation->getReferencedColumnName(),
+        ];
+
+        if (isset($propertiesIndexed[$idColumnName])) {
+            // Merge with existing definition
+            $existing = $propertiesIndexed[$idColumnName];
+            if ($idColumnData['type'] !== $existing['type']) {
+                throw new RuntimeException(
+                    sprintf('Morph ID column "%s" conflicts on table "%s"', $idColumnName, $tableName)
+                );
+            }
+            $propertiesIndexed[$idColumnName] = [
+                'type' => $idColumnData['type'],
+                'nullable' => $existing['nullable'] && $idColumnData['nullable'],
+                'default' => $idColumnData['default'] ?? $existing['default'],
+                'length' => $idColumnData['length'] ?? $existing['length'],
+                'relation' => $idColumnData['relation'] ?? $existing['relation'],
+                'foreignKeyRequired' => $idColumnData['foreignKeyRequired'] || $existing['foreignKeyRequired'],
+                'referencedColumn' => $idColumnData['referencedColumn'] ?? $existing['referencedColumn'],
+            ];
+        } else {
+            $propertiesIndexed[$idColumnName] = $idColumnData;
+        }
+
+        return $propertiesIndexed;
+    }
+
+    private function addPolymorphicIndex(array &$entityIndexes, ReflectionRelation $relation, string $tableName): void
+    {
+        $indexName = $relation->getPropertyName() . '_morph_index';
+        $indexColumns = [
+            $relation->getMorphTypeColumnName(),
+            $relation->getMorphIdColumnName(),
+        ];
+
+        // Create an index object compatible with the existing code
+        $entityIndexes[$indexName] = new class($indexColumns) {
+            public function __construct(public array $columns)
+            {
+            }
+
+            public bool $unique = false;
+        };
     }
 
     private function removePrimaryIndex(array $indexes): array
