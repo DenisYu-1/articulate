@@ -75,6 +75,20 @@ class TypeRegistryTest extends AbstractTestCase
         $this->assertNull($converter->convertToPHP(null));
     }
 
+    public function testNullablePointTypeRegistration(): void
+    {
+        // Test that nullable Point type is registered correctly
+        // This covers the concatenation mutation on line 266 of TypeRegistry.php
+        $nullablePointType = '?' . Point::class;
+
+        // The type should be registered and map to POINT
+        $this->assertEquals('POINT', $this->typeRegistry->getDatabaseType($nullablePointType));
+
+        // And should have the PointTypeConverter
+        $converter = $this->typeRegistry->getConverter($nullablePointType);
+        $this->assertInstanceOf(PointTypeConverter::class, $converter);
+    }
+
     public function testCustomTypeRegistration(): void
     {
         $customRegistry = new TypeRegistry();
