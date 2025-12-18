@@ -24,11 +24,17 @@ class ConnectionTest extends AbstractTestCase
 
     public function testBeginTransactionIsCalled()
     {
-        $connection = new Connection('sqlite::memory:', 'test', 'test');
+        $connection = new Connection('sqlite::memory:', '', '');
 
-        // Test that we can call beginTransaction (it should handle already in transaction)
-        $this->expectNotToPerformAssertions();
+        // Actually test that beginTransaction works
+        // The MethodCallRemoval mutant removes the pdo->beginTransaction() call
+        $reflectionProperty = new \ReflectionProperty($connection, 'pdo');
+        $reflectionProperty->setAccessible(true);
+        $pdo = $reflectionProperty->getValue($connection);
+
+        $this->assertFalse($pdo->inTransaction());
         $connection->beginTransaction();
+        $this->assertTrue($pdo->inTransaction());
     }
 
     public function testRollbackTransactionIsCalled()

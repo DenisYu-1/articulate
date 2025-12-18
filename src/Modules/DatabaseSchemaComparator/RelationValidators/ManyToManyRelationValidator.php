@@ -30,7 +30,7 @@ class ManyToManyRelationValidator implements RelationValidatorInterface
 
         if ($relation->isOwningSide()) {
             if (!$inversedBy) {
-                return;
+                throw new RuntimeException('Many-to-many owning side must specify referencedBy to define the inverse property');
             }
             if (!$targetEntity->hasProperty($inversedBy)) {
                 throw new RuntimeException('Many-to-many inverse side misconfigured: property not found');

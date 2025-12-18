@@ -1,0 +1,179 @@
+<?php
+
+namespace Articulate\Tests\Attributes\Entity;
+
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Relations\ManyToMany;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MappingTable;
+use Articulate\Attributes\Relations\MappingTableProperty;
+use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Tests\AbstractTestCase;
+
+#[Entity]
+class EntityMixedRelationsTest extends AbstractTestCase
+{
+    #[Property]
+    public int $id;
+
+    // This is an owning side (no ownedBy/referencedBy)
+    #[ManyToMany(
+        targetEntity: self::class,
+        referencedBy: 'inverseRelations',
+        mappingTable: new MappingTable(name: 'mixed_relations_map')
+    )]
+    public array $owningRelations;
+
+    // This is another owning side
+    #[ManyToMany(
+        targetEntity: self::class,
+        referencedBy: 'inverseRelations2',
+        mappingTable: new MappingTable(name: 'mixed_relations_map2')
+    )]
+    public array $owningRelations2;
+
+    // This is an inverse side
+    #[ManyToMany(
+        ownedBy: 'owningRelations',
+        targetEntity: self::class
+    )]
+    public array $inverseRelations;
+
+    public function testMixedOwningAndInverseRelationsAreProcessed()
+    {
+        $entity = new ReflectionEntity(static::class);
+
+        // Get all relations
+        $relations = iterator_to_array($entity->getEntityRelationProperties());
+        $manyToManyRelations = array_filter($relations, fn ($relation) => $relation instanceof ReflectionManyToMany);
+
+        // Should have 3 ManyToMany relations
+        $this->assertCount(3, $manyToManyRelations);
+
+        // Two should be owning sides, one should be inverse side
+        $owningSides = array_filter($manyToManyRelations, fn ($relation) => $relation->isOwningSide());
+        $inverseSides = array_filter($manyToManyRelations, fn ($relation) => !$relation->isOwningSide());
+
+        $this->assertCount(2, $owningSides, 'Should have exactly two owning side relations');
+        $this->assertCount(1, $inverseSides, 'Should have exactly one inverse side relation');
+
+        // Verify the owning sides have the correct property names
+        $owningPropertyNames = array_map(fn ($relation) => $relation->getPropertyName(), $owningSides);
+        sort($owningPropertyNames);
+        $this->assertEquals(['owningRelations', 'owningRelations2'], $owningPropertyNames);
+
+        // Verify the inverse side has the correct property name
+        $inverseRelation = reset($inverseSides);
+        $this->assertEquals('inverseRelations', $inverseRelation->getPropertyName());
+    }
+
+    public function testMappingTablePropertyDefaultValues(): void
+    {
+        // Test that MappingTableProperty has correct default values
+        // This covers the FalseValue mutation on line 10 of MappingTableProperty.php
+        $property = new MappingTableProperty('test_name', 'string');
+
+        $this->assertEquals('test_name', $property->name);
+        $this->assertEquals('string', $property->type);
+        $this->assertFalse($property->nullable, 'Default nullable value should be false');
+        $this->assertNull($property->length);
+        $this->assertNull($property->defaultValue);
+    }
+
+    public function testMorphManyDefaultForeignKeyValue(): void
+    {
+        // Test that MorphMany has correct default foreignKey value
+        // This covers the TrueValue mutation on line 28 of MorphMany.php
+        $morphMany = new \Articulate\Attributes\Relations\MorphMany(
+            targetEntity: self::class,
+            referencedBy: 'test'
+        );
+
+        // The default value should be true
+        $this->assertTrue($morphMany->foreignKey);
+    }
+
+    public function testMorphToManyDefaultForeignKeyValue(): void
+    {
+        // Test that MorphToMany has correct default foreignKey value
+        // This covers the TrueValue mutation on line 32 of MorphToMany.php
+        $morphToMany = new \Articulate\Attributes\Relations\MorphToMany(
+            targetEntity: self::class,
+            name: 'test'
+        );
+
+        // The default value should be true
+        $this->assertTrue($morphToMany->foreignKey);
+    }
+
+    public function testMorphedByManyDefaultForeignKeyValue(): void
+    {
+        // Test that MorphedByMany has correct default foreignKey value
+        // This covers the TrueValue mutation on line 26 of MorphedByMany.php
+        $morphedByMany = new \Articulate\Attributes\Relations\MorphedByMany(
+            targetEntity: self::class,
+            name: 'test'
+        );
+
+        // The default value should be true
+        $this->assertTrue($morphedByMany->foreignKey);
+    }
+
+    public function testManyToManyIsForeignKeyRequired(): void
+    {
+        // Test that ManyToMany relations require foreign keys by default
+        // This covers the TrueValue mutation on line 121 of ReflectionRelation.php
+        $schemaNaming = new \Articulate\Schema\SchemaNaming();
+        $attribute = new ManyToMany(targetEntity: self::class);
+
+        $reflectionProperty = new \ReflectionProperty($this, 'owningRelations');
+        $reflection = new \Articulate\Attributes\Reflection\ReflectionRelation($attribute, $reflectionProperty, $schemaNaming);
+
+        // ManyToMany should require foreign keys by default
+        $this->assertTrue($reflection->isForeignKeyRequired());
+    }
+
+    public function testRelationTypeDetectionWorksCorrectly(): void
+    {
+        // Test that relation type detection methods work correctly
+        // This covers various mutations in relation type checking logic
+        $schemaNaming = new \Articulate\Schema\SchemaNaming();
+
+        // Test OneToOne
+        $oneToOneAttr = new \Articulate\Attributes\Relations\OneToOne(targetEntity: self::class);
+        $property = new \ReflectionProperty($this, 'owningRelations');
+        $oneToOneRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($oneToOneAttr, $property, $schemaNaming);
+
+        $this->assertTrue($oneToOneRelation->isOneToOne());
+        $this->assertFalse($oneToOneRelation->isOneToMany());
+        $this->assertFalse($oneToOneRelation->isManyToOne());
+        $this->assertFalse($oneToOneRelation->isMorphTo());
+        $this->assertFalse($oneToOneRelation->isMorphOne());
+        $this->assertFalse($oneToOneRelation->isMorphMany());
+
+        // Test ManyToOne
+        $manyToOneAttr = new ManyToOne(targetEntity: self::class);
+        $manyToOneRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($manyToOneAttr, $property, $schemaNaming);
+
+        $this->assertFalse($manyToOneRelation->isOneToOne());
+        $this->assertFalse($manyToOneRelation->isOneToMany());
+        $this->assertTrue($manyToOneRelation->isManyToOne());
+        $this->assertFalse($manyToOneRelation->isMorphTo());
+        $this->assertFalse($manyToOneRelation->isMorphOne());
+        $this->assertFalse($manyToOneRelation->isMorphMany());
+
+        // Test OneToMany
+        $oneToManyAttr = new OneToMany(targetEntity: self::class);
+        $oneToManyRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($oneToManyAttr, $property, $schemaNaming);
+
+        $this->assertFalse($oneToManyRelation->isOneToOne());
+        $this->assertTrue($oneToManyRelation->isOneToMany());
+        $this->assertFalse($oneToManyRelation->isManyToOne());
+        $this->assertFalse($oneToManyRelation->isMorphTo());
+        $this->assertFalse($oneToManyRelation->isMorphOne());
+        $this->assertFalse($oneToManyRelation->isMorphMany());
+    }
+}

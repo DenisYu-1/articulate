@@ -25,3 +25,15 @@ class TestManyToManyInvalidTarget
     #[Property]
     public int $id;
 }
+
+#[Entity(tableName: 'test_many_to_many_no_referenced_by')]
+class TestManyToManyNoReferencedBy
+{
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
+
+    // This should fail validation - owning side without referencedBy
+    #[ManyToMany(targetEntity: TestManyToManyInvalidTarget::class)]
+    public array $targets;
+}

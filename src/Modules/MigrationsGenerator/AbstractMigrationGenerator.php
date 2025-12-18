@@ -85,14 +85,17 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
         );
     }
 
-    protected function generateIndexSql(IndexCompareResult $index, string $tableName): string
+    protected function generateIndexSql(IndexCompareResult $index, string $tableName, bool $withAdd = true): string
     {
         $quote = $this->getIdentifierQuote();
         $indexType = $index->isUnique ? 'UNIQUE ' : '';
         $columns = implode(', ', array_map(fn ($col) => $quote . $col . $quote, $index->columns));
 
+        $addPrefix = $withAdd ? 'ADD ' : '';
+
         return sprintf(
-            'ADD %sINDEX %s%s%s (%s)',
+            '%s%sINDEX %s%s%s (%s)',
+            $addPrefix,
             $indexType,
             $quote,
             $index->name,

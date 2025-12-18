@@ -8,6 +8,11 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphedByMany;
+use Articulate\Attributes\Relations\MorphMany;
+use Articulate\Attributes\Relations\MorphOne;
+use Articulate\Attributes\Relations\MorphTo;
+use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
@@ -65,6 +70,41 @@ class ReflectionEntity extends ReflectionClass
             if (!empty($entityProperty)) {
                 $propertyInstance = $entityProperty[0]->newInstance();
                 yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphTo>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphTo::class);
+            if (!empty($entityProperty)) {
+                $propertyInstance = $entityProperty[0]->newInstance();
+                yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphOne>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphOne::class);
+            if (!empty($entityProperty)) {
+                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                if (!$relation->isOwningSide()) {
+                    continue;
+                }
+                yield $relation;
+
+                continue;
+            }
+
+            /** @var ReflectionAttribute<MorphMany>[] $entityProperty */
+            $entityProperty = $property->getAttributes(MorphMany::class);
+            if (!empty($entityProperty)) {
+                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+                if (!$relation->isOwningSide()) {
+                    continue;
+                }
+                yield $relation;
+
+                continue;
             }
         }
     }
@@ -131,6 +171,36 @@ class ReflectionEntity extends ReflectionClass
             $manyToMany = $property->getAttributes(ManyToMany::class);
             if (!empty($manyToMany)) {
                 yield new ReflectionManyToMany($manyToMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphToMany>[] $morphToMany */
+            $morphToMany = $property->getAttributes(MorphToMany::class);
+            if (!empty($morphToMany)) {
+                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphedByMany>[] $morphedByMany */
+            $morphedByMany = $property->getAttributes(MorphedByMany::class);
+            if (!empty($morphedByMany)) {
+                yield new ReflectionMorphedByMany($morphedByMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphOne>[] $morphOne */
+            $morphOne = $property->getAttributes(MorphOne::class);
+            if (!empty($morphOne)) {
+                yield new ReflectionRelation($morphOne[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphMany>[] $morphMany */
+            $morphMany = $property->getAttributes(MorphMany::class);
+            if (!empty($morphMany)) {
+                yield new ReflectionRelation($morphMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphTo>[] $morphTo */
+            $morphTo = $property->getAttributes(MorphTo::class);
+            if (!empty($morphTo)) {
+                yield new ReflectionRelation($morphTo[0]->newInstance(), $property, $this->schemaNaming);
             }
         }
     }
