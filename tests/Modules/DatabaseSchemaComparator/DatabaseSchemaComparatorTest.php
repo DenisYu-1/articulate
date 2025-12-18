@@ -849,9 +849,6 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         // The fk_user_id index should be kept (not in results) because shouldSkipIndexDeletion returns true
     }
 
-
-
-
     public function testPolymorphicRelationsProcessingMorphOne()
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
