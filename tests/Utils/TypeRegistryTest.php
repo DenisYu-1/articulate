@@ -491,4 +491,99 @@ class TypeRegistryTest extends AbstractTestCase
 
         $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
     }
+
+    public function testGetDatabaseTypeCacheReturnRemoval(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Populate cache by calling getDatabaseType
+        $result1 = $registry->getDatabaseType('int');
+        $this->assertEquals('INT', $result1);
+
+        // Call again to ensure cache is used - covers ReturnRemoval mutation on line 97
+        $result2 = $registry->getDatabaseType('int');
+        $this->assertEquals('INT', $result2);
+        $this->assertSame($result1, $result2); // Should be the same cached result
+    }
+
+    public function testFindClassMappingWithInheritanceIteration(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Register a mapping for a parent class
+        $registry->registerClassMapping(\Exception::class, 'TEXT');
+
+        // Test that child classes inherit the mapping - covers Foreach_ mutation on line 139
+        $this->assertEquals('TEXT', $registry->getDatabaseType(\RuntimeException::class));
+    }
+
+    public function testGetInheritanceInfoTernaryLogic(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Test inheritance info caching logic - covers Ternary mutation on line 167
+        $reflectionMethod = new ReflectionMethod($registry, 'getInheritanceInfo');
+        $reflectionMethod->setAccessible(true);
+
+        // First call should compute
+        $info1 = $reflectionMethod->invoke($registry, \Exception::class);
+        $this->assertIsArray($info1);
+
+        // Second call should use cache
+        $info2 = $reflectionMethod->invoke($registry, \Exception::class);
+        $this->assertSame($info1, $info2);
+    }
+
+    public function testExtractBaseTypeStrToUpperMutation(): void
+    {
+        $registry = new TypeRegistry();
+        $reflectionMethod = new ReflectionMethod($registry, 'extractBaseType');
+        $reflectionMethod->setAccessible(true);
+
+        // Test strtoupper removal - covers UnwrapStrToUpper mutation on line 213
+        $this->assertEquals('VARCHAR', $reflectionMethod->invoke($registry, 'VARCHAR(255)'));
+        $this->assertEquals('VARCHAR', $reflectionMethod->invoke($registry, 'varchar(255)')); // Case insensitive
+    }
+
+    public function testInferPhpTypeStrToUpperRemoval(): void
+    {
+        $registry = new TypeRegistry();
+        $reflectionMethod = new ReflectionMethod($registry, 'inferPhpType');
+        $reflectionMethod->setAccessible(true);
+
+        // Test without strtoupper - covers UnwrapStrToUpper mutation on line 225
+        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'INT'));
+        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'int')); // Case sensitive now
+    }
+
+    public function testRegisterDefaultsDateTimeRegistration(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Test that DateTime mapping is registered - covers MethodCallRemoval mutation on line 250
+        $this->assertEquals('DATETIME', $registry->getDatabaseType('DateTime'));
+        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTimeInterface::class));
+    }
+
+    public function testRegisterDefaultsDateTimeInterfacePriority(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Test DateTimeInterface priority - covers IncrementInteger mutation on line 257
+        // DateTimeInterface should have higher priority than DateTime
+        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTimeInterface::class));
+        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTime::class));
+    }
+
+    public function testRegisterDefaultsNullableTypes(): void
+    {
+        $registry = new TypeRegistry();
+
+        // Test nullable type registrations - covers MethodCallRemoval mutations on lines 261, 263, 264
+        $this->assertEquals('INT', $registry->getDatabaseType('?int'));
+        $this->assertEquals('FLOAT', $registry->getDatabaseType('?float'));
+        $this->assertEquals('VARCHAR(255)', $registry->getDatabaseType('?string'));
+        $this->assertEquals('TINYINT(1)', $registry->getDatabaseType('?bool'));
+        $this->assertEquals('DATETIME', $registry->getDatabaseType('?DateTime'));
+    }
 }

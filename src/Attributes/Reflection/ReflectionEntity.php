@@ -184,6 +184,24 @@ class ReflectionEntity extends ReflectionClass
             if (!empty($morphedByMany)) {
                 yield new ReflectionMorphedByMany($morphedByMany[0]->newInstance(), $property, $this->schemaNaming);
             }
+
+            /** @var ReflectionAttribute<MorphOne>[] $morphOne */
+            $morphOne = $property->getAttributes(MorphOne::class);
+            if (!empty($morphOne)) {
+                yield new ReflectionRelation($morphOne[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphMany>[] $morphMany */
+            $morphMany = $property->getAttributes(MorphMany::class);
+            if (!empty($morphMany)) {
+                yield new ReflectionRelation($morphMany[0]->newInstance(), $property, $this->schemaNaming);
+            }
+
+            /** @var ReflectionAttribute<MorphTo>[] $morphTo */
+            $morphTo = $property->getAttributes(MorphTo::class);
+            if (!empty($morphTo)) {
+                yield new ReflectionRelation($morphTo[0]->newInstance(), $property, $this->schemaNaming);
+            }
         }
     }
 
