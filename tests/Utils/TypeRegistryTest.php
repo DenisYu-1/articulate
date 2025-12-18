@@ -473,6 +473,13 @@ class TypeRegistryTest extends AbstractTestCase
         $registry->registerClassMapping(Serializable::class, 'TEXT'); // Uses default priority 0
 
         $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
+
+        // Verify that the default priority is actually 0
+        $reflectionProperty = new ReflectionProperty($registry, 'classMappings');
+        $reflectionProperty->setAccessible(true);
+        $classMappings = $reflectionProperty->getValue($registry);
+
+        $this->assertEquals(0, $classMappings[Serializable::class]['priority']);
     }
 
     public function testPriorityParameterExplicitValue(): void

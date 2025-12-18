@@ -9,10 +9,13 @@ require_once __DIR__ . '/TestEntities/TestManyToManySharedOwnerConflict.php';
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\ManyToManyRelationValidator;
+use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\MorphToManyRelationValidator;
 use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
 use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
@@ -235,5 +238,21 @@ class ManyToManyTest extends AbstractTestCase
         $reader->expects($this->any())->method('getTableForeignKeys')->willReturn([]);
 
         return new DatabaseSchemaComparator($reader, new SchemaNaming());
+    }
+
+    public function testMorphToManyRelationValidatorSupportsCorrectTypes(): void
+    {
+        $validator = new MorphToManyRelationValidator();
+
+        // Create mock relations to test supports method
+        $morphToManyRelation = $this->createMock(ReflectionMorphToMany::class);
+        $this->assertTrue($validator->supports($morphToManyRelation));
+
+        $morphedByManyRelation = $this->createMock(ReflectionMorphedByMany::class);
+        $this->assertTrue($validator->supports($morphedByManyRelation));
+
+        // Should not support other relation types
+        $manyToManyRelation = $this->createMock(ReflectionManyToMany::class);
+        $this->assertFalse($validator->supports($manyToManyRelation));
     }
 }

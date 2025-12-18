@@ -4,12 +4,17 @@ namespace Articulate\Tests\Attributes\Reflection;
 
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphMany;
+use Articulate\Attributes\Relations\MorphOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiPrimaryKeyEntity;
+use Exception;
 use ReflectionProperty;
+use RuntimeException;
 
 // Test classes for reflection testing
 class TestRelationClass
@@ -84,7 +89,7 @@ class ReflectionRelationTest extends AbstractTestCase
         $property = new ReflectionProperty('TestInvalidCollectionClass', 'invalidCollection');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('One-to-many property must be iterable collection');
         $reflection->getTargetEntity();
     }
@@ -121,7 +126,7 @@ class ReflectionRelationTest extends AbstractTestCase
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage('Either ownedBy or referencedBy is required');
         $reflection->getMappedBy();
     }
@@ -196,6 +201,106 @@ class ReflectionRelationTest extends AbstractTestCase
 
         // Explicit foreignKey: false should return false
         $this->assertFalse($reflection->isForeignKeyRequired());
+    }
+
+    public function testMorphOneGetTargetEntity()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphOne(
+            targetEntity: TestEntity::class,
+            referencedBy: 'testMorph'
+        );
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        $this->assertEquals(TestEntity::class, $reflection->getTargetEntity());
+    }
+
+    public function testMorphManyGetTargetEntity()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphMany(
+            targetEntity: TestEntity::class,
+            referencedBy: 'testMorph'
+        );
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'oneToManyRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        $this->assertEquals(TestEntity::class, $reflection->getTargetEntity());
+    }
+
+    public function testMorphManyValidatesCollectionType()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphMany(
+            targetEntity: TestEntity::class,
+            referencedBy: 'testMorph'
+        );
+
+        // Create a property with invalid type (string instead of array/iterable)
+        $invalidProperty = new ReflectionProperty(TestEntity::class, 'id'); // 'id' is typed as int
+        $reflection = new ReflectionRelation($attribute, $invalidProperty, $schemaNaming);
+
+        // This should throw an exception because MorphMany requires a collection type
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('One-to-many property must be iterable collection');
+
+        $reflection->getTargetEntity();
+    }
+
+    public function testMorphManyResolvesColumnNamesCorrectly()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphMany(
+            targetEntity: TestEntity::class,
+            referencedBy: 'testMorph'
+        );
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'oneToManyRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        // Access the resolved attribute
+        $reflectionProperty = new ReflectionProperty($reflection, 'entityProperty');
+        $resolvedAttribute = $reflectionProperty->getValue($reflection);
+
+        // The ConcatOperandRemoval mutant removes the property name from column names
+        // This would make all morph relations use the same generic column names
+        $this->assertEquals('one_to_many_relation_type', $resolvedAttribute->getTypeColumn());
+        $this->assertEquals('one_to_many_relation_id', $resolvedAttribute->getIdColumn());
+    }
+
+    public function testIsPolymorphicReturnsTrueForMorphRelations()
+    {
+        $schemaNaming = new SchemaNaming();
+
+        // Test MorphTo
+        $morphToAttribute = new \Articulate\Attributes\Relations\MorphTo();
+        $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
+        $morphToReflection = new ReflectionRelation($morphToAttribute, $property, $schemaNaming);
+        $this->assertTrue($morphToReflection->isPolymorphic(), 'MorphTo should be polymorphic');
+
+        // Test MorphOne
+        $morphOneAttribute = new MorphOne(
+            targetEntity: TestEntity::class,
+            referencedBy: 'test'
+        );
+        $morphOneReflection = new ReflectionRelation($morphOneAttribute, $property, $schemaNaming);
+        $this->assertTrue($morphOneReflection->isPolymorphic(), 'MorphOne should be polymorphic');
+
+        // Test MorphMany
+        $morphManyAttribute = new MorphMany(
+            targetEntity: TestEntity::class,
+            referencedBy: 'test'
+        );
+        $morphManyReflection = new ReflectionRelation($morphManyAttribute, $property, $schemaNaming);
+        $this->assertTrue($morphManyReflection->isPolymorphic(), 'MorphMany should be polymorphic');
+
+        // Test regular relation
+        $oneToOneAttribute = new OneToOne(targetEntity: TestEntity::class);
+        $oneToOneReflection = new ReflectionRelation($oneToOneAttribute, $property, $schemaNaming);
+        $this->assertFalse($oneToOneReflection->isPolymorphic(), 'OneToOne should not be polymorphic');
     }
 
     public function testIsNullableWithExplicitNullable()
@@ -340,5 +445,45 @@ class ReflectionRelationTest extends AbstractTestCase
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
         $this->assertNull($reflection->getInversedByProperty());
+    }
+
+    public function testGetInversedByThrowsExceptionWhenNoMappingConfigured()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new OneToMany(targetEntity: TestEntity::class);
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'oneToManyRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        // OneToMany without ownedBy should throw an exception
+        // The MethodCallRemoval mutant removes the assertMappingConfigured() call
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Either ownedBy or referencedBy is required');
+
+        $reflection->getInversedBy();
+    }
+
+    public function testGetReferencedColumnNameReturnsPrimaryKey()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new ManyToOne(targetEntity: TestEntity::class);
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'manyToOneRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        // Should return the primary key of the target entity
+        $this->assertEquals('id', $reflection->getReferencedColumnName());
+    }
+
+    public function testGetReferencedColumnNameReturnsFirstPrimaryKeyForMultiKeyEntity()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new ManyToOne(targetEntity: TestMultiPrimaryKeyEntity::class);
+
+        $property = new ReflectionProperty(TestRelationClass::class, 'manyToOneRelation');
+        $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
+
+        // Should return the first primary key ('id') of the multi-key entity
+        $this->assertEquals('id', $reflection->getReferencedColumnName());
     }
 }
