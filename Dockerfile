@@ -15,16 +15,22 @@ RUN apt-get update && apt-get install -y \
 # Install Xdebug for testing coverage
 RUN pecl install xdebug && docker-php-ext-enable xdebug
 
+# Create non-root user for security
+RUN groupadd -r appuser -g 1001 && \
+    useradd -r -g appuser -u 1001 -m -d /home/appuser -s /bin/bash appuser
+
 # Install Composer
 COPY --from=builder /usr/bin/composer /usr/local/bin/composer
 
 WORKDIR /app
 
 # Copy composer files and install dependencies
-COPY composer.* ./
+COPY --chown=appuser:appuser composer.* ./
 RUN composer install --no-scripts --no-interaction --prefer-dist --optimize-autoloader
 
 # Copy source code
-COPY . .
+COPY --chown=appuser:appuser . .
+
+USER appuser
 
 CMD ["php", "-v"]
