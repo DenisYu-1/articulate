@@ -93,9 +93,12 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
 
         $addPrefix = $withAdd ? 'ADD ' : '';
 
+        $concurrentPrefix = $index->isConcurrent ? $this->getConcurrentIndexPrefix() : '';
+
         return sprintf(
-            '%s%sINDEX %s%s%s (%s)',
+            '%s%s%sINDEX %s%s%s (%s)',
             $addPrefix,
+            $concurrentPrefix,
             $indexType,
             $quote,
             $index->name,
@@ -104,7 +107,16 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy
         );
     }
 
-    private function mapTypeLength(?PropertiesData $propertyData): string
+    /**
+     * Get the concurrent index creation prefix for this database.
+     * Override in specific database generators if supported.
+     */
+    protected function getConcurrentIndexPrefix(): string
+    {
+        return '';
+    }
+
+    protected function mapTypeLength(?PropertiesData $propertyData): string
     {
         if (!$propertyData->type) {
             return 'TEXT'; // fallback for unknown types

@@ -9,6 +9,7 @@ class IndexCompareResult extends CompareResult
         string $operation,
         public readonly array $columns,
         public readonly bool $isUnique,
+        public readonly bool $isConcurrent = false,
     ) {
         parent::__construct($name, $operation);
     }

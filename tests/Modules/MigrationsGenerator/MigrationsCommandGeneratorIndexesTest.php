@@ -2,6 +2,7 @@
 
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
+use Articulate\Connection;
 use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
 use Articulate\Modules\DatabaseSchemaComparator\Models\IndexCompareResult;
@@ -24,6 +25,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
                     operation: CompareResult::OPERATION_DELETE,
                     columns: ['id'],
                     isUnique: false,
+                    isConcurrent: false,
                 ),
             ],
         );
@@ -53,6 +55,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
                     operation: CompareResult::OPERATION_DELETE,
                     columns: ['id'],
                     isUnique: false,
+                    isConcurrent: false,
                 ),
             ],
         );
@@ -82,6 +85,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
                     operation: CompareResult::OPERATION_DELETE,
                     columns: ['id'],
                     isUnique: false,
+                    isConcurrent: false,
                 ),
             ],
         );
@@ -89,6 +93,36 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
         $this->assertEquals(
             'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL, ADD INDEX `idx_test_table_id` (`id`)',
             (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
+        );
+    }
+
+    public function testCreatesConcurrentIndex()
+    {
+        $tableCompareResult = new TableCompareResult(
+            name: 'test_table',
+            operation: CompareResult::OPERATION_UPDATE,
+            columns: [],
+            indexes: [
+                new IndexCompareResult(
+                    name: 'idx_test_table_email',
+                    operation: CompareResult::OPERATION_CREATE,
+                    columns: ['email'],
+                    isUnique: true,
+                    isConcurrent: true,
+                ),
+            ],
+        );
+
+        // PostgreSQL should use CONCURRENTLY
+        $this->assertEquals(
+            'ALTER TABLE "test_table" ADD CONCURRENTLY UNIQUE INDEX "idx_test_table_email" ("email")',
+            (MigrationsCommandGenerator::forDatabase(Connection::PGSQL))->generate($tableCompareResult)
+        );
+
+        // MySQL should use ALGORITHM=INPLACE for the ALTER TABLE
+        $this->assertEquals(
+            'ALTER TABLE `test_table` ALGORITHM=INPLACE ADD UNIQUE INDEX `idx_test_table_email` (`email`)',
+            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
         );
     }
 }
