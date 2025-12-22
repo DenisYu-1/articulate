@@ -99,7 +99,9 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator
             return '';
         }
 
-        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
+        $algorithm = $this->shouldUseOnlineDDL($compareResult) ? ' ALGORITHM=INPLACE' : '';
+
+        return 'ALTER TABLE `' . $compareResult->name . '`' . $algorithm . ' ' . implode(', ', $alterParts);
     }
 
     protected function generateAlterTableRollback(TableCompareResult $compareResult): string
@@ -205,5 +207,24 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator
     protected function getModifyColumnSyntax(string $columnName, PropertiesData $column): string
     {
         return 'MODIFY `' . $columnName . '` ' . $this->mapTypeLength($column);
+    }
+
+    protected function shouldUseOnlineDDL(TableCompareResult $compareResult): bool
+    {
+        // Use online DDL when creating concurrent indexes
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_CREATE && $index->isConcurrent) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function getConcurrentIndexPrefix(): string
+    {
+        // MySQL doesn't have a direct CONCURRENTLY equivalent for CREATE INDEX
+        // Online DDL is handled at the ALTER TABLE level with ALGORITHM=INPLACE
+        return '';
     }
 }

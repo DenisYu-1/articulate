@@ -193,6 +193,7 @@ readonly class DatabaseSchemaComparator
                         CompareResult::OPERATION_CREATE,
                         $indexInstance->columns,
                         $indexInstance->unique,
+                        $indexInstance->concurrent ?? false,
                     );
                 } else {
                     unset($indexesToRemove[$indexName]);

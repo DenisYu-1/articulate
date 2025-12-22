@@ -200,4 +200,9 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator
     {
         return 'ALTER COLUMN "' . $columnName . '" TYPE ' . $this->mapTypeLength($column);
     }
+
+    protected function getConcurrentIndexPrefix(): string
+    {
+        return 'CONCURRENTLY ';
+    }
 }
