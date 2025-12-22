@@ -44,8 +44,8 @@ class EntityManager
     // Unit of Work access
     public function getUnitOfWork(): UnitOfWork;
     
-    // Create new unit of work, mostly for scopes
-    public function createUnitOfWOrk(): UnitOfWork;
+    // Create new unit of work for scoped operations
+    public function createUnitOfWork(): UnitOfWork;
 }
 ```
 
@@ -115,6 +115,8 @@ class UnitOfWork
 - Memory overhead: minimal, only for modified entities
 - Use case: Read-heavy operations
 
+**Configuration**: Set on EntityManager level, can be overridden on UnitOfWork level, with package config default.
+
 ```php
 interface ChangeTrackingStrategy
 {
@@ -126,15 +128,16 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy { }
 class DeferredExplicitStrategy implements ChangeTrackingStrategy { }
 ```
 
-### 2.3 UnitOfWork
+### 2.3 Scoped UnitOfWork
 
 **Purpose**: Enable memory-efficient operations with isolated change tracking
 
 **Concept**:
-- UoW that tracks entities independently from siblings
-- Can be cleared without affecting other's identity map
+- UnitOfWork that tracks entities independently from other UnitOfWork instances
+- Can be cleared without affecting other UnitOfWork instances
 - Changes are separated, but could be merged into same query when global EM flushing
 - Enables processing large datasets in chunks
+- All UnitOfWork instances are equal - no parent/child relationships, only horizontal relations
 
 ```php
 class UnitOfWork
@@ -313,36 +316,37 @@ Different entity classes map to the same table but expose different fields and r
 ```php
 class ContextManager
 {
-    private ?string $currentContext = null;
-    
     // Determine which entity class to use for a table
     public function resolveEntityClass(string $tableName): string;
-    
-    // Set current context
-    public function setContext(?string $context): void;
-    
+
     // Get all entity classes for a table
     public function getEntityClassesForTable(string $tableName): array;
-    
+
     // Check if entity is part of current context
     public function isInContext(object $entity): bool;
 }
 ```
 
+**Note**: Contexts are not switched globally. Different UnitOfWork instances are used for different contexts, avoiding global state changes.
+
 ### 5.3 Context Resolution
 
 ```php
 // Example: Authentication context uses LoginUser
-$uow = $em->getUnitOfWork();
+$uow = $em->createUnitOfWork();
 $loginUser = $uow->find(LoginUser::class, 1); // Has login, password fields
 
-// Switch to user profile context
-$uowProfile = $em->getUnitOfWork();
+// Profile context uses User entity
+$uowProfile = $em->createUnitOfWork();
 $user = $uowProfile->find(User::class, 1); // Has name, phones, groups, cart relations
 
 // Same table, different views
 assert($loginUser->id === $user->id); // Same database record
 assertFalse($loginUser === $user); // Different instances
+
+// Data consistency note: When flushing changes from different contexts for the same record,
+// latest change overwrites previous ones. This is an edge case that may require configuration
+// to throw errors if detected. Document this behavior prominently.
 ```
 
 ### 5.4 Identity Map with Context
@@ -627,11 +631,21 @@ $em->commit(); // Commits outer transaction
 ### 10.1 Entity Manager Clear
 
 ```php
-// Clear all entities from memory
+// Clear all entities from memory globally (affects all UnitOfWork instances)
 $em->clear();
 
-// Clear specific entity class
+// Clear specific entity class globally
 $em->clear(User::class);
+```
+
+### 10.2 UnitOfWork Clear
+
+```php
+// Clear entities only from this UnitOfWork scope
+$uow->clear();
+
+// Clear specific entity class from this UnitOfWork scope
+$uow->clear(User::class);
 ```
 
 ### 10.2 Entity Detachment
@@ -740,8 +754,8 @@ public function getReference(string $class, mixed $id): object
 **Rationale**: Faster development, optimized for production
 
 ### 12.4 Scoped Unit of Work
-**Decision**: Creating UoW with merge-on-flush
-**Rationale**: Enables memory-efficient batch processing while maintaining global optimization
+**Decision**: Multiple independent UnitOfWork instances with merge-on-flush
+**Rationale**: Enables memory-efficient batch processing while maintaining global optimization. No parent/child relationships - all UnitOfWork instances are equal with horizontal relations.
 
 ### 12.5 Modular architecture
 **Decision**: Strong emphasis on separation of concerns and loose coupling, modules separation in a folder structure
@@ -791,8 +805,13 @@ public function getReference(string $class, mixed $id): object
 
 ## 15. Open Questions & Future Enhancements
 
-### 15.1 Open Questions
+### 15.1 Open Questions & Notes
 1. Locking will be done in part 3.
+2. Proxy initialization and identity map interaction - to be determined during implementation.
+3. Transaction nesting implementation details - discuss when we get there.
+4. How to test lazy loading without triggering N+1 queries in automated tests.
+5. Memory leak testing for long-running processes with context-bounded entities.
+6. Concurrent access scenarios with multiple UnitOfWork instances.
 
 ### 15.2 Future Enhancements
 - Event system (more granular than lifecycle callbacks)?
@@ -800,7 +819,9 @@ public function getReference(string $class, mixed $id): object
 - Second-level cache for entities – part 3
 - Partial object updates (UPDATE only changed fields) – should be impelemnted in part 2
 - Bulk operations optimization
-- Repository pattern abstraction
+- Connection pooling strategy
+- Statement caching
+- Repository pattern abstraction – part 3
 - Custom hydrators for specific use cases
 
 ---
@@ -830,33 +851,33 @@ $em->flush();
 ### Scenario 2: Context-Bounded Entities
 ```php
 // Authentication context
-$em->setContext('auth');
-$loginUser = $em->find(LoginUser::class, 1);
+$uowAuth = $em->createUnitOfWork();
+$loginUser = $uowAuth->find(LoginUser::class, 1);
 if (password_verify($password, $loginUser->password)) {
-    // Switch to profile context
-    $em->setContext('profile');
-    $user = $em->find(User::class, 1);
+    // Profile context (separate UnitOfWork)
+    $uowProfile = $em->createUnitOfWork();
+    $user = $uowProfile->find(User::class, 1);
     // Access full profile data
 }
 ```
 
 ### Scenario 3: Memory-Efficient Batch Processing
 ```php
-$scope = $em->createScope();
+$uow = $em->createUnitOfWork();
 
 for ($page = 0; $page < 100; $page++) {
     $users = $qb->select('u')->from(User::class)
         ->setFirstResult($page * 1000)
         ->setMaxResults(1000)
         ->getResult();
-    
+
     foreach ($users as $user) {
         $user->status = 'processed';
-        $scope->persist($user);
+        $uow->persist($user);
     }
-    
-    $scope->flush();
-    $scope->clear(); // Free memory
+
+    $uow->flush();
+    $uow->clear(); // Free memory
 }
 
 $em->flush(); // Batch commit
