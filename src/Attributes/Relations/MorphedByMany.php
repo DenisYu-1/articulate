@@ -87,3 +87,4 @@ class MorphedByMany implements RelationAttributeInterface
         return $this->name . 's';
     }
 }
+

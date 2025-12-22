@@ -18,3 +18,4 @@ class TestMorphOneEntity
     #[MorphOne(targetEntity: TestMorphToEntity::class, referencedBy: 'pollable')]
     public $morphToEntity;
 }
+

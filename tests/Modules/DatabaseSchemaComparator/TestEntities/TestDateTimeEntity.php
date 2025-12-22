@@ -24,3 +24,4 @@ class TestDateTimeEntity
     #[Property]
     public ?\DateTimeInterface $publishedAt;
 }
+

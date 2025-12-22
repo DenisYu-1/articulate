@@ -72,3 +72,4 @@ class MorphToManyRelationValidator implements RelationValidatorInterface
         );
     }
 }
+
