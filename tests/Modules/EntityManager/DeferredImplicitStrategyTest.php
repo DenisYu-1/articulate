@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Tests;
+namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use PHPUnit\Framework\TestCase;

@@ -1,8 +1,11 @@
 <?php
 
-namespace Articulate\Tests;
+namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Modules\EntityManager\{EntityManager, UnitOfWork, EntityState, DeferredImplicitStrategy};
+use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\EntityManager\EntityState;
+use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Connection;
 use PHPUnit\Framework\TestCase;
 

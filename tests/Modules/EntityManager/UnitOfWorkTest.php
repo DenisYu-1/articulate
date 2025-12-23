@@ -1,8 +1,10 @@
 <?php
 
-namespace Articulate\Tests;
+namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Modules\EntityManager\{UnitOfWork, EntityState, DeferredImplicitStrategy};
+use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\EntityManager\EntityState;
+use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use PHPUnit\Framework\TestCase;
 
 class UnitOfWorkTest extends TestCase
