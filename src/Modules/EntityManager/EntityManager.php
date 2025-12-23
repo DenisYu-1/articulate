@@ -10,14 +10,22 @@ class EntityManager
     /** @var UnitOfWork[] */
     private array $unitOfWorks = [];
     private ChangeTrackingStrategy $changeTrackingStrategy;
+    private HydratorInterface $hydrator;
 
     public function __construct(
         Connection $connection,
-        ?ChangeTrackingStrategy $changeTrackingStrategy = null
+        ?ChangeTrackingStrategy $changeTrackingStrategy = null,
+        ?HydratorInterface $hydrator = null
     ) {
         $this->connection = $connection;
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
-        $this->unitOfWorks[] = new UnitOfWork($this->changeTrackingStrategy);
+
+        // Create default UnitOfWork
+        $defaultUow = new UnitOfWork($this->changeTrackingStrategy);
+        $this->unitOfWorks[] = $defaultUow;
+
+        // Initialize hydrator
+        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow);
     }
 
     // Persistence operations
@@ -56,9 +64,16 @@ class EntityManager
             }
         }
 
-        // TODO: Query database and hydrate entity
-        // For now, return null
-        return null;
+        // TODO: Query database and get result row
+        // For now, simulate with null (no database query yet)
+        $rowData = null;
+
+        if ($rowData === null) {
+            return null;
+        }
+
+        // Hydrate the database row into an entity
+        return $this->hydrator->hydrate($class, $rowData);
     }
 
     public function findAll(string $class): array
@@ -136,6 +151,17 @@ class EntityManager
     private function getDefaultUnitOfWork(): UnitOfWork
     {
         return $this->unitOfWorks[0];
+    }
+
+    // Hydrator access (for advanced customization)
+    public function getHydrator(): HydratorInterface
+    {
+        return $this->hydrator;
+    }
+
+    public function setHydrator(HydratorInterface $hydrator): void
+    {
+        $this->hydrator = $hydrator;
     }
 
 }

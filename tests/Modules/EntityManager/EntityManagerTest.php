@@ -257,4 +257,16 @@ class EntityManagerTest extends TestCase
 
         $this->assertTrue(true);
     }
+
+    public function testHydratorAccess(): void
+    {
+        $hydrator = $this->entityManager->getHydrator();
+        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $hydrator);
+
+        // Test setting a custom hydrator
+        $customHydrator = $this->createMock(\Articulate\Modules\EntityManager\HydratorInterface::class);
+        $this->entityManager->setHydrator($customHydrator);
+
+        $this->assertSame($customHydrator, $this->entityManager->getHydrator());
+    }
 }
