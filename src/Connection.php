@@ -71,4 +71,9 @@ class Connection
             $this->pdo->rollBack();
         }
     }
+
+    public function rollback()
+    {
+        $this->rollbackTransaction();
+    }
 }
