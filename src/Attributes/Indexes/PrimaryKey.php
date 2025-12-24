@@ -8,6 +8,7 @@ use Attribute;
 class PrimaryKey
 {
     public function __construct(
+        public ?string $generator = null
     ) {
     }
 }

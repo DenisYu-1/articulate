@@ -26,7 +26,8 @@
         "infection/infection": "dev-master"
     },
     "require": {
-        "symfony/console": "^8.0"
+        "symfony/console": "^8.0",
+        "ramsey/uuid": "^4.7"
     },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",

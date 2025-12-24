@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
+use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 
 class EntityManager
@@ -13,17 +14,20 @@ class EntityManager
     private ChangeTrackingStrategy $changeTrackingStrategy;
     private HydratorInterface $hydrator;
     private \Articulate\Modules\QueryBuilder\QueryBuilder $queryBuilder;
+    private GeneratorRegistry $generatorRegistry;
 
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
-        ?HydratorInterface $hydrator = null
+        ?HydratorInterface $hydrator = null,
+        ?GeneratorRegistry $generatorRegistry = null
     ) {
         $this->connection = $connection;
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
+        $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
 
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->changeTrackingStrategy);
+        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
         $this->unitOfWorks[] = $defaultUow;
 
         // Initialize hydrator
@@ -148,7 +152,7 @@ class EntityManager
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy);
+        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
         $this->unitOfWorks[] = $unitOfWork;
         return $unitOfWork;
     }

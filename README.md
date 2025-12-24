@@ -189,6 +189,64 @@ composer test:mutation
 composer cs:fix
 ```
 
+## Future Improvements
+
+This section outlines planned enhancements and features for future versions of Articulate.
+
+### ID Generation Strategies
+
+**Current State**: Basic auto-increment ID generation for entities without existing IDs.
+
+**Planned Improvements**:
+- **Database-Specific Strategies**:
+  - MySQL/SQLite auto-increment (`AUTO_INCREMENT`)
+  - PostgreSQL sequences (`SERIAL`, `NEXTVAL`)
+  - SQL Server identity columns
+- **UUID/GUID Generation**: Built-in UUID v4/v7 generation with attribute configuration
+- **Custom ID Generators**: Pluggable strategies for application-specific ID generation
+- **Natural Key Support**: Using business-meaningful fields as primary keys (non-auto-generated)
+- **Sequence Support**: Named sequences for enterprise databases
+
+**Note**: Composite primary keys (multi-column) are intentionally out of scope for Articulate's initial versions, as they add significant complexity and are not commonly needed in modern application development. Surrogate keys (single-column auto-generated IDs) are recommended for most use cases.
+
+**Example Usage**:
+```php
+#[Entity]
+#[Id(strategy: 'uuid')]
+class Product {
+    #[Id]
+    public string $id; // Auto-generated UUID
+
+    public string $name;
+}
+
+#[Entity]
+#[Id(strategy: 'sequence', sequence: 'user_seq')]
+class User {
+    #[Id]
+    public int $id; // From PostgreSQL sequence
+
+    public string $email;
+}
+
+#[Entity]
+#[Id(strategy: 'auto')] // Default auto-increment
+class Order {
+    #[Id]
+    public int $id; // MySQL AUTO_INCREMENT or PostgreSQL SERIAL
+
+    public string $orderNumber; // Natural key, not auto-generated
+}
+```
+
+### Other Planned Features
+
+- **Advanced Relationship Types**: Many-to-many with custom junction tables
+- **Lazy Loading Proxies**: Automatic proxy generation for relationships
+- **Query Result Caching**: Second-level cache for entities and queries
+- **Database Migrations**: Schema change management
+- **Event System**: Pre/post operation hooks and lifecycle events
+
 ## CI/CD
 
 This project uses GitHub Actions for continuous integration. The QA workflow runs on every push and pull request to main/master/develop branches.

@@ -12,6 +12,7 @@ readonly class ReflectionProperty implements PropertyInterface
         private BaseReflectionProperty $property,
         private bool $autoIncrement = false,
         private bool $primaryKey = false,
+        private ?string $generatorType = null,
     ) {
     }
 
@@ -53,6 +54,11 @@ readonly class ReflectionProperty implements PropertyInterface
     public function isPrimaryKey(): bool
     {
         return $this->primaryKey;
+    }
+
+    public function getGeneratorType(): ?string
+    {
+        return $this->generatorType;
     }
 
     private function parseColumnName(): string
