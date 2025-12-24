@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
+use Articulate\Modules\QueryBuilder\QueryBuilder;
 
 class EntityManager
 {
@@ -11,6 +12,7 @@ class EntityManager
     private array $unitOfWorks = [];
     private ChangeTrackingStrategy $changeTrackingStrategy;
     private HydratorInterface $hydrator;
+    private \Articulate\Modules\QueryBuilder\QueryBuilder $queryBuilder;
 
     public function __construct(
         Connection $connection,
@@ -26,6 +28,9 @@ class EntityManager
 
         // Initialize hydrator
         $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow);
+
+        // Initialize QueryBuilder
+        $this->queryBuilder = new \Articulate\Modules\QueryBuilder\QueryBuilder($this->connection, $this->hydrator);
     }
 
     // Persistence operations
@@ -146,6 +151,24 @@ class EntityManager
         $unitOfWork = new UnitOfWork($this->changeTrackingStrategy);
         $this->unitOfWorks[] = $unitOfWork;
         return $unitOfWork;
+    }
+
+    // Query builder
+    public function createQueryBuilder(?string $entityClass = null): \Articulate\Modules\QueryBuilder\QueryBuilder
+    {
+        $qb = new \Articulate\Modules\QueryBuilder\QueryBuilder($this->connection, $this->hydrator);
+
+        if ($entityClass) {
+            $qb->setEntityClass($entityClass);
+        }
+
+        return $qb;
+    }
+
+    // Get the main query builder instance
+    public function getQueryBuilder(): \Articulate\Modules\QueryBuilder\QueryBuilder
+    {
+        return $this->queryBuilder;
     }
 
     private function getDefaultUnitOfWork(): UnitOfWork

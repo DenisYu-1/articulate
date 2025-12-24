@@ -12,3 +12,4 @@ class TestManyToOneTargetMissingInverse
     public int $id;
 }
 
+

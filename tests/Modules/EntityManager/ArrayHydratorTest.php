@@ -74,3 +74,4 @@ class ArrayHydratorTest extends TestCase
         $this->hydrator->hydratePartial($entity, $data);
     }
 }
+

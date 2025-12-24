@@ -16,3 +16,4 @@ class TestManyToOneTargetInverseIsOwning
     public TestManyToOneOwnerInverseIsOwning $owners;
 }
 
+

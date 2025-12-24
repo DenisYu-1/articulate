@@ -15,3 +15,4 @@ class ForeignKeyCompareResult extends CompareResult
     }
 }
 
+

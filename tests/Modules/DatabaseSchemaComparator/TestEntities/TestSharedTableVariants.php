@@ -39,3 +39,4 @@ class TestSharedTableVariantConflict
     public string $sharedField;
 }
 
+

@@ -7,6 +7,7 @@ use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Connection;
+use Articulate\Modules\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
 class EntityManagerTest extends TestCase
@@ -268,5 +269,52 @@ class EntityManagerTest extends TestCase
         $this->entityManager->setHydrator($customHydrator);
 
         $this->assertSame($customHydrator, $this->entityManager->getHydrator());
+    }
+
+    public function testCreateQueryBuilder(): void
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+
+        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+
+        // Test that the query builder can build a simple query
+        $sql = $qb->select('id', 'name')->from('users')->getSQL();
+        $this->assertEquals('SELECT id, name FROM users', $sql);
+    }
+
+    public function testCreateQueryBuilderWithEntityClass(): void
+    {
+        $qb = $this->entityManager->createQueryBuilder('User');
+
+        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+        $this->assertEquals('User', $qb->getEntityClass());
+
+        // Should have table automatically resolved
+        $sql = $qb->getSQL();
+        $this->assertStringContainsString('FROM users', $sql);
+    }
+
+    public function testGetQueryBuilder(): void
+    {
+        $qb = $this->entityManager->getQueryBuilder();
+
+        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+
+        // Should return the same instance
+        $qb2 = $this->entityManager->getQueryBuilder();
+        $this->assertSame($qb, $qb2);
+    }
+
+    public function testQueryBuilderWithHydrator(): void
+    {
+        $qb = $this->entityManager->createQueryBuilder();
+
+        // QueryBuilder should have hydrator set
+        $hydrator = $qb->getHydrator();
+        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $hydrator);
+
+        // Main query builder should also have hydrator
+        $mainQb = $this->entityManager->getQueryBuilder();
+        $this->assertSame($hydrator, $mainQb->getHydrator());
     }
 }

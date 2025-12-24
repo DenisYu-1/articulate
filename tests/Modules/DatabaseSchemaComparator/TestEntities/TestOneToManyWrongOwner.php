@@ -15,3 +15,4 @@ class TestOneToManyWrongOwner
     public int $target;
 }
 
+

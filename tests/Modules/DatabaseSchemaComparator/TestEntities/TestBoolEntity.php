@@ -21,3 +21,4 @@ class TestBoolEntity
     public ?bool $isFeatured;
 }
 
+
