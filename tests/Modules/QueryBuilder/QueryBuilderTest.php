@@ -10,7 +10,9 @@ use PHPUnit\Framework\TestCase;
 class QueryBuilderTest extends TestCase
 {
     private QueryBuilder $qb;
+
     private Connection $connection;
+
     private EntityManager $entityManager;
 
     protected function setUp(): void
@@ -154,7 +156,7 @@ class QueryBuilderTest extends TestCase
     {
         $rows = [
             ['id' => 1, 'name' => 'John'],
-            ['id' => 2, 'name' => 'Jane']
+            ['id' => 2, 'name' => 'Jane'],
         ];
 
         $statement = $this->createMock(\PDOStatement::class);

@@ -10,7 +10,9 @@ use PHPUnit\Framework\TestCase;
 class PartialHydratorTest extends TestCase
 {
     private PartialHydrator $hydrator;
+
     private ObjectHydrator $objectHydrator;
+
     private UnitOfWork $unitOfWork;
 
     protected function setUp(): void
@@ -29,7 +31,7 @@ class PartialHydratorTest extends TestCase
     {
         $data = [
             'name' => 'Partial Entity',
-            'email' => 'partial@example.com'
+            'email' => 'partial@example.com',
         ];
 
         $this->unitOfWork->expects($this->once())
@@ -51,7 +53,7 @@ class PartialHydratorTest extends TestCase
 
         $partialData = [
             'name' => 'Updated',
-            'email' => 'updated@example.com'
+            'email' => 'updated@example.com',
         ];
 
         $entity = $this->hydrator->hydrate(TestPartialEntity::class, $partialData, $existingEntity);
@@ -73,7 +75,7 @@ class PartialHydratorTest extends TestCase
         $expected = [
             'id' => 1,
             'name' => 'Test',
-            'email' => null
+            'email' => null,
         ];
         $this->assertEquals($expected, $result);
     }
@@ -86,7 +88,7 @@ class PartialHydratorTest extends TestCase
 
         $partialData = [
             'name' => 'Updated',
-            'email' => 'new@example.com'
+            'email' => 'new@example.com',
         ];
 
         $this->hydrator->hydratePartial($entity, $partialData);
@@ -101,6 +103,8 @@ class PartialHydratorTest extends TestCase
 class TestPartialEntity
 {
     public ?int $id = null;
+
     public ?string $name = null;
+
     public ?string $email = null;
 }

@@ -5,7 +5,7 @@ namespace Articulate\Modules\EntityManager;
 interface HydratorInterface
 {
     /**
-     * Hydrate a database row into an entity object
+     * Hydrate a database row into an entity object.
      *
      * @param string $class The entity class name
      * @param array $data Database row data
@@ -15,7 +15,7 @@ interface HydratorInterface
     public function hydrate(string $class, array $data, ?object $entity = null): mixed;
 
     /**
-     * Extract entity data for database storage
+     * Extract entity data for database storage.
      *
      * @param mixed $entity The entity to extract (object or array depending on hydrator)
      * @return array Database-ready data
@@ -23,7 +23,7 @@ interface HydratorInterface
     public function extract(mixed $entity): array;
 
     /**
-     * Partially hydrate data into an existing entity
+     * Partially hydrate data into an existing entity.
      *
      * @param object $entity The entity to hydrate into
      * @param array $data Partial data to hydrate

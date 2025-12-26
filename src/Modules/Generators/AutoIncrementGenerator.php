@@ -3,7 +3,7 @@
 namespace Articulate\Modules\Generators;
 
 /**
- * Auto-increment generator for integer primary keys
+ * Auto-increment generator for integer primary keys.
  */
 class AutoIncrementGenerator extends AbstractGenerator
 {

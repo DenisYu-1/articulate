@@ -16,8 +16,9 @@ class IdentityMapTest extends TestCase
 
     public function testAddAndGetEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'Test Entity';
         };
 
@@ -29,7 +30,7 @@ class IdentityMapTest extends TestCase
 
     public function testHasEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -42,7 +43,7 @@ class IdentityMapTest extends TestCase
 
     public function testRemoveEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -55,10 +56,10 @@ class IdentityMapTest extends TestCase
 
     public function testClearSpecificClass(): void
     {
-        $entity1 = new class {
+        $entity1 = new class() {
             public int $id = 1;
         };
-        $entity2 = new class {
+        $entity2 = new class() {
             public int $id = 2;
         };
 
@@ -73,10 +74,10 @@ class IdentityMapTest extends TestCase
 
     public function testClearAll(): void
     {
-        $entity1 = new class {
+        $entity1 = new class() {
             public int $id = 1;
         };
-        $entity2 = new class {
+        $entity2 = new class() {
             public int $id = 2;
         };
 
@@ -124,10 +125,10 @@ class IdentityMapTest extends TestCase
         $class1 = 'TestClass1';
         $class2 = 'TestClass2';
 
-        $entity1 = new class {
+        $entity1 = new class() {
             public int $id = 1;
         };
-        $entity2 = new class {
+        $entity2 = new class() {
             public int $id = 1;
         };
 
@@ -146,7 +147,7 @@ class IdentityMapTest extends TestCase
 
     public function testRemoveNonExistentEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 

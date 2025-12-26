@@ -17,5 +17,3 @@ interface TypeConverterInterface
      */
     public function convertToPHP(mixed $value): mixed;
 }
-
-

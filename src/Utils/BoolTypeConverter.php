@@ -32,5 +32,3 @@ class BoolTypeConverter implements TypeConverterInterface
         return (bool) $value;
     }
 }
-
-

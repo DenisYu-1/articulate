@@ -13,5 +13,3 @@ interface MigrationExecutionStrategyInterface
         string $directory
     ): int;
 }
-
-

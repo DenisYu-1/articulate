@@ -3,6 +3,13 @@
     "source": {
         "directories": [
             "src"
+        ],
+        "excludes": [
+            "vendor",
+            "build",
+            "tests",
+            "*.dist",
+            "*.log"
         ]
     },
     "logs": {

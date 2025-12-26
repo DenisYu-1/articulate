@@ -45,6 +45,7 @@ class IdentityMap
         foreach ($this->entities[$className] as $key => $storedEntity) {
             if ($storedEntity === $entity) {
                 unset($this->entities[$className][$key]);
+
                 break;
             }
         }
@@ -64,6 +65,7 @@ class IdentityMap
         if (is_array($id)) {
             // Composite key support
             ksort($id); // Ensure consistent ordering
+
             return json_encode($id);
         }
 

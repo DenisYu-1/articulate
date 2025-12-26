@@ -14,5 +14,3 @@ class ForeignKeyCompareResult extends CompareResult
         parent::__construct($name, $operation);
     }
 }
-
-

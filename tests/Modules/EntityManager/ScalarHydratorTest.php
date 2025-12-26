@@ -86,15 +86,19 @@ class ScalarHydratorTest extends TestCase
             switch ($type) {
                 case 'int':
                     $this->assertIsInt($result);
+
                     break;
                 case 'string':
                     $this->assertIsString($result);
+
                     break;
                 case 'float':
                     $this->assertIsFloat($result);
+
                     break;
                 case 'bool':
                     $this->assertIsBool($result);
+
                     break;
             }
         }

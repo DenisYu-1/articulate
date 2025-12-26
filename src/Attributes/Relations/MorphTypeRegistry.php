@@ -68,5 +68,3 @@ class MorphTypeRegistry
         self::$reverseMappings = [];
     }
 }
-
-

@@ -6,9 +6,9 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
+use Articulate\Modules\EntityManager\EntityState;
+use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -23,7 +23,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testInitialEntityStateIsNew(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -32,7 +32,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testPersistNewEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -43,7 +43,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testPersistAlreadyManagedEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -57,7 +57,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testRemoveManagedEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -70,7 +70,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testRemoveNewEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -86,8 +86,9 @@ class UnitOfWorkTest extends TestCase
 
     public function testRegisterManaged(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
         };
 
@@ -101,7 +102,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testTryGetById(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -116,7 +117,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testClear(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -134,8 +135,9 @@ class UnitOfWorkTest extends TestCase
 
     public function testComputeChangeSets(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'modified';
         };
 
@@ -150,7 +152,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testCommit(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -169,7 +171,7 @@ class UnitOfWorkTest extends TestCase
         $customStrategy = new DeferredImplicitStrategy();
         $unitOfWork = new UnitOfWork($customStrategy);
 
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -180,7 +182,7 @@ class UnitOfWorkTest extends TestCase
 
     public function testIsInIdentityMap(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -190,8 +192,9 @@ class UnitOfWorkTest extends TestCase
 
     public function testPersistGeneratesIdForNewEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public ?int $id = null;
+
             public string $name = 'Test Entity';
         };
 
@@ -329,7 +332,7 @@ class UnitOfWorkTest extends TestCase
     public function testBackwardCompatibilityWithAutoIncrement(): void
     {
         // Entity with AutoIncrement attribute (old style)
-        $entity = new class {
+        $entity = new class() {
             #[PrimaryKey]
             #[AutoIncrement]
             #[Property]
@@ -354,7 +357,7 @@ class UnitOfWorkTest extends TestCase
     public function testDefaultGeneratorFallback(): void
     {
         // Entity with just PrimaryKey (no generator specified)
-        $entity = new class {
+        $entity = new class() {
             #[PrimaryKey]
             #[Property]
             public ?int $id = null;
@@ -380,6 +383,7 @@ class UnitOfWorkTest extends TestCase
 class TestEntityForId
 {
     public ?int $id = null;
+
     public string $name;
 }
 

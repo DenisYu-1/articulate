@@ -2,11 +2,11 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Modules\EntityManager\EntityState;
-use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Connection;
+use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
+use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityState;
+use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
@@ -38,8 +38,9 @@ class EntityManagerTest extends TestCase
 
     public function testPersistAndFlush(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
         };
 
@@ -52,7 +53,7 @@ class EntityManagerTest extends TestCase
 
     public function testRemoveAndFlush(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -66,7 +67,7 @@ class EntityManagerTest extends TestCase
 
     public function testClear(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -114,7 +115,7 @@ class EntityManagerTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('refresh not yet implemented');
 
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -126,9 +127,10 @@ class EntityManagerTest extends TestCase
         $executed = false;
         $result = null;
 
-        $callbackResult = $this->entityManager->transactional(function(EntityManager $em) use (&$executed, &$result) {
+        $callbackResult = $this->entityManager->transactional(function (EntityManager $em) use (&$executed, &$result) {
             $executed = true;
             $result = 'callback executed';
+
             return $result;
         });
 
@@ -142,7 +144,7 @@ class EntityManagerTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Test exception');
 
-        $this->entityManager->transactional(function(EntityManager $em) {
+        $this->entityManager->transactional(function (EntityManager $em) {
             throw new \Exception('Test exception');
         });
     }
@@ -174,13 +176,15 @@ class EntityManagerTest extends TestCase
 
     public function testMultipleUnitOfWorks(): void
     {
-        $entity1 = new class {
+        $entity1 = new class() {
             public int $id = 1;
+
             public string $name = 'entity1';
         };
 
-        $entity2 = new class {
+        $entity2 = new class() {
             public int $id = 2;
+
             public string $name = 'entity2';
         };
 
@@ -204,7 +208,7 @@ class EntityManagerTest extends TestCase
 
     public function testFlushAllUnitOfWorks(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -221,7 +225,7 @@ class EntityManagerTest extends TestCase
 
     public function testClearAllUnitOfWorks(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -249,7 +253,7 @@ class EntityManagerTest extends TestCase
 
         $this->assertInstanceOf(EntityManager::class, $em);
 
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
         };
 
@@ -275,7 +279,7 @@ class EntityManagerTest extends TestCase
     {
         $qb = $this->entityManager->createQueryBuilder();
 
-        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+        $this->assertInstanceOf(QueryBuilder::class, $qb);
 
         // Test that the query builder can build a simple query
         $sql = $qb->select('id', 'name')->from('users')->getSQL();
@@ -286,7 +290,7 @@ class EntityManagerTest extends TestCase
     {
         $qb = $this->entityManager->createQueryBuilder('User');
 
-        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+        $this->assertInstanceOf(QueryBuilder::class, $qb);
         $this->assertEquals('User', $qb->getEntityClass());
 
         // Should have table automatically resolved
@@ -298,7 +302,7 @@ class EntityManagerTest extends TestCase
     {
         $qb = $this->entityManager->getQueryBuilder();
 
-        $this->assertInstanceOf(\Articulate\Modules\QueryBuilder\QueryBuilder::class, $qb);
+        $this->assertInstanceOf(QueryBuilder::class, $qb);
 
         // Should return the same instance
         $qb2 = $this->entityManager->getQueryBuilder();

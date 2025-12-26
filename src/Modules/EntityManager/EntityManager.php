@@ -9,22 +9,31 @@ use Articulate\Modules\QueryBuilder\QueryBuilder;
 class EntityManager
 {
     private Connection $connection;
+
     /** @var UnitOfWork[] */
     private array $unitOfWorks = [];
+
     private ChangeTrackingStrategy $changeTrackingStrategy;
+
     private HydratorInterface $hydrator;
-    private \Articulate\Modules\QueryBuilder\QueryBuilder $queryBuilder;
+
+    private QueryBuilder $queryBuilder;
+
     private GeneratorRegistry $generatorRegistry;
+
+    private EntityMetadataRegistry $metadataRegistry;
 
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?HydratorInterface $hydrator = null,
-        ?GeneratorRegistry $generatorRegistry = null
+        ?GeneratorRegistry $generatorRegistry = null,
+        ?EntityMetadataRegistry $metadataRegistry = null
     ) {
         $this->connection = $connection;
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
+        $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
 
         // Create default UnitOfWork
         $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
@@ -34,7 +43,7 @@ class EntityManager
         $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow);
 
         // Initialize QueryBuilder
-        $this->queryBuilder = new \Articulate\Modules\QueryBuilder\QueryBuilder($this->connection, $this->hydrator);
+        $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
     }
 
     // Persistence operations
@@ -136,9 +145,11 @@ class EntityManager
         try {
             $result = $callback($this);
             $this->commit();
+
             return $result;
         } catch (\Throwable $e) {
             $this->rollback();
+
             throw $e;
         }
     }
@@ -154,13 +165,14 @@ class EntityManager
     {
         $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
         $this->unitOfWorks[] = $unitOfWork;
+
         return $unitOfWork;
     }
 
     // Query builder
-    public function createQueryBuilder(?string $entityClass = null): \Articulate\Modules\QueryBuilder\QueryBuilder
+    public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new \Articulate\Modules\QueryBuilder\QueryBuilder($this->connection, $this->hydrator);
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
@@ -170,7 +182,7 @@ class EntityManager
     }
 
     // Get the main query builder instance
-    public function getQueryBuilder(): \Articulate\Modules\QueryBuilder\QueryBuilder
+    public function getQueryBuilder(): QueryBuilder
     {
         return $this->queryBuilder;
     }
@@ -190,5 +202,4 @@ class EntityManager
     {
         $this->hydrator = $hydrator;
     }
-
 }

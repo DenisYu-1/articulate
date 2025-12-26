@@ -36,5 +36,3 @@ class TestSharedTableRelationTarget
     #[Property]
     public int $id;
 }
-
-

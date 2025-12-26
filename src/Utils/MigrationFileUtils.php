@@ -23,5 +23,3 @@ class MigrationFileUtils
         return $namespace;
     }
 }
-
-

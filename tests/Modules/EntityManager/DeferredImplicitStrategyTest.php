@@ -16,8 +16,9 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testTrackEntity(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
         };
 
@@ -31,8 +32,9 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testComputeChangeSetWithNoChanges(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
         };
 
@@ -47,8 +49,9 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testComputeChangeSetWithChanges(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'modified';
         };
 
@@ -63,9 +66,11 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testComputeChangeSetWithMultipleChanges(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'modified name';
+
             public int $age = 30;
         };
 
@@ -77,7 +82,7 @@ class DeferredImplicitStrategyTest extends TestCase
 
         $expected = [
             'name' => 'modified name',
-            'age' => 30
+            'age' => 30,
         ];
 
         $this->assertEquals($expected, $changes);
@@ -85,8 +90,9 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testComputeChangeSetWithoutTracking(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
         };
 
@@ -123,9 +129,11 @@ class DeferredImplicitStrategyTest extends TestCase
 
     public function testExtractEntityDataReturnsEntityProperties(): void
     {
-        $entity = new class {
+        $entity = new class() {
             public int $id = 1;
+
             public string $name = 'test';
+
             private string $privateProp = 'private'; // Should not be included
         };
 

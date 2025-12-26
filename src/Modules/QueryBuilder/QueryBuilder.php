@@ -3,45 +3,64 @@
 namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 
 class QueryBuilder
 {
     private Connection $connection;
+
     private ?HydratorInterface $hydrator;
+
     private ?string $entityClass = null;
 
+    private ?EntityMetadataRegistry $metadataRegistry;
+
     private string $from = '';
+
     private array $select = [];
+
     private array $where = [];
+
     private array $joins = []; // [['sql' => '...', 'params' => [...]], ...]
+
     private ?int $limit = null;
+
     private ?int $offset = null;
+
     private array $orderBy = [];
+
     private array $groupBy = [];
 
-    public function __construct(Connection $connection, ?HydratorInterface $hydrator = null)
-    {
+    public function __construct(
+        Connection $connection,
+        ?HydratorInterface $hydrator = null,
+        ?EntityMetadataRegistry $metadataRegistry = null
+    ) {
         $this->connection = $connection;
         $this->hydrator = $hydrator;
         $this->entityClass = null;
+        $this->metadataRegistry = $metadataRegistry;
     }
 
     public function select(string ...$fields): self
     {
         $this->select = array_merge($this->select, $fields);
+
         return $this;
     }
 
     public function from(string $table, ?string $alias = null): self
     {
         $this->from = $alias ? "{$table} {$alias}" : $table;
+
         return $this;
     }
 
     public function where(string $condition, mixed ...$params): self
     {
         $this->where[] = ['condition' => $condition, 'params' => $params];
+
         return $this;
     }
 
@@ -49,8 +68,9 @@ class QueryBuilder
     {
         $this->joins[] = [
             'sql' => "JOIN {$table} ON {$condition}",
-            'params' => $params
+            'params' => $params,
         ];
+
         return $this;
     }
 
@@ -58,38 +78,44 @@ class QueryBuilder
     {
         $this->joins[] = [
             'sql' => "LEFT JOIN {$table} ON {$condition}",
-            'params' => $params
+            'params' => $params,
         ];
+
         return $this;
     }
 
     public function limit(int $limit): self
     {
         $this->limit = $limit;
+
         return $this;
     }
 
     public function offset(int $offset): self
     {
         $this->offset = $offset;
+
         return $this;
     }
 
     public function orderBy(string $field, string $direction = 'ASC'): self
     {
         $this->orderBy[] = "{$field} {$direction}";
+
         return $this;
     }
 
     public function groupBy(string ...$fields): self
     {
         $this->groupBy = array_merge($this->groupBy, $fields);
+
         return $this;
     }
 
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
+
         return $this;
     }
 
@@ -184,7 +210,7 @@ class QueryBuilder
         // If entity class available and hydrator available, return hydrated objects
         if ($targetClass && $this->hydrator) {
             return array_map(
-                fn($row) => $this->hydrator->hydrate($targetClass, $row),
+                fn ($row) => $this->hydrator->hydrate($targetClass, $row),
                 $rawResults
             );
         }
@@ -197,6 +223,7 @@ class QueryBuilder
     {
         $this->limit(1);
         $results = $this->getResult($entityClass);
+
         return is_array($results) ? ($results[0] ?? null) : $results;
     }
 
@@ -206,14 +233,24 @@ class QueryBuilder
         $params = $this->getParameters();
 
         $statement = $this->connection->executeQuery($sql, $params);
+
         return $statement->rowCount();
     }
 
     private function resolveTableName(string $entityClass): string
     {
-        // TODO: Use entity metadata to get actual table name
-        // For now, simple pluralization: User -> users, Post -> posts
+        // Use metadata registry if available, otherwise fall back to simple pluralization
+        if ($this->metadataRegistry) {
+            try {
+                return $this->metadataRegistry->getTableName($entityClass);
+            } catch (\Exception $e) {
+                // Fall back to simple pluralization if metadata fails
+            }
+        }
+
+        // Fallback: simple pluralization: User -> users, Post -> posts
         $className = basename(str_replace('\\', '/', $entityClass));
+
         return strtolower($className) . 's';
     }
 }

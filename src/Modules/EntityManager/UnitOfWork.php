@@ -7,7 +7,9 @@ use Articulate\Modules\Generators\GeneratorRegistry;
 class UnitOfWork
 {
     private IdentityMap $identityMap;
+
     private ChangeTrackingStrategy $changeTrackingStrategy;
+
     private GeneratorRegistry $generatorRegistry;
 
     /** @var array<int, EntityState> */
@@ -175,12 +177,14 @@ class UnitOfWork
                 if ($generatorType !== null) {
                     // Use specified generator
                     $generator = $this->generatorRegistry->getGenerator($generatorType);
+
                     return $generator->generate($entityClass);
                 }
 
                 // Fall back to auto-increment if AutoIncrement attribute is present
                 if ($property->isAutoIncrement()) {
                     $generator = $this->generatorRegistry->getGenerator('auto_increment');
+
                     return $generator->generate($entityClass);
                 }
 
@@ -190,6 +194,7 @@ class UnitOfWork
 
         // Default to auto-increment for backward compatibility
         $generator = $this->generatorRegistry->getDefaultGenerator();
+
         return $generator->generate($entityClass);
     }
 
@@ -247,6 +252,7 @@ class UnitOfWork
     private function hasChanges(object $entity): bool
     {
         $changes = $this->changeTrackingStrategy->computeChangeSet($entity);
+
         return !empty($changes);
     }
 
@@ -273,8 +279,10 @@ class UnitOfWork
         if ($reflection->hasProperty('id')) {
             $property = $reflection->getProperty('id');
             $property->setAccessible(true);
+
             return $property->getValue($entity);
         }
+
         return null;
     }
 }

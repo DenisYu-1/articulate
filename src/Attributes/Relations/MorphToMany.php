@@ -111,5 +111,3 @@ class MorphToMany implements RelationAttributeInterface
         return $this->name . 's';
     }
 }
-
-

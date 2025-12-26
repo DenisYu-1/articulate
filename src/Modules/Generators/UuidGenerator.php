@@ -5,7 +5,7 @@ namespace Articulate\Modules\Generators;
 use Ramsey\Uuid\Uuid;
 
 /**
- * UUID v4 generator for primary keys
+ * UUID v4 generator for primary keys.
  */
 class UuidGenerator extends AbstractGenerator
 {

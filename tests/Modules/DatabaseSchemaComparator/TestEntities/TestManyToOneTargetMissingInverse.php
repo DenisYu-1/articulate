@@ -11,5 +11,3 @@ class TestManyToOneTargetMissingInverse
     #[Property]
     public int $id;
 }
-
-

@@ -6,7 +6,8 @@ class PartialHydrator implements HydratorInterface
 {
     public function __construct(
         private readonly ObjectHydrator $objectHydrator
-    ) {}
+    ) {
+    }
 
     public function hydrate(string $class, array $data, ?object $entity = null): mixed
     {

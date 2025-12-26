@@ -24,7 +24,7 @@ class ArrayHydratorTest extends TestCase
         $data = [
             'id' => 1,
             'name' => 'Test',
-            'email' => 'test@example.com'
+            'email' => 'test@example.com',
         ];
 
         $result = $this->hydrator->hydrate('SomeClass', $data);
@@ -74,4 +74,3 @@ class ArrayHydratorTest extends TestCase
         $this->hydrator->hydratePartial($entity, $data);
     }
 }
-

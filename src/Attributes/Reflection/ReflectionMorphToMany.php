@@ -156,5 +156,3 @@ class ReflectionMorphToMany implements RelationInterface
         }
     }
 }
-
-

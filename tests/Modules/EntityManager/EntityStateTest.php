@@ -26,7 +26,7 @@ class EntityStateTest extends TestCase
 
     public function testEntityStateValuesAreUnique(): void
     {
-        $values = array_map(fn(EntityState $state) => $state->name, EntityState::cases());
+        $values = array_map(fn (EntityState $state) => $state->name, EntityState::cases());
         $this->assertCount(3, array_unique($values));
     }
 }

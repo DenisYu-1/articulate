@@ -5,7 +5,7 @@ namespace Articulate\Modules\Generators;
 use InvalidArgumentException;
 
 /**
- * Registry for managing ID generators
+ * Registry for managing ID generators.
  */
 class GeneratorRegistry
 {
@@ -30,7 +30,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Register a generator
+     * Register a generator.
      *
      * @param GeneratorInterface $generator
      */
@@ -40,7 +40,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Get a generator by type
+     * Get a generator by type.
      *
      * @param string $type
      * @return GeneratorInterface
@@ -56,7 +56,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Get the default generator
+     * Get the default generator.
      *
      * @return GeneratorInterface
      */
@@ -66,7 +66,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Set the default generator
+     * Set the default generator.
      *
      * @param string $type
      * @throws InvalidArgumentException
@@ -77,7 +77,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Check if a generator type is registered
+     * Check if a generator type is registered.
      *
      * @param string $type
      * @return bool
@@ -88,7 +88,7 @@ class GeneratorRegistry
     }
 
     /**
-     * Get all registered generator types
+     * Get all registered generator types.
      *
      * @return string[]
      */

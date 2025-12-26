@@ -155,5 +155,3 @@ class ReflectionMorphedByMany implements RelationInterface
         }
     }
 }
-
-

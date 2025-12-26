@@ -3,7 +3,7 @@
 namespace Articulate\Modules\Generators;
 
 /**
- * Abstract base class for generators
+ * Abstract base class for generators.
  */
 abstract class AbstractGenerator implements GeneratorInterface
 {

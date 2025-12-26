@@ -2,6 +2,7 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
+use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\TestCase;
@@ -9,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 class ObjectHydratorTest extends TestCase
 {
     private ObjectHydrator $hydrator;
+
     private UnitOfWork $unitOfWork;
 
     protected function setUp(): void
@@ -27,7 +29,7 @@ class ObjectHydratorTest extends TestCase
         $data = [
             'id' => 1,
             'name' => 'Test Entity',
-            'email' => 'test@example.com'
+            'email' => 'test@example.com',
         ];
 
         $this->unitOfWork->expects($this->once())
@@ -50,7 +52,7 @@ class ObjectHydratorTest extends TestCase
 
         $data = [
             'id' => 1,
-            'name' => 'Updated Name'
+            'name' => 'Updated Name',
         ];
 
         $this->unitOfWork->expects($this->once())
@@ -81,7 +83,7 @@ class ObjectHydratorTest extends TestCase
             'userId' => null,
             'firstName' => null,
             'lastName' => null,
-            'emailAddress' => null
+            'emailAddress' => null,
         ], $data);
     }
 
@@ -93,7 +95,7 @@ class ObjectHydratorTest extends TestCase
 
         $partialData = [
             'name' => 'Updated',
-            'email' => 'new@email.com'
+            'email' => 'new@email.com',
         ];
 
         $this->hydrator->hydratePartial($entity, $partialData);
@@ -109,7 +111,7 @@ class ObjectHydratorTest extends TestCase
             'user_id' => 123,
             'first_name' => 'John',
             'last_name' => 'Doe',
-            'email_address' => 'john@example.com'
+            'email_address' => 'john@example.com',
         ];
 
         $this->unitOfWork->expects($this->once())
@@ -125,8 +127,21 @@ class ObjectHydratorTest extends TestCase
 
     public function testColumnToPropertyMappingWithAttributes(): void
     {
-        // TODO: Test Property attribute mapping when implemented
-        $this->markTestIncomplete('Property attribute mapping not yet implemented');
+        $data = [
+            'user_name' => 'John Doe',
+            'user_email' => 'john@example.com',
+            'profile_id' => 42,
+        ];
+
+        $this->unitOfWork->expects($this->once())
+            ->method('registerManaged');
+
+        $entity = $this->hydrator->hydrate(TestEntityWithPropertyAttributes::class, $data);
+
+        $this->assertInstanceOf(TestEntityWithPropertyAttributes::class, $entity);
+        $this->assertEquals('John Doe', $entity->fullName);
+        $this->assertEquals('john@example.com', $entity->emailAddress);
+        $this->assertEquals(42, $entity->profileId);
     }
 }
 
@@ -134,12 +149,33 @@ class ObjectHydratorTest extends TestCase
 class TestEntity
 {
     public ?int $id = null;
+
     public ?string $name = null;
+
     public ?string $email = null;
+
     public ?string $existingField = null;
+
     public ?int $userId = null;
+
     public ?string $firstName = null;
+
     public ?string $lastName = null;
+
     public ?string $emailAddress = null;
+
     private string $privateField = 'private';
+}
+
+// Test entity class with Property attribute mapping
+class TestEntityWithPropertyAttributes
+{
+    #[Property(name: 'user_name')]
+    public ?string $fullName = null;
+
+    #[Property(name: 'user_email')]
+    public ?string $emailAddress = null;
+
+    #[Property(name: 'profile_id')]
+    public ?int $profileId = null;
 }

@@ -10,7 +10,8 @@ class ObjectHydrator implements HydratorInterface
 {
     public function __construct(
         private readonly UnitOfWork $unitOfWork
-    ) {}
+    ) {
+    }
 
     public function hydrate(string $class, array $data, ?object $entity = null): mixed
     {
@@ -105,7 +106,7 @@ class ObjectHydrator implements HydratorInterface
             $attributes = $property->getAttributes(Property::class);
             foreach ($attributes as $attribute) {
                 $propertyAttr = $attribute->newInstance();
-                if ($propertyAttr->column === $columnName) {
+                if ($propertyAttr->name === $columnName) {
                     return $property->getName();
                 }
             }
