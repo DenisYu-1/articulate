@@ -2,11 +2,11 @@
 
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
-use Articulate\Modules\DatabaseSchemaComparator\Models\ColumnCompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\ForeignKeyCompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\PropertiesData;
-use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
+use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 

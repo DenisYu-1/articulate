@@ -3,9 +3,9 @@
 namespace Articulate\Commands;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\MigrationsGenerator\MigrationGenerator;
-use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Migrations\Generator\MigrationGenerator;
+use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;

@@ -3,9 +3,9 @@
 namespace Articulate\Tests\Integration;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
-use Articulate\Modules\MigrationsGenerator\MySqlMigrationGenerator;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestBoolEntity;

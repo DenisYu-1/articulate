@@ -2,7 +2,7 @@
 
 namespace Articulate\Tests\Modules\DatabaseSchemaReader;
 
-use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
+use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
 use Articulate\Tests\AbstractTestCase;
 
 class DatabaseColumnTest extends AbstractTestCase

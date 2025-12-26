@@ -3,11 +3,11 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwner;

@@ -3,8 +3,8 @@
 namespace Articulate\Commands;
 
 use Articulate\Connection;
-use Articulate\Modules\MigrationExecutionStrategies\MigrationExecutionStrategy;
-use Articulate\Modules\MigrationExecutionStrategies\RollbackExecutionStrategy;
+use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
+use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
