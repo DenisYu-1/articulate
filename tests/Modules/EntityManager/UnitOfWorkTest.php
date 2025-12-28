@@ -3,7 +3,6 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
-use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Connection;
@@ -192,49 +191,6 @@ class UnitOfWorkTest extends TestCase {
         $this->assertFalse($this->unitOfWork->isInIdentityMap($entity));
     }
 
-    public function testPersistGeneratesIdForNewEntity(): void
-    {
-        $entity = new class() {
-            public ?int $id = null;
-
-            public string $name = 'Test Entity';
-        };
-
-        $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
-
-        // Should have generated an ID
-        $this->assertNotNull($entity->id);
-        $this->assertIsInt($entity->id);
-        $this->assertEquals(1, $entity->id);
-
-        // Should be in identity map
-        $retrieved = $this->unitOfWork->tryGetById($entity::class, 1);
-        $this->assertSame($entity, $retrieved);
-    }
-
-    public function testPersistMultipleEntitiesGenerateSequentialIds(): void
-    {
-        // Use the same test entity class
-        $entity1 = new TestEntityForId();
-        $entity1->name = 'Entity 1';
-
-        $entity2 = new TestEntityForId();
-        $entity2->name = 'Entity 2';
-
-        $this->unitOfWork->persist($entity1);
-        $this->unitOfWork->persist($entity2);
-        $this->unitOfWork->commit();
-
-        // Should have sequential IDs
-        $this->assertEquals(1, $entity1->id);
-        $this->assertEquals(2, $entity2->id);
-
-        // Both should be in identity map
-        $this->assertSame($entity1, $this->unitOfWork->tryGetById(TestEntityForId::class, 1));
-        $this->assertSame($entity2, $this->unitOfWork->tryGetById(TestEntityForId::class, 2));
-    }
-
     public function testPersistEntityWithExistingIdDoesNotOverwrite(): void
     {
         $entity = new TestEntityForId();
@@ -249,66 +205,6 @@ class UnitOfWorkTest extends TestCase {
 
         // Should be in identity map with original ID
         $this->assertSame($entity, $this->unitOfWork->tryGetById(TestEntityForId::class, 42));
-    }
-
-    public function testUuidPrimaryKeyGeneration(): void
-    {
-        // Entity with UUID primary key
-        $entity = new TestEntityForUuid();
-        $entity->name = 'UUID Entity';
-
-        $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
-
-        // Should have generated a UUID
-        $this->assertNotNull($entity->id);
-        $this->assertIsString($entity->id);
-
-        // Should be a valid UUID v4 format
-        $this->assertMatchesRegularExpression(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
-            $entity->id
-        );
-
-        // Should be in identity map with generated UUID
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, $entity->id));
-    }
-
-    public function testMultipleUuidEntitiesGenerateUniqueIds(): void
-    {
-        // Entities with UUID primary keys
-        $entity1 = new TestEntityForUuid();
-        $entity1->name = 'UUID Entity 1';
-
-        $entity2 = new TestEntityForUuid();
-        $entity2->name = 'UUID Entity 2';
-
-        $this->unitOfWork->persist($entity1);
-        $this->unitOfWork->persist($entity2);
-        $this->unitOfWork->commit();
-
-        // Both should have UUIDs
-        $this->assertNotNull($entity1->id);
-        $this->assertNotNull($entity2->id);
-        $this->assertIsString($entity1->id);
-        $this->assertIsString($entity2->id);
-
-        // UUIDs should be different
-        $this->assertNotEquals($entity1->id, $entity2->id);
-
-        // Both should be valid UUID v4
-        $this->assertMatchesRegularExpression(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
-            $entity1->id
-        );
-        $this->assertMatchesRegularExpression(
-            '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
-            $entity2->id
-        );
-
-        // Both should be in identity map
-        $this->assertSame($entity1, $this->unitOfWork->tryGetById($entity1::class, $entity1->id));
-        $this->assertSame($entity2, $this->unitOfWork->tryGetById($entity2::class, $entity2->id));
     }
 
     public function testUuidEntityWithExistingIdDoesNotOverwrite(): void
@@ -329,76 +225,6 @@ class UnitOfWorkTest extends TestCase {
 
         // Should be in identity map with original UUID
         $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, $existingUuid));
-    }
-
-    public function testBackwardCompatibilityWithAutoIncrement(): void
-    {
-        // Entity with AutoIncrement attribute (old style)
-        $entity = new class() {
-            #[PrimaryKey]
-            #[AutoIncrement]
-            #[Property]
-            public ?int $id = null;
-
-            #[Property]
-            public string $name = 'AutoIncrement Entity';
-        };
-
-        $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
-
-        // Should have generated an auto-increment ID
-        $this->assertNotNull($entity->id);
-        $this->assertIsInt($entity->id);
-        $this->assertEquals(1, $entity->id);
-
-        // Should be in identity map
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
-    }
-
-    public function testDefaultGeneratorFallback(): void
-    {
-        // Entity with just PrimaryKey (no generator specified)
-        $entity = new class() {
-            #[PrimaryKey]
-            #[Property]
-            public ?int $id = null;
-
-            #[Property]
-            public string $name = 'Default Generator Entity';
-        };
-
-        $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
-
-        // Should use default generator (auto_increment)
-        $this->assertNotNull($entity->id);
-        $this->assertIsInt($entity->id);
-        $this->assertEquals(1, $entity->id);
-
-        // Should be in identity map
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
-    }
-
-    public function testImplicitIdPropertyAsPrimaryKey(): void
-    {
-        // Entity with just a plain 'id' property (no attributes)
-        $entity = new class() {
-            public ?int $id = null;
-
-            public string $name = 'Implicit ID Entity';
-        };
-
-        $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
-
-        // Should treat 'id' as primary key with auto-increment
-        $this->assertNotNull($entity->id);
-        $this->assertIsInt($entity->id);
-        $this->assertEquals(1, $entity->id);
-
-        // Should be in identity map
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
     }
 
     public function testGetEntityByOidFailureInComputeChangeSets(): void

@@ -24,6 +24,10 @@ class EntityManager {
 
     private LifecycleCallbackManager $callbackManager;
 
+    private ChangeAggregator $changeAggregator;
+
+    private QueryExecutor $queryExecutor;
+
     private ?Proxy\ProxyManager $proxyManager = null;
 
     public function __construct(
@@ -31,7 +35,8 @@ class EntityManager {
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?HydratorInterface $hydrator = null,
         ?GeneratorRegistry $generatorRegistry = null,
-        ?EntityMetadataRegistry $metadataRegistry = null
+        ?EntityMetadataRegistry $metadataRegistry = null,
+        ?QueryExecutor $queryExecutor = null
     ) {
         $this->connection = $connection;
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
@@ -40,6 +45,10 @@ class EntityManager {
 
         // Initialize callback manager
         $this->callbackManager = new LifecycleCallbackManager();
+
+        // Initialize change aggregator and query executor
+        $this->changeAggregator = new ChangeAggregator();
+        $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
         // Create default UnitOfWork
         $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
@@ -76,8 +85,20 @@ class EntityManager {
 
     public function flush(): void
     {
+        // Aggregate changes from all UnitOfWorks
+        $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
+
+        // Execute the changes in proper order (respecting foreign key constraints)
+        $this->executeChanges($aggregatedChanges);
+
+        // Execute post-operation callbacks
         foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->commit();
+            $unitOfWork->executePostCallbacks($aggregatedChanges);
+        }
+
+        // Clear changes from all UnitOfWorks
+        foreach ($this->unitOfWorks as $unitOfWork) {
+            $unitOfWork->clearChanges();
         }
     }
 
@@ -86,6 +107,171 @@ class EntityManager {
         foreach ($this->unitOfWorks as $unitOfWork) {
             $unitOfWork->clear();
         }
+    }
+
+    /**
+     * Execute aggregated changes in proper order respecting foreign key constraints.
+     *
+     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     */
+    private function executeChanges(array $changes): void
+    {
+        // Execute inserts in dependency order (parents before children)
+        $orderedInserts = $this->orderEntitiesByDependencies($changes['inserts'], 'insert');
+        foreach ($orderedInserts as $entity) {
+            $this->queryExecutor->executeInsert($entity);
+        }
+
+        // Execute updates (order doesn't matter for foreign key constraints)
+        foreach ($changes['updates'] as $update) {
+            $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
+        }
+
+        // Execute deletes in reverse dependency order (children before parents)
+        $orderedDeletes = $this->orderEntitiesByDependencies($changes['deletes'], 'delete');
+        foreach ($orderedDeletes as $entity) {
+            $this->queryExecutor->executeDelete($entity);
+        }
+    }
+
+    /**
+     * Order entities by their foreign key dependencies.
+     *
+     * For inserts: parents before children
+     * For deletes: children before parents
+     *
+     * @param object[] $entities
+     * @param string $operation 'insert' or 'delete'
+     * @return object[]
+     */
+    private function orderEntitiesByDependencies(array $entities, string $operation): array
+    {
+        if (empty($entities)) {
+            return $entities;
+        }
+
+        // Build dependency graph
+        $graph = $this->buildDependencyGraph($entities, $operation);
+
+        // Perform topological sort
+        return $this->topologicalSort($entities, $graph);
+    }
+
+    /**
+     * Build a dependency graph for the given entities.
+     *
+     * @param object[] $entities
+     * @param string $operation 'insert' or 'delete'
+     * @return array<string, string[]> Entity class => array of entities it depends on
+     */
+    private function buildDependencyGraph(array $entities, string $operation): array
+    {
+        $graph = [];
+
+        // Group entities by class for easier lookup
+        $entitiesByClass = [];
+        foreach ($entities as $entity) {
+            $entitiesByClass[$entity::class][] = $entity;
+        }
+
+        // Initialize graph for all entity classes
+        foreach (array_keys($entitiesByClass) as $entityClass) {
+            $graph[$entityClass] = [];
+        }
+
+        foreach ($entities as $entity) {
+            $entityClass = $entity::class;
+
+            // Get entity metadata
+            $metadata = $this->metadataRegistry->getMetadata($entityClass);
+
+            // Check relationships
+            foreach ($metadata->getRelations() as $relation) {
+                $targetClass = $relation->getTargetEntity();
+
+                // Only consider relationships to entities that are also being operated on
+                if ($targetClass === null || !isset($entitiesByClass[$targetClass])) {
+                    continue;
+                }
+
+                if ($operation === 'insert') {
+                    // For inserts: entities with relationships that require foreign keys depend on their targets
+                    // (children must be inserted after parents)
+                    if ($relation->isForeignKeyRequired()) {
+                        $graph[$entityClass][] = $targetClass;
+                    }
+                } elseif ($operation === 'delete') {
+                    // For deletes: target entities depend on entities that reference them
+                    // (parents must be deleted after children)
+                    if ($relation->isForeignKeyRequired()) {
+                        $graph[$targetClass][] = $entityClass;
+                    }
+                }
+            }
+        }
+
+        // Remove duplicates
+        foreach ($graph as $class => $dependencies) {
+            $graph[$class] = array_unique($dependencies);
+        }
+
+        return $graph;
+    }
+
+    /**
+     * Perform topological sort on entities based on dependency graph.
+     *
+     * @param object[] $entities
+     * @param array<string, string[]> $graph
+     * @return object[]
+     */
+    private function topologicalSort(array $entities, array $graph): array
+    {
+        $result = [];
+        $visited = [];
+        $visiting = [];
+
+        // Group entities by class
+        $entitiesByClass = [];
+        foreach ($entities as $entity) {
+            $entitiesByClass[$entity::class][] = $entity;
+        }
+
+        // Helper function for DFS topological sort
+        $visit = function ($class) use (&$visit, &$result, &$visited, &$visiting, $graph, $entitiesByClass) {
+            if (isset($visited[$class])) {
+                return;
+            }
+
+            if (isset($visiting[$class])) {
+                // Cycle detected - for now, just continue (could be improved)
+                return;
+            }
+
+            $visiting[$class] = true;
+
+            // Visit dependencies first
+            if (isset($graph[$class])) {
+                foreach ($graph[$class] as $dependency) {
+                    $visit($dependency);
+                }
+            }
+
+            $visiting[$class] = false;
+            $visited[$class] = true;
+
+            // Add all entities of this class to result
+            if (isset($entitiesByClass[$class])) {
+                $result = array_merge($result, $entitiesByClass[$class]);
+            }
+        };
+
+        // Visit all classes
+        foreach (array_keys($entitiesByClass) as $class) {
+            $visit($class);
+        }
+
+        return $result;
     }
 
     // Retrieval operations
@@ -243,6 +429,9 @@ class EntityManager {
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
         $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
+
+        // Set the default UnitOfWork for entity management
+        $qb->setUnitOfWork($this->getDefaultUnitOfWork());
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);

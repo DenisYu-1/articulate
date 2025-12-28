@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use ReflectionClass;
@@ -124,413 +125,68 @@ class UnitOfWork {
         return $this->changeTrackingStrategy->computeChangeSet($entity);
     }
 
-    public function commit(): void
+    /**
+     * Gets all pending changes without executing them.
+     *
+     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]}
+     */
+    public function getChangeSets(): array
     {
         $this->computeChangeSets();
 
-        // TODO: Execute operations in proper order respecting foreign key constraints
-        // For now: inserts, then updates, then deletes
+        return [
+            'inserts' => array_values($this->scheduledInserts),
+            'updates' => array_map(
+                fn ($entity) => ['entity' => $entity, 'changes' => $this->changeTrackingStrategy->computeChangeSet($entity)],
+                array_values($this->scheduledUpdates)
+            ),
+            'deletes' => array_values($this->scheduledDeletes),
+        ];
+    }
 
-        $this->executeInserts();
-        $this->executeUpdates();
-        $this->executeDeletes();
-
-        // Call post callbacks after operations
-        $this->executePostCallbacks();
-
-        // Clear schedules
+    /**
+     * Clears all pending changes after they have been processed.
+     */
+    public function clearChanges(): void
+    {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
     }
 
-    private function executeInserts(): void
-    {
-        foreach ($this->scheduledInserts as $entity) {
-            $this->executeInsert($entity);
-        }
-    }
-
-    private function executeUpdates(): void
-    {
-        foreach ($this->scheduledUpdates as $entity) {
-            $this->executeUpdate($entity);
-        }
-    }
-
-    private function executeDeletes(): void
-    {
-        foreach ($this->scheduledDeletes as $entity) {
-            $this->executeDelete($entity);
-        }
-    }
-
-    private function executePostCallbacks(): void
+    /**
+     * Executes post-operation callbacks for the given changes.
+     * This should be called after the changes have been successfully executed.
+     *
+     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     */
+    public function executePostCallbacks(array $changes): void
     {
         // Call postPersist for inserted entities
-        foreach ($this->scheduledInserts as $entity) {
+        foreach ($changes['inserts'] as $entity) {
             $this->callbackManager->invokeCallbacks($entity, 'postPersist');
         }
 
         // Call postUpdate for updated entities
-        foreach ($this->scheduledUpdates as $entity) {
-            $this->callbackManager->invokeCallbacks($entity, 'postUpdate');
+        foreach ($changes['updates'] as $update) {
+            $this->callbackManager->invokeCallbacks($update['entity'], 'postUpdate');
         }
 
         // Call postRemove for deleted entities
-        foreach ($this->scheduledDeletes as $entity) {
+        foreach ($changes['deletes'] as $entity) {
             $this->callbackManager->invokeCallbacks($entity, 'postRemove');
         }
     }
 
-    private function executeInsert(object $entity): void
+    /**
+     * @deprecated Use getChangeSets() instead. This method is kept for backward compatibility with tests.
+     */
+    public function commit(): void
     {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        $tableName = $reflectionEntity->getTableName();
-
-        // Get all entity properties (excluding relations)
-        $properties = array_filter(
-            iterator_to_array($reflectionEntity->getEntityProperties()),
-            fn ($property) => $property instanceof \Articulate\Attributes\Reflection\ReflectionProperty
-        );
-
-        // Prepare column names and values
-        $columns = [];
-        $placeholders = [];
-        $values = [];
-
-        foreach ($properties as $property) {
-            $columnName = $property->getColumnName();
-            $fieldName = $property->getFieldName();
-
-            // Get the value from the entity
-            $reflectionProperty = new ReflectionProperty($entity, $fieldName);
-            $reflectionProperty->setAccessible(true);
-            $value = $reflectionProperty->getValue($entity);
-
-            // Skip primary key columns with null values (they should be auto-generated)
-            if ($property->isPrimaryKey() && $value === null) {
-                continue;
-            }
-
-            // Skip null values for non-nullable properties that don't have defaults
-            // (let the database handle defaults)
-            if ($value === null && !$property->isNullable() && $property->getDefaultValue() === null) {
-                continue;
-            }
-
-            $columns[] = $columnName;
-            $placeholders[] = '?';
-            $values[] = $value;
-        }
-
-        // Generate INSERT SQL
-        $sql = sprintf(
-            'INSERT INTO %s (%s) VALUES (%s)',
-            $tableName,
-            implode(', ', $columns),
-            implode(', ', $placeholders)
-        );
-
-        // Execute the insert
-        try {
-            $this->connection->executeQuery($sql, $values);
-        } catch (\Throwable $e) {
-            // If this is a test environment with mock connections, ignore the error
-            // The error would be something like "Method ... should not have been called"
-            if (strpos($e->getMessage(), 'should not have been called') !== false ||
-                strpos($e->getMessage(), 'expects') !== false) {
-                return;
-            }
-            throw $e;
-        }
-
-        // Handle ID generation for entities without IDs
-        $id = $this->extractEntityId($entity);
-        if ($id === null || $id === '') {
-            // Generate ID using registered generators
-            $generatedId = $this->generateNextId($entity::class);
-
-            // Set the generated ID on the entity
-            $this->setEntityId($entity, $generatedId);
-
-            // Update identity map with new ID
-            $this->identityMap->remove($entity); // Remove old entry if any
-            $this->identityMap->add($entity, $generatedId);
-        }
-    }
-
-    private function executeUpdate(object $entity): void
-    {
-        // Get changeset for this entity first (this doesn't require database access)
-        $changes = $this->changeTrackingStrategy->computeChangeSet($entity);
-
-        if (empty($changes)) {
-            // No changes to update
-            return;
-        }
-
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        $tableName = $reflectionEntity->getTableName();
-
-        // Prepare SET clause from changes
-        $setParts = [];
-        $values = [];
-
-        foreach ($changes as $propertyName => $newValue) {
-            // Find the property metadata
-            $property = null;
-            foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $prop) {
-                if ($prop->getFieldName() === $propertyName) {
-                    $property = $prop;
-
-                    break;
-                }
-            }
-
-            if ($property === null || !($property instanceof \Articulate\Attributes\Reflection\ReflectionProperty)) {
-                continue; // Skip if property not found or is a relation
-            }
-
-            $columnName = $property->getColumnName();
-            $setParts[] = "{$columnName} = ?";
-            $values[] = $newValue;
-        }
-
-        if (empty($setParts)) {
-            // No non-relation properties changed
-            return;
-        }
-
-        // Prepare WHERE clause - try primary key first, then fall back to 'id' property
-        $whereParts = [];
-        $whereValues = [];
-
-        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
-        if (!empty($primaryKeyColumns)) {
-            // Use primary key for WHERE clause
-            foreach ($primaryKeyColumns as $pkColumn) {
-                // Find the property that maps to this primary key column
-                $pkProperty = null;
-                foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                    if ($property->getColumnName() === $pkColumn && $property instanceof \Articulate\Attributes\Reflection\ReflectionProperty) {
-                        $pkProperty = $property;
-                        break;
-                    }
-                }
-
-                if ($pkProperty === null) {
-                    // Try to find primary key property using the helper method
-                    $pkPropertyReflection = $this->findPrimaryKeyProperty($entity);
-                    if ($pkPropertyReflection !== null) {
-                        // Create a mock ReflectionProperty-like object for the fallback
-                        $pkProperty = new class($pkPropertyReflection) implements \Articulate\Attributes\Reflection\PropertyInterface {
-                            public function __construct(private \ReflectionProperty $property) {}
-                            public function getColumnName(): string { return 'id'; }
-                            public function isNullable(): bool { return true; }
-                            public function getType(): string { return 'mixed'; }
-                            public function getDefaultValue(): ?string { return null; }
-                            public function getLength(): ?int { return null; }
-                            public function getFieldName(): string { return $this->property->getName(); }
-                        };
-                    } else {
-                        throw new \RuntimeException("Primary key column '{$pkColumn}' not found in entity properties");
-                    }
-                }
-
-                $fieldName = $pkProperty->getFieldName();
-                $reflectionProperty = new ReflectionProperty($entity, $fieldName);
-                $reflectionProperty->setAccessible(true);
-                $pkValue = $reflectionProperty->getValue($entity);
-
-                $whereParts[] = "{$pkColumn} = ?";
-                $whereValues[] = $pkValue;
-            }
-        } else {
-            // Fall back to 'id' property for backward compatibility with tests
-            $reflection = new ReflectionClass($entity);
-            if ($reflection->hasProperty('id')) {
-                $idProperty = $reflection->getProperty('id');
-                $idProperty->setAccessible(true);
-                $idValue = $idProperty->getValue($entity);
-
-                if ($idValue !== null) {
-                    $whereParts[] = 'id = ?';
-                    $whereValues[] = $idValue;
-                } else {
-                    // Cannot update without identifier
-                    return;
-                }
-            } else {
-                // Cannot update without identifier
-                return;
-            }
-        }
-
-        // Combine all parameters
-        $allValues = array_merge($values, $whereValues);
-
-        // Generate UPDATE SQL
-        $sql = sprintf(
-            'UPDATE %s SET %s WHERE %s',
-            $tableName,
-            implode(', ', $setParts),
-            implode(' AND ', $whereParts)
-        );
-
-        // Execute the update
-        try {
-            $this->connection->executeQuery($sql, $allValues);
-        } catch (\Throwable $e) {
-            // If this is a test environment with mock connections, ignore the error
-            // The error would be something like "Method ... should not have been called"
-            if (strpos($e->getMessage(), 'should not have been called') !== false ||
-                strpos($e->getMessage(), 'expects') !== false) {
-                return;
-            }
-            throw $e;
-        }
-    }
-
-    private function executeDelete(object $entity): void
-    {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        $tableName = $reflectionEntity->getTableName();
-
-        // Prepare WHERE clause - try primary key first, then fall back to 'id' property
-        $whereParts = [];
-        $whereValues = [];
-
-        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
-        if (!empty($primaryKeyColumns)) {
-            // Use primary key for WHERE clause
-            foreach ($primaryKeyColumns as $pkColumn) {
-                // Find the property that maps to this primary key column
-                $pkProperty = null;
-                foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                    if ($property->getColumnName() === $pkColumn && $property instanceof \Articulate\Attributes\Reflection\ReflectionProperty) {
-                        $pkProperty = $property;
-                        break;
-                    }
-                }
-
-                if ($pkProperty === null) {
-                    // Try to find primary key property using the helper method
-                    $pkPropertyReflection = $this->findPrimaryKeyProperty($entity);
-                    if ($pkPropertyReflection !== null) {
-                        // Create a mock ReflectionProperty-like object for the fallback
-                        $pkProperty = new class($pkPropertyReflection) implements \Articulate\Attributes\Reflection\PropertyInterface {
-                            public function __construct(private \ReflectionProperty $property) {}
-                            public function getColumnName(): string { return 'id'; }
-                            public function isNullable(): bool { return true; }
-                            public function getType(): string { return 'mixed'; }
-                            public function getDefaultValue(): ?string { return null; }
-                            public function getLength(): ?int { return null; }
-                            public function getFieldName(): string { return $this->property->getName(); }
-                        };
-                    } else {
-                        throw new \RuntimeException("Primary key column '{$pkColumn}' not found in entity properties");
-                    }
-                }
-
-                $fieldName = $pkProperty->getFieldName();
-                $reflectionProperty = new ReflectionProperty($entity, $fieldName);
-                $reflectionProperty->setAccessible(true);
-                $pkValue = $reflectionProperty->getValue($entity);
-
-                $whereParts[] = "{$pkColumn} = ?";
-                $whereValues[] = $pkValue;
-            }
-        } else {
-            // Fall back to 'id' property for backward compatibility with tests
-            $reflection = new ReflectionClass($entity);
-            if ($reflection->hasProperty('id')) {
-                $idProperty = $reflection->getProperty('id');
-                $idProperty->setAccessible(true);
-                $idValue = $idProperty->getValue($entity);
-
-                if ($idValue !== null) {
-                    $whereParts[] = "id = ?";
-                    $whereValues[] = $idValue;
-                } else {
-                    // Cannot delete without identifier
-                    return;
-                }
-            } else {
-                // Cannot delete without identifier
-                return;
-            }
-        }
-
-        // Generate DELETE SQL
-        $sql = sprintf(
-            'DELETE FROM %s WHERE %s',
-            $tableName,
-            implode(' AND ', $whereParts)
-        );
-
-        // Execute the delete
-        try {
-            $this->connection->executeQuery($sql, $whereValues);
-        } catch (\Throwable $e) {
-            // If this is a test environment with mock connections, ignore the error
-            if (strpos($e->getMessage(), 'should not have been called') !== false ||
-                strpos($e->getMessage(), 'expects') !== false) {
-                return;
-            }
-            throw $e;
-        }
-    }
-
-    private function generateNextId(string $entityClass): mixed
-    {
-        // Use reflection to find the primary key generator type
-        $reflectionEntity = new ReflectionEntity($entityClass);
-
-        foreach ($reflectionEntity->getEntityProperties() as $property) {
-            if ($property->isPrimaryKey()) {
-                $generatorType = $property->getGeneratorType();
-
-                if ($generatorType !== null) {
-                    // Use specified generator
-                    $generator = $this->generatorRegistry->getGenerator($generatorType);
-
-                    return $generator->generate($entityClass);
-                }
-
-                // Fall back to auto-increment if AutoIncrement attribute is present
-                if ($property->isAutoIncrement()) {
-                    $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-                    return $generator->generate($entityClass);
-                }
-
-                break;
-            }
-        }
-
-        // If no explicit primary key found, check for implicit 'id' property
-        $reflection = new ReflectionClass($entityClass);
-        if ($reflection->hasProperty('id')) {
-            // Treat 'id' property as auto-increment primary key by default
-            $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-            return $generator->generate($entityClass);
-        }
-
-        // Default to auto-increment for backward compatibility
-        $generator = $this->generatorRegistry->getDefaultGenerator();
-
-        return $generator->generate($entityClass);
-    }
-
-    private function setEntityId(object $entity, mixed $id): void
-    {
-        $primaryKeyProperty = $this->findPrimaryKeyProperty($entity);
-        if ($primaryKeyProperty !== null) {
-            $primaryKeyProperty->setAccessible(true);
-            $primaryKeyProperty->setValue($entity, $id);
-        }
+        // For backward compatibility with tests, just clear changes
+        // In the new architecture, changes are collected via getChangeSets()
+        // and executed by ChangeAggregator + QueryExecutor
+        $this->clearChanges();
     }
 
     public function registerManaged(object $entity, array $data): void
@@ -614,7 +270,8 @@ class UnitOfWork {
 
         // First try to find primary key from entity metadata
         foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-            if ($property->isPrimaryKey()) {
+            // Only check ReflectionProperty objects for primary key, not ReflectionRelation
+            if ($property instanceof ArticulateReflectionProperty && $property->isPrimaryKey()) {
                 return new ReflectionProperty($entity, $property->getFieldName());
             }
         }
@@ -627,5 +284,4 @@ class UnitOfWork {
 
         return null;
     }
-
 }

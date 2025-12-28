@@ -2,6 +2,7 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
+use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
@@ -13,6 +14,11 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCustomPri
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
 use PHPUnit\Framework\TestCase;
+
+#[Entity]
+class TestEntityForRemoval {
+    public int $id = 1;
+}
 
 class EntityManagerTest extends TestCase {
     private EntityManager $entityManager;
@@ -56,9 +62,7 @@ class EntityManagerTest extends TestCase {
 
     public function testRemoveAndFlush(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new TestEntityForRemoval();
 
         $this->entityManager->persist($entity);
         $this->entityManager->remove($entity);

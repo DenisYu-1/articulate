@@ -5,6 +5,7 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Modules\EntityManager\UnitOfWork;
 use InvalidArgumentException;
 
 class QueryBuilder {
@@ -31,6 +32,8 @@ class QueryBuilder {
     private array $orderBy = [];
 
     private array $groupBy = [];
+
+    private ?UnitOfWork $unitOfWork = null;
 
     public function __construct(
         Connection $connection,
@@ -124,6 +127,16 @@ class QueryBuilder {
         return $this->hydrator;
     }
 
+    /**
+     * Set the UnitOfWork that will manage entities retrieved by this query.
+     */
+    public function setUnitOfWork(?UnitOfWork $unitOfWork): self
+    {
+        $this->unitOfWork = $unitOfWork;
+
+        return $this;
+    }
+
     public function setEntityClass(string $entityClass): self
     {
         $this->entityClass = $entityClass;
@@ -209,10 +222,19 @@ class QueryBuilder {
 
         // If entity class available and hydrator available, return hydrated objects
         if ($targetClass && $this->hydrator) {
-            return array_map(
+            $entities = array_map(
                 fn ($row) => $this->hydrator->hydrate($targetClass, $row),
                 $rawResults
             );
+
+            // Register entities with UnitOfWork if one is set
+            if ($this->unitOfWork) {
+                foreach ($entities as $entity) {
+                    $this->unitOfWork->registerManaged($entity, []); // Empty array for original data since we don't have it
+                }
+            }
+
+            return $entities;
         }
 
         // Otherwise return raw arrays
