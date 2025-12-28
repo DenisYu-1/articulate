@@ -5,3 +5,4 @@
 .php-cs-fixer.cache
 build
 docker-compose.override.yml
+infection.log

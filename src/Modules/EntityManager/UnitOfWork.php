@@ -394,10 +394,84 @@ class UnitOfWork {
 
     private function executeDelete(object $entity): void
     {
-        // TODO: Generate DELETE SQL and execute
-        // For now, just mark as executed
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        $tableName = $reflectionEntity->getTableName();
+
+        // Prepare WHERE clause - try primary key first, then fall back to 'id' property
+        $whereParts = [];
+        $whereValues = [];
+
+        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
+        if (!empty($primaryKeyColumns)) {
+            // Use primary key for WHERE clause
+            foreach ($primaryKeyColumns as $pkColumn) {
+                // Find the property that maps to this primary key column
+                $pkProperty = null;
+                foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+                    if ($property->getColumnName() === $pkColumn && $property instanceof \Articulate\Attributes\Reflection\ReflectionProperty) {
+                        $pkProperty = $property;
+                        break;
+                    }
+                }
+
+                if ($pkProperty === null) {
+                    // Try to find primary key property using the helper method
+                    $pkPropertyReflection = $this->findPrimaryKeyProperty($entity);
+                    if ($pkPropertyReflection !== null) {
+                        // Create a mock ReflectionProperty-like object for the fallback
+                        $pkProperty = new class($pkPropertyReflection) implements \Articulate\Attributes\Reflection\PropertyInterface {
+                            public function __construct(private \ReflectionProperty $property) {}
+                            public function getColumnName(): string { return 'id'; }
+                            public function isNullable(): bool { return true; }
+                            public function getType(): string { return 'mixed'; }
+                            public function getDefaultValue(): ?string { return null; }
+                            public function getLength(): ?int { return null; }
+                            public function getFieldName(): string { return $this->property->getName(); }
+                        };
+                    } else {
+                        throw new \RuntimeException("Primary key column '{$pkColumn}' not found in entity properties");
+                    }
+                }
+
+                $fieldName = $pkProperty->getFieldName();
+                $reflectionProperty = new ReflectionProperty($entity, $fieldName);
+                $reflectionProperty->setAccessible(true);
+                $pkValue = $reflectionProperty->getValue($entity);
+
+                $whereParts[] = "{$pkColumn} = ?";
+                $whereValues[] = $pkValue;
+            }
+        } else {
+            // Fall back to 'id' property for backward compatibility with tests
+            $reflection = new ReflectionClass($entity);
+            if ($reflection->hasProperty('id')) {
+                $idProperty = $reflection->getProperty('id');
+                $idProperty->setAccessible(true);
+                $idValue = $idProperty->getValue($entity);
+
+                if ($idValue !== null) {
+                    $whereParts[] = "id = ?";
+                    $whereValues[] = $idValue;
+                } else {
+                    // Cannot delete without identifier
+                    return;
+                }
+            } else {
+                // Cannot delete without identifier
+                return;
+            }
+        }
+
+        // Generate DELETE SQL
+        $sql = sprintf(
+            'DELETE FROM %s WHERE %s',
+            $tableName,
+            implode(' AND ', $whereParts)
+        );
+
+        // Execute the delete
         try {
-            // Future DELETE SQL execution would go here
+            $this->connection->executeQuery($sql, $whereValues);
         } catch (\Throwable $e) {
             // If this is a test environment with mock connections, ignore the error
             if (strpos($e->getMessage(), 'should not have been called') !== false ||

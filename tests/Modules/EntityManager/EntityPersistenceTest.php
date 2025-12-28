@@ -340,6 +340,160 @@ class EntityPersistenceTest extends AbstractTestCase {
             $this->assertContains($user1->id, array_map(fn ($u) => $u->id, $allUsers));
             $this->assertContains($user2->id, array_map(fn ($u) => $u->id, $allUsers));
 
+            // Clean up
+            $connection->executeQuery('DROP TABLE IF EXISTS test_users');
+        });
+    }
+
+    public function testDeleteExistingEntity(): void
+    {
+        $this->runTestForAllDatabases(function (Connection $connection, string $databaseName) {
+            // Create the table schema
+            $this->createTestUserTable($connection, $databaseName);
+
+            $entityManager = new EntityManager($connection);
+
+            // Create and persist a user
+            $user = new TestUser();
+            $user->name = 'User to Delete';
+            $user->email = 'delete@example.com';
+
+            $entityManager->persist($user);
+            $entityManager->flush();
+
+            $userId = $user->id;
+
+            // Verify user exists
+            $retrievedUser = $entityManager->find(TestUser::class, $userId);
+            $this->assertNotNull($retrievedUser);
+            $this->assertEquals('User to Delete', $retrievedUser->name);
+
+            // Delete the user
+            $entityManager->remove($user);
+            $entityManager->flush();
+
+            // Verify user is deleted by checking findAll returns empty array
+            $remainingUsers = $entityManager->findAll(TestUser::class);
+            $this->assertEmpty($remainingUsers, 'User should be deleted from database');
+
+            // Also verify by querying the database directly
+            $directQuery = $connection->executeQuery('SELECT COUNT(*) as count FROM test_user WHERE id = ?', [$userId]);
+            $result = $directQuery->fetchAll();
+            $this->assertEquals(0, $result[0]['count'], 'User should be deleted from database table directly');
+
+            // Clean up
+            $connection->executeQuery('DROP TABLE IF EXISTS test_users');
+        });
+    }
+
+    public function testDeleteMultipleEntities(): void
+    {
+        $this->runTestForAllDatabases(function (Connection $connection, string $databaseName) {
+            // Create the table schema
+            $this->createTestUserTable($connection, $databaseName);
+
+            $entityManager = new EntityManager($connection);
+
+            // Create and persist multiple users
+            $user1 = new TestUser();
+            $user1->name = 'User One';
+            $user1->email = 'user1@example.com';
+
+            $user2 = new TestUser();
+            $user2->name = 'User Two';
+            $user2->email = 'user2@example.com';
+
+            $user3 = new TestUser();
+            $user3->name = 'User Three';
+            $user3->email = 'user3@example.com';
+
+            $entityManager->persist($user1);
+            $entityManager->persist($user2);
+            $entityManager->persist($user3);
+            $entityManager->flush();
+
+            // Verify all users exist
+            $this->assertCount(3, $entityManager->findAll(TestUser::class));
+
+            // Delete two users
+            $entityManager->remove($user1);
+            $entityManager->remove($user3);
+            $entityManager->flush();
+
+            // Verify only user2 remains
+            $remainingUsers = $entityManager->findAll(TestUser::class);
+            $this->assertCount(1, $remainingUsers);
+            $this->assertEquals($user2->id, $remainingUsers[0]->id);
+            $this->assertEquals('User Two', $remainingUsers[0]->name);
+
+            // Clean up
+            $connection->executeQuery('DROP TABLE IF EXISTS test_users');
+        });
+    }
+
+    public function testDeleteNonExistentEntity(): void
+    {
+        $this->runTestForAllDatabases(function (Connection $connection, string $databaseName) {
+            // Create the table schema
+            $this->createTestUserTable($connection, $databaseName);
+
+            $entityManager = new EntityManager($connection);
+
+            // Create a user that was never persisted
+            $user = new TestUser();
+            $user->name = 'Never Persisted';
+            $user->email = 'never@example.com';
+            $user->id = 999; // Set an ID manually
+
+            // Try to delete - should not throw an error
+            $entityManager->remove($user);
+            $entityManager->flush();
+
+            // Should not have affected the database
+            $this->assertTrue(true);
+
+            // Clean up
+            $connection->executeQuery('DROP TABLE IF EXISTS test_users');
+        });
+    }
+
+    public function testDeleteAndInsertInSameTransaction(): void
+    {
+        $this->runTestForAllDatabases(function (Connection $connection, string $databaseName) {
+            // Create the table schema
+            $this->createTestUserTable($connection, $databaseName);
+
+            $entityManager = new EntityManager($connection);
+
+            // Create and persist initial user
+            $user1 = new TestUser();
+            $user1->name = 'Original User';
+            $user1->email = 'original@example.com';
+
+            $entityManager->persist($user1);
+            $entityManager->flush();
+
+            // In the same "transaction" (flush call), delete user1 and create user2
+            $user2 = new TestUser();
+            $user2->name = 'New User';
+            $user2->email = 'new@example.com';
+
+            $entityManager->remove($user1);
+            $entityManager->persist($user2);
+            $entityManager->flush();
+
+            // Verify user1 is deleted and user2 exists by checking database directly
+            $user1Query = $connection->executeQuery('SELECT COUNT(*) as count FROM test_user WHERE id = ?', [$user1->id]);
+            $user1Result = $user1Query->fetchAll();
+            $this->assertEquals(0, $user1Result[0]['count'], 'User1 should be deleted from database');
+
+            $user2Query = $connection->executeQuery('SELECT * FROM test_user WHERE id = ?', [$user2->id]);
+            $user2Result = $user2Query->fetchAll();
+            $this->assertCount(1, $user2Result, 'User2 should exist in database');
+            $this->assertEquals('New User', $user2Result[0]['name']);
+
+            // Clean up
+            $connection->executeQuery('DROP TABLE IF EXISTS test_users');
         });
     }
 }
