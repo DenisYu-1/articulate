@@ -9,7 +9,9 @@ use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCustomPrimaryKeyEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
 use PHPUnit\Framework\TestCase;
 
 class EntityManagerTest extends TestCase {
@@ -328,5 +330,104 @@ class EntityManagerTest extends TestCase {
         // Main query builder should also have hydrator
         $mainQb = $this->entityManager->getQueryBuilder();
         $this->assertSame($hydrator, $mainQb->getHydrator());
+    }
+
+    public function testFindSelectsOnlyEntityColumns(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $statement = $this->createMock(\PDOStatement::class);
+
+        // Mock empty result set
+        $statement->method('fetchAll')->willReturn([]);
+
+        // Capture the SQL query being executed
+        $executedSql = null;
+        $executedParams = null;
+        $connection->expects($this->once())
+            ->method('executeQuery')
+            ->with($this->callback(function ($sql) use (&$executedSql) {
+                $executedSql = $sql;
+
+                return true;
+            }), $this->callback(function ($params) use (&$executedParams) {
+                $executedParams = $params;
+
+                return true;
+            }))
+            ->willReturn($statement);
+
+        $entityManager = new EntityManager($connection);
+        $entityManager->find(TestPrimaryKeyEntity::class, 1);
+
+        // Verify that only entity columns are selected, not SELECT *
+        $this->assertIsString($executedSql);
+        $this->assertStringStartsWith('SELECT id, name FROM', $executedSql);
+        $this->assertStringNotContainsString('SELECT *', $executedSql);
+    }
+
+    public function testFindAllSelectsOnlyEntityColumns(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $statement = $this->createMock(\PDOStatement::class);
+
+        // Mock empty result set
+        $statement->method('fetchAll')->willReturn([]);
+
+        // Capture the SQL query being executed
+        $executedSql = null;
+        $executedParams = null;
+        $connection->expects($this->once())
+            ->method('executeQuery')
+            ->with($this->callback(function ($sql) use (&$executedSql) {
+                $executedSql = $sql;
+
+                return true;
+            }), $this->callback(function ($params) use (&$executedParams) {
+                $executedParams = $params;
+
+                return true;
+            }))
+            ->willReturn($statement);
+
+        $entityManager = new EntityManager($connection);
+        $entityManager->findAll(TestPrimaryKeyEntity::class);
+
+        // Verify that only entity columns are selected, not SELECT *
+        $this->assertIsString($executedSql);
+        $this->assertStringStartsWith('SELECT id, name FROM', $executedSql);
+        $this->assertStringNotContainsString('SELECT *', $executedSql);
+    }
+
+    public function testFindWithMultipleEntityColumns(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $statement = $this->createMock(\PDOStatement::class);
+
+        // Mock empty result set
+        $statement->method('fetchAll')->willReturn([]);
+
+        // Capture the SQL query being executed
+        $executedSql = null;
+        $executedParams = null;
+        $connection->expects($this->once())
+            ->method('executeQuery')
+            ->with($this->callback(function ($sql) use (&$executedSql) {
+                $executedSql = $sql;
+
+                return true;
+            }), $this->callback(function ($params) use (&$executedParams) {
+                $executedParams = $params;
+
+                return true;
+            }))
+            ->willReturn($statement);
+
+        $entityManager = new EntityManager($connection);
+        $entityManager->find(TestCustomPrimaryKeyEntity::class, 1);
+
+        // Verify that all entity columns are selected in correct order
+        $this->assertIsString($executedSql);
+        $this->assertStringStartsWith('SELECT custom_id, name FROM', $executedSql);
+        $this->assertStringNotContainsString('SELECT *', $executedSql);
     }
 }

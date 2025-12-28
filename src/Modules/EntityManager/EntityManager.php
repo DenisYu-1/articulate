@@ -42,7 +42,7 @@ class EntityManager {
         $this->callbackManager = new LifecycleCallbackManager();
 
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
+        $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
         $this->unitOfWorks[] = $defaultUow;
 
         // Create relationship loader
@@ -233,7 +233,7 @@ class EntityManager {
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
+        $unitOfWork = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
@@ -250,7 +250,6 @@ class EntityManager {
 
         return $qb;
     }
-
 
     // Get the main query builder instance
     public function getQueryBuilder(): QueryBuilder

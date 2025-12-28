@@ -6,6 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
@@ -17,7 +18,8 @@ class UnitOfWorkTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->unitOfWork = new UnitOfWork(null, new GeneratorRegistry());
+        $connection = $this->createMock(Connection::class);
+        $this->unitOfWork = new UnitOfWork($connection, null, new GeneratorRegistry());
     }
 
     public function testInitialEntityStateIsNew(): void
@@ -167,8 +169,9 @@ class UnitOfWorkTest extends TestCase {
 
     public function testCustomChangeTrackingStrategy(): void
     {
+        $connection = $this->createMock(Connection::class);
         $customStrategy = new DeferredImplicitStrategy();
-        $unitOfWork = new UnitOfWork($customStrategy);
+        $unitOfWork = new UnitOfWork($connection, $customStrategy);
 
         $entity = new class() {
             public int $id = 1;
