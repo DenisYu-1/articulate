@@ -6,6 +6,8 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface;
 use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
@@ -20,8 +22,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKe
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSecondEntity;
 use ReflectionMethod;
 
-class DatabaseSchemaComparatorTest extends AbstractTestCase
-{
+class DatabaseSchemaComparatorTest extends AbstractTestCase {
     public function testEmptyDbEmptyEntities()
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
@@ -413,10 +414,10 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]);
 
         // Create a mock validator that throws an exception
-        $mockValidator = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface::class);
+        $mockValidator = $this->createMock(RelationValidatorInterface::class);
         $mockValidator->expects($this->once())->method('validate')->willThrowException(new \RuntimeException('Validation failed'));
 
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
         $validatorFactory->expects($this->once())->method('getValidator')->willReturn($mockValidator);
 
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming(), $validatorFactory);
@@ -438,7 +439,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->never())->method('getTableForeignKeys');
 
         // Create a mock validator that passes initial validation but fails during column creation
-        $mockValidator = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface::class);
+        $mockValidator = $this->createMock(RelationValidatorInterface::class);
         // First call (during validateRelations) succeeds, second call (during column creation) fails
         $mockValidator->expects($this->exactly(2))->method('validate')
             ->willReturnCallback(function () {
@@ -453,7 +454,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
                 }
             });
 
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
         $validatorFactory->expects($this->exactly(2))->method('getValidator')->willReturn($mockValidator);
 
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming(), $validatorFactory);
@@ -858,8 +859,8 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->never())->method('getTableForeignKeys');
 
         // Mock validator factory to verify MorphOne validation is called during validateRelations
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
-        $validator = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $validator = $this->createMock(RelationValidatorInterface::class);
         $validator->expects($this->once())->method('validate'); // Should validate MorphOne relation
         $validatorFactory->expects($this->once())->method('getValidator')->willReturn($validator);
 
@@ -884,8 +885,8 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->never())->method('getTableForeignKeys');
 
         // Mock validator factory to verify MorphMany validation is called during validateRelations
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
-        $validator = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $validator = $this->createMock(RelationValidatorInterface::class);
         $validator->expects($this->once())->method('validate'); // Should validate MorphMany relation
         $validatorFactory->expects($this->once())->method('getValidator')->willReturn($validator);
 
@@ -911,8 +912,8 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase
         $databaseSchemaReader->expects($this->never())->method('getTableForeignKeys');
 
         // Mock validator factory to verify both MorphOne and MorphMany validation are called
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
-        $validator = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $validator = $this->createMock(RelationValidatorInterface::class);
         $validator->expects($this->exactly(2))->method('validate'); // Should validate both relations
         $validatorFactory->expects($this->exactly(2))->method('getValidator')->willReturn($validator);
 

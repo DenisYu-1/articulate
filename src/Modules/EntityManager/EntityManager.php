@@ -6,8 +6,7 @@ use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 
-class EntityManager
-{
+class EntityManager {
     private Connection $connection;
 
     /** @var UnitOfWork[] */

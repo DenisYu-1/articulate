@@ -2,10 +2,10 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Generators\GeneratorRegistry;
 
-class UnitOfWork
-{
+class UnitOfWork {
     private IdentityMap $identityMap;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
@@ -202,7 +202,7 @@ class UnitOfWork
     private function generateNextId(string $entityClass): mixed
     {
         // Use reflection to find the primary key generator type
-        $reflectionEntity = new \Articulate\Attributes\Reflection\ReflectionEntity($entityClass);
+        $reflectionEntity = new ReflectionEntity($entityClass);
 
         foreach ($reflectionEntity->getEntityProperties() as $property) {
             if ($property->isPrimaryKey()) {

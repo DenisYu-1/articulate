@@ -13,8 +13,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestDateTimeE
 /**
  * Integration test to verify DateTimeInterface support works end-to-end.
  */
-class DateTimeInterfaceIntegrationTest extends AbstractTestCase
-{
+class DateTimeInterfaceIntegrationTest extends AbstractTestCase {
     public function testDateTimeInterfaceMappingInMigrations(): void
     {
         $this->skipIfDatabaseNotAvailable('mysql');

@@ -13,8 +13,7 @@ use Articulate\Attributes\Lifecycle\PreUpdate;
 /**
  * Manages lifecycle callbacks for entities.
  */
-class LifecycleCallbackManager
-{
+class LifecycleCallbackManager {
     private array $callbacks = [];
 
     /**

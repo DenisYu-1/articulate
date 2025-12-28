@@ -4,11 +4,11 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
-class QueryBuilderTest extends TestCase
-{
+class QueryBuilderTest extends TestCase {
     private QueryBuilder $qb;
 
     private Connection $connection;
@@ -187,7 +187,7 @@ class QueryBuilderTest extends TestCase
 
     public function testSetAndGetHydrator(): void
     {
-        $hydrator = $this->createMock(\Articulate\Modules\EntityManager\HydratorInterface::class);
+        $hydrator = $this->createMock(HydratorInterface::class);
 
         $this->qb->setHydrator($hydrator);
         $this->assertSame($hydrator, $this->qb->getHydrator());
@@ -199,7 +199,7 @@ class QueryBuilderTest extends TestCase
 
     public function testConstructorWithHydrator(): void
     {
-        $hydrator = $this->createMock(\Articulate\Modules\EntityManager\HydratorInterface::class);
+        $hydrator = $this->createMock(HydratorInterface::class);
         $qb = new QueryBuilder($this->connection, $hydrator);
 
         $this->assertSame($hydrator, $qb->getHydrator());

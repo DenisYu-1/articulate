@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\MorphToMany;
 
 #[Entity]
-class TestPolymorphicManyToManyPost
-{
+class TestPolymorphicManyToManyPost {
     #[Property]
     public int $id;
 

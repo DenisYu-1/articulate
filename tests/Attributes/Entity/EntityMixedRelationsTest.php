@@ -6,16 +6,21 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
+use Articulate\Attributes\Relations\MorphedByMany;
+use Articulate\Attributes\Relations\MorphMany;
+use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 
 #[Entity]
-class EntityMixedRelationsTest extends AbstractTestCase
-{
+class EntityMixedRelationsTest extends AbstractTestCase {
     #[Property]
     public int $id;
 
@@ -87,7 +92,7 @@ class EntityMixedRelationsTest extends AbstractTestCase
     {
         // Test that MorphMany has correct default foreignKey value
         // This covers the TrueValue mutation on line 28 of MorphMany.php
-        $morphMany = new \Articulate\Attributes\Relations\MorphMany(
+        $morphMany = new MorphMany(
             targetEntity: self::class,
             referencedBy: 'test'
         );
@@ -100,7 +105,7 @@ class EntityMixedRelationsTest extends AbstractTestCase
     {
         // Test that MorphToMany has correct default foreignKey value
         // This covers the TrueValue mutation on line 32 of MorphToMany.php
-        $morphToMany = new \Articulate\Attributes\Relations\MorphToMany(
+        $morphToMany = new MorphToMany(
             targetEntity: self::class,
             name: 'test'
         );
@@ -113,7 +118,7 @@ class EntityMixedRelationsTest extends AbstractTestCase
     {
         // Test that MorphedByMany has correct default foreignKey value
         // This covers the TrueValue mutation on line 26 of MorphedByMany.php
-        $morphedByMany = new \Articulate\Attributes\Relations\MorphedByMany(
+        $morphedByMany = new MorphedByMany(
             targetEntity: self::class,
             name: 'test'
         );
@@ -126,11 +131,11 @@ class EntityMixedRelationsTest extends AbstractTestCase
     {
         // Test that ManyToMany relations require foreign keys by default
         // This covers the TrueValue mutation on line 121 of ReflectionRelation.php
-        $schemaNaming = new \Articulate\Schema\SchemaNaming();
+        $schemaNaming = new SchemaNaming();
         $attribute = new ManyToMany(targetEntity: self::class);
 
         $reflectionProperty = new \ReflectionProperty($this, 'owningRelations');
-        $reflection = new \Articulate\Attributes\Reflection\ReflectionRelation($attribute, $reflectionProperty, $schemaNaming);
+        $reflection = new ReflectionRelation($attribute, $reflectionProperty, $schemaNaming);
 
         // ManyToMany should require foreign keys by default
         $this->assertTrue($reflection->isForeignKeyRequired());
@@ -140,12 +145,12 @@ class EntityMixedRelationsTest extends AbstractTestCase
     {
         // Test that relation type detection methods work correctly
         // This covers various mutations in relation type checking logic
-        $schemaNaming = new \Articulate\Schema\SchemaNaming();
+        $schemaNaming = new SchemaNaming();
 
         // Test OneToOne
-        $oneToOneAttr = new \Articulate\Attributes\Relations\OneToOne(targetEntity: self::class);
+        $oneToOneAttr = new OneToOne(targetEntity: self::class);
         $property = new \ReflectionProperty($this, 'owningRelations');
-        $oneToOneRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($oneToOneAttr, $property, $schemaNaming);
+        $oneToOneRelation = new ReflectionRelation($oneToOneAttr, $property, $schemaNaming);
 
         $this->assertTrue($oneToOneRelation->isOneToOne());
         $this->assertFalse($oneToOneRelation->isOneToMany());
@@ -156,7 +161,7 @@ class EntityMixedRelationsTest extends AbstractTestCase
 
         // Test ManyToOne
         $manyToOneAttr = new ManyToOne(targetEntity: self::class);
-        $manyToOneRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($manyToOneAttr, $property, $schemaNaming);
+        $manyToOneRelation = new ReflectionRelation($manyToOneAttr, $property, $schemaNaming);
 
         $this->assertFalse($manyToOneRelation->isOneToOne());
         $this->assertFalse($manyToOneRelation->isOneToMany());
@@ -167,7 +172,7 @@ class EntityMixedRelationsTest extends AbstractTestCase
 
         // Test OneToMany
         $oneToManyAttr = new OneToMany(targetEntity: self::class);
-        $oneToManyRelation = new \Articulate\Attributes\Reflection\ReflectionRelation($oneToManyAttr, $property, $schemaNaming);
+        $oneToManyRelation = new ReflectionRelation($oneToManyAttr, $property, $schemaNaming);
 
         $this->assertFalse($oneToManyRelation->isOneToOne());
         $this->assertTrue($oneToManyRelation->isOneToMany());

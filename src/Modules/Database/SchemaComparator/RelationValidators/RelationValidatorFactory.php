@@ -4,8 +4,7 @@ namespace Articulate\Modules\Database\SchemaComparator\RelationValidators;
 
 use Articulate\Attributes\Reflection\RelationInterface;
 
-class RelationValidatorFactory
-{
+class RelationValidatorFactory {
     /**
      * @var RelationValidatorInterface[]
      */

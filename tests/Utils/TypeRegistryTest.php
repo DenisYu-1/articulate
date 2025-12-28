@@ -13,8 +13,7 @@ use ReflectionMethod;
 use ReflectionProperty;
 use Serializable;
 
-class TypeRegistryTest extends AbstractTestCase
-{
+class TypeRegistryTest extends AbstractTestCase {
     private TypeRegistry $typeRegistry;
 
     protected function setUp(): void

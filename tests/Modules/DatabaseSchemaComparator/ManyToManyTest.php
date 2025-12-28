@@ -31,8 +31,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToMan
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyTarget;
 use RuntimeException;
 
-class ManyToManyTest extends AbstractTestCase
-{
+class ManyToManyTest extends AbstractTestCase {
     public function testCreateMappingTableWithExtras()
     {
         $comparator = $this->comparator(

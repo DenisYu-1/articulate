@@ -3,12 +3,12 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Property;
+use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\TestCase;
 
-class ObjectHydratorTest extends TestCase
-{
+class ObjectHydratorTest extends TestCase {
     private ObjectHydrator $hydrator;
 
     private UnitOfWork $unitOfWork;
@@ -21,7 +21,7 @@ class ObjectHydratorTest extends TestCase
 
     public function testImplementsHydratorInterface(): void
     {
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $this->hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
     }
 
     public function testHydrateCreatesNewEntity(): void
@@ -146,8 +146,7 @@ class ObjectHydratorTest extends TestCase
 }
 
 // Test entity class for hydration tests
-class TestEntity
-{
+class TestEntity {
     public ?int $id = null;
 
     public ?string $name = null;
@@ -168,8 +167,7 @@ class TestEntity
 }
 
 // Test entity class with Property attribute mapping
-class TestEntityWithPropertyAttributes
-{
+class TestEntityWithPropertyAttributes {
     #[Property(name: 'user_name')]
     public ?string $fullName = null;
 

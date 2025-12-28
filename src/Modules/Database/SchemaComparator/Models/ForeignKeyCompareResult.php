@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Models;
 
-class ForeignKeyCompareResult extends CompareResult
-{
+class ForeignKeyCompareResult extends CompareResult {
     public function __construct(
         string $name,
         string $operation,

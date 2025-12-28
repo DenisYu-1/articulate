@@ -5,8 +5,7 @@ namespace Articulate\Modules\Generators;
 /**
  * Abstract base class for generators.
  */
-abstract class AbstractGenerator implements GeneratorInterface
-{
+abstract class AbstractGenerator implements GeneratorInterface {
     /**
      * @var string
      */

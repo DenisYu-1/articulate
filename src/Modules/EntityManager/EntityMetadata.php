@@ -2,6 +2,9 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Attributes\Indexes\AutoIncrement;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
@@ -10,8 +13,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
  * Entity metadata containing all information about an entity class
  * extracted from attributes and reflection.
  */
-class EntityMetadata
-{
+class EntityMetadata {
     private ReflectionEntity $reflectionEntity;
 
     private ?string $tableName = null;
@@ -57,19 +59,19 @@ class EntityMetadata
             }
 
             // Check if it has PrimaryKey attribute
-            $primaryKeyAttributes = $reflectionProperty->getAttributes(\Articulate\Attributes\Indexes\PrimaryKey::class);
+            $primaryKeyAttributes = $reflectionProperty->getAttributes(PrimaryKey::class);
             if (!empty($primaryKeyAttributes)) {
                 // Create a ReflectionProperty for primary key properties
-                $propertyAttribute = $reflectionProperty->getAttributes(\Articulate\Attributes\Property::class);
+                $propertyAttribute = $reflectionProperty->getAttributes(Property::class);
                 $propertyInstance = !empty($propertyAttribute)
                     ? $propertyAttribute[0]->newInstance()
-                    : new \Articulate\Attributes\Property(); // Default property
+                    : new Property(); // Default property
 
                 $primaryKeyInstance = $primaryKeyAttributes[0]->newInstance();
                 $reflectionPropertyObj = new ReflectionProperty(
                     $propertyInstance,
                     $reflectionProperty,
-                    isset($reflectionProperty->getAttributes(\Articulate\Attributes\Indexes\AutoIncrement::class)[0]),
+                    isset($reflectionProperty->getAttributes(AutoIncrement::class)[0]),
                     true, // is primary key
                     $primaryKeyInstance->generator
                 );

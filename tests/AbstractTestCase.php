@@ -6,8 +6,7 @@ use Articulate\Connection;
 use Dotenv\Dotenv;
 use PHPUnit\Framework\TestCase;
 
-abstract class AbstractTestCase extends TestCase
-{
+abstract class AbstractTestCase extends TestCase {
     protected ?Connection $mysqlConnection = null;
 
     protected ?Connection $pgsqlConnection = null;

@@ -7,8 +7,7 @@ use InvalidArgumentException;
 /**
  * Registry for managing ID generators.
  */
-class GeneratorRegistry
-{
+class GeneratorRegistry {
     /**
      * @var GeneratorInterface[]
      */

@@ -10,8 +10,7 @@ use Articulate\Connection;
  * This trait provides data providers and utilities to automatically run
  * the same test method against MySQL, PostgreSQL, and SQLite databases.
  */
-trait DatabaseTestTrait
-{
+trait DatabaseTestTrait {
     /**
      * Data provider that returns all database types.
      *

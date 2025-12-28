@@ -14,8 +14,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPostEntit
 /**
  * Integration test for polymorphic relations end-to-end functionality.
  */
-class PolymorphicRelationsIntegrationTest extends AbstractTestCase
-{
+class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
     public function testPolymorphicRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database

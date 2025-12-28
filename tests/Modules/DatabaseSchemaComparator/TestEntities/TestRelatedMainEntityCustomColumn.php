@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToOne;
 
 #[Entity]
-class TestRelatedMainEntityCustomColumn
-{
+class TestRelatedMainEntityCustomColumn {
     #[Property]
     public int $id;
 

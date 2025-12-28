@@ -20,8 +20,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTab
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableVariantConflict;
 use RuntimeException;
 
-class SharedTableTest extends AbstractTestCase
-{
+class SharedTableTest extends AbstractTestCase {
     public function testMergesNullableAcrossEntitiesForSameTable()
     {
         $comparator = $this->comparator(

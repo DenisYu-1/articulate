@@ -6,8 +6,7 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 
-class QueryBuilder
-{
+class QueryBuilder {
     private Connection $connection;
 
     private ?HydratorInterface $hydrator;

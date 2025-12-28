@@ -6,8 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 
 #[Entity]
-class TestManyToOneTargetMissingInverse
-{
+class TestManyToOneTargetMissingInverse {
     #[Property]
     public int $id;
 }

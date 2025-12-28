@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\EntityManager;
 
-class ScalarHydrator implements HydratorInterface
-{
+class ScalarHydrator implements HydratorInterface {
     public function hydrate(string $class, array $data, ?object $entity = null): mixed
     {
         // ScalarHydrator returns single scalar values

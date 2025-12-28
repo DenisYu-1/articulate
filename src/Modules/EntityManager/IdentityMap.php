@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\EntityManager;
 
-class IdentityMap
-{
+class IdentityMap {
     /** @var array<class-string, array<string, object>> */
     private array $entities = [];
 

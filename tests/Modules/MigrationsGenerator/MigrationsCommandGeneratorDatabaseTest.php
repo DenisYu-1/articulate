@@ -7,10 +7,10 @@ use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
+use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
 
-class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
-{
+class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
     /**
      * Test table creation with foreign keys across all databases.
      *
@@ -63,7 +63,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase
             [],
             [
                 new ForeignKeyCompareResult(
-                    name: (new \Articulate\Schema\SchemaNaming())->foreignKeyName('test_table', $relatedTableName, 'related_entity_id'),
+                    name: (new SchemaNaming())->foreignKeyName('test_table', $relatedTableName, 'related_entity_id'),
                     operation: 'create',
                     column: 'related_entity_id',
                     referencedTable: $relatedTableName,

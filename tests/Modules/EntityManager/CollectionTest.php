@@ -5,15 +5,13 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\Collection;
 use PHPUnit\Framework\TestCase;
 
-class CollectionTestEntity
-{
+class CollectionTestEntity {
     public int $id;
 
     public string $name;
 }
 
-class CollectionTest extends TestCase
-{
+class CollectionTest extends TestCase {
     private Collection $collection;
 
     protected function setUp(): void

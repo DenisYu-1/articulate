@@ -6,8 +6,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-class SqliteMigrationGenerator extends AbstractMigrationGenerator
-{
+class SqliteMigrationGenerator extends AbstractMigrationGenerator {
     public function getIdentifierQuote(): string
     {
         return '"';

@@ -8,8 +8,7 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 /**
  * Manages proxy creation and lazy loading of relationships.
  */
-class ProxyManager
-{
+class ProxyManager {
     public function __construct(
         private EntityManager $entityManager,
         private EntityMetadataRegistry $metadataRegistry,

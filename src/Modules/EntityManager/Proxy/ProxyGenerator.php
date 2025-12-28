@@ -7,8 +7,7 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 /**
  * Generates proxy classes for lazy loading entities.
  */
-class ProxyGenerator
-{
+class ProxyGenerator {
     public function __construct(
         private EntityMetadataRegistry $metadataRegistry
     ) {

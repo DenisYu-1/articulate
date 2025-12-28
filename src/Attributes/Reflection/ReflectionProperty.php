@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Reflection;
 use Articulate\Attributes\Property;
 use ReflectionProperty as BaseReflectionProperty;
 
-readonly class ReflectionProperty implements PropertyInterface
-{
+readonly class ReflectionProperty implements PropertyInterface {
     public function __construct(
         private Property $entityProperty,
         private BaseReflectionProperty $property,

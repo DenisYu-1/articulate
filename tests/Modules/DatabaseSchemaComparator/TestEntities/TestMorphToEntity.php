@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\MorphTo;
 
 #[Entity]
-class TestMorphToEntity
-{
+class TestMorphToEntity {
     #[Property]
     public int $id;
 

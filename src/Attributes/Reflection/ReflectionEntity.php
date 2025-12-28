@@ -19,8 +19,7 @@ use Articulate\Schema\SchemaNaming;
 use ReflectionAttribute;
 use ReflectionClass;
 
-class ReflectionEntity extends ReflectionClass
-{
+class ReflectionEntity extends ReflectionClass {
     public function __construct(
         string $objectOrClass,
         private readonly SchemaNaming $schemaNaming = new SchemaNaming(),

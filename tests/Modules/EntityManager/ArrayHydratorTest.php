@@ -3,10 +3,10 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Modules\EntityManager\ArrayHydrator;
+use Articulate\Modules\EntityManager\HydratorInterface;
 use PHPUnit\Framework\TestCase;
 
-class ArrayHydratorTest extends TestCase
-{
+class ArrayHydratorTest extends TestCase {
     private ArrayHydrator $hydrator;
 
     protected function setUp(): void
@@ -16,7 +16,7 @@ class ArrayHydratorTest extends TestCase
 
     public function testImplementsHydratorInterface(): void
     {
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $this->hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
     }
 
     public function testHydrateReturnsArray(): void

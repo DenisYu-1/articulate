@@ -5,8 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\IdentityMap;
 use PHPUnit\Framework\TestCase;
 
-class IdentityMapTest extends TestCase
-{
+class IdentityMapTest extends TestCase {
     private IdentityMap $identityMap;
 
     protected function setUp(): void

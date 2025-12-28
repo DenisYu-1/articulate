@@ -5,8 +5,7 @@ namespace Articulate\Modules\Migrations\Generator;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-class MigrationsCommandGenerator
-{
+class MigrationsCommandGenerator {
     private MigrationGeneratorStrategy $strategy;
 
     public function __construct(

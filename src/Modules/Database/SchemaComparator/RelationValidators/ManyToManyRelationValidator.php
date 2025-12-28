@@ -8,8 +8,7 @@ use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\ManyToMany;
 use RuntimeException;
 
-class ManyToManyRelationValidator implements RelationValidatorInterface
-{
+class ManyToManyRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
         if (!$relation instanceof ReflectionManyToMany) {

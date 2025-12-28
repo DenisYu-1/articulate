@@ -6,8 +6,7 @@ namespace Articulate\Modules\EntityManager\Proxy;
  * Base proxy class that implements lazy loading functionality.
  * Generated proxy classes will extend this class.
  */
-abstract class Proxy implements ProxyInterface
-{
+abstract class Proxy implements ProxyInterface {
     private bool $initialized = false;
 
     private string $entityClass;

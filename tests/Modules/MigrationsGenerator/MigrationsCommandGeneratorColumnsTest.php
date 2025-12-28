@@ -9,8 +9,7 @@ use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase
-{
+class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
     #[DataProvider('cases')]
     public function testFieldMigration($query, $params)
     {

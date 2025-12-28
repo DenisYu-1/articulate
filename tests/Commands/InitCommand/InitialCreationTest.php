@@ -7,8 +7,7 @@ use Articulate\Connection;
 use Articulate\Tests\DatabaseTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class InitialCreationTest extends DatabaseTestCase
-{
+class InitialCreationTest extends DatabaseTestCase {
     /**
      * Test that init command creates migrations table.
      *

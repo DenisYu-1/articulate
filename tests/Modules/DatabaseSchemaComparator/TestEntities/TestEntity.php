@@ -6,8 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 
 #[Entity]
-class TestEntity
-{
+class TestEntity {
     #[Property]
     public int $id;
 }

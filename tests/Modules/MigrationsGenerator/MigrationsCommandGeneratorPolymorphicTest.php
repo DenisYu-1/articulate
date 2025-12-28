@@ -10,8 +10,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 
-class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase
-{
+class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
     public function testPolymorphicRelationCreatesCorrectMigration()
     {
         $tableCompareResult = new TableCompareResult(

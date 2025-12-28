@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\EntityManager;
 
-interface HydratorInterface
-{
+interface HydratorInterface {
     /**
      * Hydrate a database row into an entity object.
      *

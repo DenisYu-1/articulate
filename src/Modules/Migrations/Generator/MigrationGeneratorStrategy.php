@@ -4,8 +4,7 @@ namespace Articulate\Modules\Migrations\Generator;
 
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-interface MigrationGeneratorStrategy
-{
+interface MigrationGeneratorStrategy {
     /**
      * Generate SQL for table operations.
      */

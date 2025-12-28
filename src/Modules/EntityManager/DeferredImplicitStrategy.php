@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\EntityManager;
 
-class DeferredImplicitStrategy implements ChangeTrackingStrategy
-{
+class DeferredImplicitStrategy implements ChangeTrackingStrategy {
     private array $originalData = [];
 
     public function trackEntity(object $entity, array $originalData): void

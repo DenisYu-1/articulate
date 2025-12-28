@@ -11,12 +11,12 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityMetadata;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\RelationshipLoader;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'test_authors')]
-class TestAuthor
-{
+class TestAuthor {
     #[PrimaryKey]
     public int $id;
 
@@ -28,8 +28,7 @@ class TestAuthor
 }
 
 #[Entity(tableName: 'test_books')]
-class TestBook
-{
+class TestBook {
     #[PrimaryKey]
     public int $id;
 
@@ -43,8 +42,7 @@ class TestBook
     public ?TestAuthor $author;
 }
 
-class RelationshipLoaderTest extends TestCase
-{
+class RelationshipLoaderTest extends TestCase {
     private RelationshipLoader $loader;
 
     private EntityManager $entityManager;
@@ -109,6 +107,6 @@ class RelationshipLoaderTest extends TestCase
     public function testGetMetadataRegistry(): void
     {
         $registry = $this->loader->getMetadataRegistry();
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\EntityMetadataRegistry::class, $registry);
+        $this->assertInstanceOf(EntityMetadataRegistry::class, $registry);
     }
 }

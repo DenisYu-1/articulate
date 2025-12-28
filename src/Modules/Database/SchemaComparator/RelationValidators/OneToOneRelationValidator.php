@@ -8,8 +8,7 @@ use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\OneToOne;
 use RuntimeException;
 
-class OneToOneRelationValidator implements RelationValidatorInterface
-{
+class OneToOneRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
         if (!$relation->isForeignKeyRequired()) {

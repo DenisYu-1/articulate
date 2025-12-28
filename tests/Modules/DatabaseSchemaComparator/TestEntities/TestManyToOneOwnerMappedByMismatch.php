@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 
 #[Entity]
-class TestManyToOneOwnerMappedByMismatch
-{
+class TestManyToOneOwnerMappedByMismatch {
     #[Property]
     public int $id;
 

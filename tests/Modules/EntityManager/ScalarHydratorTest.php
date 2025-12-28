@@ -2,11 +2,11 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
+use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\ScalarHydrator;
 use PHPUnit\Framework\TestCase;
 
-class ScalarHydratorTest extends TestCase
-{
+class ScalarHydratorTest extends TestCase {
     private ScalarHydrator $hydrator;
 
     protected function setUp(): void
@@ -16,7 +16,7 @@ class ScalarHydratorTest extends TestCase
 
     public function testImplementsHydratorInterface(): void
     {
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $this->hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
     }
 
     public function testHydrateSingleColumnReturnsScalar(): void

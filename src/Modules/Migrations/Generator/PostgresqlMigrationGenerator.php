@@ -6,8 +6,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-class PostgresqlMigrationGenerator extends AbstractMigrationGenerator
-{
+class PostgresqlMigrationGenerator extends AbstractMigrationGenerator {
     public function getIdentifierQuote(): string
     {
         return '"';

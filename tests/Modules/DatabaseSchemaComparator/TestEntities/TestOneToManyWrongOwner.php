@@ -6,8 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 
 #[Entity]
-class TestOneToManyWrongOwner
-{
+class TestOneToManyWrongOwner {
     #[Property]
     public int $id;
 

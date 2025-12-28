@@ -21,8 +21,7 @@ use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
 
-readonly class DatabaseSchemaComparator
-{
+readonly class DatabaseSchemaComparator {
     public function __construct(
         private DatabaseSchemaReader $databaseSchemaReader,
         private SchemaNaming $schemaNaming,

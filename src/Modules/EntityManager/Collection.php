@@ -11,8 +11,7 @@ use IteratorAggregate;
  * Collection class for managing OneToMany and ManyToMany relationships.
  * Provides array-like access with additional relationship management features.
  */
-class Collection implements ArrayAccess, Countable, IteratorAggregate
-{
+class Collection implements ArrayAccess, Countable, IteratorAggregate {
     private array $items = [];
 
     private bool $isDirty = false;

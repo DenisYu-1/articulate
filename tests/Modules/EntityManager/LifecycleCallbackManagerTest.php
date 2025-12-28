@@ -7,8 +7,7 @@ use Articulate\Attributes\Lifecycle\PrePersist;
 use Articulate\Modules\EntityManager\LifecycleCallbackManager;
 use PHPUnit\Framework\TestCase;
 
-class CallbackTestEntity
-{
+class CallbackTestEntity {
     public array $callbacksCalled = [];
 
     #[PrePersist]
@@ -35,8 +34,7 @@ class CallbackTestEntity
     }
 }
 
-class LifecycleCallbackManagerTest extends TestCase
-{
+class LifecycleCallbackManagerTest extends TestCase {
     private LifecycleCallbackManager $callbackManager;
 
     protected function setUp(): void

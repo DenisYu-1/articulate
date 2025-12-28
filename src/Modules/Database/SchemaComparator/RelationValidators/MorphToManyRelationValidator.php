@@ -6,10 +6,10 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\RelationInterface;
+use Articulate\Attributes\Relations\MorphedByMany;
 use RuntimeException;
 
-class MorphToManyRelationValidator implements RelationValidatorInterface
-{
+class MorphToManyRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
         if ($relation instanceof ReflectionMorphToMany) {
@@ -56,7 +56,7 @@ class MorphToManyRelationValidator implements RelationValidatorInterface
 
         // Look for a MorphedByMany property on the target entity with the same morph name
         foreach ($targetEntity->getProperties() as $property) {
-            $morphedByManyAttributes = $property->getAttributes(\Articulate\Attributes\Relations\MorphedByMany::class);
+            $morphedByManyAttributes = $property->getAttributes(MorphedByMany::class);
             if (!empty($morphedByManyAttributes)) {
                 $attribute = $morphedByManyAttributes[0]->newInstance();
                 if ($attribute->getMorphName() === $morphName) {

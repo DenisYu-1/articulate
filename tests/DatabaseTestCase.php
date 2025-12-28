@@ -15,8 +15,7 @@ use Articulate\Connection;
  * - Use data providers like databaseProvider(), mysqlProvider(), etc.
  * - Test methods will receive Connection and database name parameters
  */
-abstract class DatabaseTestCase extends AbstractTestCase
-{
+abstract class DatabaseTestCase extends AbstractTestCase {
     use DatabaseTestTrait;
 
     /**

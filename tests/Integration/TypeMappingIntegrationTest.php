@@ -13,8 +13,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestBoolEntit
 /**
  * Integration test to verify type mapping works end-to-end.
  */
-class TypeMappingIntegrationTest extends AbstractTestCase
-{
+class TypeMappingIntegrationTest extends AbstractTestCase {
     public function testBoolTypeMappingInMigrations(): void
     {
         $this->skipIfDatabaseNotAvailable('mysql');

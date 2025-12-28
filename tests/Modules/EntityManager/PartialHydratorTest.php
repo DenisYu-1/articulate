@@ -2,13 +2,13 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
+use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\PartialHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\TestCase;
 
-class PartialHydratorTest extends TestCase
-{
+class PartialHydratorTest extends TestCase {
     private PartialHydrator $hydrator;
 
     private ObjectHydrator $objectHydrator;
@@ -24,7 +24,7 @@ class PartialHydratorTest extends TestCase
 
     public function testImplementsHydratorInterface(): void
     {
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $this->hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
     }
 
     public function testHydrateCreatesEntityWithPartialData(): void
@@ -100,8 +100,7 @@ class PartialHydratorTest extends TestCase
 }
 
 // Test entity for partial hydration
-class TestPartialEntity
-{
+class TestPartialEntity {
     public ?int $id = null;
 
     public ?string $name = null;

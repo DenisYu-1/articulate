@@ -12,8 +12,7 @@ use RuntimeException;
 /**
  * Hydrator that creates lazy-loading proxies instead of real entities.
  */
-class LazyLoadingHydrator implements HydratorInterface
-{
+class LazyLoadingHydrator implements HydratorInterface {
     public function __construct(
         private UnitOfWork $unitOfWork,
         private ProxyManager $proxyManager,

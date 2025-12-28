@@ -5,8 +5,7 @@ namespace Articulate\Modules\Migrations\Generator;
 use Articulate\Connection;
 use Throwable;
 
-abstract class BaseMigration
-{
+abstract class BaseMigration {
     public function __construct(
         private readonly Connection $connection
     ) {

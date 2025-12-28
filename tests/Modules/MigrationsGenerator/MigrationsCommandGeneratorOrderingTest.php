@@ -10,8 +10,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 
-class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase
-{
+class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
     public function testDropOperationsOrderForeignKeysBeforeColumns()
     {
         $tableCompareResult = new TableCompareResult(

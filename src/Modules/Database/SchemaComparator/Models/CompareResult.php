@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Models;
 
-class CompareResult
-{
+class CompareResult {
     public const OPERATION_CREATE = 'create';
 
     public const OPERATION_UPDATE = 'update';

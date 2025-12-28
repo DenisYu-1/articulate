@@ -15,8 +15,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorph
 /**
  * Integration test for polymorphic many-to-many relations end-to-end functionality.
  */
-class PolymorphicManyToManyIntegrationTest extends AbstractTestCase
-{
+class PolymorphicManyToManyIntegrationTest extends AbstractTestCase {
     public function testPolymorphicManyToManyRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database

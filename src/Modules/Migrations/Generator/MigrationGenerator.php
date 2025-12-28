@@ -4,8 +4,7 @@ namespace Articulate\Modules\Migrations\Generator;
 
 use DateTimeImmutable;
 
-class MigrationGenerator
-{
+class MigrationGenerator {
     private string $templatePath;
 
     private string $outputDirectory;

@@ -9,8 +9,7 @@ use Articulate\Schema\SchemaNaming;
 use Exception;
 use RuntimeException;
 
-class ReflectionManyToMany implements RelationInterface
-{
+class ReflectionManyToMany implements RelationInterface {
     public function __construct(
         private readonly ManyToMany $attribute,
         private readonly \ReflectionProperty $property,

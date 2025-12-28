@@ -5,8 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use PHPUnit\Framework\TestCase;
 
-class DeferredImplicitStrategyTest extends TestCase
-{
+class DeferredImplicitStrategyTest extends TestCase {
     private DeferredImplicitStrategy $strategy;
 
     protected function setUp(): void

@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Models;
 
-class PropertiesData
-{
+class PropertiesData {
     public function __construct(
         public readonly ?string $type = null,
         public readonly ?bool $isNullable = null,

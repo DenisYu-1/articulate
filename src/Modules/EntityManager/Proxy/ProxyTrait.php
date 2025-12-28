@@ -5,8 +5,7 @@ namespace Articulate\Modules\EntityManager\Proxy;
 /**
  * Trait that provides lazy loading functionality for proxy objects.
  */
-trait ProxyTrait
-{
+trait ProxyTrait {
     private bool $_initialized = false;
 
     private string $_entityClass;

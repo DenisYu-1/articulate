@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Models;
 
-class ColumnCompareResult extends CompareResult
-{
+class ColumnCompareResult extends CompareResult {
     public readonly bool $typeMatch;
 
     public readonly bool $isNullableMatch;

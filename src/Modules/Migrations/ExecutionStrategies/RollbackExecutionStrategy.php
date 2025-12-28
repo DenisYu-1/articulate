@@ -8,8 +8,7 @@ use Articulate\Utils\MigrationFileUtils;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface
-{
+class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface {
     public function __construct(
         private readonly Connection $connection
     ) {

@@ -12,8 +12,7 @@ use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
-class UnitOfWorkTest extends TestCase
-{
+class UnitOfWorkTest extends TestCase {
     private UnitOfWork $unitOfWork;
 
     protected function setUp(): void
@@ -380,8 +379,7 @@ class UnitOfWorkTest extends TestCase
 }
 
 // Test entity class for ID generation tests
-class TestEntityForId
-{
+class TestEntityForId {
     public ?int $id = null;
 
     public string $name;
@@ -389,8 +387,7 @@ class TestEntityForId
 
 // Test entity class for UUID generation tests
 #[Entity]
-class TestEntityForUuid
-{
+class TestEntityForUuid {
     #[PrimaryKey(generator: 'uuid')]
     #[Property]
     public ?string $id = null;

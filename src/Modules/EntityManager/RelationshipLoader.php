@@ -7,8 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 /**
  * Handles loading of entity relationships.
  */
-class RelationshipLoader
-{
+class RelationshipLoader {
     public function __construct(
         private EntityManager $entityManager,
         private EntityMetadataRegistry $metadataRegistry

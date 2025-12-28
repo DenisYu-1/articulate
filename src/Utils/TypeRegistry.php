@@ -6,8 +6,7 @@ namespace Articulate\Utils;
  * Registry for mapping PHP types to database types and vice versa.
  * Supports custom type converters and bidirectional mapping.
  */
-class TypeRegistry
-{
+class TypeRegistry {
     private array $phpToDb = [];
 
     private array $dbToPhp = [];

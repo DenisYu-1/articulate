@@ -5,8 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\EntityState;
 use PHPUnit\Framework\TestCase;
 
-class EntityStateTest extends TestCase
-{
+class EntityStateTest extends TestCase {
     public function testEntityStateEnumValues(): void
     {
         $this->assertEquals('NEW', EntityState::NEW->name);

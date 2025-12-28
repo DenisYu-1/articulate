@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Indexes;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class PrimaryKey
-{
+class PrimaryKey {
     public function __construct(
         public ?string $generator = null
     ) {

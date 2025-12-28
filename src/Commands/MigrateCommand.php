@@ -16,8 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'articulate:migrate')]
-class MigrateCommand extends Command
-{
+class MigrateCommand extends Command {
     public function __construct(
         private readonly Connection $connection,
         private readonly InitCommand $initCommand,

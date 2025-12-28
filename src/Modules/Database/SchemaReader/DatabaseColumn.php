@@ -4,8 +4,7 @@ namespace Articulate\Modules\Database\SchemaReader;
 
 use Articulate\Utils\TypeRegistry;
 
-class DatabaseColumn
-{
+class DatabaseColumn {
     public readonly ?int $length;
 
     public readonly string $type;

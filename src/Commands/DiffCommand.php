@@ -15,8 +15,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'articulate:diff')]
-class DiffCommand extends Command
-{
+class DiffCommand extends Command {
     private readonly MigrationGenerator $migrationGenerator;
 
     public function __construct(

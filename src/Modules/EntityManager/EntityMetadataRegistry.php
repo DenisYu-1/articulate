@@ -5,8 +5,7 @@ namespace Articulate\Modules\EntityManager;
 /**
  * Registry for caching and accessing entity metadata.
  */
-class EntityMetadataRegistry
-{
+class EntityMetadataRegistry {
     /** @var array<string, EntityMetadata> */
     private array $metadataCache = [];
 

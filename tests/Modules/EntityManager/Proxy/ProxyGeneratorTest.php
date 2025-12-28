@@ -7,11 +7,11 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\Proxy\ProxyGenerator;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'test_proxy_entities')]
-class ProxyGeneratorTestEntity
-{
+class ProxyGeneratorTestEntity {
     #[PrimaryKey]
     public ?int $id = null;
 
@@ -19,8 +19,7 @@ class ProxyGeneratorTestEntity
     public ?string $name = null;
 }
 
-class ProxyGeneratorTest extends TestCase
-{
+class ProxyGeneratorTest extends TestCase {
     private ProxyGenerator $generator;
 
     private EntityMetadataRegistry $metadataRegistry;
@@ -53,7 +52,7 @@ class ProxyGeneratorTest extends TestCase
     {
         $proxy = $this->generator->createProxy(ProxyGeneratorTestEntity::class, 123, fn () => null, $this);
 
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\Proxy\ProxyInterface::class, $proxy);
+        $this->assertInstanceOf(ProxyInterface::class, $proxy);
         $this->assertEquals(ProxyGeneratorTestEntity::class, $proxy->getProxyEntityClass());
         $this->assertFalse($proxy->isProxyInitialized());
     }

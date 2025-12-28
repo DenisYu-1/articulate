@@ -7,8 +7,7 @@ use Articulate\Modules\Migrations\Generator\BaseMigration;
 use Articulate\Utils\MigrationFileUtils;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface
-{
+class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface {
     public function __construct(
         private readonly Connection $connection
     ) {

@@ -10,8 +10,7 @@ use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
 
 #[Entity(tableName: 'shared_mapping_owner_conflict')]
-class TestManyToManySharedOwnerConflict
-{
+class TestManyToManySharedOwnerConflict {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -42,8 +41,7 @@ class TestManyToManySharedOwnerConflict
 }
 
 #[Entity(tableName: 'shared_mapping_target_conflict')]
-class TestManyToManySharedTargetConflict
-{
+class TestManyToManySharedTargetConflict {
     #[PrimaryKey]
     #[Property]
     public int $id;

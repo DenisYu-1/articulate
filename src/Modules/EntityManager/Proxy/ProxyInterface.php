@@ -5,8 +5,7 @@ namespace Articulate\Modules\EntityManager\Proxy;
 /**
  * Interface for proxy objects that support lazy loading.
  */
-interface ProxyInterface
-{
+interface ProxyInterface {
     /**
      * Check if the proxy has been initialized (data loaded).
      */

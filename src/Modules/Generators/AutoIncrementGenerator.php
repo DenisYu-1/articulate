@@ -5,8 +5,7 @@ namespace Articulate\Modules\Generators;
 /**
  * Auto-increment generator for integer primary keys.
  */
-class AutoIncrementGenerator extends AbstractGenerator
-{
+class AutoIncrementGenerator extends AbstractGenerator {
     /**
      * @var int[]
      */

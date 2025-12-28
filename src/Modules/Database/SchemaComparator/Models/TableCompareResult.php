@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Models;
 
-class TableCompareResult extends CompareResult
-{
+class TableCompareResult extends CompareResult {
     /**
      * @param ColumnCompareResult[] $columns
      * @param IndexCompareResult[] $indexes

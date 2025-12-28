@@ -11,8 +11,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 
-class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase
-{
+class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
     public function testDropsIndex()
     {
         $tableCompareResult = new TableCompareResult(

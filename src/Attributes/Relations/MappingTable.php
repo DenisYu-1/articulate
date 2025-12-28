@@ -2,8 +2,7 @@
 
 namespace Articulate\Attributes\Relations;
 
-class MappingTable
-{
+class MappingTable {
     /**
      * @param MappingTableProperty[] $properties
      */

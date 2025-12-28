@@ -6,8 +6,7 @@ use Articulate\Connection;
 use PDO;
 use PDOException;
 
-class DatabaseSchemaReader
-{
+class DatabaseSchemaReader {
     public function __construct(private readonly Connection $connection)
     {
     }

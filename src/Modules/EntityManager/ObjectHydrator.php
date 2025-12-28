@@ -6,8 +6,7 @@ use Articulate\Attributes\Property;
 use ReflectionClass;
 use ReflectionProperty;
 
-class ObjectHydrator implements HydratorInterface
-{
+class ObjectHydrator implements HydratorInterface {
     private ?RelationshipLoader $relationshipLoader;
 
     private LifecycleCallbackManager $callbackManager;

@@ -8,8 +8,7 @@ use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\MorphTo;
 use RuntimeException;
 
-class PolymorphicRelationValidator implements RelationValidatorInterface
-{
+class PolymorphicRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
         if ($relation->isMorphTo()) {

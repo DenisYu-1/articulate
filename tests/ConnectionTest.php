@@ -4,8 +4,7 @@ namespace Articulate\Tests;
 
 use Articulate\Connection;
 
-class ConnectionTest extends AbstractTestCase
-{
+class ConnectionTest extends AbstractTestCase {
     public function testPdoAttributesAreSetCorrectly()
     {
         // We can't easily test the actual PDO construction without a real database

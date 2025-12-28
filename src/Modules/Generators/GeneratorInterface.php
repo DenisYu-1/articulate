@@ -5,8 +5,7 @@ namespace Articulate\Modules\Generators;
 /**
  * Interface for ID generators.
  */
-interface GeneratorInterface
-{
+interface GeneratorInterface {
     /**
      * Generate a new ID value.
      *

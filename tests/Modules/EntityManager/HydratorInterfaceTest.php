@@ -5,8 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use PHPUnit\Framework\TestCase;
 
-class HydratorInterfaceTest extends TestCase
-{
+class HydratorInterfaceTest extends TestCase {
     public function testHydratorInterfaceExists(): void
     {
         $this->assertTrue(interface_exists(HydratorInterface::class));

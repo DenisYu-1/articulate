@@ -17,8 +17,7 @@ use Articulate\Modules\EntityManager\EntityManager;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'lifecycle_test_users')]
-class LifecycleTestUser
-{
+class LifecycleTestUser {
     #[PrimaryKey]
     public ?int $id = null;
 
@@ -74,8 +73,7 @@ class LifecycleTestUser
     }
 }
 
-class LifecycleCallbackTest extends TestCase
-{
+class LifecycleCallbackTest extends TestCase {
     private EntityManager $entityManager;
 
     protected function setUp(): void

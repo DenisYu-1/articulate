@@ -7,15 +7,13 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'registry_test_users')]
-class RegistryTestUser
-{
+class RegistryTestUser {
     public int $id;
 
     public string $name;
 }
 
-class EntityMetadataRegistryTest extends TestCase
-{
+class EntityMetadataRegistryTest extends TestCase {
     private EntityMetadataRegistry $registry;
 
     protected function setUp(): void

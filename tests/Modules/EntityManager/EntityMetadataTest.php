@@ -10,8 +10,7 @@ use Articulate\Modules\EntityManager\EntityMetadata;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'test_users')]
-class TestEntityMetadataUser
-{
+class TestEntityMetadataUser {
     #[PrimaryKey]
     public int $id;
 
@@ -26,8 +25,7 @@ class TestEntityMetadataUser
 }
 
 #[Entity]
-class TestEntityMetadataPost
-{
+class TestEntityMetadataPost {
     #[PrimaryKey]
     public int $id;
 
@@ -41,8 +39,7 @@ class TestEntityMetadataPost
     public int $authorId;
 }
 
-class EntityMetadataTest extends TestCase
-{
+class EntityMetadataTest extends TestCase {
     public function testGetTableNameFromAttribute(): void
     {
         $metadata = new EntityMetadata(TestEntityMetadataUser::class);

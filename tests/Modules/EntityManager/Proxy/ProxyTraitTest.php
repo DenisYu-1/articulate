@@ -5,8 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager\Proxy;
 use Articulate\Modules\EntityManager\Proxy\ProxyTrait;
 use PHPUnit\Framework\TestCase;
 
-class ProxyTraitTestEntity
-{
+class ProxyTraitTestEntity {
     use ProxyTrait;
 
     public ?int $id = null;
@@ -14,8 +13,7 @@ class ProxyTraitTestEntity
     // Note: $name is not declared here so __get will be triggered
 }
 
-class ProxyTraitTest extends TestCase
-{
+class ProxyTraitTest extends TestCase {
     public function testProxyInitialization(): void
     {
         $entity = new ProxyTraitTestEntity();

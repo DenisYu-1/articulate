@@ -9,8 +9,7 @@ use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use RuntimeException;
 
-class ManyToOneRelationValidator implements RelationValidatorInterface
-{
+class ManyToOneRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
         if (!$relation->isManyToOne()) {

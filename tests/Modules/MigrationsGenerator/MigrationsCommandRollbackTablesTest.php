@@ -9,8 +9,7 @@ use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandRollbackTablesTest extends AbstractTestCase
-{
+class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
     #[DataProvider('cases')]
     public function testCreateTable(string $query, string $operation, array $parameters)
     {

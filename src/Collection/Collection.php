@@ -2,8 +2,7 @@
 
 namespace Articulate\Collection;
 
-class Collection
-{
+class Collection {
     private $items = [];
 
     public function __construct($items)

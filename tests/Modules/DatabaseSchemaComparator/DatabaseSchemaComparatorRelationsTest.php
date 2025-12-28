@@ -36,8 +36,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMa
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMainEntityNoFk;
 use RuntimeException;
 
-class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase
-{
+class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase {
     /**
      * 1. создание релейшена
      * 2. апдейт релейшена

@@ -6,8 +6,7 @@ use PDO;
 use PDOException;
 use PDOStatement;
 
-class Connection
-{
+class Connection {
     public const MYSQL = 'mysql';
 
     public const PGSQL = 'pgsql';

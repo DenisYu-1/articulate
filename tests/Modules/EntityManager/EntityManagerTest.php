@@ -6,12 +6,12 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityState;
+use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
 
-class EntityManagerTest extends TestCase
-{
+class EntityManagerTest extends TestCase {
     private EntityManager $entityManager;
 
     protected function setUp(): void
@@ -266,10 +266,10 @@ class EntityManagerTest extends TestCase
     public function testHydratorAccess(): void
     {
         $hydrator = $this->entityManager->getHydrator();
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $hydrator);
 
         // Test setting a custom hydrator
-        $customHydrator = $this->createMock(\Articulate\Modules\EntityManager\HydratorInterface::class);
+        $customHydrator = $this->createMock(HydratorInterface::class);
         $this->entityManager->setHydrator($customHydrator);
 
         $this->assertSame($customHydrator, $this->entityManager->getHydrator());
@@ -315,7 +315,7 @@ class EntityManagerTest extends TestCase
 
         // QueryBuilder should have hydrator set
         $hydrator = $qb->getHydrator();
-        $this->assertInstanceOf(\Articulate\Modules\EntityManager\HydratorInterface::class, $hydrator);
+        $this->assertInstanceOf(HydratorInterface::class, $hydrator);
 
         // Main query builder should also have hydrator
         $mainQb = $this->entityManager->getQueryBuilder();

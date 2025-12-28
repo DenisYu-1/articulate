@@ -6,8 +6,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-class MySqlMigrationGenerator extends AbstractMigrationGenerator
-{
+class MySqlMigrationGenerator extends AbstractMigrationGenerator {
     public function getIdentifierQuote(): string
     {
         return '`';
