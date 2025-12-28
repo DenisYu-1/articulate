@@ -3,8 +3,10 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
+use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Utils\TypeRegistry;
 
 class EntityManager {
     private Connection $connection;
@@ -366,15 +368,82 @@ class EntityManager {
             }
         }
 
-        // TODO: Create proxy and register in identity map
-        // For now, throw an exception
-        throw new \RuntimeException('getReference not yet implemented');
+        // Create a proxy for lazy loading
+        if ($this->proxyManager === null) {
+            throw new \RuntimeException('Proxy manager is not available');
+        }
+
+        $proxy = $this->proxyManager->createProxy($class, $id);
+
+        // Register the proxy as managed in the unit of work
+        // Note: We pass empty array for original data since we haven't loaded it yet
+        $this->getUnitOfWork()->registerManaged($proxy, []);
+
+        return $proxy;
     }
 
     public function refresh(object $entity): void
     {
-        // TODO: Reload entity data from database
-        throw new \RuntimeException('refresh not yet implemented');
+        // Get entity class name (handle proxies)
+        $entityClass = $entity instanceof Proxy\ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : $entity::class;
+
+        // Get entity metadata
+        $metadata = $this->metadataRegistry->getMetadata($entityClass);
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
+
+        if (empty($primaryKeyColumns)) {
+            throw new \RuntimeException("Entity {$entityClass} has no primary key");
+        }
+
+        // For now, assume single primary key
+        $primaryKeyColumn = $primaryKeyColumns[0];
+        $propertyName = $metadata->getPropertyNameForColumn($primaryKeyColumn);
+
+        if (!$propertyName) {
+            throw new \RuntimeException("Cannot determine primary key property for entity {$entityClass}");
+        }
+
+        // Get the entity's ID
+        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty->setAccessible(true);
+        $id = $reflectionProperty->getValue($entity);
+
+        if ($id === null) {
+            throw new \RuntimeException("Entity {$entityClass} has null primary key value");
+        }
+
+        // Query database for fresh data
+        $tableName = $metadata->getTableName();
+        $qb = $this->createQueryBuilder()
+            ->select(...$metadata->getColumnNames())
+            ->from($tableName)
+            ->where("$primaryKeyColumn = ?", $id)
+            ->limit(1);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+        $statement = $this->connection->executeQuery($sql, $params);
+        $rawResults = $statement->fetchAll();
+
+        if (empty($rawResults)) {
+            throw new EntityNotFoundException("Entity {$entityClass} with ID {$id} not found in database");
+        }
+
+        $freshData = $rawResults[0];
+
+        // If it's a proxy, initialize it with fresh data
+        if ($entity instanceof Proxy\ProxyInterface && !$entity->isProxyInitialized()) {
+            $this->hydrator->hydrate($entityClass, $freshData, $entity);
+            $entity->markProxyInitialized();
+        } else {
+            // For regular entities, update properties with fresh data
+            $this->updateEntityProperties($entity, $freshData, $metadata);
+        }
+
+        // Update the unit of work's original data to reflect the fresh state
+        $this->getUnitOfWork()->registerManaged($entity, $freshData);
     }
 
     // Transaction management
@@ -501,5 +570,26 @@ class EntityManager {
     public function createProxy(string $entityClass, mixed $identifier): Proxy\ProxyInterface
     {
         return $this->proxyManager->createProxy($entityClass, $identifier);
+    }
+
+    /**
+     * Update entity properties with fresh data from database.
+     */
+    private function updateEntityProperties(object $entity, array $data, EntityMetadata $metadata): void
+    {
+        $typeRegistry = new TypeRegistry();
+
+        foreach ($metadata->getProperties() as $propertyName => $property) {
+            $columnName = $property->getColumnName();
+            if (array_key_exists($columnName, $data)) {
+                $value = $data[$columnName];
+                // Convert database value back to PHP type
+                $phpValue = $typeRegistry->convertToPHP($property->getType(), $value);
+
+                $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+                $reflectionProperty->setAccessible(true);
+                $reflectionProperty->setValue($entity, $phpValue);
+            }
+        }
     }
 }

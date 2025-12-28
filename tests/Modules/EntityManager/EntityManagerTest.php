@@ -114,20 +114,19 @@ class EntityManagerTest extends TestCase {
         $this->assertEmpty($result);
     }
 
-    public function testGetReferenceThrowsException(): void
+    public function testGetReferenceThrowsExceptionWhenProxyManagerNotAvailable(): void
     {
-        // Since getReference is not implemented yet, it should throw an exception
+        // getReference requires a proxy manager, which isn't set up in basic tests
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('getReference not yet implemented');
+        $this->expectExceptionMessage('Proxy manager is not available');
 
         $this->entityManager->getReference(TestEntity::class, 1);
     }
 
-    public function testRefreshThrowsException(): void
+    public function testRefreshThrowsExceptionWithMockConnection(): void
     {
-        // Since refresh is not implemented yet, it should throw an exception
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('refresh not yet implemented');
+        // refresh tries to query the database, which will fail with a mock connection
+        $this->expectException(\Exception::class);
 
         $entity = new class() {
             public int $id = 1;

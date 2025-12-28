@@ -165,7 +165,6 @@ Articulate provides a solid foundation for PHP ORM development with the followin
 ### 🚧 High Priority
 - **Schema Reader**: Currently MySQL-only; returns empty results for PostgreSQL/SQLite and incorrectly handles typed columns (e.g., `int(11)` → `string`)
 - **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
-- **EntityManager Methods**: `getReference()` and `refresh()` are not implemented
 - **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
 
 ### 📋 Medium Priority
