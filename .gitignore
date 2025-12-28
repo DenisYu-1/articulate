@@ -6,3 +6,6 @@
 build
 docker-compose.override.yml
 infection.log
+.deptrac.cache
+node_modules/
+architecture.svg
