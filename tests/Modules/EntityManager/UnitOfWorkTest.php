@@ -376,6 +376,63 @@ class UnitOfWorkTest extends TestCase {
         // Should be in identity map
         $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
     }
+
+    public function testImplicitIdPropertyAsPrimaryKey(): void
+    {
+        // Entity with just a plain 'id' property (no attributes)
+        $entity = new class() {
+            public ?int $id = null;
+
+            public string $name = 'Implicit ID Entity';
+        };
+
+        $this->unitOfWork->persist($entity);
+        $this->unitOfWork->commit();
+
+        // Should treat 'id' as primary key with auto-increment
+        $this->assertNotNull($entity->id);
+        $this->assertIsInt($entity->id);
+        $this->assertEquals(1, $entity->id);
+
+        // Should be in identity map
+        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
+    }
+
+    public function testGetEntityByOidFailureInComputeChangeSets(): void
+    {
+        // This test demonstrates the bug where getEntityByOid always returns null
+        // even when the entity OID exists in entityStates
+
+        $entity = new class() {
+            public int $id = 1;
+
+            public string $name = 'modified';
+        };
+
+        $originalData = ['id' => 1, 'name' => 'original'];
+        $this->unitOfWork->registerManaged($entity, $originalData);
+
+        // At this point, the entity should be managed and have an OID in entityStates
+        $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
+
+        // The entity has changes (name changed from 'original' to 'modified')
+        $changes = $this->unitOfWork->getEntityChangeSet($entity);
+        $this->assertEquals(['name' => 'modified'], $changes);
+
+        // computeChangeSets() internally calls getEntityByOid() for each managed entity
+        // to check for changes and schedule updates. Currently, getEntityByOid() always returns null,
+        // so no entities are scheduled for update even though they have changes
+        $this->unitOfWork->computeChangeSets();
+
+        // The entity should be scheduled for update because it has changes,
+        // but currently it's not scheduled due to getEntityByOid bug
+        $entityOid = spl_object_id($entity);
+        $this->assertArrayHasKey(
+            $entityOid,
+            $this->unitOfWork->getScheduledUpdates(),
+            'Entity with changes should be scheduled for update, but getEntityByOid returns null'
+        );
+    }
 }
 
 // Test entity class for ID generation tests

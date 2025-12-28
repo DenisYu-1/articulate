@@ -115,6 +115,7 @@ abstract class AbstractTestCase extends TestCase {
     {
         try {
             $this->getConnection($databaseName);
+
             return true;
         } catch (Exception) {
             return false;

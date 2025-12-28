@@ -2,6 +2,8 @@
 
 namespace Articulate\Utils;
 
+use InvalidArgumentException;
+
 /**
  * Registry for mapping PHP types to database types and vice versa.
  * Supports custom type converters and bidirectional mapping.
@@ -57,7 +59,7 @@ class TypeRegistry {
         int $priority = 0
     ): void {
         if (!class_exists($classOrInterface) && !interface_exists($classOrInterface)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Cannot register mapping for unknown class or interface: {$classOrInterface}"
             );
         }

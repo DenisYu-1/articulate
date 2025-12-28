@@ -42,27 +42,22 @@ class Connection {
         return $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
-    public function beginTransaction()
+    public function beginTransaction(): void
     {
         if (!$this->pdo->inTransaction()) {
             $this->pdo->beginTransaction();
         }
     }
 
-    public function commit()
+    public function commit(): void
     {
         $this->pdo->commit();
     }
 
-    public function rollbackTransaction()
+    public function rollbackTransaction(): void
     {
         if ($this->pdo->inTransaction()) {
             $this->pdo->rollBack();
         }
-    }
-
-    public function rollback()
-    {
-        $this->rollbackTransaction();
     }
 }

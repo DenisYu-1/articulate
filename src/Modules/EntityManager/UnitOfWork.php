@@ -4,6 +4,8 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Generators\GeneratorRegistry;
+use ReflectionClass;
+use ReflectionProperty;
 
 class UnitOfWork {
     private IdentityMap $identityMap;
@@ -226,6 +228,15 @@ class UnitOfWork {
             }
         }
 
+        // If no explicit primary key found, check for implicit 'id' property
+        $reflection = new ReflectionClass($entityClass);
+        if ($reflection->hasProperty('id')) {
+            // Treat 'id' property as auto-increment primary key by default
+            $generator = $this->generatorRegistry->getGenerator('auto_increment');
+
+            return $generator->generate($entityClass);
+        }
+
         // Default to auto-increment for backward compatibility
         $generator = $this->generatorRegistry->getDefaultGenerator();
 
@@ -234,13 +245,10 @@ class UnitOfWork {
 
     private function setEntityId(object $entity, mixed $id): void
     {
-        // TODO: Use entity metadata to find ID property
-        // For now, assume 'id' property exists
-        $reflection = new \ReflectionClass($entity);
-        if ($reflection->hasProperty('id')) {
-            $property = $reflection->getProperty('id');
-            $property->setAccessible(true);
-            $property->setValue($entity, $id);
+        $primaryKeyProperty = $this->findPrimaryKeyProperty($entity);
+        if ($primaryKeyProperty !== null) {
+            $primaryKeyProperty->setAccessible(true);
+            $primaryKeyProperty->setValue($entity, $id);
         }
     }
 
@@ -271,6 +279,15 @@ class UnitOfWork {
         // TODO: Check if entity is in identity map
         // This requires extracting the ID from the entity
         return false;
+    }
+
+    /**
+     * Get scheduled updates (for testing purposes).
+     * @return array<int, object>
+     */
+    public function getScheduledUpdates(): array
+    {
+        return $this->scheduledUpdates;
     }
 
     public function clear(): void
@@ -307,14 +324,31 @@ class UnitOfWork {
 
     private function extractEntityId(object $entity): mixed
     {
-        // TODO: Extract ID based on entity metadata (primary key)
-        // For now, assume there's an 'id' property
-        $reflection = new \ReflectionClass($entity);
-        if ($reflection->hasProperty('id')) {
-            $property = $reflection->getProperty('id');
-            $property->setAccessible(true);
+        $primaryKeyProperty = $this->findPrimaryKeyProperty($entity);
+        if ($primaryKeyProperty !== null) {
+            $primaryKeyProperty->setAccessible(true);
 
-            return $property->getValue($entity);
+            return $primaryKeyProperty->getValue($entity);
+        }
+
+        return null;
+    }
+
+    private function findPrimaryKeyProperty(object $entity): ?ReflectionProperty
+    {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+
+        // First try to find primary key from entity metadata
+        foreach ($reflectionEntity->getEntityProperties() as $property) {
+            if ($property->isPrimaryKey()) {
+                return new ReflectionProperty($entity, $property->getFieldName());
+            }
+        }
+
+        // Treat 'id' property as implicit primary key
+        $reflection = new ReflectionClass($entity);
+        if ($reflection->hasProperty('id')) {
+            return $reflection->getProperty('id');
         }
 
         return null;

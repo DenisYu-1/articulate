@@ -52,15 +52,19 @@ readonly class DatabaseSchemaComparator {
 
             if (!in_array($tableName, $existingTables, true)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
+                $columns = [];
+                $existingIndexes = [];
+                $indexesToRemove = [];
+                $existingForeignKeys = [];
+                $foreignKeysToRemove = [];
             } else {
                 $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
                 $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
                 $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
                 $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
+                $columns = $this->databaseSchemaReader->getTableColumns($tableName);
             }
             unset($tablesToRemove[$tableName]);
-
-            $columns = $this->databaseSchemaReader->getTableColumns($tableName);
             $columnsIndexed = [];
             foreach ($columns as $column) {
                 $columnsIndexed[$column->name] = $column;

@@ -152,7 +152,7 @@ class EntityManager {
 
     public function rollback(): void
     {
-        $this->connection->rollback();
+        $this->connection->rollbackTransaction();
     }
 
     public function transactional(callable $callback): mixed
