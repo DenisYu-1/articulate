@@ -82,15 +82,14 @@ class RelationshipLoader {
         $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
 
         // Find the foreign key column that references this entity
-        $foreignKeyColumn = $relation->getColumnName();
-        if (!$foreignKeyColumn) {
-            // Try to infer from ownedBy property or relationship name
-            $ownedBy = $relation->getEntityProperty()->ownedBy ?? null;
-            if ($ownedBy) {
-                $ownedByRelation = $targetMetadata->getRelation($ownedBy);
-                if ($ownedByRelation && $ownedByRelation->isManyToOne()) {
-                    $foreignKeyColumn = $ownedByRelation->getColumnName();
-                }
+        $foreignKeyColumn = null;
+
+        // Try to infer from ownedBy property
+        $ownedBy = $relation->getMappedByProperty();
+        if ($ownedBy) {
+            $ownedByRelation = $targetMetadata->getRelation($ownedBy);
+            if ($ownedByRelation && $ownedByRelation->isManyToOne()) {
+                $foreignKeyColumn = $ownedByRelation->getColumnName();
             }
         }
 

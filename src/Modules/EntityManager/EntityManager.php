@@ -99,16 +99,43 @@ class EntityManager {
             }
         }
 
-        // TODO: Query database and get result row
-        // For now, simulate with null (no database query yet)
-        $rowData = null;
+        // Query database for the entity
+        $metadata = $this->metadataRegistry->getMetadata($class);
+        $tableName = $metadata->getTableName();
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
 
-        if ($rowData === null) {
+        // For now, assume single primary key
+        if (empty($primaryKeyColumns)) {
             return null;
         }
 
-        // Hydrate the database row into an entity
-        return $this->hydrator->hydrate($class, $rowData);
+        $primaryKeyColumn = $primaryKeyColumns[0];
+
+        // Build and execute query directly to get raw data
+        $qb = $this->createQueryBuilder()
+            ->select('*')
+            ->from($tableName)
+            ->where("$primaryKeyColumn = ?", $id)
+            ->limit(1);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+        $statement = $this->connection->executeQuery($sql, $params);
+        $rawResults = $statement->fetchAll();
+
+        if (empty($rawResults)) {
+            return null;
+        }
+
+        $rawData = $rawResults[0];
+
+        // Hydrate the entity
+        $entity = $this->hydrator->hydrate($class, $rawData);
+
+        // Register the entity as managed in the unit of work
+        $this->getUnitOfWork()->registerManaged($entity, $rawData);
+
+        return $entity;
     }
 
     public function findAll(string $class): array

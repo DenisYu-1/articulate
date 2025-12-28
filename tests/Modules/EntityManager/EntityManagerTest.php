@@ -9,6 +9,7 @@ use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use PHPUnit\Framework\TestCase;
 
 class EntityManagerTest extends TestCase {
@@ -83,18 +84,25 @@ class EntityManagerTest extends TestCase {
 
     public function testFindReturnsNull(): void
     {
-        // Since we don't have database connection or hydration implemented yet,
-        // find should return null
-        $result = $this->entityManager->find('TestEntity', 1);
+        // Create a new EntityManager with a properly mocked connection
+        $connection = $this->createMock(Connection::class);
+
+        // Mock the connection to simulate a database query that returns no results
+        $statement = $this->createMock(\PDOStatement::class);
+        $statement->method('fetchAll')->willReturn([]);
+
+        $connection->method('executeQuery')->willReturn($statement);
+
+        $entityManager = new EntityManager($connection);
+        $result = $entityManager->find(TestEntity::class, 1);
 
         $this->assertNull($result);
     }
 
     public function testFindAllReturnsEmptyArray(): void
     {
-        // Since we don't have database connection implemented yet,
-        // findAll should return empty array
-        $result = $this->entityManager->findAll('TestEntity');
+        // findAll is not implemented yet, should return empty array
+        $result = $this->entityManager->findAll(TestEntity::class);
 
         $this->assertIsArray($result);
         $this->assertEmpty($result);
@@ -106,7 +114,7 @@ class EntityManagerTest extends TestCase {
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('getReference not yet implemented');
 
-        $this->entityManager->getReference('TestEntity', 1);
+        $this->entityManager->getReference(TestEntity::class, 1);
     }
 
     public function testRefreshThrowsException(): void
@@ -288,14 +296,14 @@ class EntityManagerTest extends TestCase {
 
     public function testCreateQueryBuilderWithEntityClass(): void
     {
-        $qb = $this->entityManager->createQueryBuilder('User');
+        $qb = $this->entityManager->createQueryBuilder(TestEntity::class);
 
         $this->assertInstanceOf(QueryBuilder::class, $qb);
-        $this->assertEquals('User', $qb->getEntityClass());
+        $this->assertEquals(TestEntity::class, $qb->getEntityClass());
 
         // Should have table automatically resolved
         $sql = $qb->getSQL();
-        $this->assertStringContainsString('FROM users', $sql);
+        $this->assertStringContainsString('FROM test_entity', $sql);
     }
 
     public function testGetQueryBuilder(): void

@@ -52,19 +52,29 @@ readonly class DatabaseSchemaComparator {
 
             if (!in_array($tableName, $existingTables, true)) {
                 $operation = TableCompareResult::OPERATION_CREATE;
-                $columns = [];
-                $existingIndexes = [];
-                $indexesToRemove = [];
-                $existingForeignKeys = [];
-                $foreignKeysToRemove = [];
             } else {
                 $existingIndexes = $this->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
                 $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
                 $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
                 $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
-                $columns = $this->databaseSchemaReader->getTableColumns($tableName);
             }
             unset($tablesToRemove[$tableName]);
+
+            // Try to get columns, but handle the case where table doesn't exist
+            try {
+                $columns = $this->databaseSchemaReader->getTableColumns($tableName);
+            } catch (\Exception $e) {
+                // Table doesn't exist or other error, treat as no columns
+                $columns = [];
+            }
+
+            // Initialize variables for CREATE operations
+            if (!isset($existingIndexes)) {
+                $existingIndexes = [];
+                $indexesToRemove = [];
+                $existingForeignKeys = [];
+                $foreignKeysToRemove = [];
+            }
             $columnsIndexed = [];
             foreach ($columns as $column) {
                 $columnsIndexed[$column->name] = $column;

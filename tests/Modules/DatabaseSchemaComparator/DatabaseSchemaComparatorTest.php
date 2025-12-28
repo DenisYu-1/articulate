@@ -208,7 +208,6 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReader::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
-        $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $this->expectException(EmptyPropertiesList::class);
         iterator_to_array($databaseSchemaComparator->compareAll([
