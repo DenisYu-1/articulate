@@ -3,6 +3,7 @@
 namespace Articulate\Modules\Database\SchemaReader;
 
 use Articulate\Connection;
+use Articulate\Exceptions\DatabaseSchemaException;
 use PDO;
 use PDOException;
 
@@ -13,6 +14,7 @@ class DatabaseSchemaReader {
 
     /**
      * @return iterable<DatabaseColumn>
+     * @throws DatabaseSchemaException
      */
     public function getTableColumns(string $tableName): array
     {
@@ -23,7 +25,12 @@ class DatabaseSchemaReader {
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $columnInfo) {
                 $result[] = new DatabaseColumn($columnInfo['Field'], $columnInfo['Type'], $columnInfo['Null'] !== 'NO', $columnInfo['Default']);
             }
-        } catch (PDOException) {
+        } catch (PDOException $e) {
+            throw new DatabaseSchemaException(
+                "Failed to retrieve columns for table '{$tableName}': " . $e->getMessage(),
+                0,
+                $e
+            );
         }
 
         return $result;

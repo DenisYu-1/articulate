@@ -5,6 +5,7 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
+use InvalidArgumentException;
 
 class QueryBuilder {
     private Connection $connection;
@@ -242,8 +243,9 @@ class QueryBuilder {
         if ($this->metadataRegistry) {
             try {
                 return $this->metadataRegistry->getTableName($entityClass);
-            } catch (\Exception $e) {
-                // Fall back to simple pluralization if metadata fails
+            } catch (InvalidArgumentException $e) {
+                // Entity is not properly configured, fall back to simple pluralization
+                // This allows QueryBuilder to work even with misconfigured entities
             }
         }
 

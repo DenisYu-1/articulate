@@ -3,7 +3,6 @@
 namespace Articulate;
 
 use PDO;
-use PDOException;
 use PDOStatement;
 
 class Connection {
@@ -27,16 +26,7 @@ class Connection {
             PDO::ATTR_AUTOCOMMIT => false,
         ];
 
-        try {
-            $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
-        } catch (PDOException $e) {
-            throw new PDOException($e->getMessage(), (int) $e->getCode());
-        }
-    }
-
-    public function testConnection()
-    {
-        return $this->pdo instanceof PDO;
+        $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
     }
 
     public function executeQuery(string $sql, array $parameters = []): PDOStatement

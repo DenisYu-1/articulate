@@ -3,6 +3,7 @@
 namespace Articulate\Tests;
 
 use Articulate\Connection;
+use Exception;
 
 /**
  * Trait for running tests across multiple database systems.
@@ -56,18 +57,6 @@ trait DatabaseTestTrait {
     }
 
     /**
-     * Check if a database connection is available.
-     */
-    protected function isConnectionAvailable(Connection $connection): bool
-    {
-        try {
-            return $connection->testConnection();
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    /**
      * Get the current database connection based on the database name.
      */
     protected function getConnection(string $databaseName): Connection
@@ -92,7 +81,7 @@ trait DatabaseTestTrait {
             default => null
         };
 
-        if (!$connection || !$this->isConnectionAvailable($connection)) {
+        if (!$connection) {
             $this->markTestSkipped("{$databaseName} database is not available");
         }
     }
@@ -126,7 +115,7 @@ trait DatabaseTestTrait {
             foreach ($tables as $table) {
                 $connection->executeQuery("DROP TABLE IF EXISTS `{$table}`");
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Ignore cleanup errors
         }
     }
