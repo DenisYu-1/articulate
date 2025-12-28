@@ -140,8 +140,34 @@ class EntityManager {
 
     public function findAll(string $class): array
     {
-        // TODO: Query database and hydrate all entities
-        return [];
+        // Get entity metadata
+        $metadata = $this->metadataRegistry->getMetadata($class);
+        $tableName = $metadata->getTableName();
+
+        // Build and execute query to get all records
+        $qb = $this->createQueryBuilder()
+            ->select('*')
+            ->from($tableName);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+        $statement = $this->connection->executeQuery($sql, $params);
+        $rawResults = $statement->fetchAll();
+
+        if (empty($rawResults)) {
+            return [];
+        }
+
+        $entities = [];
+
+        // Hydrate each entity and register in unit of work
+        foreach ($rawResults as $rawData) {
+            $entity = $this->hydrator->hydrate($class, $rawData);
+            $this->getUnitOfWork()->registerManaged($entity, $rawData);
+            $entities[] = $entity;
+        }
+
+        return $entities;
     }
 
     public function getReference(string $class, mixed $id): object
