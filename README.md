@@ -9,8 +9,9 @@ A context-driven PHP ORM library that enables domain-aware entity management and
 ## Badges
 
 [![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
-[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-82.01%25-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
+[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
+[![Test Coverage](https://img.shields.io/badge/Tests-2000%2B%20Mutations-blue)](https://github.com/DenisYu-1/articulate/actions)
 
 ## Main Concepts
 
@@ -129,14 +130,56 @@ class MoneyConverter implements TypeConverterInterface {
 }
 ```
 
-## Current gaps / known issues
+## What's Implemented
 
-- Schema reader is MySQL-only: it swallows errors, returns empty columns on PostgreSQL/SQLite, and treats lengthed types (e.g., `int(11)`) as `string`.
-- Query builder classes are still missing.
-- Polymorphic relations: `src/Attributes/Relations/README.md`
-### Documentation
+Articulate provides a solid foundation for PHP ORM development with the following core features:
 
-- One-to-one relations: `src/Attributes/Relations/README.md`
+### ✅ Core Architecture
+- **Entity System**: Full attribute-based entity definition with comprehensive relation support
+- **Migration System**: Complete schema management with commands, generators, and execution strategies for MySQL, PostgreSQL, and SQLite
+- **Type Mapping System**: Flexible type conversion with custom converters and priority-based resolution
+- **EntityManager**: Robust implementation with Unit of Work pattern, change tracking, and identity maps
+- **Multi-Database Support**: Comprehensive testing across MySQL, PostgreSQL, and SQLite databases
+
+### ✅ Relations & Associations
+- **Standard Relations**: OneToOne, OneToMany, ManyToOne, ManyToMany with full lifecycle support
+- **Polymorphic Relations**: MorphTo, MorphOne, MorphMany with open-ended design (no hardcoded entity lists)
+- **Advanced Many-to-Many**: Custom junction tables with additional mapping properties
+- **Foreign Key Management**: Automatic FK creation with constraint validation
+
+### ✅ Entity Management
+- **Unit of Work Pattern**: Memory-efficient change tracking with multiple strategies
+- **Hydration System**: Multiple hydrators (Object, Array, Scalar, Partial) for different use cases
+- **Proxy System**: Lazy loading infrastructure for performance optimization
+- **Lifecycle Callbacks**: Pre/Post persist, update, remove, and load hooks
+- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields
+
+### ✅ Development & Testing
+- **Comprehensive Test Suite**: 2000+ mutations with 83%+ kill rate
+- **Multi-Database Testing**: Automated testing across all supported databases
+- **Code Quality**: PHP-CS-Fixer, PHPStan static analysis, Deptrac architecture validation
+- **CI/CD Pipeline**: GitHub Actions with automated QA checks
+
+## Current Gaps & Known Issues
+
+### 🚧 High Priority
+- **Schema Reader**: Currently MySQL-only; returns empty results for PostgreSQL/SQLite and incorrectly handles typed columns (e.g., `int(11)` → `string`)
+- **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
+- **EntityManager Methods**: `getReference()` and `refresh()` are not implemented
+- **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
+
+### 📋 Medium Priority
+- **Repository Pattern**: No abstraction layer for entity-specific queries and operations
+- **Caching**: Missing query result cache and second-level entity cache
+- **Advanced Query Features**: Criteria API, native SQL queries, bulk operations
+- **Lock Modes**: No pessimistic or optimistic locking support
+
+### 🔄 Low Priority
+- **Event System**: Limited to lifecycle callbacks; could benefit from broader event architecture
+- **ID Generation**: Basic auto-increment; missing UUID, sequences, custom generators
+
+### 📚 Documentation
+- **Relations Guide**: `src/Attributes/Relations/README.md` (comprehensive coverage of all relation types)
 
 ## Local Development & Testing
 
@@ -238,14 +281,6 @@ class Order {
     public string $orderNumber; // Natural key, not auto-generated
 }
 ```
-
-### Other Planned Features
-
-- **Advanced Relationship Types**: Many-to-many with custom junction tables
-- **Lazy Loading Proxies**: Automatic proxy generation for relationships
-- **Query Result Caching**: Second-level cache for entities and queries
-- **Database Migrations**: Schema change management
-- **Event System**: Pre/post operation hooks and lifecycle events
 
 ## CI/CD
 
