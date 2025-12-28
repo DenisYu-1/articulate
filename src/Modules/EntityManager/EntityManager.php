@@ -113,7 +113,7 @@ class EntityManager {
 
         // Build and execute query directly to get raw data
         $qb = $this->createQueryBuilder()
-            ->select('*')
+            ->select(...$metadata->getColumnNames())
             ->from($tableName)
             ->where("$primaryKeyColumn = ?", $id)
             ->limit(1);
@@ -146,7 +146,7 @@ class EntityManager {
 
         // Build and execute query to get all records
         $qb = $this->createQueryBuilder()
-            ->select('*')
+            ->select(...$metadata->getColumnNames())
             ->from($tableName);
 
         $sql = $qb->getSQL();
@@ -250,6 +250,7 @@ class EntityManager {
 
         return $qb;
     }
+
 
     // Get the main query builder instance
     public function getQueryBuilder(): QueryBuilder
