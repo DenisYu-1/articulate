@@ -26,6 +26,9 @@ class UnitOfWork {
     /** @var array<int, object> */
     private array $scheduledDeletes = [];
 
+    /** @var array<int, object> */
+    private array $entitiesByOid = [];
+
     private LifecycleCallbackManager $callbackManager;
 
     public function __construct(
@@ -55,10 +58,12 @@ class UnitOfWork {
                 // Register as managed entity
                 $this->registerManaged($entity, []);
                 $this->entityStates[$oid] = EntityState::MANAGED;
+                $this->entitiesByOid[$oid] = $entity;
             } else {
                 // New entity without ID - schedule for insert
                 $this->scheduledInserts[$oid] = $entity;
                 $this->entityStates[$oid] = EntityState::MANAGED;
+                $this->entitiesByOid[$oid] = $entity;
                 $this->changeTrackingStrategy->trackEntity($entity, []);
             }
         } elseif ($state === EntityState::MANAGED) {
@@ -86,18 +91,21 @@ class UnitOfWork {
 
             // Remove from other schedules
             unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
+            unset($this->entitiesByOid[$oid]);
         } elseif ($state === EntityState::NEW) {
             // Entity was never persisted, just remove from schedules
             unset($this->scheduledInserts[$oid]);
             unset($this->entityStates[$oid]);
+            unset($this->entitiesByOid[$oid]);
         }
     }
 
     public function computeChangeSets(): void
     {
-        // Compute changes for all managed entities
+        // Compute changes for all managed entities that are not scheduled for insert
+        // (entities scheduled for insert don't have meaningful change tracking yet)
         foreach ($this->entityStates as $oid => $state) {
-            if ($state === EntityState::MANAGED) {
+            if ($state === EntityState::MANAGED && !isset($this->scheduledInserts[$oid])) {
                 $entity = $this->getEntityByOid($oid);
                 if ($entity && $this->hasChanges($entity)) {
                     $this->scheduledUpdates[$oid] = $entity;
@@ -256,9 +264,11 @@ class UnitOfWork {
     {
         // TODO: Extract ID from entity based on metadata
         $id = $this->extractEntityId($entity);
+        $oid = spl_object_id($entity);
 
         $this->identityMap->add($entity, $id);
-        $this->entityStates[spl_object_id($entity)] = EntityState::MANAGED;
+        $this->entityStates[$oid] = EntityState::MANAGED;
+        $this->entitiesByOid[$oid] = $entity;
         $this->changeTrackingStrategy->trackEntity($entity, $data);
     }
 
@@ -294,6 +304,7 @@ class UnitOfWork {
     {
         $this->identityMap->clear();
         $this->entityStates = [];
+        $this->entitiesByOid = [];
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
@@ -309,17 +320,7 @@ class UnitOfWork {
 
     private function getEntityByOid(int $oid): ?object
     {
-        // This is a simplified approach - in practice, we'd maintain a reverse lookup
-        // For now, search through all tracked entities
-        foreach ($this->entityStates as $entityOid => $state) {
-            if ($entityOid === $oid) {
-                // We'd need a way to get the entity from oid
-                // This is a placeholder - proper implementation would maintain entity references
-                return null;
-            }
-        }
-
-        return null;
+        return $this->entitiesByOid[$oid] ?? null;
     }
 
     private function extractEntityId(object $entity): mixed
