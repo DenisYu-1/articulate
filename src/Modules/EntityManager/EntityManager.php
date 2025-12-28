@@ -23,6 +23,10 @@ class EntityManager
 
     private EntityMetadataRegistry $metadataRegistry;
 
+    private LifecycleCallbackManager $callbackManager;
+
+    private ?Proxy\ProxyManager $proxyManager = null;
+
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
@@ -35,12 +39,26 @@ class EntityManager
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
 
+        // Initialize callback manager
+        $this->callbackManager = new LifecycleCallbackManager();
+
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
+        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
         $this->unitOfWorks[] = $defaultUow;
 
+        // Create relationship loader
+        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
+
+        // Initialize proxy system
+        $proxyGenerator = new Proxy\ProxyGenerator($this->metadataRegistry);
+        $this->proxyManager = new Proxy\ProxyManager(
+            $this,
+            $this->metadataRegistry,
+            $proxyGenerator
+        );
+
         // Initialize hydrator
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager);
 
         // Initialize QueryBuilder
         $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
@@ -163,7 +181,7 @@ class EntityManager
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry);
+        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
@@ -201,5 +219,46 @@ class EntityManager
     public function setHydrator(HydratorInterface $hydrator): void
     {
         $this->hydrator = $hydrator;
+    }
+
+    /**
+     * Load a relationship for an entity.
+     */
+    public function loadRelation(object $entity, string $relationName): mixed
+    {
+        $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        $relation = $metadata->getRelation($relationName);
+
+        if (!$relation) {
+            throw new \InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
+        }
+
+        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
+
+        return $relationshipLoader->load($entity, $relation, true);
+    }
+
+    /**
+     * Create a new collection for relationship management.
+     */
+    public function createCollection(array $items = []): Collection
+    {
+        return new Collection($items);
+    }
+
+    /**
+     * Get the metadata registry.
+     */
+    public function getMetadataRegistry(): EntityMetadataRegistry
+    {
+        return $this->metadataRegistry;
+    }
+
+    /**
+     * Create a lazy-loading proxy for an entity.
+     */
+    public function createProxy(string $entityClass, mixed $identifier): Proxy\ProxyInterface
+    {
+        return $this->proxyManager->createProxy($entityClass, $identifier);
     }
 }

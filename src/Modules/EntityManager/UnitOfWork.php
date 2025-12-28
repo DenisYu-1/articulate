@@ -24,13 +24,17 @@ class UnitOfWork
     /** @var array<int, object> */
     private array $scheduledDeletes = [];
 
+    private LifecycleCallbackManager $callbackManager;
+
     public function __construct(
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
-        ?GeneratorRegistry $generatorRegistry = null
+        ?GeneratorRegistry $generatorRegistry = null,
+        ?LifecycleCallbackManager $callbackManager = null
     ) {
         $this->identityMap = new IdentityMap();
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
+        $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
     }
 
     public function persist(object $entity): void
@@ -39,6 +43,9 @@ class UnitOfWork
         $state = $this->getEntityState($entity);
 
         if ($state === EntityState::NEW) {
+            // Call prePersist callbacks for new entities
+            $this->callbackManager->invokeCallbacks($entity, 'prePersist');
+
             $id = $this->extractEntityId($entity);
 
             // If entity has an ID, it's likely already persisted
@@ -53,6 +60,9 @@ class UnitOfWork
                 $this->changeTrackingStrategy->trackEntity($entity, []);
             }
         } elseif ($state === EntityState::MANAGED) {
+            // Call preUpdate callbacks for managed entities being updated
+            $this->callbackManager->invokeCallbacks($entity, 'preUpdate');
+
             // Entity is already managed, ensure it's tracked for changes
             if (!isset($this->scheduledUpdates[$oid])) {
                 $this->scheduledUpdates[$oid] = $entity;
@@ -64,6 +74,9 @@ class UnitOfWork
     {
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
+
+        // Call preRemove callbacks
+        $this->callbackManager->invokeCallbacks($entity, 'preRemove');
 
         if ($state === EntityState::MANAGED) {
             $this->scheduledDeletes[$oid] = $entity;
@@ -107,6 +120,9 @@ class UnitOfWork
         $this->executeUpdates();
         $this->executeDeletes();
 
+        // Call post callbacks after operations
+        $this->executePostCallbacks();
+
         // Clear schedules
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
@@ -131,6 +147,24 @@ class UnitOfWork
     {
         foreach ($this->scheduledDeletes as $entity) {
             $this->executeDelete($entity);
+        }
+    }
+
+    private function executePostCallbacks(): void
+    {
+        // Call postPersist for inserted entities
+        foreach ($this->scheduledInserts as $entity) {
+            $this->callbackManager->invokeCallbacks($entity, 'postPersist');
+        }
+
+        // Call postUpdate for updated entities
+        foreach ($this->scheduledUpdates as $entity) {
+            $this->callbackManager->invokeCallbacks($entity, 'postUpdate');
+        }
+
+        // Call postRemove for deleted entities
+        foreach ($this->scheduledDeletes as $entity) {
+            $this->callbackManager->invokeCallbacks($entity, 'postRemove');
         }
     }
 

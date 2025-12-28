@@ -8,9 +8,17 @@ use ReflectionProperty;
 
 class ObjectHydrator implements HydratorInterface
 {
+    private ?RelationshipLoader $relationshipLoader;
+
+    private LifecycleCallbackManager $callbackManager;
+
     public function __construct(
-        private readonly UnitOfWork $unitOfWork
+        private readonly UnitOfWork $unitOfWork,
+        ?RelationshipLoader $relationshipLoader = null,
+        ?LifecycleCallbackManager $callbackManager = null
     ) {
+        $this->relationshipLoader = $relationshipLoader;
+        $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
     }
 
     public function hydrate(string $class, array $data, ?object $entity = null): mixed
@@ -26,6 +34,9 @@ class ObjectHydrator implements HydratorInterface
 
         // 4. Register in identity map
         $this->registerEntity($entity, $data);
+
+        // 5. Call postLoad callbacks
+        $this->invokePostLoadCallbacks($entity);
 
         return $entity;
     }
@@ -80,8 +91,33 @@ class ObjectHydrator implements HydratorInterface
 
     private function hydrateRelations(object $entity, array $data): void
     {
-        // TODO: Implement relation hydration
-        // This will handle OneToOne, OneToMany, ManyToOne, ManyToMany relations
+        if (!$this->relationshipLoader) {
+            return; // No relationship loader configured
+        }
+
+        // Get entity metadata
+        $entityClass = $entity::class;
+        $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entityClass);
+
+        // Load relationships
+        foreach ($metadata->getRelations() as $relationName => $relation) {
+            // For now, only load relationships if they are not already set
+            // In a full implementation, you'd have eager/lazy loading configuration
+            $reflectionProperty = new ReflectionProperty($entity, $relationName);
+            $reflectionProperty->setAccessible(true);
+
+            // Only load if the property is not already initialized or is null
+            if (!$reflectionProperty->isInitialized($entity) || $reflectionProperty->getValue($entity) === null) {
+                $relatedData = $this->relationshipLoader->load($entity, $relation);
+
+                // Wrap collections in Collection objects for OneToMany/ManyToMany
+                if (is_array($relatedData) && ($relation->isOneToMany() || $relation->isManyToMany())) {
+                    $relatedData = new Collection($relatedData);
+                }
+
+                $reflectionProperty->setValue($entity, $relatedData);
+            }
+        }
     }
 
     private function registerEntity(object $entity, array $data): void
@@ -89,6 +125,11 @@ class ObjectHydrator implements HydratorInterface
         // Extract ID and register in UnitOfWork
         $id = $this->extractEntityId($entity, $data);
         $this->unitOfWork->registerManaged($entity, $data);
+    }
+
+    private function invokePostLoadCallbacks(object $entity): void
+    {
+        $this->callbackManager->invokeCallbacks($entity, 'postLoad');
     }
 
     private function mapColumnToProperty(ReflectionClass $reflection, string $columnName): ?string
