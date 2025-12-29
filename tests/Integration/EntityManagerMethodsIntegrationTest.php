@@ -3,8 +3,6 @@
 namespace Articulate\Tests\Integration;
 
 use Articulate\Attributes\Entity;
-use Articulate\Attributes\Property;
-use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
@@ -14,8 +12,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 /**
  * Integration test for EntityManager getReference() and refresh() methods.
  */
-class EntityManagerMethodsIntegrationTest extends AbstractTestCase
-{
+class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
     public function testGetReferenceReturnsProxyWithoutDatabaseQuery(): void
     {
         $this->skipIfDatabaseNotAvailable('mysql');
@@ -89,6 +86,7 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase
                 id INT PRIMARY KEY
             )
         ");
+
         return $tableName;
     }
 }
