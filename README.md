@@ -5,6 +5,7 @@
 </p>
 
 A context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts.
+Work in progress.
 
 ## Badges
 
