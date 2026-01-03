@@ -1,0 +1,98 @@
+parameters:
+  paths:
+    - ./src
+  exclude_files:
+    - '#.*test.*#'
+  layers:
+    - name: Attributes
+      collectors:
+        - type: directory
+          value: src/Attributes
+
+    - name: Connection
+      collectors:
+        - type: class
+          value: Articulate\\Connection
+
+    - name: Utils
+      collectors:
+        - type: directory
+          value: src/Utils
+
+    - name: Exceptions
+      collectors:
+        - type: directory
+          value: src/Exceptions
+
+    - name: Schema
+      collectors:
+        - type: directory
+          value: src/Schema
+
+    - name: Collection
+      collectors:
+        - type: directory
+          value: src/Collection
+
+    - name: Database
+      collectors:
+        - type: directory
+          value: src/Modules/Database
+
+    - name: EntityManager
+      collectors:
+        - type: directory
+          value: src/Modules/EntityManager
+
+    - name: Generators
+      collectors:
+        - type: directory
+          value: src/Modules/Generators
+
+    - name: Migrations
+      collectors:
+        - type: directory
+          value: src/Modules/Migrations
+
+    - name: QueryBuilder
+      collectors:
+        - type: directory
+          value: src/Modules/QueryBuilder
+
+    - name: Commands
+      collectors:
+        - type: directory
+          value: src/Commands
+
+  ruleset:
+    Attributes:
+      - Schema
+      - Collection
+
+    Database:
+      - Schema
+      - Attributes
+      - Exceptions
+      - Utils
+      - Connection
+
+    EntityManager:
+      - Connection
+      - Attributes
+      - QueryBuilder
+      - Generators
+
+    Migrations:
+      - Database
+      - Connection
+      - Utils
+
+    QueryBuilder:
+      - Connection
+      - EntityManager
+
+    Commands:
+      - Connection
+      - Database
+      - Attributes
+      - Migrations

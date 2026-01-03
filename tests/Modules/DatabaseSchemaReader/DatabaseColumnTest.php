@@ -2,11 +2,10 @@
 
 namespace Articulate\Tests\Modules\DatabaseSchemaReader;
 
-use Articulate\Modules\DatabaseSchemaReader\DatabaseColumn;
+use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
 use Articulate\Tests\AbstractTestCase;
 
-class DatabaseColumnTest extends AbstractTestCase
-{
+class DatabaseColumnTest extends AbstractTestCase {
     public function testStringTypeWithLength(): void
     {
         $column = new DatabaseColumn('name', 'VARCHAR(255)', false, null);

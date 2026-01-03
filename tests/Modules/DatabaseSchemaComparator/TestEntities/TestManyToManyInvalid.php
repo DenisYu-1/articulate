@@ -8,8 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 
 #[Entity(tableName: 'test_many_to_many_invalid_owner')]
-class TestManyToManyInvalidOwner
-{
+class TestManyToManyInvalidOwner {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -19,16 +18,14 @@ class TestManyToManyInvalidOwner
 }
 
 #[Entity(tableName: 'test_many_to_many_invalid_target')]
-class TestManyToManyInvalidTarget
-{
+class TestManyToManyInvalidTarget {
     #[PrimaryKey]
     #[Property]
     public int $id;
 }
 
 #[Entity(tableName: 'test_many_to_many_no_referenced_by')]
-class TestManyToManyNoReferencedBy
-{
+class TestManyToManyNoReferencedBy {
     #[PrimaryKey]
     #[Property]
     public int $id;

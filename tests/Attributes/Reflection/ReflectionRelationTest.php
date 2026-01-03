@@ -6,6 +6,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MorphMany;
 use Articulate\Attributes\Relations\MorphOne;
+use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Schema\SchemaNaming;
@@ -17,8 +18,7 @@ use ReflectionProperty;
 use RuntimeException;
 
 // Test classes for reflection testing
-class TestRelationClass
-{
+class TestRelationClass {
     #[ManyToOne(targetEntity: TestEntity::class)]
     public TestEntity $manyToOneRelation;
 
@@ -31,14 +31,12 @@ class TestRelationClass
     public int $regularProperty;
 }
 
-class TestNullableRelationClass
-{
+class TestNullableRelationClass {
     #[ManyToOne(targetEntity: TestEntity::class, nullable: true)]
     public ?TestEntity $nullableRelation;
 }
 
-class ReflectionRelationTest extends AbstractTestCase
-{
+class ReflectionRelationTest extends AbstractTestCase {
     public function testGetTargetEntity()
     {
         $schemaNaming = new SchemaNaming();
@@ -276,7 +274,7 @@ class ReflectionRelationTest extends AbstractTestCase
         $schemaNaming = new SchemaNaming();
 
         // Test MorphTo
-        $morphToAttribute = new \Articulate\Attributes\Relations\MorphTo();
+        $morphToAttribute = new MorphTo();
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $morphToReflection = new ReflectionRelation($morphToAttribute, $property, $schemaNaming);
         $this->assertTrue($morphToReflection->isPolymorphic(), 'MorphTo should be polymorphic');

@@ -8,8 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 
 #[Entity(tableName: 'shared_table_rel')]
-class TestSharedTableRelationOwnerA
-{
+class TestSharedTableRelationOwnerA {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -19,8 +18,7 @@ class TestSharedTableRelationOwnerA
 }
 
 #[Entity(tableName: 'shared_table_rel')]
-class TestSharedTableRelationOwnerB
-{
+class TestSharedTableRelationOwnerB {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -30,8 +28,7 @@ class TestSharedTableRelationOwnerB
 }
 
 #[Entity(tableName: 'shared_table_relation_target')]
-class TestSharedTableRelationTarget
-{
+class TestSharedTableRelationTarget {
     #[PrimaryKey]
     #[Property]
     public int $id;

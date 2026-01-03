@@ -6,8 +6,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Tests\AbstractTestCase;
 
-class NotEntityTest extends AbstractTestCase
-{
+class NotEntityTest extends AbstractTestCase {
     #[Property]
     private int $propertyWithAttribute;
 

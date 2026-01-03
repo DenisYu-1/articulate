@@ -11,8 +11,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Tests\AbstractTestCase;
 
 #[Entity]
-class EntityDefaultTest extends AbstractTestCase
-{
+class EntityDefaultTest extends AbstractTestCase {
     #[Property]
     private int $propertyWithAttribute;
 

@@ -15,8 +15,7 @@ use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Tests\AbstractTestCase;
 
-class ReflectionEntityTest extends AbstractTestCase
-{
+class ReflectionEntityTest extends AbstractTestCase {
     public function testGetEntityPropertiesWithOneToOneNonOwningSideSkipsRelation(): void
     {
         // This test ensures the continue statement at line 62 is executed
@@ -229,8 +228,7 @@ class ReflectionEntityTest extends AbstractTestCase
 
 // Test entities for ReflectionEntity tests
 #[Entity]
-class TestEntityWithOneToOneNonOwning
-{
+class TestEntityWithOneToOneNonOwning {
     #[Property]
     public string $name;
 
@@ -239,8 +237,7 @@ class TestEntityWithOneToOneNonOwning
 }
 
 #[Entity]
-class TestEntityWithOneToOneOwning
-{
+class TestEntityWithOneToOneOwning {
     #[Property]
     public string $name;
 
@@ -249,8 +246,7 @@ class TestEntityWithOneToOneOwning
 }
 
 #[Entity]
-class TestEntityWithManyToOne
-{
+class TestEntityWithManyToOne {
     #[Property]
     public string $name;
 
@@ -259,8 +255,7 @@ class TestEntityWithManyToOne
 }
 
 #[Entity]
-class TestEntityWithMorphTo
-{
+class TestEntityWithMorphTo {
     #[Property]
     public string $name;
 
@@ -269,8 +264,7 @@ class TestEntityWithMorphTo
 }
 
 #[Entity]
-class TestEntityWithMorphOneNonOwning
-{
+class TestEntityWithMorphOneNonOwning {
     #[Property]
     public string $name;
 
@@ -279,8 +273,7 @@ class TestEntityWithMorphOneNonOwning
 }
 
 #[Entity]
-class TestEntityWithMorphOneOwning
-{
+class TestEntityWithMorphOneOwning {
     #[Property]
     public string $name;
 
@@ -289,8 +282,7 @@ class TestEntityWithMorphOneOwning
 }
 
 #[Entity]
-class TestEntityWithMorphManyNonOwning
-{
+class TestEntityWithMorphManyNonOwning {
     #[Property]
     public string $name;
 
@@ -299,8 +291,7 @@ class TestEntityWithMorphManyNonOwning
 }
 
 #[Entity]
-class TestEntityWithMorphManyOwning
-{
+class TestEntityWithMorphManyOwning {
     #[Property]
     public string $name;
 
@@ -309,8 +300,7 @@ class TestEntityWithMorphManyOwning
 }
 
 #[Entity]
-class TestEntityWithMultipleProperties
-{
+class TestEntityWithMultipleProperties {
     #[Property]
     public int $id;
 
@@ -325,8 +315,7 @@ class TestEntityWithMultipleProperties
 }
 
 #[Entity]
-class TestEntityWithOnlyProperty
-{
+class TestEntityWithOnlyProperty {
     #[Property]
     public int $id;
 
@@ -334,14 +323,12 @@ class TestEntityWithOnlyProperty
     public string $name;
 }
 
-class TestNonEntity
-{
+class TestNonEntity {
     public string $name;
 }
 
 #[Entity]
-class TestEntityWithCamelCasePrimaryKey
-{
+class TestEntityWithCamelCasePrimaryKey {
     #[PrimaryKey]
     public int $userNameId;
 
@@ -350,8 +337,7 @@ class TestEntityWithCamelCasePrimaryKey
 }
 
 #[Entity]
-class TestEntityWithPrimaryKey
-{
+class TestEntityWithPrimaryKey {
     #[PrimaryKey]
     public int $id;
 
@@ -360,8 +346,7 @@ class TestEntityWithPrimaryKey
 }
 
 #[Entity]
-class TestRelatedEntity
-{
+class TestRelatedEntity {
     #[Property]
     public int $id;
 

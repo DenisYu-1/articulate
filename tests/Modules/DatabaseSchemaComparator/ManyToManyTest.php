@@ -12,12 +12,12 @@ use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\RelationInterface;
-use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaComparator\Models\CompareResult;
-use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\ManyToManyRelationValidator;
-use Articulate\Modules\DatabaseSchemaComparator\RelationValidators\MorphToManyRelationValidator;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
-use Articulate\Modules\MigrationsGenerator\MigrationsCommandGenerator;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\ManyToManyRelationValidator;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\MorphToManyRelationValidator;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyInvalidOwner;
@@ -31,8 +31,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToMan
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyTarget;
 use RuntimeException;
 
-class ManyToManyTest extends AbstractTestCase
-{
+class ManyToManyTest extends AbstractTestCase {
     public function testCreateMappingTableWithExtras()
     {
         $comparator = $this->comparator(

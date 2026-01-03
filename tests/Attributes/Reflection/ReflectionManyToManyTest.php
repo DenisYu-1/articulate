@@ -14,8 +14,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKe
 use ReflectionProperty;
 use RuntimeException;
 
-class ReflectionManyToManyTest extends AbstractTestCase
-{
+class ReflectionManyToManyTest extends AbstractTestCase {
     /** @var array<int, string> */
     private array $testProperty;
 

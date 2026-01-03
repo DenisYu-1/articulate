@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Relations;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class MorphMany implements RelationAttributeInterface
-{
+class MorphMany implements RelationAttributeInterface {
     private ?string $resolvedTypeColumn = null;
 
     private ?string $resolvedIdColumn = null;

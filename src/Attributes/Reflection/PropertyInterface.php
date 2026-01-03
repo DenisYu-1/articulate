@@ -2,8 +2,7 @@
 
 namespace Articulate\Attributes\Reflection;
 
-interface PropertyInterface
-{
+interface PropertyInterface {
     public function getColumnName(): string;
 
     public function isNullable(): bool;

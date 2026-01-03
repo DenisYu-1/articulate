@@ -6,8 +6,7 @@ namespace Articulate\Attributes\Relations;
  * Registry for mapping entity class names to shorter morph type aliases
  * Improves performance and database storage efficiency.
  */
-class MorphTypeRegistry
-{
+class MorphTypeRegistry {
     private static array $mappings = [];
 
     private static array $reverseMappings = [];

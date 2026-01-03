@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 
 #[Entity]
-class TestManyToOneOwnerCustomColumn
-{
+class TestManyToOneOwnerCustomColumn {
     #[Property]
     public int $id;
 

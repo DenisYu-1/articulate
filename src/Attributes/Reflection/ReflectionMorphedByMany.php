@@ -8,8 +8,7 @@ use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
 
-class ReflectionMorphedByMany implements RelationInterface
-{
+class ReflectionMorphedByMany implements RelationInterface {
     public function __construct(
         private readonly MorphedByMany $attribute,
         private readonly \ReflectionProperty $property,

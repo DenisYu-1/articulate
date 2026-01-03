@@ -2,8 +2,7 @@
 
 namespace Articulate\Schema;
 
-class SchemaNaming
-{
+class SchemaNaming {
     private function snakeCase(string $name): string
     {
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', $name));

@@ -6,8 +6,7 @@ use ArrayIterator;
 use IteratorAggregate;
 use Traversable;
 
-class MappingCollection implements IteratorAggregate
-{
+class MappingCollection implements IteratorAggregate {
     /**
      * @var MappingItem[]
      */

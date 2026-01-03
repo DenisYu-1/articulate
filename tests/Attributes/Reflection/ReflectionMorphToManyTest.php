@@ -6,12 +6,12 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
+use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Tests\AbstractTestCase;
 
-class ReflectionMorphToManyTest extends AbstractTestCase
-{
+class ReflectionMorphToManyTest extends AbstractTestCase {
     public function testConstructorCallsAssertCollectionType(): void
     {
         // This test ensures the assertCollectionType() method call at line 30 is executed
@@ -162,7 +162,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase
     {
         // This test ensures the null-safe property access and coalesce at line 95 work correctly
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
-        $mappingTable = new \Articulate\Attributes\Relations\MappingTable(name: 'custom_table');
+        $mappingTable = new MappingTable(name: 'custom_table');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable', mappingTable: $mappingTable);
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
 
@@ -201,8 +201,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase
 
 // Test entities for ReflectionMorphToMany tests
 #[Entity]
-class TestEntityWithMorphToManyValid
-{
+class TestEntityWithMorphToManyValid {
     #[Property]
     public int $id;
 
@@ -211,8 +210,7 @@ class TestEntityWithMorphToManyValid
 }
 
 #[Entity]
-class TestEntityWithMorphToManyNoType
-{
+class TestEntityWithMorphToManyNoType {
     #[Property]
     public int $id;
 
@@ -221,8 +219,7 @@ class TestEntityWithMorphToManyNoType
 }
 
 #[Entity]
-class TestEntityWithMorphToManyArray
-{
+class TestEntityWithMorphToManyArray {
     #[Property]
     public int $id;
 
@@ -231,8 +228,7 @@ class TestEntityWithMorphToManyArray
 }
 
 #[Entity]
-class TestEntityWithMorphToManyIterable
-{
+class TestEntityWithMorphToManyIterable {
     #[Property]
     public int $id;
 
@@ -241,8 +237,7 @@ class TestEntityWithMorphToManyIterable
 }
 
 #[Entity]
-class TestEntityWithMorphToManyMappingCollection
-{
+class TestEntityWithMorphToManyMappingCollection {
     #[Property]
     public int $id;
 
@@ -250,13 +245,11 @@ class TestEntityWithMorphToManyMappingCollection
     public MappingCollection $tags;
 }
 
-class CustomMappingCollection extends MappingCollection
-{
+class CustomMappingCollection extends MappingCollection {
 }
 
 #[Entity]
-class TestEntityWithMorphToManyMappingCollectionSubclass
-{
+class TestEntityWithMorphToManyMappingCollectionSubclass {
     #[Property]
     public int $id;
 
@@ -265,8 +258,7 @@ class TestEntityWithMorphToManyMappingCollectionSubclass
 }
 
 #[Entity]
-class TestEntityWithMorphToManyInvalidType
-{
+class TestEntityWithMorphToManyInvalidType {
     #[Property]
     public int $id;
 
@@ -275,8 +267,7 @@ class TestEntityWithMorphToManyInvalidType
 }
 
 #[Entity]
-class TestEntityWithMorphToManyInvalidClass
-{
+class TestEntityWithMorphToManyInvalidClass {
     #[Property]
     public int $id;
 
@@ -285,8 +276,7 @@ class TestEntityWithMorphToManyInvalidClass
 }
 
 #[Entity]
-class TestTagEntity
-{
+class TestTagEntity {
     #[Property]
     public int $id;
 
@@ -295,15 +285,13 @@ class TestTagEntity
 }
 
 #[Entity]
-class TestEntityNoPrimaryKey
-{
+class TestEntityNoPrimaryKey {
     #[Property]
     public string $name;
 }
 
 #[Entity]
-class TestEntityWithMultiplePrimaryKeys
-{
+class TestEntityWithMultiplePrimaryKeys {
     #[PrimaryKey]
     public int $id;
 

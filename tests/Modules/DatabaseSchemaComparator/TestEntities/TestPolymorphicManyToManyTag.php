@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\MorphedByMany;
 
 #[Entity]
-class TestPolymorphicManyToManyTag
-{
+class TestPolymorphicManyToManyTag {
     #[Property]
     public int $id;
 

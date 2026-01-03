@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 
 #[Entity]
-class TestManyToOneTargetInverseIsOwning
-{
+class TestManyToOneTargetInverseIsOwning {
     #[Property]
     public int $id;
 

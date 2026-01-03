@@ -5,8 +5,7 @@ namespace Articulate\Utils;
 /**
  * Interface for converting values between PHP and database representations.
  */
-interface TypeConverterInterface
-{
+interface TypeConverterInterface {
     /**
      * Convert a PHP value to database representation.
      */

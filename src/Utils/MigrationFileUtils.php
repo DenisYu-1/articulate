@@ -2,8 +2,7 @@
 
 namespace Articulate\Utils;
 
-class MigrationFileUtils
-{
+class MigrationFileUtils {
     public static function getNamespaceFromFile(string $filePath): ?string
     {
         $namespace = null;

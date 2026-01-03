@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Relations;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class OneToOne implements RelationAttributeInterface
-{
+class OneToOne implements RelationAttributeInterface {
     public readonly ?string $targetEntity;
 
     public readonly ?string $ownedBy;

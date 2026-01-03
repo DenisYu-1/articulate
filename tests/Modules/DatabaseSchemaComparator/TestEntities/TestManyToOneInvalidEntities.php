@@ -8,15 +8,13 @@ use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 
 #[Entity]
-class TestManyToOneTargetMissingInverse
-{
+class TestManyToOneTargetMissingInverse {
     #[Property]
     public int $id;
 }
 
 #[Entity]
-class TestManyToOneOwnerMissingInverse
-{
+class TestManyToOneOwnerMissingInverse {
     #[Property]
     public int $id;
 
@@ -25,8 +23,7 @@ class TestManyToOneOwnerMissingInverse
 }
 
 #[Entity]
-class TestManyToOneTargetMappedByMismatch
-{
+class TestManyToOneTargetMappedByMismatch {
     #[Property]
     public int $id;
 
@@ -35,8 +32,7 @@ class TestManyToOneTargetMappedByMismatch
 }
 
 #[Entity]
-class TestManyToOneOwnerMappedByMismatch
-{
+class TestManyToOneOwnerMappedByMismatch {
     #[Property]
     public int $id;
 
@@ -45,8 +41,7 @@ class TestManyToOneOwnerMappedByMismatch
 }
 
 #[Entity]
-class TestManyToOneTargetInverseIsOwning
-{
+class TestManyToOneTargetInverseIsOwning {
     #[Property]
     public int $id;
 
@@ -55,8 +50,7 @@ class TestManyToOneTargetInverseIsOwning
 }
 
 #[Entity]
-class TestManyToOneOwnerInverseIsOwning
-{
+class TestManyToOneOwnerInverseIsOwning {
     #[Property]
     public int $id;
 

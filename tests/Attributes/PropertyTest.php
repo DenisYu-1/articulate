@@ -8,8 +8,7 @@ use Articulate\Tests\AbstractTestCase;
 use Exception;
 use ReflectionClass;
 
-class PropertyTest extends AbstractTestCase
-{
+class PropertyTest extends AbstractTestCase {
     #[Property(type: 'string')]
     private int $typeOverwriteCheck;
 

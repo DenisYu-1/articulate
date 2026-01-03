@@ -6,8 +6,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Tests\AbstractTestCase;
 
-class ReflectionPropertyTest extends AbstractTestCase
-{
+class ReflectionPropertyTest extends AbstractTestCase {
     private $testProperty;
 
     protected function setUp(): void

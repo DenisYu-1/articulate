@@ -2,8 +2,7 @@
 
 namespace Articulate\Collection;
 
-class MappingItem
-{
+class MappingItem {
     public function __construct(
         public readonly object $entity,
         public readonly array $pivot = [],

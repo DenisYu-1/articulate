@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\MorphToMany;
 
 #[Entity]
-class TestPolymorphicManyToManyVideo
-{
+class TestPolymorphicManyToManyVideo {
     #[Property]
     public int $id;
 

@@ -8,8 +8,7 @@ use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use RuntimeException;
 
-class ReflectionMorphToMany implements RelationInterface
-{
+class ReflectionMorphToMany implements RelationInterface {
     public function __construct(
         private readonly MorphToMany $attribute,
         private readonly \ReflectionProperty $property,

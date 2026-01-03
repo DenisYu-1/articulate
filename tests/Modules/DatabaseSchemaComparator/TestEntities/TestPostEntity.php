@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\MorphMany;
 
 #[Entity]
-class TestPostEntity
-{
+class TestPostEntity {
     #[Property]
     public int $id;
 

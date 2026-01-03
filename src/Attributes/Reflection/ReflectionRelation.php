@@ -14,8 +14,7 @@ use Exception;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
-class ReflectionRelation implements PropertyInterface, RelationInterface
-{
+class ReflectionRelation implements PropertyInterface, RelationInterface {
     public function __construct(
         private readonly RelationAttributeInterface $entityProperty,
         private readonly BaseReflectionProperty $property,

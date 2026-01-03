@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Relations;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class MorphedByMany implements RelationAttributeInterface
-{
+class MorphedByMany implements RelationAttributeInterface {
     /**
      * @param class-string $targetEntity The entity class this relation morphs from
      * @param string $name The name of the polymorphic relationship (e.g., 'taggable')

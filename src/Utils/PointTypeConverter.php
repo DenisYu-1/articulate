@@ -5,8 +5,7 @@ namespace Articulate\Utils;
 /**
  * Converter for Point objects to/from database POINT type.
  */
-class PointTypeConverter implements TypeConverterInterface
-{
+class PointTypeConverter implements TypeConverterInterface {
     /**
      * Convert Point object to database representation.
      */

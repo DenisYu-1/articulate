@@ -5,13 +5,15 @@ namespace Articulate\Attributes\Reflection;
 use Articulate\Attributes\Property;
 use ReflectionProperty as BaseReflectionProperty;
 
-readonly class ReflectionProperty implements PropertyInterface
-{
+readonly class ReflectionProperty implements PropertyInterface {
     public function __construct(
         private Property $entityProperty,
         private BaseReflectionProperty $property,
         private bool $autoIncrement = false,
         private bool $primaryKey = false,
+        private ?string $generatorType = null,
+        private ?string $sequence = null,
+        private ?array $generatorOptions = null,
     ) {
     }
 
@@ -53,6 +55,21 @@ readonly class ReflectionProperty implements PropertyInterface
     public function isPrimaryKey(): bool
     {
         return $this->primaryKey;
+    }
+
+    public function getGeneratorType(): ?string
+    {
+        return $this->generatorType;
+    }
+
+    public function getSequence(): ?string
+    {
+        return $this->sequence;
+    }
+
+    public function getGeneratorOptions(): ?array
+    {
+        return $this->generatorOptions;
     }
 
     private function parseColumnName(): string

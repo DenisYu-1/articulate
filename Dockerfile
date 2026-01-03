@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libsqlite3-dev \
     git \
+    graphviz \
     && docker-php-ext-install pdo_mysql pdo_pgsql pdo_sqlite zip
 
 # Install Xdebug for testing coverage
