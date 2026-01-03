@@ -5,13 +5,13 @@
 </p>
 
 A context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts.
+Work in progress.
 
 ## Badges
 
 [![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
 [![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
-[![Test Coverage](https://img.shields.io/badge/Tests-2000%2B%20Mutations-blue)](https://github.com/DenisYu-1/articulate/actions)
 
 ## Main Concepts
 
