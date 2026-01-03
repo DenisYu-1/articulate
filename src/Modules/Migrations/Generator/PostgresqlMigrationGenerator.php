@@ -204,4 +204,18 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator {
     {
         return 'CONCURRENTLY ';
     }
+
+    protected function getPrimaryKeyGenerationSql(string $generatorType, ?string $sequence = null): string
+    {
+        return match ($generatorType) {
+            'serial' => 'DEFAULT nextval(\'' . ($sequence ?: 'serial') . '\')',
+            'bigserial' => 'DEFAULT nextval(\'' . ($sequence ?: 'bigserial') . '\')',
+            default => '', // UUID, ULID, etc. don't need special SQL
+        };
+    }
+
+    protected function getAutoIncrementSql(): string
+    {
+        return 'GENERATED ALWAYS AS IDENTITY';
+    }
 }

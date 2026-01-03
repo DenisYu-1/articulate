@@ -6,7 +6,7 @@ use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator {
-    private MigrationGeneratorStrategy $strategy;
+    private MigrationGeneratorInterface $strategy;
 
     public function __construct(
         private readonly Connection $connection,
@@ -31,7 +31,7 @@ class MigrationsCommandGenerator {
         return new self($connection, $driver);
     }
 
-    private function createStrategy(): MigrationGeneratorStrategy
+    private function createStrategy(): MigrationGeneratorInterface
     {
         $driverName = $this->forcedDriver ?? $this->connection->getDriverName();
 

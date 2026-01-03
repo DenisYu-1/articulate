@@ -2,8 +2,15 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Attributes\Reflection\ReflectionProperty;
+
 class DeferredImplicitStrategy implements ChangeTrackingStrategy {
     private array $originalData = [];
+
+    public function __construct(
+        private readonly EntityMetadataRegistry $metadataRegistry
+    ) {
+    }
 
     public function trackEntity(object $entity, array $originalData): void
     {
@@ -27,26 +34,47 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
 
     private function extractEntityData(object $entity): array
     {
-        // TODO: Implement proper data extraction based on entity metadata
-        // For now, extract public properties for testing purposes
-        $data = [];
-        $reflection = new \ReflectionClass($entity);
+        $entityClass = $entity::class;
+        $metadata = $this->metadataRegistry->getMetadata($entityClass);
 
-        foreach ($reflection->getProperties(\ReflectionProperty::IS_PUBLIC) as $property) {
-            $name = $property->getName();
-            $data[$name] = $entity->$name;
+        $data = [];
+
+        // Only extract data for properties defined in entity metadata (#[Property] attributes)
+        foreach ($metadata->getProperties() as $property) {
+            $propertyName = $property->getFieldName();
+            $columnName = $property->getColumnName();
+
+            // Get the current value from the entity
+            $currentValue = $this->getPropertyValue($entity, $property);
+
+            // Store by column name for database operations
+            $data[$columnName] = $currentValue;
         }
 
         return $data;
+    }
+
+    private function getPropertyValue(object $entity, ReflectionProperty $property): mixed
+    {
+        $propertyName = $property->getFieldName();
+
+        // Use reflection to access the property value
+        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($entity);
     }
 
     private function calculateDifferences(array $original, array $current): array
     {
         $changes = [];
 
-        foreach ($current as $field => $value) {
-            if (!array_key_exists($field, $original) || $original[$field] !== $value) {
-                $changes[$field] = $value;
+        // Compare current data with original data
+        // Both arrays should have column names as keys
+        foreach ($current as $column => $value) {
+            // Check if the column exists in original data and if the value has changed
+            if (!array_key_exists($column, $original) || $original[$column] !== $value) {
+                $changes[$column] = $value;
             }
         }
 

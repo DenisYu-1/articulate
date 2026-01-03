@@ -346,15 +346,16 @@ class QueryExecutor {
                 if ($generatorType !== null) {
                     // Use specified generator
                     $generator = $this->generatorRegistry->getGenerator($generatorType);
+                    $options = $property->getGeneratorOptions() ?? [];
 
-                    return $generator->generate($entityClass);
+                    return $generator->generate($entityClass, $options);
                 }
 
                 // Fall back to auto-increment if AutoIncrement attribute is present
                 if ($property->isAutoIncrement()) {
                     $generator = $this->generatorRegistry->getGenerator('auto_increment');
 
-                    return $generator->generate($entityClass);
+                    return $generator->generate($entityClass, []);
                 }
 
                 break;
@@ -367,13 +368,13 @@ class QueryExecutor {
             // Treat 'id' property as auto-increment primary key by default
             $generator = $this->generatorRegistry->getGenerator('auto_increment');
 
-            return $generator->generate($entityClass);
+            return $generator->generate($entityClass, []);
         }
 
         // Default to auto-increment for backward compatibility
         $generator = $this->generatorRegistry->getDefaultGenerator();
 
-        return $generator->generate($entityClass);
+        return $generator->generate($entityClass, []);
     }
 
     private function setEntityId(object $entity, mixed $id): void

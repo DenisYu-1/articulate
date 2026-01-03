@@ -7,6 +7,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\Generators\GeneratorRegistry;
@@ -169,7 +170,8 @@ class UnitOfWorkTest extends TestCase {
     public function testCustomChangeTrackingStrategy(): void
     {
         $connection = $this->createMock(Connection::class);
-        $customStrategy = new DeferredImplicitStrategy();
+        $metadataRegistry = new EntityMetadataRegistry();
+        $customStrategy = new DeferredImplicitStrategy($metadataRegistry);
         $unitOfWork = new UnitOfWork($connection, $customStrategy);
 
         $entity = new class() {

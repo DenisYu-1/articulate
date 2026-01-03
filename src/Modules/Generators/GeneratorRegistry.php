@@ -18,11 +18,19 @@ class GeneratorRegistry {
      */
     private GeneratorInterface $defaultGenerator;
 
+    /**
+     * @var GeneratorStrategyInterface[]
+     */
+    private array $strategies = [];
+
     public function __construct()
     {
         // Register default generators
         $this->register(new AutoIncrementGenerator());
         $this->register(new UuidGenerator());
+        $this->register(new SerialGenerator());
+        $this->register(new UlidGenerator());
+        $this->register(new UuidV7Generator());
 
         // Set auto_increment as default for backward compatibility
         $this->defaultGenerator = $this->generators['auto_increment'];
@@ -94,5 +102,42 @@ class GeneratorRegistry {
     public function getAvailableTypes(): array
     {
         return array_keys($this->generators);
+    }
+
+    /**
+     * Add a custom strategy.
+     *
+     * @param GeneratorStrategyInterface $strategy
+     */
+    public function addStrategy(GeneratorStrategyInterface $strategy): void
+    {
+        $this->strategies[] = $strategy;
+    }
+
+    /**
+     * Get all registered strategies.
+     *
+     * @return GeneratorStrategyInterface[]
+     */
+    public function getStrategies(): array
+    {
+        return $this->strategies;
+    }
+
+    /**
+     * Find a strategy that supports the given generator type.
+     *
+     * @param string $generatorType
+     * @return GeneratorStrategyInterface|null
+     */
+    public function findStrategy(string $generatorType): ?GeneratorStrategyInterface
+    {
+        foreach ($this->strategies as $strategy) {
+            if ($strategy->supports($generatorType)) {
+                return $strategy;
+            }
+        }
+
+        return null;
     }
 }

@@ -10,10 +10,10 @@ use Ramsey\Uuid\Uuid;
 class UuidGenerator extends AbstractGenerator {
     public function __construct()
     {
-        parent::__construct('uuid');
+        parent::__construct('uuid_v4');
     }
 
-    public function generate(string $entityClass): mixed
+    protected function generateInternal(string $entityClass, array $options = []): mixed
     {
         return Uuid::uuid4()->toString();
     }

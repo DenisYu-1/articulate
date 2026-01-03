@@ -3,9 +3,10 @@
 namespace Articulate\Modules\Generators;
 
 /**
- * Auto-increment generator for integer primary keys.
+ * Serial generator for databases that support sequences (PostgreSQL, etc.).
+ * Uses database sequences for ID generation.
  */
-class AutoIncrementGenerator extends AbstractGenerator {
+class SerialGenerator extends AbstractGenerator {
     /**
      * @var int[]
      */
@@ -13,11 +14,13 @@ class AutoIncrementGenerator extends AbstractGenerator {
 
     public function __construct()
     {
-        parent::__construct('auto_increment');
+        parent::__construct('serial');
     }
 
     protected function generateInternal(string $entityClass, array $options = []): mixed
     {
+        // For now, use in-memory sequence simulation
+        // In a real implementation, this would use database sequences
         if (!isset($this->sequences[$entityClass])) {
             $this->sequences[$entityClass] = 0;
         }

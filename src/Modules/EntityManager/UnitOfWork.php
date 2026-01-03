@@ -16,6 +16,8 @@ class UnitOfWork {
 
     private GeneratorRegistry $generatorRegistry;
 
+    private EntityMetadataRegistry $metadataRegistry;
+
     /** @var array<int, EntityState> */
     private array $entityStates = [];
 
@@ -39,11 +41,13 @@ class UnitOfWork {
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?GeneratorRegistry $generatorRegistry = null,
-        ?LifecycleCallbackManager $callbackManager = null
+        ?LifecycleCallbackManager $callbackManager = null,
+        ?EntityMetadataRegistry $metadataRegistry = null
     ) {
         $this->connection = $connection;
         $this->identityMap = new IdentityMap();
-        $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
+        $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
+        $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
     }
@@ -237,7 +241,7 @@ class UnitOfWork {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
-        $this->changeTrackingStrategy = new DeferredImplicitStrategy();
+        $this->changeTrackingStrategy = new DeferredImplicitStrategy($this->metadataRegistry);
     }
 
     private function hasChanges(object $entity): bool

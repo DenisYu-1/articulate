@@ -41,9 +41,11 @@ class EntityManager {
         ?QueryExecutor $queryExecutor = null
     ) {
         $this->connection = $connection;
-        $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy();
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
+
+        // Create default change tracking strategy with metadata registry
+        $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
 
         // Initialize callback manager
         $this->callbackManager = new LifecycleCallbackManager();
@@ -53,7 +55,7 @@ class EntityManager {
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
+        $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $defaultUow;
 
         // Create relationship loader
@@ -488,7 +490,7 @@ class EntityManager {
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager);
+        $unitOfWork = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;

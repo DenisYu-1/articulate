@@ -73,7 +73,9 @@ class EntityMetadata {
                     $reflectionProperty,
                     isset($reflectionProperty->getAttributes(AutoIncrement::class)[0]),
                     true, // is primary key
-                    $primaryKeyInstance->generator
+                    $primaryKeyInstance->generator,
+                    $primaryKeyInstance->sequence,
+                    $primaryKeyInstance->options,
                 );
 
                 $this->properties[$propertyName] = $reflectionPropertyObj;

@@ -6,6 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
@@ -259,7 +260,8 @@ class EntityManagerTest extends TestCase {
 
     public function testCustomChangeTrackingStrategy(): void
     {
-        $customStrategy = new DeferredImplicitStrategy();
+        $metadataRegistry = new EntityMetadataRegistry();
+        $customStrategy = new DeferredImplicitStrategy($metadataRegistry);
         $connection = $this->createMock(Connection::class);
 
         $em = new EntityManager($connection, $customStrategy);

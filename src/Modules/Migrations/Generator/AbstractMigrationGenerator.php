@@ -9,7 +9,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Utils\TypeRegistry;
 
-abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy {
+abstract class AbstractMigrationGenerator implements MigrationGeneratorInterface {
     public function __construct(
         private readonly TypeRegistry $typeRegistry = new TypeRegistry()
     ) {
@@ -57,6 +57,14 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy 
         $parts = [];
         $parts[] = $quote . $name . $quote;
         $parts[] = $this->mapTypeLength($column);
+
+        // Handle primary key generation strategies
+        if ($column->isPrimaryKey && $column->generatorType) {
+            $parts[] = $this->getPrimaryKeyGenerationSql($column->generatorType, $column->sequence);
+        } elseif ($column->isAutoIncrement) {
+            $parts[] = $this->getAutoIncrementSql();
+        }
+
         if (!$column->isNullable) {
             $parts[] = 'NOT NULL';
         }
@@ -138,4 +146,8 @@ abstract class AbstractMigrationGenerator implements MigrationGeneratorStrategy 
     abstract protected function getDropIndexSyntax(string $indexName): string;
 
     abstract protected function getModifyColumnSyntax(string $columnName, PropertiesData $column): string;
+
+    abstract protected function getPrimaryKeyGenerationSql(string $generatorType, ?string $sequence = null): string;
+
+    abstract protected function getAutoIncrementSql(): string;
 }

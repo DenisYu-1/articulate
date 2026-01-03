@@ -12,6 +12,8 @@ readonly class ReflectionProperty implements PropertyInterface {
         private bool $autoIncrement = false,
         private bool $primaryKey = false,
         private ?string $generatorType = null,
+        private ?string $sequence = null,
+        private ?array $generatorOptions = null,
     ) {
     }
 
@@ -58,6 +60,16 @@ readonly class ReflectionProperty implements PropertyInterface {
     public function getGeneratorType(): ?string
     {
         return $this->generatorType;
+    }
+
+    public function getSequence(): ?string
+    {
+        return $this->sequence;
+    }
+
+    public function getGeneratorOptions(): ?array
+    {
+        return $this->generatorOptions;
     }
 
     private function parseColumnName(): string

@@ -103,4 +103,17 @@ class SqliteMigrationGenerator extends AbstractMigrationGenerator {
     {
         return '-- SQLite column modification requires table recreation';
     }
+
+    protected function getPrimaryKeyGenerationSql(string $generatorType, ?string $sequence = null): string
+    {
+        return match ($generatorType) {
+            'auto_increment', 'serial', 'bigserial' => 'AUTOINCREMENT',
+            default => '', // UUID, ULID, etc. don't need special SQL
+        };
+    }
+
+    protected function getAutoIncrementSql(): string
+    {
+        return 'AUTOINCREMENT';
+    }
 }

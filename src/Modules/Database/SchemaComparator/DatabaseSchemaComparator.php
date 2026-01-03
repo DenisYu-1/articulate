@@ -135,6 +135,10 @@ readonly class DatabaseSchemaComparator {
                         $data['nullable'],
                         $data['default'],
                         $data['length'],
+                        $data['generatorType'],
+                        $data['sequence'],
+                        $data['isPrimaryKey'],
+                        $data['isAutoIncrement'],
                     ),
                     new PropertiesData(),
                 );
@@ -834,6 +838,10 @@ readonly class DatabaseSchemaComparator {
             'relation' => $property instanceof ReflectionRelation ? $property : null,
             'foreignKeyRequired' => $property instanceof ReflectionRelation ? $property->isForeignKeyRequired() : false,
             'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
+            'generatorType' => $property instanceof ReflectionProperty ? $property->getGeneratorType() : null,
+            'sequence' => $property instanceof ReflectionProperty ? $property->getSequence() : null,
+            'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
+            'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
         ];
 
         if (!isset($propertiesIndexed[$columnName])) {
@@ -892,6 +900,10 @@ readonly class DatabaseSchemaComparator {
             'relation' => $existing['relation'] ?? $incoming['relation'],
             'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired'],
             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
+            'generatorType' => $existing['generatorType'] ?? $incoming['generatorType'],
+            'sequence' => $existing['sequence'] ?? $incoming['sequence'],
+            'isPrimaryKey' => $existing['isPrimaryKey'] ?? $incoming['isPrimaryKey'],
+            'isAutoIncrement' => $existing['isAutoIncrement'] ?? $incoming['isAutoIncrement'],
         ];
 
         return $propertiesIndexed;
@@ -909,6 +921,10 @@ readonly class DatabaseSchemaComparator {
             'relation' => null, // Type column has no relation
             'foreignKeyRequired' => false,
             'referencedColumn' => null,
+            'generatorType' => null,
+            'sequence' => null,
+            'isPrimaryKey' => false,
+            'isAutoIncrement' => false,
         ];
 
         if (isset($propertiesIndexed[$typeColumnName])) {
@@ -933,6 +949,10 @@ readonly class DatabaseSchemaComparator {
             'relation' => $relation, // ID column has the relation for potential future FK generation
             'foreignKeyRequired' => false, // Polymorphic relations don't use traditional FK constraints
             'referencedColumn' => $relation->getReferencedColumnName(),
+            'generatorType' => null,
+            'sequence' => null,
+            'isPrimaryKey' => false,
+            'isAutoIncrement' => false,
         ];
 
         if (isset($propertiesIndexed[$idColumnName])) {
@@ -951,6 +971,10 @@ readonly class DatabaseSchemaComparator {
                 'relation' => $idColumnData['relation'] ?? $existing['relation'],
                 'foreignKeyRequired' => $idColumnData['foreignKeyRequired'] || $existing['foreignKeyRequired'],
                 'referencedColumn' => $idColumnData['referencedColumn'] ?? $existing['referencedColumn'],
+                'generatorType' => $existing['generatorType'] ?? $idColumnData['generatorType'],
+                'sequence' => $existing['sequence'] ?? $idColumnData['sequence'],
+                'isPrimaryKey' => $existing['isPrimaryKey'] ?? $idColumnData['isPrimaryKey'],
+                'isAutoIncrement' => $existing['isAutoIncrement'] ?? $idColumnData['isAutoIncrement'],
             ];
         } else {
             $propertiesIndexed[$idColumnName] = $idColumnData;

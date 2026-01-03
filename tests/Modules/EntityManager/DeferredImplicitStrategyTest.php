@@ -2,24 +2,38 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
+
+#[Entity]
+class TestChangeTrackingEntity {
+    #[Property]
+    public int $id;
+
+    #[Property]
+    public string $name;
+
+    #[Property]
+    public ?int $age = null;
+}
 
 class DeferredImplicitStrategyTest extends TestCase {
     private DeferredImplicitStrategy $strategy;
 
     protected function setUp(): void
     {
-        $this->strategy = new DeferredImplicitStrategy();
+        $metadataRegistry = new EntityMetadataRegistry();
+        $this->strategy = new DeferredImplicitStrategy($metadataRegistry);
     }
 
     public function testTrackEntity(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'test';
-        };
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $originalData = ['id' => 1, 'name' => 'original'];
 
@@ -31,13 +45,12 @@ class DeferredImplicitStrategyTest extends TestCase {
 
     public function testComputeChangeSetWithNoChanges(): void
     {
-        $entity = new class() {
-            public int $id = 1;
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+        $entity->age = null; // Initialize nullable property
 
-            public string $name = 'test';
-        };
-
-        $originalData = ['id' => 1, 'name' => 'test'];
+        $originalData = ['id' => 1, 'name' => 'test', 'age' => null];
 
         $this->strategy->trackEntity($entity, $originalData);
 
@@ -48,13 +61,12 @@ class DeferredImplicitStrategyTest extends TestCase {
 
     public function testComputeChangeSetWithChanges(): void
     {
-        $entity = new class() {
-            public int $id = 1;
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'modified';
+        $entity->age = null; // Initialize nullable property
 
-            public string $name = 'modified';
-        };
-
-        $originalData = ['id' => 1, 'name' => 'original'];
+        $originalData = ['id' => 1, 'name' => 'original', 'age' => null];
 
         $this->strategy->trackEntity($entity, $originalData);
 
@@ -65,13 +77,10 @@ class DeferredImplicitStrategyTest extends TestCase {
 
     public function testComputeChangeSetWithMultipleChanges(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'modified name';
-
-            public int $age = 30;
-        };
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'modified name';
+        $entity->age = 30;
 
         $originalData = ['id' => 1, 'name' => 'original name', 'age' => 25];
 
@@ -89,11 +98,9 @@ class DeferredImplicitStrategyTest extends TestCase {
 
     public function testComputeChangeSetWithoutTracking(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'test';
-        };
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $changes = $this->strategy->computeChangeSet($entity);
 
@@ -128,13 +135,10 @@ class DeferredImplicitStrategyTest extends TestCase {
 
     public function testExtractEntityDataReturnsEntityProperties(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'test';
-
-            private string $privateProp = 'private'; // Should not be included
-        };
+        $entity = new TestChangeTrackingEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+        $entity->age = 25;
 
         $reflectionMethod = new \ReflectionMethod($this->strategy, 'extractEntityData');
         $reflectionMethod->setAccessible(true);
@@ -142,7 +146,7 @@ class DeferredImplicitStrategyTest extends TestCase {
         $data = $reflectionMethod->invoke($this->strategy, $entity);
 
         $this->assertIsArray($data);
-        $this->assertEquals(['id' => 1, 'name' => 'test'], $data);
-        $this->assertArrayNotHasKey('privateProp', $data);
+        // Should return column names as keys (same as property names for these simple cases)
+        $this->assertEquals(['id' => 1, 'name' => 'test', 'age' => 25], $data);
     }
 }
