@@ -5,6 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Connection;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use ReflectionClass;
 use ReflectionProperty;
@@ -258,6 +259,11 @@ class UnitOfWork {
 
     private function extractEntityId(object $entity): mixed
     {
+        // For proxies, get the identifier from the proxy interface
+        if ($entity instanceof ProxyInterface) {
+            return $entity->getProxyIdentifier();
+        }
+
         $primaryKeyProperty = $this->findPrimaryKeyProperty($entity);
         if ($primaryKeyProperty !== null) {
             $primaryKeyProperty->setAccessible(true);

@@ -21,7 +21,7 @@ class ProxyTraitTest extends TestCase {
 
         $this->assertFalse($entity->isProxyInitialized());
         $this->assertEquals(ProxyTraitTestEntity::class, $entity->getProxyEntityClass());
-        $this->assertEquals(123, $entity->_getIdentifier());
+        $this->assertEquals(123, $entity->getProxyIdentifier());
     }
 
     public function testLazyInitialization(): void

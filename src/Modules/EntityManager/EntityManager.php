@@ -586,7 +586,12 @@ class EntityManager {
             if (array_key_exists($columnName, $data)) {
                 $value = $data[$columnName];
                 // Convert database value back to PHP type
-                $phpValue = $typeRegistry->convertToPHP($property->getType(), $value);
+                $converter = $typeRegistry->getConverter($property->getType());
+                if ($converter) {
+                    $phpValue = $converter->convertToPHP($value);
+                } else {
+                    $phpValue = $value; // Basic conversion - most types don't need special handling
+                }
 
                 $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
                 $reflectionProperty->setAccessible(true);

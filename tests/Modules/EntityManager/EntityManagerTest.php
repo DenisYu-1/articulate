@@ -9,6 +9,7 @@ use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCustomPrimaryKeyEntity;
@@ -19,6 +20,13 @@ use PHPUnit\Framework\TestCase;
 #[Entity]
 class TestEntityForRemoval {
     public int $id = 1;
+}
+
+#[Entity]
+class EntityManagerTestEntity {
+    public int $id;
+
+    public string $name;
 }
 
 class EntityManagerTest extends TestCase {
@@ -48,11 +56,9 @@ class EntityManagerTest extends TestCase {
 
     public function testPersistAndFlush(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'test';
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $this->entityManager->persist($entity);
         $this->entityManager->flush();
@@ -75,9 +81,9 @@ class EntityManagerTest extends TestCase {
 
     public function testClear(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $this->entityManager->persist($entity);
 
@@ -115,13 +121,12 @@ class EntityManagerTest extends TestCase {
         $this->assertEmpty($result);
     }
 
-    public function testGetReferenceThrowsExceptionWhenProxyManagerNotAvailable(): void
+    public function testGetReferenceReturnsProxy(): void
     {
-        // getReference requires a proxy manager, which isn't set up in basic tests
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Proxy manager is not available');
+        // getReference should return a proxy object
+        $proxy = $this->entityManager->getReference(TestEntity::class, 1);
 
-        $this->entityManager->getReference(TestEntity::class, 1);
+        $this->assertInstanceOf(ProxyInterface::class, $proxy);
     }
 
     public function testRefreshThrowsExceptionWithMockConnection(): void
@@ -129,9 +134,9 @@ class EntityManagerTest extends TestCase {
         // refresh tries to query the database, which will fail with a mock connection
         $this->expectException(\Exception::class);
 
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $this->entityManager->refresh($entity);
     }
@@ -190,17 +195,13 @@ class EntityManagerTest extends TestCase {
 
     public function testMultipleUnitOfWorks(): void
     {
-        $entity1 = new class() {
-            public int $id = 1;
+        $entity1 = new EntityManagerTestEntity();
+        $entity1->id = 1;
+        $entity1->name = 'entity1';
 
-            public string $name = 'entity1';
-        };
-
-        $entity2 = new class() {
-            public int $id = 2;
-
-            public string $name = 'entity2';
-        };
+        $entity2 = new EntityManagerTestEntity();
+        $entity2->id = 2;
+        $entity2->name = 'entity2';
 
         // Create two different UnitOfWork instances
         $uow1 = $this->entityManager->createUnitOfWork();
@@ -222,9 +223,9 @@ class EntityManagerTest extends TestCase {
 
     public function testFlushAllUnitOfWorks(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         // Create a scoped UnitOfWork and persist an entity
         $scopedUow = $this->entityManager->createUnitOfWork();
@@ -239,9 +240,9 @@ class EntityManagerTest extends TestCase {
 
     public function testClearAllUnitOfWorks(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         // Create a scoped UnitOfWork and persist an entity
         $scopedUow = $this->entityManager->createUnitOfWork();
@@ -268,9 +269,9 @@ class EntityManagerTest extends TestCase {
 
         $this->assertInstanceOf(EntityManager::class, $em);
 
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $em->persist($entity);
         $em->flush();

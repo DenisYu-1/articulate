@@ -6,8 +6,8 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 
-#[Entity]
-class TestEntity {
+#[Entity(tableName: 'test_entity_missing')]
+class TestEntityMissing {
     #[PrimaryKey]
     #[Property]
     public int $id;

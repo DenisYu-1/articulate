@@ -13,6 +13,15 @@ use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
+#[Entity]
+class UnitOfWorkTestEntity {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+}
+
 class UnitOfWorkTest extends TestCase {
     private UnitOfWork $unitOfWork;
 
@@ -136,11 +145,9 @@ class UnitOfWorkTest extends TestCase {
 
     public function testComputeChangeSets(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'modified';
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'modified';
 
         $originalData = ['id' => 1, 'name' => 'original'];
         $this->unitOfWork->registerManaged($entity, $originalData);
@@ -153,9 +160,9 @@ class UnitOfWorkTest extends TestCase {
 
     public function testCommit(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $this->unitOfWork->persist($entity);
         $this->unitOfWork->computeChangeSets();
@@ -234,11 +241,9 @@ class UnitOfWorkTest extends TestCase {
         // This test demonstrates the bug where getEntityByOid always returns null
         // even when the entity OID exists in entityStates
 
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'modified';
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'modified';
 
         $originalData = ['id' => 1, 'name' => 'original'];
         $this->unitOfWork->registerManaged($entity, $originalData);

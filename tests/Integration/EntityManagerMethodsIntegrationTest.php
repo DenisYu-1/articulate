@@ -7,12 +7,17 @@ use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestTrait;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntityMissing;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntityRefresh;
 
 /**
  * Integration test for EntityManager getReference() and refresh() methods.
  */
 class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
+    use DatabaseTestTrait;
+
     public function testGetReferenceReturnsProxyWithoutDatabaseQuery(): void
     {
         $this->skipIfDatabaseNotAvailable('mysql');
@@ -30,7 +35,7 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
         $this->assertTrue($proxy->isProxyInitialized() === false);
 
         // Verify it has the correct ID
-        $this->assertEquals(1, $proxy->_getIdentifier());
+        $this->assertEquals(1, $proxy->getProxyIdentifier());
     }
 
     public function testRefreshUpdatesEntityWithFreshData(): void
@@ -41,23 +46,26 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
 
         // Create table and insert test data
         $tableName = $this->createTestEntityTable($connection, 'test_entity_refresh');
-        $connection->executeQuery("INSERT INTO `{$tableName}` (id) VALUES (1)");
+        $connection->executeQuery("INSERT INTO `{$tableName}` (id, name) VALUES (1, 'original')");
 
         // Load entity
-        $entity = $entityManager->find(TestEntity::class, 1);
+        $entity = $entityManager->find(TestEntityRefresh::class, 1);
+        $this->assertNotNull($entity);
         $this->assertEquals(1, $entity->id);
+        $this->assertEquals('original', $entity->name);
 
         // Modify entity in memory (but don't flush)
-        $entity->id = 999; // This shouldn't be allowed, but for testing
+        $entity->name = 'modified';
 
         // Manually update the database to simulate external change
-        $connection->executeQuery("UPDATE `{$tableName}` SET id = 1 WHERE id = 1");
+        $connection->executeQuery("UPDATE `{$tableName}` SET name = 'external_change' WHERE id = 1");
 
-        // Refresh should reload the original data
+        // Refresh should reload the data from database
         $entityManager->refresh($entity);
 
-        // Entity should have the original data
+        // Entity should have the external change
         $this->assertEquals(1, $entity->id);
+        $this->assertEquals('external_change', $entity->name);
     }
 
     public function testRefreshThrowsExceptionForNonExistentEntity(): void
@@ -70,7 +78,7 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
         $this->createTestEntityTable($connection, 'test_entity_missing');
 
         // Create an entity instance manually
-        $entity = new TestEntity();
+        $entity = new TestEntityMissing();
         $entity->id = 999; // Non-existent ID
 
         // refresh should throw EntityNotFoundException
@@ -80,10 +88,12 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
 
     private function createTestEntityTable($connection, string $tableName): string
     {
-        $tableName = $this->getTableName($tableName, 'mysql');
+        // Use table name as-is since the entities have explicit table names configured
+        $connection->executeQuery("DROP TABLE IF EXISTS `{$tableName}`");
         $connection->executeQuery("
-            CREATE TABLE IF NOT EXISTS `{$tableName}` (
-                id INT PRIMARY KEY
+            CREATE TABLE `{$tableName}` (
+                id INT PRIMARY KEY,
+                name VARCHAR(255)
             )
         ");
 

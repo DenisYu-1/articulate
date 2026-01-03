@@ -89,7 +89,7 @@ class GeneratorTest extends AbstractTestCase {
 
         // UUID v4 should be 36 characters with dashes
         $this->assertEquals(36, strlen($id1));
-        $this->assertStringContains('-', $id1);
+        $this->assertStringContainsString('-', $id1);
     }
 
     public function testUuidV7Generator(): void
@@ -105,7 +105,7 @@ class GeneratorTest extends AbstractTestCase {
 
         // UUID should be 36 characters with dashes
         $this->assertEquals(36, strlen($id1));
-        $this->assertStringContains('-', $id1);
+        $this->assertStringContainsString('-', $id1);
     }
 
     public function testUlidGenerator(): void

@@ -28,7 +28,8 @@
     },
     "require": {
         "symfony/console": "^8.0",
-        "ramsey/uuid": "^4.7"
+        "ramsey/uuid": "^4.7",
+        "symfony/uid": "^7.0"
     },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",

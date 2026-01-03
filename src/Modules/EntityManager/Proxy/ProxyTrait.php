@@ -65,7 +65,7 @@ trait ProxyTrait {
     /**
      * Get the entity identifier.
      */
-    public function _getIdentifier(): mixed
+    public function getProxyIdentifier(): mixed
     {
         return $this->_identifier;
     }
