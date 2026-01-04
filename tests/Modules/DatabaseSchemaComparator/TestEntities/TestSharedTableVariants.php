@@ -7,8 +7,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 
 #[Entity(tableName: 'shared_table_base')]
-class TestSharedTableVariantA
-{
+class TestSharedTableVariantA {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -18,8 +17,7 @@ class TestSharedTableVariantA
 }
 
 #[Entity(tableName: 'shared_table_base')]
-class TestSharedTableVariantB
-{
+class TestSharedTableVariantB {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -29,8 +27,7 @@ class TestSharedTableVariantB
 }
 
 #[Entity(tableName: 'shared_table_base')]
-class TestSharedTableVariantConflict
-{
+class TestSharedTableVariantConflict {
     #[PrimaryKey]
     #[Property]
     public int $id;

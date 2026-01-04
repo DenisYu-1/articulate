@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToMany;
 
 #[Entity]
-class TestManyToOneTargetMappedByMismatch
-{
+class TestManyToOneTargetMappedByMismatch {
     #[Property]
     public int $id;
 

@@ -3,8 +3,8 @@
 namespace Articulate\Commands;
 
 use Articulate\Connection;
-use Articulate\Modules\MigrationExecutionStrategies\MigrationExecutionStrategy;
-use Articulate\Modules\MigrationExecutionStrategies\RollbackExecutionStrategy;
+use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
+use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -16,8 +16,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
 #[AsCommand(name: 'articulate:migrate')]
-class MigrateCommand extends Command
-{
+class MigrateCommand extends Command {
     public function __construct(
         private readonly Connection $connection,
         private readonly InitCommand $initCommand,

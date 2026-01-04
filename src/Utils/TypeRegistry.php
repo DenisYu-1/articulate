@@ -2,12 +2,13 @@
 
 namespace Articulate\Utils;
 
+use InvalidArgumentException;
+
 /**
  * Registry for mapping PHP types to database types and vice versa.
  * Supports custom type converters and bidirectional mapping.
  */
-class TypeRegistry
-{
+class TypeRegistry {
     private array $phpToDb = [];
 
     private array $dbToPhp = [];
@@ -58,7 +59,7 @@ class TypeRegistry
         int $priority = 0
     ): void {
         if (!class_exists($classOrInterface) && !interface_exists($classOrInterface)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 "Cannot register mapping for unknown class or interface: {$classOrInterface}"
             );
         }
@@ -207,7 +208,7 @@ class TypeRegistry
     /**
      * Extract base type from parameterized type like VARCHAR(255).
      */
-    private function extractBaseType(string $dbType): string
+    protected function extractBaseType(string $dbType): string
     {
         // Handle types like VARCHAR(255), TINYINT(1), etc.
         if (preg_match('/^(\w+)/', strtoupper($dbType), $matches)) {
@@ -220,7 +221,7 @@ class TypeRegistry
     /**
      * Infer PHP type from database type when no explicit mapping exists.
      */
-    private function inferPhpType(string $dbType): string
+    protected function inferPhpType(string $dbType): string
     {
         $dbType = strtoupper($dbType);
 

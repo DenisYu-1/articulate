@@ -9,8 +9,7 @@ use Attribute;
 use ReflectionAttribute;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
-class Index
-{
+class Index {
     public array $columns = [];
 
     public function __construct(

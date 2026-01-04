@@ -7,8 +7,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 
 #[Entity(tableName: 'test_entity312')]
-class TestMultiSortedPrimaryKeyEntity
-{
+class TestMultiSortedPrimaryKeyEntity {
     #[PrimaryKey]
     #[Property]
     public string $id;

@@ -4,10 +4,11 @@ namespace Articulate\Tests;
 
 use Articulate\Connection;
 use Dotenv\Dotenv;
+use Exception;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
-abstract class AbstractTestCase extends TestCase
-{
+abstract class AbstractTestCase extends TestCase {
     protected ?Connection $mysqlConnection = null;
 
     protected ?Connection $pgsqlConnection = null;
@@ -40,21 +41,21 @@ abstract class AbstractTestCase extends TestCase
         try {
             $this->sqliteConnection = new Connection('sqlite::memory:', '1', '2');
             $this->sqliteConnection->beginTransaction();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->sqliteConnection = null;
         }
 
         try {
             $this->mysqlConnection = new Connection('mysql:host=' . (getenv('DATABASE_HOST')) . ';dbname=' . $databaseName . ';charset=utf8mb4', getenv('DATABASE_USER') ?? 'root', getenv('DATABASE_PASSWORD'));
             $this->mysqlConnection->beginTransaction();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->mysqlConnection = null;
         }
 
         try {
             $this->pgsqlConnection = new Connection('pgsql:host=' . getenv('DATABASE_HOST_PGSQL') . ';port=5432;dbname=' . $databaseName, getenv('DATABASE_USER') ?? 'postgres', getenv('DATABASE_PASSWORD'));
             $this->pgsqlConnection->beginTransaction();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->pgsqlConnection = null;
         }
     }
@@ -64,7 +65,7 @@ abstract class AbstractTestCase extends TestCase
         if ($this->pgsqlConnection) {
             try {
                 $this->pgsqlConnection->rollbackTransaction();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Ignore rollback errors
             }
         }
@@ -72,7 +73,7 @@ abstract class AbstractTestCase extends TestCase
         if ($this->mysqlConnection) {
             try {
                 $this->mysqlConnection->rollbackTransaction();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Ignore rollback errors
             }
         }
@@ -80,7 +81,7 @@ abstract class AbstractTestCase extends TestCase
         if ($this->sqliteConnection) {
             try {
                 $this->sqliteConnection->rollbackTransaction();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Ignore rollback errors
             }
         }
@@ -100,9 +101,9 @@ abstract class AbstractTestCase extends TestCase
     protected function getConnection(string $databaseName): Connection
     {
         return match ($databaseName) {
-            'mysql' => $this->mysqlConnection ?? throw new \RuntimeException('MySQL connection not available'),
-            'pgsql' => $this->pgsqlConnection ?? throw new \RuntimeException('PostgreSQL connection not available'),
-            'sqlite' => $this->sqliteConnection ?? throw new \RuntimeException('SQLite connection not available'),
+            'mysql' => $this->mysqlConnection ?? throw new RuntimeException('MySQL connection not available'),
+            'pgsql' => $this->pgsqlConnection ?? throw new RuntimeException('PostgreSQL connection not available'),
+            'sqlite' => $this->sqliteConnection ?? throw new RuntimeException('SQLite connection not available'),
             default => throw new \InvalidArgumentException("Unknown database: {$databaseName}")
         };
     }
@@ -113,10 +114,10 @@ abstract class AbstractTestCase extends TestCase
     protected function isDatabaseAvailable(string $databaseName): bool
     {
         try {
-            $connection = $this->getConnection($databaseName);
+            $this->getConnection($databaseName);
 
-            return $connection->testConnection();
-        } catch (\Exception $e) {
+            return true;
+        } catch (Exception) {
             return false;
         }
     }

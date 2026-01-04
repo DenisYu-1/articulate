@@ -10,8 +10,7 @@ use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
 
 #[Entity(tableName: 'shared_mapping_owner')]
-class TestManyToManySharedOwner
-{
+class TestManyToManySharedOwner {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -44,8 +43,7 @@ class TestManyToManySharedOwner
 }
 
 #[Entity(tableName: 'shared_mapping_target')]
-class TestManyToManySharedTarget
-{
+class TestManyToManySharedTarget {
     #[PrimaryKey]
     #[Property]
     public int $id;

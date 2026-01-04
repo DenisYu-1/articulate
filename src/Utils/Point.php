@@ -5,8 +5,7 @@ namespace Articulate\Utils;
 /**
  * Example Point class for spatial data.
  */
-class Point
-{
+class Point {
     public function __construct(
         public readonly float $x,
         public readonly float $y

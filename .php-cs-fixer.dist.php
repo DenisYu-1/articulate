@@ -22,6 +22,7 @@ return $config
             'default' => 'single_space',
             'operators' => ['=>' => null]
         ],
+        'braces_position' => ['classes_opening_brace' => 'same_line'],
         'blank_line_after_namespace' => true,
         'blank_line_after_opening_tag' => true,
         'blank_line_before_statement' => [
@@ -44,7 +45,7 @@ return $config
         'elseif' => true,
         'encoding' => true,
         'full_opening_tag' => true,
-        'fully_qualified_strict_types' => true,
+        'fully_qualified_strict_types' => ['import_symbols' => true],
         'function_declaration' => ['closure_function_spacing' => 'one'],
         'function_typehint_space' => true,
         'general_phpdoc_tag_rename' => true,

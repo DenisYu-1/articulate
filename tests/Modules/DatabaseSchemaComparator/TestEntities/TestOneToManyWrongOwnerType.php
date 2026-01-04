@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToMany;
 
 #[Entity]
-class TestOneToManyWrongOwnerType
-{
+class TestOneToManyWrongOwnerType {
     #[Property]
     public int $id;
 

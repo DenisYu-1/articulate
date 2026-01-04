@@ -5,8 +5,7 @@ namespace Articulate\Attributes\Relations;
 use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
-class ManyToMany implements RelationAttributeInterface
-{
+class ManyToMany implements RelationAttributeInterface {
     public readonly ?string $targetEntity;
 
     public readonly ?string $ownedBy;

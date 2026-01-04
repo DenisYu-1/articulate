@@ -6,8 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 
 #[Entity]
-class TestDateTimeEntity
-{
+class TestDateTimeEntity {
     #[Property]
     public int $id;
 

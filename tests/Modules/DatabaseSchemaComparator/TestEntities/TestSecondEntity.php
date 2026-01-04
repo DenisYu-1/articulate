@@ -6,8 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 
 #[Entity(tableName: 'test_entity')]
-class TestSecondEntity
-{
+class TestSecondEntity {
     #[Property]
     public string $name;
 }

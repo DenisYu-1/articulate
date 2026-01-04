@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToMany;
 
 #[Entity]
-class TestOneToManyInverseMissingOwner
-{
+class TestOneToManyInverseMissingOwner {
     #[Property]
     public int $id;
 
@@ -17,8 +16,7 @@ class TestOneToManyInverseMissingOwner
 }
 
 #[Entity]
-class TestOneToManyWrongOwnerType
-{
+class TestOneToManyWrongOwnerType {
     #[Property]
     public int $id;
 
@@ -27,8 +25,7 @@ class TestOneToManyWrongOwnerType
 }
 
 #[Entity]
-class TestOneToManyWrongOwner
-{
+class TestOneToManyWrongOwner {
     #[Property]
     public int $id;
 

@@ -3,11 +3,9 @@
 namespace Articulate;
 
 use PDO;
-use PDOException;
 use PDOStatement;
 
-class Connection
-{
+class Connection {
     public const MYSQL = 'mysql';
 
     public const PGSQL = 'pgsql';
@@ -28,16 +26,7 @@ class Connection
             PDO::ATTR_AUTOCOMMIT => false,
         ];
 
-        try {
-            $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
-        } catch (PDOException $e) {
-            throw new PDOException($e->getMessage(), (int) $e->getCode());
-        }
-    }
-
-    public function testConnection()
-    {
-        return $this->pdo instanceof PDO;
+        $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
     }
 
     public function executeQuery(string $sql, array $parameters = []): PDOStatement
@@ -53,19 +42,19 @@ class Connection
         return $this->pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
     }
 
-    public function beginTransaction()
+    public function beginTransaction(): void
     {
         if (!$this->pdo->inTransaction()) {
             $this->pdo->beginTransaction();
         }
     }
 
-    public function commit()
+    public function commit(): void
     {
         $this->pdo->commit();
     }
 
-    public function rollbackTransaction()
+    public function rollbackTransaction(): void
     {
         if ($this->pdo->inTransaction()) {
             $this->pdo->rollBack();

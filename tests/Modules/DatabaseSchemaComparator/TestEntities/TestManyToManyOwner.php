@@ -10,8 +10,7 @@ use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
 
 #[Entity(tableName: 'test_many_to_many_owner')]
-class TestManyToManyOwner
-{
+class TestManyToManyOwner {
     #[PrimaryKey]
     #[Property]
     public int $id;
@@ -24,8 +23,7 @@ class TestManyToManyOwner
 }
 
 #[Entity(tableName: 'test_many_to_many_target')]
-class TestManyToManyTarget
-{
+class TestManyToManyTarget {
     #[PrimaryKey]
     #[Property]
     public int $id;

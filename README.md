@@ -10,7 +10,7 @@ Work in progress.
 ## Badges
 
 [![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
-[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-81.87%25-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
+[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
 
 ## Main Concepts
@@ -130,14 +130,55 @@ class MoneyConverter implements TypeConverterInterface {
 }
 ```
 
-## Current gaps / known issues
+## What's Implemented
 
-- Schema reader is MySQL-only: it swallows errors, returns empty columns on PostgreSQL/SQLite, and treats lengthed types (e.g., `int(11)`) as `string`.
-- Query builder classes are still missing.
-- Polymorphic relations: `src/Attributes/Relations/README.md`
-### Documentation
+Articulate provides a solid foundation for PHP ORM development with the following core features:
 
-- One-to-one relations: `src/Attributes/Relations/README.md`
+### ✅ Core Architecture
+- **Entity System**: Full attribute-based entity definition with comprehensive relation support
+- **Migration System**: Complete schema management with commands, generators, and execution strategies for MySQL, PostgreSQL, and SQLite
+- **Type Mapping System**: Flexible type conversion with custom converters and priority-based resolution
+- **EntityManager**: Robust implementation with Unit of Work pattern, change tracking, and identity maps
+- **Multi-Database Support**: Comprehensive testing across MySQL, PostgreSQL, and SQLite databases
+
+### ✅ Relations & Associations
+- **Standard Relations**: OneToOne, OneToMany, ManyToOne, ManyToMany with full lifecycle support
+- **Polymorphic Relations**: MorphTo, MorphOne, MorphMany with open-ended design (no hardcoded entity lists)
+- **Advanced Many-to-Many**: Custom junction tables with additional mapping properties
+- **Foreign Key Management**: Automatic FK creation with constraint validation
+
+### ✅ Entity Management
+- **Unit of Work Pattern**: Memory-efficient change tracking with multiple strategies
+- **Hydration System**: Multiple hydrators (Object, Array, Scalar, Partial) for different use cases
+- **Proxy System**: Lazy loading infrastructure for performance optimization
+- **Lifecycle Callbacks**: Pre/Post persist, update, remove, and load hooks
+- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields
+
+### ✅ Development & Testing
+- **Comprehensive Test Suite**: 2000+ mutations with 83%+ kill rate
+- **Multi-Database Testing**: Automated testing across all supported databases
+- **Code Quality**: PHP-CS-Fixer, PHPStan static analysis, Deptrac architecture validation
+- **CI/CD Pipeline**: GitHub Actions with automated QA checks
+
+## Current Gaps & Known Issues
+
+### 🚧 High Priority
+- **Schema Reader**: Currently MySQL-only; returns empty results for PostgreSQL/SQLite and incorrectly handles typed columns (e.g., `int(11)` → `string`)
+- **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
+- **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
+
+### 📋 Medium Priority
+- **Repository Pattern**: No abstraction layer for entity-specific queries and operations
+- **Caching**: Missing query result cache and second-level entity cache
+- **Advanced Query Features**: Criteria API, native SQL queries, bulk operations
+- **Lock Modes**: No pessimistic or optimistic locking support
+
+### 🔄 Low Priority
+- **Event System**: Limited to lifecycle callbacks; could benefit from broader event architecture
+- **ID Generation**: Basic auto-increment; missing UUID, sequences, custom generators
+
+### 📚 Documentation
+- **Relations Guide**: `src/Attributes/Relations/README.md` (comprehensive coverage of all relation types)
 
 ## Local Development & Testing
 
@@ -188,6 +229,56 @@ composer test:mutation
 
 # Fix code style issues
 composer cs:fix
+```
+
+## Future Improvements
+
+This section outlines planned enhancements and features for future versions of Articulate.
+
+### ID Generation Strategies
+
+**Current State**: Basic auto-increment ID generation for entities without existing IDs.
+
+**Planned Improvements**:
+- **Database-Specific Strategies**:
+  - MySQL/SQLite auto-increment (`AUTO_INCREMENT`)
+  - PostgreSQL sequences (`SERIAL`, `NEXTVAL`)
+  - SQL Server identity columns
+- **UUID/GUID Generation**: Built-in UUID v4/v7 generation with attribute configuration
+- **Custom ID Generators**: Pluggable strategies for application-specific ID generation
+- **Natural Key Support**: Using business-meaningful fields as primary keys (non-auto-generated)
+- **Sequence Support**: Named sequences for enterprise databases
+
+**Note**: Composite primary keys (multi-column) are intentionally out of scope for Articulate's initial versions, as they add significant complexity and are not commonly needed in modern application development. Surrogate keys (single-column auto-generated IDs) are recommended for most use cases.
+
+**Example Usage**:
+```php
+#[Entity]
+#[Id(strategy: 'uuid')]
+class Product {
+    #[Id]
+    public string $id; // Auto-generated UUID
+
+    public string $name;
+}
+
+#[Entity]
+#[Id(strategy: 'sequence', sequence: 'user_seq')]
+class User {
+    #[Id]
+    public int $id; // From PostgreSQL sequence
+
+    public string $email;
+}
+
+#[Entity]
+#[Id(strategy: 'auto')] // Default auto-increment
+class Order {
+    #[Id]
+    public int $id; // MySQL AUTO_INCREMENT or PostgreSQL SERIAL
+
+    public string $orderNumber; // Natural key, not auto-generated
+}
 ```
 
 ## CI/CD

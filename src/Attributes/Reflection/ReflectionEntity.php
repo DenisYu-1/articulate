@@ -19,8 +19,7 @@ use Articulate\Schema\SchemaNaming;
 use ReflectionAttribute;
 use ReflectionClass;
 
-class ReflectionEntity extends ReflectionClass
-{
+class ReflectionEntity extends ReflectionClass {
     public function __construct(
         string $objectOrClass,
         private readonly SchemaNaming $schemaNaming = new SchemaNaming(),
@@ -45,11 +44,20 @@ class ReflectionEntity extends ReflectionClass
             $entityProperty = $property->getAttributes(Property::class);
 
             if (!empty($entityProperty)) {
+                // Extract generator type from PrimaryKey attribute
+                $generatorType = null;
+                $primaryKeyAttributes = $property->getAttributes(PrimaryKey::class);
+                if (!empty($primaryKeyAttributes)) {
+                    $primaryKeyInstance = $primaryKeyAttributes[0]->newInstance();
+                    $generatorType = $primaryKeyInstance->generator;
+                }
+
                 yield new ReflectionProperty(
                     $entityProperty[0]->newInstance(),
                     $property,
                     isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
                     isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,
+                    $generatorType,
                 );
 
                 continue;

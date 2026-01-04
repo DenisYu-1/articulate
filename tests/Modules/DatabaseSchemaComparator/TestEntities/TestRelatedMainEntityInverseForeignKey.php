@@ -7,8 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToOne;
 
 #[Entity]
-class TestRelatedMainEntityInverseForeignKey
-{
+class TestRelatedMainEntityInverseForeignKey {
     #[Property]
     public int $id;
 

@@ -10,22 +10,19 @@ use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Tests\AbstractTestCase;
 use RuntimeException;
 
-class NonEntity
-{
+class NonEntity {
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class RelatedEntity
-{
+class RelatedEntity {
     #[Property]
     private int $id;
 }
 
 #[Entity]
-class OneToOneRelatedEntity
-{
+class OneToOneRelatedEntity {
     #[Property]
     private int $id;
 
@@ -34,8 +31,7 @@ class OneToOneRelatedEntity
 }
 
 #[Entity(tableName: 'test')]
-class OneToOneTest extends AbstractTestCase
-{
+class OneToOneTest extends AbstractTestCase {
     #[Property]
     private int $id;
 

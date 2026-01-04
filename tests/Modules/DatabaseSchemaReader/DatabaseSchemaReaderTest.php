@@ -3,12 +3,11 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaReader;
 
 use Articulate\Connection;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
 
-class DatabaseSchemaReaderTest extends TestCase
-{
+class DatabaseSchemaReaderTest extends TestCase {
     public function testMapsIndexesFromShowIndexes(): void
     {
         $statement = $this->createMock(PDOStatement::class);

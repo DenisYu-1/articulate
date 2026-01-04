@@ -5,8 +5,7 @@ namespace Articulate\Utils;
 /**
  * Converter for boolean values to/from TINYINT(1).
  */
-class BoolTypeConverter implements TypeConverterInterface
-{
+class BoolTypeConverter implements TypeConverterInterface {
     /**
      * Convert PHP boolean to database TINYINT(1).
      */

@@ -3,8 +3,8 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Modules\DatabaseSchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\DatabaseSchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyComment;
@@ -15,8 +15,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorph
 /**
  * Integration test for polymorphic many-to-many relations end-to-end functionality.
  */
-class PolymorphicManyToManyIntegrationTest extends AbstractTestCase
-{
+class PolymorphicManyToManyIntegrationTest extends AbstractTestCase {
     public function testPolymorphicManyToManyRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database

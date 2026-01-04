@@ -12,8 +12,7 @@ use Articulate\Connection;
  * 2. Testing specific databases with dedicated providers
  * 3. Testing single database scenarios
  */
-class ExampleMultiDatabaseTest extends DatabaseTestCase
-{
+class ExampleMultiDatabaseTest extends DatabaseTestCase {
     /**
      * Test that runs against all available databases.
      *
