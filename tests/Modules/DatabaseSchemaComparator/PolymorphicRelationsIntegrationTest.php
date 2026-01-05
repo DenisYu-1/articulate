@@ -4,7 +4,7 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCommentEntity;
@@ -18,7 +18,7 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
     public function testPolymorphicRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database
-        $schemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn([]);
         $schemaReader->method('getTableColumns')->willReturn([]);
         $schemaReader->method('getTableIndexes')->willReturn([]);
@@ -75,7 +75,7 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
             'title' => (object) ['name' => 'title', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
         ];
 
-        $schemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn(['test_morph_to_entity']);
         $schemaReader->method('getTableColumns')->willReturnCallback(function ($table) use ($existingColumns) {
             return $table === 'test_morph_to_entity' ? array_values($existingColumns) : [];

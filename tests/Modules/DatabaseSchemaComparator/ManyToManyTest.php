@@ -16,7 +16,7 @@ use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\ManyToManyRelationValidator;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\MorphToManyRelationValidator;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
@@ -230,7 +230,7 @@ class ManyToManyTest extends AbstractTestCase {
         array $tables,
         callable $columns,
     ): DatabaseSchemaComparator {
-        $reader = $this->createMock(DatabaseSchemaReader::class);
+        $reader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $reader->expects($this->once())->method('getTables')->willReturn($tables);
         $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
         $reader->expects($this->any())->method('getTableIndexes')->willReturn([]);

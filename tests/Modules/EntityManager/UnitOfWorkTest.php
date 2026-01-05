@@ -167,7 +167,7 @@ class UnitOfWorkTest extends TestCase {
         $this->unitOfWork->persist($entity);
         $this->unitOfWork->computeChangeSets();
 
-        $this->unitOfWork->commit();
+        $this->unitOfWork->clearChanges();
 
         // After commit, schedules should be cleared
         // This is a simplified test since actual commit logic is not implemented yet
@@ -207,7 +207,7 @@ class UnitOfWorkTest extends TestCase {
         $entity->name = 'Entity with ID';
 
         $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
+        $this->unitOfWork->clearChanges();
 
         // Should keep the original ID
         $this->assertEquals(42, $entity->id);
@@ -227,7 +227,7 @@ class UnitOfWorkTest extends TestCase {
         $entity->id = $existingUuid;
 
         $this->unitOfWork->persist($entity);
-        $this->unitOfWork->commit();
+        $this->unitOfWork->clearChanges();
 
         // Should keep the original UUID
         $this->assertEquals($existingUuid, $entity->id);

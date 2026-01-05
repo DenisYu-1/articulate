@@ -7,7 +7,7 @@ use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToOneOwner;
@@ -436,7 +436,7 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase {
         string $indexesExpectation = 'any',
         string $foreignKeysExpectation = 'any',
     ): DatabaseSchemaComparator {
-        $reader = $this->createMock(DatabaseSchemaReader::class);
+        $reader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $reader->expects($this->once())->method('getTables')->willReturn($tables);
         $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
 

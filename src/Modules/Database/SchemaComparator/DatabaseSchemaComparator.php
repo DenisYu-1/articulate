@@ -17,13 +17,15 @@ use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
+use ReflectionNamedType;
+use ReflectionType;
 use RuntimeException;
 
 readonly class DatabaseSchemaComparator {
     public function __construct(
-        private DatabaseSchemaReader $databaseSchemaReader,
+        private DatabaseSchemaReaderInterface $databaseSchemaReader,
         private SchemaNaming $schemaNaming,
         private RelationValidatorFactory $relationValidatorFactory = new RelationValidatorFactory(),
     ) {
@@ -68,13 +70,6 @@ readonly class DatabaseSchemaComparator {
                 $columns = [];
             }
 
-            // Initialize variables for CREATE operations
-            if (!isset($existingIndexes)) {
-                $existingIndexes = [];
-                $indexesToRemove = [];
-                $existingForeignKeys = [];
-                $foreignKeysToRemove = [];
-            }
             $columnsIndexed = [];
             foreach ($columns as $column) {
                 $columnsIndexed[$column->name] = $column;
@@ -98,7 +93,7 @@ readonly class DatabaseSchemaComparator {
                         $propertiesIndexed = $this->addMorphToColumns($propertiesIndexed, $property, $tableName);
 
                         // Auto-generate index for polymorphic relations
-                        $this->addPolymorphicIndex($entityIndexes, $property, $tableName);
+                        $this->addPolymorphicIndex($entityIndexes, $property);
                     } elseif ($property instanceof ReflectionRelation && ($property->isMorphOne() || $property->isMorphMany())) {
                         // MorphOne and MorphMany are inverse relations - they don't generate columns
                         // Just validate them
@@ -122,7 +117,6 @@ readonly class DatabaseSchemaComparator {
 
             $columnsCompareResults = [];
             $foreignKeysByName = [];
-            $existingIndexesLoaded = isset($existingIndexes);
             $createdColumnsWithForeignKeys = [];
 
             foreach ($columnsToCreate as $columnName => $data) {
@@ -218,7 +212,7 @@ readonly class DatabaseSchemaComparator {
             }
 
             foreach (array_keys($indexesToRemove) as $indexName) {
-                if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys ?? [])) {
+                if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys)) {
                     unset($indexesToRemove[$indexName]);
 
                     continue;
@@ -232,67 +226,66 @@ readonly class DatabaseSchemaComparator {
                 );
             }
 
-            if (isset($existingForeignKeys)) {
-                foreach ($propertiesIndexed as $columnName => $propertyData) {
-                    if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
-                        continue;
-                    }
-                    if (!$propertyData['relation']) {
-                        continue;
-                    }
-                    $targetEntityClass = $propertyData['relation']->getTargetEntity();
-                    if ($targetEntityClass === null) {
-                        continue;
-                    }
-                    $targetEntity = new ReflectionEntity($targetEntityClass);
-                    $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
-                    $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
-                    if ($propertyData['foreignKeyRequired']) {
-                        if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
-                            unset($foreignKeysToRemove[$foreignKeyName]);
-
-                            continue;
-                        }
-                        $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
-                        $validator->validate($propertyData['relation']);
-                        $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-                        if (!$foreignKeyExists) {
-                            $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
-                                $foreignKeyName,
-                                CompareResult::OPERATION_CREATE,
-                                $columnName,
-                                $targetEntity->getTableName(),
-                                $propertyData['referencedColumn'],
-                            );
-                        } else {
-                            unset($foreignKeysToRemove[$foreignKeyName]);
-                        }
-                    } else {
-                        if ($foreignKeyExists) {
-                            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-                            unset($foreignKeysToRemove[$foreignKeyName]);
-                            $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
-                                $foreignKeyName,
-                                CompareResult::OPERATION_DELETE,
-                                $existingForeignKeys[$foreignKeyName]['column'],
-                                $existingForeignKeys[$foreignKeyName]['referencedTable'],
-                                $existingForeignKeys[$foreignKeyName]['referencedColumn'],
-                            );
-                        }
-                    }
+            foreach ($propertiesIndexed as $columnName => $propertyData) {
+                if (empty($existingForeignKeys) && $operation === TableCompareResult::OPERATION_CREATE) {
+                    continue;
                 }
+                if (!$propertyData['relation']) {
+                    continue;
+                }
+                $targetEntityClass = $propertyData['relation']->getTargetEntity();
+                if ($targetEntityClass === null) {
+                    continue;
+                }
+                $targetEntity = new ReflectionEntity($targetEntityClass);
+                $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
+                if ($propertyData['foreignKeyRequired']) {
+                    if ($operation !== TableCompareResult::OPERATION_CREATE && isset($createdColumnsWithForeignKeys[$columnName])) {
+                        unset($foreignKeysToRemove[$foreignKeyName]);
 
-                foreach (array_keys($foreignKeysToRemove ?? []) as $foreignKeyName) {
+                        continue;
+                    }
+                    $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
+                    $validator->validate($propertyData['relation']);
                     $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-                    $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
-                        $foreignKeyName,
-                        CompareResult::OPERATION_DELETE,
-                        $existingForeignKeys[$foreignKeyName]['column'],
-                        $existingForeignKeys[$foreignKeyName]['referencedTable'],
-                        $existingForeignKeys[$foreignKeyName]['referencedColumn'],
-                    );
+                    if (!$foreignKeyExists) {
+                        $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                            $foreignKeyName,
+                            CompareResult::OPERATION_CREATE,
+                            $columnName,
+                            $targetEntity->getTableName(),
+                            $propertyData['referencedColumn'],
+                        );
+                    } else {
+                        unset($foreignKeysToRemove[$foreignKeyName]);
+                    }
+                } else {
+                    if ($foreignKeyExists) {
+                        $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                        unset($foreignKeysToRemove[$foreignKeyName]);
+                        $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                            $foreignKeyName,
+                            CompareResult::OPERATION_DELETE,
+                            $existingForeignKeys[$foreignKeyName]['column'],
+                            $existingForeignKeys[$foreignKeyName]['referencedTable'],
+                            $existingForeignKeys[$foreignKeyName]['referencedColumn'],
+                        );
+                    }
                 }
             }
+
+            foreach (array_keys($foreignKeysToRemove ?? []) as $foreignKeyName) {
+                $operation = $operation ?? CompareResult::OPERATION_UPDATE;
+                $foreignKeysByName[$foreignKeyName] = new ForeignKeyCompareResult(
+                    $foreignKeyName,
+                    CompareResult::OPERATION_DELETE,
+                    $existingForeignKeys[$foreignKeyName]['column'],
+                    $existingForeignKeys[$foreignKeyName]['referencedTable'],
+                    $existingForeignKeys[$foreignKeyName]['referencedColumn'],
+                );
+            }
+
             $foreignKeys = array_values($foreignKeysByName);
 
             if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
@@ -710,9 +703,9 @@ readonly class DatabaseSchemaComparator {
             $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
                 $fkName,
                 CompareResult::OPERATION_DELETE,
-                $existingFk->column,
-                $existingFk->referencedTable,
-                $existingFk->referencedColumn,
+                $existingFk['column'],
+                $existingFk['referencedTable'],
+                $existingFk['referencedColumn'],
             );
         }
 
@@ -983,7 +976,7 @@ readonly class DatabaseSchemaComparator {
         return $propertiesIndexed;
     }
 
-    private function addPolymorphicIndex(array &$entityIndexes, ReflectionRelation $relation, string $tableName): void
+    private function addPolymorphicIndex(array &$entityIndexes, ReflectionRelation $relation): void
     {
         $indexName = $relation->getPropertyName() . '_morph_index';
         $indexColumns = [
@@ -1038,7 +1031,7 @@ readonly class DatabaseSchemaComparator {
         return false;
     }
 
-    private function normalizeTypeName(string|\ReflectionType|null $type): ?string
+    private function normalizeTypeName(string|ReflectionType|null $type): ?string
     {
         if ($type === null) {
             return null;
@@ -1049,13 +1042,13 @@ readonly class DatabaseSchemaComparator {
 
             return $clean;
         }
-        if ($type instanceof \ReflectionNamedType) {
+        if ($type instanceof ReflectionNamedType) {
             return $type->getName();
         }
         if ($type instanceof \ReflectionUnionType) {
             $nonNull = array_filter(
                 $type->getTypes(),
-                fn ($t) => $t instanceof \ReflectionNamedType && $t->getName() !== 'null',
+                fn ($t) => $t instanceof ReflectionNamedType && $t->getName() !== 'null',
             );
             $first = reset($nonNull);
 

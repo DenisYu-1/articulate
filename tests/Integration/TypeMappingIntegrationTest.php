@@ -4,7 +4,7 @@ namespace Articulate\Tests\Integration;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
@@ -23,7 +23,7 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $connection->executeQuery('DROP TABLE IF EXISTS `test_bool_entity`');
 
         $entity = new ReflectionEntity(TestBoolEntity::class);
-        $reader = new DatabaseSchemaReader($connection);
+        $reader = SchemaReaderFactory::create($connection);
         $comparator = new DatabaseSchemaComparator($reader, new SchemaNaming());
         $generator = new MySqlMigrationGenerator();
 

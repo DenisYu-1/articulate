@@ -183,17 +183,6 @@ class UnitOfWork {
         }
     }
 
-    /**
-     * @deprecated Use getChangeSets() instead. This method is kept for backward compatibility with tests.
-     */
-    public function commit(): void
-    {
-        // For backward compatibility with tests, just clear changes
-        // In the new architecture, changes are collected via getChangeSets()
-        // and executed by ChangeAggregator + QueryExecutor
-        $this->clearChanges();
-    }
-
     public function registerManaged(object $entity, array $data): void
     {
         // TODO: Extract ID from entity based on metadata
