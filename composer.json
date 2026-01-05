@@ -24,7 +24,8 @@
         "friendsofphp/php-cs-fixer": "^3.62",
         "squizlabs/php_codesniffer": "^3.10",
         "infection/infection": "dev-master",
-        "deptrac/deptrac": "^2.0"
+        "deptrac/deptrac": "^2.0",
+        "phpmd/phpmd": "^2.15"
     },
     "require": {
         "symfony/console": "^8.0",
@@ -41,8 +42,9 @@
             "php -d memory_limit=256M vendor/bin/infection --threads=max"
         ],
         "test:mutation:clean": "find build/infection -mindepth 1 -delete 2>/dev/null || true",
-        "architecture:check": "php -d error_reporting=E_ERROR vendor/bin/deptrac analyse --config-file=deptrac.yaml",
-        "architecture:check:verbose": "php -d error_reporting=E_ERROR vendor/bin/deptrac analyse --config-file=deptrac.yaml --formatter=graphviz-image --output=architecture.svg",
+        "architecture:check": "vendor/bin/deptrac analyse --config-file=deptrac.yaml",
+        "architecture:check:verbose": "vendor/bin/deptrac analyse --config-file=deptrac.yaml --formatter=graphviz-image --output=architecture.svg",
+        "complexity:check": "php vendor/bin/phpmd src text phpmd.xml",
         "qa": [
             "@cs:check",
             "@architecture:check",
