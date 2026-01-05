@@ -6,9 +6,7 @@ use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class MorphTo implements RelationAttributeInterface {
-    private ?string $resolvedTypeColumn = null;
-
-    private ?string $resolvedIdColumn = null;
+    use PolymorphicColumnResolution;
 
     /**
      * @param string|null $typeColumn Custom column name for the morph type (default: {property}_type)
@@ -32,22 +30,6 @@ class MorphTo implements RelationAttributeInterface {
     }
 
     /**
-     * Get the resolved type column name for this morph relation.
-     */
-    public function getTypeColumn(): string
-    {
-        return $this->resolvedTypeColumn ?? $this->typeColumn ?? '__UNRESOLVED_TYPE__';
-    }
-
-    /**
-     * Get the resolved ID column name for this morph relation.
-     */
-    public function getIdColumn(): string
-    {
-        return $this->resolvedIdColumn ?? $this->idColumn ?? '__UNRESOLVED_ID__';
-    }
-
-    /**
      * Get recommended index for this polymorphic relation
      * Returns a composite index on (type_column, id_column).
      */
@@ -65,29 +47,5 @@ class MorphTo implements RelationAttributeInterface {
     public function getRecommendedIndexColumns(): array
     {
         return [$this->getTypeColumn(), $this->getIdColumn()];
-    }
-
-    /**
-     * Resolve column names based on property name
-     * Called by reflection system.
-     */
-    public function resolveColumnNames(string $propertyName): void
-    {
-        if ($this->typeColumn === null) {
-            $this->resolvedTypeColumn = $this->convertToSnakeCase($propertyName) . '_type';
-        } else {
-            $this->resolvedTypeColumn = $this->typeColumn;
-        }
-
-        if ($this->idColumn === null) {
-            $this->resolvedIdColumn = $this->convertToSnakeCase($propertyName) . '_id';
-        } else {
-            $this->resolvedIdColumn = $this->idColumn;
-        }
-    }
-
-    private function convertToSnakeCase(string $string): string
-    {
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $string));
     }
 }

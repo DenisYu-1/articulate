@@ -56,13 +56,8 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
 
     private function getPropertyValue(object $entity, ReflectionProperty $property): mixed
     {
-        $propertyName = $property->getFieldName();
-
-        // Use reflection to access the property value
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
-        $reflectionProperty->setAccessible(true);
-
-        return $reflectionProperty->getValue($entity);
+        // Use metadata-driven property access instead of direct reflection
+        return $property->getValue($entity);
     }
 
     private function calculateDifferences(array $original, array $current): array
