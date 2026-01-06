@@ -96,16 +96,6 @@ readonly class EntityTableComparator
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
         }
 
-        $createdColumnsWithForeignKeys = [];
-        $foreignKeysFromNewColumns = $this->foreignKeyComparator->createForeignKeysForNewColumns(
-            array_intersect_key($propertiesIndexed, array_flip(array_map(
-                fn(ColumnCompareResult $result) => $result->columnName,
-                array_filter($columnsCompareResults, fn(ColumnCompareResult $result) => $result->operation === CompareResult::OPERATION_CREATE)
-            ))),
-            $createdColumnsWithForeignKeys,
-            $tableName
-        );
-
         $indexCompareResults = $this->indexComparator->compareIndexes(
             $entityIndexes,
             $existingIndexes,
@@ -118,17 +108,31 @@ readonly class EntityTableComparator
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
         }
 
-        $foreignKeys = $this->foreignKeyComparator->compareForeignKeys(
-            $propertiesIndexed,
-            $existingForeignKeys,
-            $foreignKeysToRemove,
-            $createdColumnsWithForeignKeys,
-            $tableName,
-            $operation === TableCompareResult::OPERATION_CREATE
-        );
+        $createdColumnsWithForeignKeys = [];
+        $foreignKeys = [];
 
-        // Merge foreign keys from new columns
-        $foreignKeys = array_merge($foreignKeys, $foreignKeysFromNewColumns);
+        if ($operation === TableCompareResult::OPERATION_CREATE) {
+            // For new tables, create foreign keys for all properties that require them
+            $foreignKeys = $this->foreignKeyComparator->createForeignKeysForNewColumns(
+                $propertiesIndexed,
+                $createdColumnsWithForeignKeys,
+                $tableName
+            );
+        } else {
+            // For existing tables, compare foreign keys
+            $foreignKeys = $this->foreignKeyComparator->compareForeignKeys(
+                $propertiesIndexed,
+                $existingForeignKeys,
+                $foreignKeysToRemove,
+                $createdColumnsWithForeignKeys,
+                $tableName,
+                false
+            );
+        }
+
+        if (!empty($foreignKeys)) {
+            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
+        }
 
         if (!empty($foreignKeys)) {
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;

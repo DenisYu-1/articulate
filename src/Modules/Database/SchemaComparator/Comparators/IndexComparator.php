@@ -86,7 +86,7 @@ readonly class IndexComparator
         };
     }
 
-    private function shouldSkipIndexDeletion(string $indexName, array $indexData, array $primaryColumns, array $existingForeignKeys): bool
+    public function shouldSkipIndexDeletion(string $indexName, array $indexData, array $primaryColumns, array $existingForeignKeys): bool
     {
         $columns = $indexData['columns'] ?? [];
         if (empty($columns)) {
