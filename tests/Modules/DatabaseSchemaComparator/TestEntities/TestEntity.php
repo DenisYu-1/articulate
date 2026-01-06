@@ -9,6 +9,5 @@ use Articulate\Attributes\Property;
 #[Entity]
 class TestEntity {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 }

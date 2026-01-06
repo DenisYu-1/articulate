@@ -12,7 +12,6 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 #[Entity(tableName: 'shared_mapping_owner_conflict')]
 class TestManyToManySharedOwnerConflict {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(
@@ -43,7 +42,6 @@ class TestManyToManySharedOwnerConflict {
 #[Entity(tableName: 'shared_mapping_target_conflict')]
 class TestManyToManySharedTargetConflict {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(ownedBy: 'firstRelations', targetEntity: TestManyToManySharedOwnerConflict::class)]

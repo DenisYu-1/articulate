@@ -12,7 +12,6 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 #[Entity(tableName: 'test_many_to_many_owner')]
 class TestManyToManyOwner {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(targetEntity: TestManyToManyTarget::class, referencedBy: 'owners', mappingTable: new MappingTable(
@@ -25,7 +24,6 @@ class TestManyToManyOwner {
 #[Entity(tableName: 'test_many_to_many_target')]
 class TestManyToManyTarget {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(ownedBy: 'targets', targetEntity: TestManyToManyOwner::class)]

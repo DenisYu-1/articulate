@@ -9,6 +9,5 @@ use Articulate\Attributes\Property;
 #[Entity(tableName: 'test_entity_missing')]
 class TestEntityMissing {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 }

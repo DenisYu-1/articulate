@@ -12,7 +12,6 @@ use Articulate\Tests\AbstractTestCase;
 #[Entity]
 class TestUser {
     #[PrimaryKey]
-    #[Property]
     public ?int $id = null;
 
     #[Property]

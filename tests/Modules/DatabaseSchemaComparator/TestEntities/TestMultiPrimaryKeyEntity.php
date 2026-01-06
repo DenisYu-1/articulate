@@ -12,6 +12,5 @@ class TestMultiPrimaryKeyEntity {
     public string $id;
 
     #[PrimaryKey]
-    #[Property]
     public string $name;
 }

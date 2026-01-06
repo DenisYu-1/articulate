@@ -42,18 +42,25 @@ class ReflectionEntity extends ReflectionClass {
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<Property>[] $entityProperty */
             $entityProperty = $property->getAttributes(Property::class);
+            /** @var ReflectionAttribute<PrimaryKey>[] $primaryKeyProperty */
+            $primaryKeyProperty = $property->getAttributes(PrimaryKey::class);
 
-            if (!empty($entityProperty)) {
+            // A property is considered an entity property if it has either Property or PrimaryKey attribute
+            if (!empty($entityProperty) || !empty($primaryKeyProperty)) {
                 // Extract generator type from PrimaryKey attribute
                 $generatorType = null;
-                $primaryKeyAttributes = $property->getAttributes(PrimaryKey::class);
-                if (!empty($primaryKeyAttributes)) {
-                    $primaryKeyInstance = $primaryKeyAttributes[0]->newInstance();
+                if (!empty($primaryKeyProperty)) {
+                    $primaryKeyInstance = $primaryKeyProperty[0]->newInstance();
                     $generatorType = $primaryKeyInstance->generator;
                 }
 
+                // Use the Property attribute if present, otherwise create a default one
+                $propertyAttribute = !empty($entityProperty)
+                    ? $entityProperty[0]->newInstance()
+                    : new Property(); // Default property configuration for primary keys
+
                 yield new ReflectionProperty(
-                    $entityProperty[0]->newInstance(),
+                    $propertyAttribute,
                     $property,
                     isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
                     isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,

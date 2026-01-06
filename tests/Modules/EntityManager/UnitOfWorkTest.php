@@ -96,51 +96,47 @@ class UnitOfWorkTest extends TestCase {
 
     public function testRegisterManaged(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-
-            public string $name = 'test';
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
 
         $originalData = ['id' => 1, 'name' => 'original'];
 
         $this->unitOfWork->registerManaged($entity, $originalData);
 
         $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, 1));
+        $this->assertSame($entity, $this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1));
     }
 
     public function testTryGetById(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
 
         $this->unitOfWork->registerManaged($entity, ['id' => 1]);
 
-        $retrieved = $this->unitOfWork->tryGetById($entity::class, 1);
+        $retrieved = $this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1);
         $this->assertSame($entity, $retrieved);
 
-        $notFound = $this->unitOfWork->tryGetById($entity::class, 999);
+        $notFound = $this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 999);
         $this->assertNull($notFound);
     }
 
     public function testClear(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
 
         $this->unitOfWork->persist($entity);
         $this->unitOfWork->registerManaged($entity, ['id' => 1]);
 
         $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
-        $this->assertNotNull($this->unitOfWork->tryGetById($entity::class, 1));
+        $this->assertNotNull($this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1));
 
         $this->unitOfWork->clear();
 
         $this->assertEquals(EntityState::NEW, $this->unitOfWork->getEntityState($entity));
-        $this->assertNull($this->unitOfWork->tryGetById($entity::class, 1));
+        $this->assertNull($this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1));
     }
 
     public function testComputeChangeSets(): void
@@ -206,14 +202,23 @@ class UnitOfWorkTest extends TestCase {
         $entity->id = 42;
         $entity->name = 'Entity with ID';
 
+        // Debug: check entity state before persist
+        $this->assertEquals(EntityState::NEW, $this->unitOfWork->getEntityState($entity));
+
         $this->unitOfWork->persist($entity);
+
+        // Debug: check entity state after persist
+        $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
+
         $this->unitOfWork->clearChanges();
 
         // Should keep the original ID
         $this->assertEquals(42, $entity->id);
 
         // Should be in identity map with original ID
-        $this->assertSame($entity, $this->unitOfWork->tryGetById(TestEntityForId::class, 42));
+        $retrieved = $this->unitOfWork->tryGetById(TestEntityForId::class, 42);
+        $this->assertNotNull($retrieved, 'Entity should be retrievable from identity map');
+        $this->assertSame($entity, $retrieved);
     }
 
     public function testUuidEntityWithExistingIdDoesNotOverwrite(): void
@@ -272,9 +277,12 @@ class UnitOfWorkTest extends TestCase {
 }
 
 // Test entity class for ID generation tests
+#[Entity]
 class TestEntityForId {
+    #[PrimaryKey]
     public ?int $id = null;
 
+    #[Property]
     public string $name;
 }
 
@@ -282,7 +290,6 @@ class TestEntityForId {
 #[Entity]
 class TestEntityForUuid {
     #[PrimaryKey(generator: 'uuid')]
-    #[Property]
     public ?string $id = null;
 
     #[Property]

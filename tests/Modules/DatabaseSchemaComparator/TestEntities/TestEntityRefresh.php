@@ -9,7 +9,6 @@ use Articulate\Attributes\Property;
 #[Entity(tableName: 'test_entity_refresh')]
 class TestEntityRefresh {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[Property]
