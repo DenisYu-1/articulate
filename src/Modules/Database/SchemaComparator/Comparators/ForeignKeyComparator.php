@@ -2,14 +2,14 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Schema\SchemaNaming;
 
-readonly class ForeignKeyComparator
-{
+readonly class ForeignKeyComparator {
     public function __construct(
         private SchemaNaming $schemaNaming,
         private RelationValidatorFactory $relationValidatorFactory,
@@ -53,12 +53,13 @@ readonly class ForeignKeyComparator
             if ($targetEntityClass === null) {
                 continue;
             }
-            $targetEntity = new \Articulate\Attributes\Reflection\ReflectionEntity($targetEntityClass);
+            $targetEntity = new ReflectionEntity($targetEntityClass);
             $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
             $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
             if ($propertyData['foreignKeyRequired']) {
                 if (!$isNewTable && isset($createdColumnsWithForeignKeys[$columnName])) {
                     unset($foreignKeysToRemove[$foreignKeyName]);
+
                     continue;
                 }
                 $validator = $this->relationValidatorFactory->getValidator($propertyData['relation']);
@@ -103,7 +104,7 @@ readonly class ForeignKeyComparator
     }
 
     /**
-     * Creates foreign keys for newly created columns
+     * Creates foreign keys for newly created columns.
      * @param array<string, array{
      *     type: string|null,
      *     nullable: bool,
@@ -128,7 +129,7 @@ readonly class ForeignKeyComparator
                 if ($targetEntityClass === null) {
                     continue;
                 }
-                $targetEntity = new \Articulate\Attributes\Reflection\ReflectionEntity($targetEntityClass);
+                $targetEntity = new ReflectionEntity($targetEntityClass);
                 $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
                 $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
                     $fkName,

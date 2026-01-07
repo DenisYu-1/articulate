@@ -8,9 +8,9 @@ namespace Articulate\Attributes\Relations;
  * Provides common functionality for resolving type and ID column names
  * in polymorphic relationships, eliminating code duplication.
  */
-trait PolymorphicColumnResolution
-{
+trait PolymorphicColumnResolution {
     private ?string $resolvedTypeColumn = null;
+
     private ?string $resolvedIdColumn = null;
 
     /**

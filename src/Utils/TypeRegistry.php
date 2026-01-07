@@ -78,7 +78,6 @@ class TypeRegistry {
         $this->mappingCache = [];
     }
 
-
     /**
      * Get database type for a PHP type.
      */
@@ -187,7 +186,6 @@ class TypeRegistry {
     {
         return $this->converters[$phpType] ?? null;
     }
-
 
     /**
      * Extract base type from parameterized type like VARCHAR(255).

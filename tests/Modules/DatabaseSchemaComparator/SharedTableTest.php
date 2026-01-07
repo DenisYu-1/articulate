@@ -9,7 +9,6 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;

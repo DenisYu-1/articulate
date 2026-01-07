@@ -43,5 +43,4 @@ class MorphOne implements RelationAttributeInterface {
     {
         return $this->morphType ?? $this->targetEntity;
     }
-
 }

@@ -9,8 +9,7 @@ use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
  * Test helper for creating MigrationsCommandGenerator instances with forced database drivers.
  * This separates test-only functionality from production code.
  */
-class MigrationsGeneratorTestHelper
-{
+class MigrationsGeneratorTestHelper {
     public static function forMySql(): MigrationsCommandGenerator
     {
         // Create a test connection with forced MySQL driver

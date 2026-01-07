@@ -197,6 +197,7 @@ class ChangeAggregator {
                     // Use metadata-driven property access
                     $value = $property->getValue($entity);
                     $identityParts[] = $value;
+
                     break;
                 }
             }

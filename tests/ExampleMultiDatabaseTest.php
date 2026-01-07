@@ -161,7 +161,6 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         $this->assertEquals('value', $result['key_value']);
     }
 
-
     /**
      * Example of a test that can be run on a single database for debugging.
      */

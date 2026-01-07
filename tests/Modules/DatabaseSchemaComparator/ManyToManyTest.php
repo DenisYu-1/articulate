@@ -17,9 +17,9 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\ManyToManyRelationValidator;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\MorphToManyRelationValidator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyInvalidOwner;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyInvalidTarget;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestManyToManyNoReferencedBy;
@@ -59,7 +59,7 @@ class ManyToManyTest extends AbstractTestCase {
         $this->assertCount(2, $mappingTable->foreignKeys);
         $this->assertEquals(['test_many_to_many_owner_id', 'test_many_to_many_target_id'], $mappingTable->primaryColumns);
 
-        $generator = \Articulate\Tests\MigrationsGeneratorTestHelper::forMySql();
+        $generator = MigrationsGeneratorTestHelper::forMySql();
         $sql = $generator->generate($mappingTable);
         $this->assertStringContainsString('PRIMARY KEY (`test_many_to_many_owner_id`, `test_many_to_many_target_id`)', $sql);
     }

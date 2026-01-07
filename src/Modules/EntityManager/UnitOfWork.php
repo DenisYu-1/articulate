@@ -7,7 +7,6 @@ use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionP
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\Generators\GeneratorRegistry;
-use ReflectionClass;
 use ReflectionProperty;
 
 class UnitOfWork {

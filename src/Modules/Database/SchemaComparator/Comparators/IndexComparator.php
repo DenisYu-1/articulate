@@ -6,8 +6,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 
-readonly class IndexComparator
-{
+readonly class IndexComparator {
     /**
      * @param array<string, object> $entityIndexes
      * @param array<string, array> $existingIndexes
@@ -37,6 +36,7 @@ readonly class IndexComparator
         foreach (array_keys($indexesToRemove) as $indexName) {
             if ($this->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $primaryColumns, $existingForeignKeys)) {
                 unset($indexesToRemove[$indexName]);
+
                 continue;
             }
             $results[] = new IndexCompareResult(

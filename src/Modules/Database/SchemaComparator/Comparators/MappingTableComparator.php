@@ -2,6 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
+use Articulate\Exceptions\EmptyPropertiesList;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
@@ -11,8 +12,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 
-readonly class MappingTableComparator
-{
+readonly class MappingTableComparator {
     public function __construct(
         private DatabaseSchemaReaderInterface $databaseSchemaReader,
         private SchemaNaming $schemaNaming,
@@ -149,6 +149,7 @@ readonly class MappingTableComparator
         foreach (array_keys($indexesToRemove) as $indexName) {
             if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
                 unset($indexesToRemove[$indexName]);
+
                 continue;
             }
             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
@@ -161,7 +162,7 @@ readonly class MappingTableComparator
         }
 
         if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new \Articulate\Exceptions\EmptyPropertiesList($tableName);
+            throw new EmptyPropertiesList($tableName);
         }
 
         if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
@@ -339,7 +340,7 @@ readonly class MappingTableComparator
         }
 
         if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new \Articulate\Exceptions\EmptyPropertiesList($tableName);
+            throw new EmptyPropertiesList($tableName);
         }
 
         if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {

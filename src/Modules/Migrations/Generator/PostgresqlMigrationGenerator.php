@@ -13,6 +13,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
     ) {
         parent::__construct($typeRegistry);
     }
+
     public function getIdentifierQuote(): string
     {
         return '"';

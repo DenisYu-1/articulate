@@ -17,7 +17,6 @@ class MigrationsCommandGenerator {
         $this->strategy = $this->createStrategy();
     }
 
-
     private function createStrategy(): MigrationGeneratorInterface
     {
         $driverName = $this->forcedDriver ?? $this->connection->getDriverName();

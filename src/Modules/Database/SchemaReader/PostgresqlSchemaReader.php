@@ -74,6 +74,7 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
         ";
 
         $stmt = $this->connection->executeQuery($query);
+
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
@@ -165,18 +166,23 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
         switch (strtoupper($type)) {
             case 'CHARACTER VARYING':
                 $type = 'VARCHAR';
+
                 break;
             case 'CHARACTER':
                 $type = 'CHAR';
+
                 break;
             case 'DOUBLE PRECISION':
                 $type = 'DOUBLE';
+
                 break;
             case 'TIMESTAMP WITHOUT TIME ZONE':
                 $type = 'TIMESTAMP';
+
                 break;
             case 'TIMESTAMP WITH TIME ZONE':
                 $type = 'TIMESTAMPTZ';
+
                 break;
         }
 

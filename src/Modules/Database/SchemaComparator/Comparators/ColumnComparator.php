@@ -2,6 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
@@ -9,8 +10,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use RuntimeException;
 
-readonly class ColumnComparator
-{
+readonly class ColumnComparator {
     /**
      * @param array<string, array{
      *     type: string|null,
@@ -167,8 +167,8 @@ readonly class ColumnComparator
 
             // Skip comparison for relations that don't have specific target entities (like MorphTo)
             if ($incomingTargetClass !== null && $existingTargetClass !== null) {
-                $incomingTarget = new \Articulate\Attributes\Reflection\ReflectionEntity($incomingTargetClass);
-                $existingTarget = new \Articulate\Attributes\Reflection\ReflectionEntity($existingTargetClass);
+                $incomingTarget = new ReflectionEntity($incomingTargetClass);
+                $existingTarget = new ReflectionEntity($existingTargetClass);
                 if ($incomingTarget->getTableName() !== $existingTarget->getTableName() || $incoming['referencedColumn'] !== $existing['referencedColumn']) {
                     throw new RuntimeException(
                         sprintf(

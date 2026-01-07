@@ -4,7 +4,6 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
-use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 
 #[Entity(tableName: 'test_many_to_many_invalid_owner')]

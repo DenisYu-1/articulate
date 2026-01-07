@@ -6,7 +6,6 @@ use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;

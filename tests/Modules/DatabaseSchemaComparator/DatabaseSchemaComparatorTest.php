@@ -20,7 +20,6 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMultiSort
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPostEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSecondEntity;
-use ReflectionMethod;
 
 class DatabaseSchemaComparatorTest extends AbstractTestCase {
     public function testEmptyDbEmptyEntities()
@@ -679,7 +678,6 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         // The unique flag should default to false via coalesce
         $this->assertFalse($result[0]->indexes[0]->isUnique);
     }
-
 
     public function testPolymorphicRelationsProcessingMorphOne()
     {

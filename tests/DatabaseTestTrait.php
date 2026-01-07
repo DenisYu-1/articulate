@@ -45,7 +45,6 @@ trait DatabaseTestTrait {
         return [['pgsql']];
     }
 
-
     /**
      * Get the current database connection based on the database name.
      */

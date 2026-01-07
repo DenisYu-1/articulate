@@ -6,13 +6,11 @@ use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Exceptions\EmptyPropertiesList;
-use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 
-readonly class EntityTableComparator
-{
+readonly class EntityTableComparator {
     public function __construct(
         private DatabaseSchemaReaderInterface $databaseSchemaReader,
         private ColumnComparator $columnComparator,

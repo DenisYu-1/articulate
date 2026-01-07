@@ -43,5 +43,4 @@ class MorphMany implements RelationAttributeInterface {
     {
         return $this->morphType ?? $this->targetEntity;
     }
-
 }
