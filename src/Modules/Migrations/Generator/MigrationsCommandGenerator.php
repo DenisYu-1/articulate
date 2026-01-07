@@ -3,6 +3,9 @@
 namespace Articulate\Modules\Migrations\Generator;
 
 use Articulate\Connection;
+use Articulate\Modules\Database\MySqlTypeMapper;
+use Articulate\Modules\Database\PostgresqlTypeMapper;
+use Articulate\Modules\Database\SqliteTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator {
@@ -36,9 +39,9 @@ class MigrationsCommandGenerator {
         $driverName = $this->forcedDriver ?? $this->connection->getDriverName();
 
         return match ($driverName) {
-            Connection::MYSQL => new MySqlMigrationGenerator(),
-            Connection::PGSQL => new PostgresqlMigrationGenerator(),
-            Connection::SQLITE => new SqliteMigrationGenerator(),
+            Connection::MYSQL => new MySqlMigrationGenerator(new MySqlTypeMapper()),
+            Connection::PGSQL => new PostgresqlMigrationGenerator(new PostgresqlTypeMapper()),
+            Connection::SQLITE => new SqliteMigrationGenerator(new SqliteTypeMapper()),
             default => throw new \InvalidArgumentException("Unsupported database driver: {$driverName}"),
         };
     }

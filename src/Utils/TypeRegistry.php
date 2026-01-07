@@ -9,9 +9,9 @@ use InvalidArgumentException;
  * Supports custom type converters and bidirectional mapping.
  */
 class TypeRegistry {
-    private array $phpToDb = [];
+    protected array $phpToDb = [];
 
-    private array $dbToPhp = [];
+    protected array $dbToPhp = [];
 
     private array $converters = [];
 
@@ -78,15 +78,6 @@ class TypeRegistry {
         $this->mappingCache = [];
     }
 
-    /**
-     * Clear all internal caches
-     * Useful for testing or when class loading changes.
-     */
-    public function clearCaches(): void
-    {
-        $this->inheritanceCache = [];
-        $this->mappingCache = [];
-    }
 
     /**
      * Get database type for a PHP type.
@@ -197,13 +188,6 @@ class TypeRegistry {
         return $this->converters[$phpType] ?? null;
     }
 
-    /**
-     * Check if a PHP type has a converter.
-     */
-    public function hasConverter(string $phpType): bool
-    {
-        return isset($this->converters[$phpType]);
-    }
 
     /**
      * Extract base type from parameterized type like VARCHAR(255).

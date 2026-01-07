@@ -9,9 +9,9 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Utils\TypeRegistry;
 
-abstract class AbstractMigrationGenerator implements MigrationGeneratorInterface {
+abstract class AbstractMigrationGenerator {
     public function __construct(
-        private readonly TypeRegistry $typeRegistry = new TypeRegistry()
+        protected readonly TypeRegistry $typeRegistry
     ) {
     }
 

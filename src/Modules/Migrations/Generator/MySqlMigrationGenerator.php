@@ -9,10 +9,11 @@ use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
-class MySqlMigrationGenerator implements MigrationGeneratorInterface {
+class MySqlMigrationGenerator extends AbstractMigrationGenerator implements MigrationGeneratorInterface {
     public function __construct(
-        private readonly MySqlTypeMapper $typeRegistry = new MySqlTypeMapper()
+        MySqlTypeMapper $typeRegistry
     ) {
+        parent::__construct($typeRegistry);
     }
 
     public function getIdentifierQuote(): string
@@ -343,5 +344,10 @@ class MySqlMigrationGenerator implements MigrationGeneratorInterface {
     protected function getAutoIncrementSql(): string
     {
         return 'AUTO_INCREMENT';
+    }
+
+    protected function getModifyColumnSyntax(string $columnName, PropertiesData $column): string
+    {
+        return 'MODIFY `' . $columnName . '` ' . $this->columnDefinition($columnName, $column);
     }
 }
