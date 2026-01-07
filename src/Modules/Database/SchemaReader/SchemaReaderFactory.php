@@ -11,8 +11,7 @@ class SchemaReaderFactory {
         return match ($connection->getDriverName()) {
             Connection::MYSQL => new MySqlSchemaReader($connection),
             Connection::PGSQL => new PostgresqlSchemaReader($connection),
-            Connection::SQLITE => new SqliteSchemaReader($connection),
-            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}"),
+            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}. Supported: MySQL, PostgreSQL"),
         };
     }
 }

@@ -59,7 +59,7 @@ class ManyToManyTest extends AbstractTestCase {
         $this->assertCount(2, $mappingTable->foreignKeys);
         $this->assertEquals(['test_many_to_many_owner_id', 'test_many_to_many_target_id'], $mappingTable->primaryColumns);
 
-        $generator = MigrationsCommandGenerator::forMySql();
+        $generator = \Articulate\Tests\MigrationsGeneratorTestHelper::forMySql();
         $sql = $generator->generate($mappingTable);
         $this->assertStringContainsString('PRIMARY KEY (`test_many_to_many_owner_id`, `test_many_to_many_target_id`)', $sql);
     }

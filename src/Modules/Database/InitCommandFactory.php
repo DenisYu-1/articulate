@@ -10,9 +10,8 @@ class InitCommandFactory {
     {
         return match ($connection->getDriverName()) {
             Connection::MYSQL => new MySqlInitCommand(),
-            Connection::SQLITE => new SqliteInitCommand(),
             Connection::PGSQL => new PostgresqlInitCommand(),
-            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}"),
+            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}. Supported: MySQL, PostgreSQL"),
         };
     }
 }

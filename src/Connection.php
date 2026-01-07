@@ -10,8 +10,6 @@ class Connection {
 
     public const PGSQL = 'pgsql';
 
-    public const SQLITE = 'sqlite';
-
     private readonly PDO $pdo;
 
     public function __construct(

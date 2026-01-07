@@ -25,8 +25,7 @@ class ExistingTablesTest extends DatabaseTestCase {
         // Create migrations table manually first
         $createTableSql = match ($databaseName) {
             'mysql' => 'CREATE TABLE migrations (id INT AUTO_INCREMENT PRIMARY KEY) ENGINE=InnoDB',
-            'pgsql' => 'CREATE TABLE migrations (id SERIAL PRIMARY KEY)',
-            'sqlite' => 'CREATE TABLE migrations (id INTEGER PRIMARY KEY AUTOINCREMENT)'
+            'pgsql' => 'CREATE TABLE migrations (id SERIAL PRIMARY KEY)'
         };
 
         $connection->executeQuery($createTableSql);
@@ -34,8 +33,7 @@ class ExistingTablesTest extends DatabaseTestCase {
         // Verify table exists query
         $existenceQuery = match ($databaseName) {
             'mysql' => "SHOW TABLES LIKE 'migrations'",
-            'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migrations'",
-            'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"
+            'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migrations'"
         };
 
         $this->runTestWithConnection($connection, $existenceQuery);

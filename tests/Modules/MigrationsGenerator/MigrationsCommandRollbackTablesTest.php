@@ -7,6 +7,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
@@ -24,7 +25,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
         );
         $this->assertEquals(
             $query,
-            (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
         );
     }
 

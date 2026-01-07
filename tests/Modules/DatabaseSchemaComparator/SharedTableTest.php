@@ -12,6 +12,7 @@ use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationOwnerA;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationOwnerB;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationTarget;
@@ -46,7 +47,7 @@ class SharedTableTest extends AbstractTestCase {
         }
         $this->assertTrue($columnsByName['shared_field']->propertyData->isNullable);
 
-        $sql = MigrationsCommandGenerator::forMySql()->generate($table);
+        $sql = MigrationsGeneratorTestHelper::forMySql()->generate($table);
         $this->assertStringContainsString('`shared_field` INT', $sql);
     }
 

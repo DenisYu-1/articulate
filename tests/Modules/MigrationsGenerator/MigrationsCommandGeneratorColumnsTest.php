@@ -7,6 +7,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
@@ -24,7 +25,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
         );
         $this->assertEquals(
             $query,
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -114,7 +115,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
             []
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
         $this->assertStringContainsString('ADD `user_id`', $result);
         $this->assertStringContainsString('DROP `old_column`', $result);
     }

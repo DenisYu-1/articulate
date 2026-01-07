@@ -13,8 +13,6 @@ abstract class AbstractTestCase extends TestCase {
 
     protected ?Connection $pgsqlConnection = null;
 
-    protected ?Connection $sqliteConnection = null;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,13 +36,6 @@ abstract class AbstractTestCase extends TestCase {
         $databaseName = $this->getDatabaseName();
 
         // Initialize connections, catching exceptions for unavailable databases
-        try {
-            $this->sqliteConnection = new Connection('sqlite::memory:', '1', '2');
-            $this->sqliteConnection->beginTransaction();
-        } catch (Exception $e) {
-            $this->sqliteConnection = null;
-        }
-
         try {
             $this->mysqlConnection = new Connection('mysql:host=' . (getenv('DATABASE_HOST')) . ';dbname=' . $databaseName . ';charset=utf8mb4', getenv('DATABASE_USER') ?? 'root', getenv('DATABASE_PASSWORD'));
             $this->mysqlConnection->beginTransaction();
@@ -78,15 +69,7 @@ abstract class AbstractTestCase extends TestCase {
             }
         }
 
-        if ($this->sqliteConnection) {
-            try {
-                $this->sqliteConnection->rollbackTransaction();
-            } catch (Exception $e) {
-                // Ignore rollback errors
-            }
-        }
-
-        unset($this->sqliteConnection, $this->mysqlConnection, $this->pgsqlConnection);
+        unset($this->mysqlConnection, $this->pgsqlConnection);
         parent::tearDown();
     }
 
@@ -103,7 +86,6 @@ abstract class AbstractTestCase extends TestCase {
         return match ($databaseName) {
             'mysql' => $this->mysqlConnection ?? throw new RuntimeException('MySQL connection not available'),
             'pgsql' => $this->pgsqlConnection ?? throw new RuntimeException('PostgreSQL connection not available'),
-            'sqlite' => $this->sqliteConnection ?? throw new RuntimeException('SQLite connection not available'),
             default => throw new \InvalidArgumentException("Unknown database: {$databaseName}")
         };
     }

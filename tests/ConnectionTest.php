@@ -14,7 +14,7 @@ class ConnectionTest extends AbstractTestCase {
         try {
             // This will fail due to no real database, but we can catch the exception
             // The important thing is that the PDO options are set correctly in the constructor
-            new Connection('sqlite::memory:', 'test', 'test');
+            new Connection('mysql:host=invalid;dbname=test', 'test', 'test');
         } catch (\Exception $e) {
             // Expected to fail due to database connection
             $this->assertStringContains('could not find driver', $e->getMessage());

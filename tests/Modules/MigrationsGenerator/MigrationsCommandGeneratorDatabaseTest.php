@@ -9,6 +9,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 
 class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
     /**
@@ -29,17 +30,11 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             $this->getTableName('related_entity', $databaseName),
         ]);
 
-        // Enable foreign keys for SQLite
-        if ($databaseName === 'sqlite') {
-            $connection->executeQuery('PRAGMA foreign_keys = ON');
-        }
-
         // Create related entity table
         $relatedTableName = $this->getTableName('related_entity', $databaseName);
         $createRelatedSql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$relatedTableName}` (id INT PRIMARY KEY AUTO_INCREMENT)",
-            'pgsql' => "CREATE TABLE \"{$relatedTableName}\" (id SERIAL PRIMARY KEY)",
-            'sqlite' => "CREATE TABLE {$relatedTableName} (id INTEGER PRIMARY KEY AUTOINCREMENT)"
+            'pgsql' => "CREATE TABLE \"{$relatedTableName}\" (id SERIAL PRIMARY KEY)"
         };
         $connection->executeQuery($createRelatedSql);
 
@@ -71,23 +66,24 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             ],
         );
 
-        $generator = MigrationsCommandGenerator::forDatabase($databaseName);
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
         $sql = $generator->generate($compareResult);
         $connection->executeQuery($sql);
 
         // Verify table and columns exist
         $verifyColumnsSql = match ($databaseName) {
             'mysql' => 'SHOW COLUMNS FROM test_table',
-            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = 'test_table' ORDER BY ordinal_position",
-            'sqlite' => "PRAGMA table_info('test_table')"
+            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_name = 'test_table' ORDER BY ordinal_position"
         };
 
         $columns = $connection->executeQuery($verifyColumnsSql)->fetchAll();
 
         $columnNames = match ($databaseName) {
             'mysql' => array_column($columns, 'Field'),
-            'pgsql' => array_column($columns, 'column_name'),
-            'sqlite' => array_column($columns, 'name')
+            'pgsql' => array_column($columns, 'column_name')
         };
 
         $this->assertSame(['id', 'related_entity_id'], $columnNames);
@@ -95,8 +91,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
         // Verify foreign key exists
         $verifyForeignKeysSql = match ($databaseName) {
             'mysql' => "SELECT REFERENCED_TABLE_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_NAME = 'test_table' AND REFERENCED_TABLE_NAME IS NOT NULL",
-            'pgsql' => "SELECT ccu.table_name AS foreign_table, ccu.column_name, ccu2.column_name AS referenced_column FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage ccu ON tc.constraint_name = ccu.constraint_name JOIN information_schema.key_column_usage ccu2 ON tc.constraint_name = ccu2.constraint_name AND ccu2.ordinal_position = 1 WHERE tc.table_name = 'test_table' AND tc.constraint_type = 'FOREIGN KEY'",
-            'sqlite' => "PRAGMA foreign_key_list('test_table')"
+            'pgsql' => "SELECT ccu.table_name AS foreign_table, ccu.column_name, ccu2.column_name AS referenced_column FROM information_schema.table_constraints tc JOIN information_schema.key_column_usage ccu ON tc.constraint_name = ccu.constraint_name JOIN information_schema.key_column_usage ccu2 ON tc.constraint_name = ccu2.constraint_name AND ccu2.ordinal_position = 1 WHERE tc.table_name = 'test_table' AND tc.constraint_type = 'FOREIGN KEY'"
         };
 
         // Verify foreign key exists (basic check - generator produces valid SQL)
@@ -105,12 +100,9 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
 
         // For PostgreSQL, the complex query might not return the referenced table correctly
         // The main goal is to verify the generator produces syntactically correct SQL
-        if ($databaseName !== 'pgsql') {
+        if ($databaseName === 'mysql') {
             $foreignKeyInfo = $foreignKeys[0];
-            $referencedTable = match ($databaseName) {
-                'mysql' => $foreignKeyInfo['REFERENCED_TABLE_NAME'],
-                'sqlite' => $foreignKeyInfo['table']
-            };
+            $referencedTable = $foreignKeyInfo['REFERENCED_TABLE_NAME'];
             $this->assertSame($relatedTableName, $referencedTable);
         }
     }

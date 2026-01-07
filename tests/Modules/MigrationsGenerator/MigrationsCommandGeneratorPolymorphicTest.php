@@ -9,6 +9,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 
 class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
     public function testPolymorphicRelationCreatesCorrectMigration()
@@ -54,7 +55,7 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             primaryColumns: ['id']
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
 
         $expected = 'CREATE TABLE `poll` (' .
             '`id` INT NOT NULL, ' .
@@ -98,7 +99,7 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             foreignKeys: []
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
 
         $expected = 'ALTER TABLE `poll` ' .
             'ADD `pollable_type` VARCHAR(255) NOT NULL, ' .
@@ -138,7 +139,7 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             foreignKeys: []
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult);
 
         $expected = 'ALTER TABLE `poll` ' .
             'DROP INDEX `pollable_morph_index`, ' .

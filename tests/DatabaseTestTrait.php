@@ -9,7 +9,7 @@ use Exception;
  * Trait for running tests across multiple database systems.
  *
  * This trait provides data providers and utilities to automatically run
- * the same test method against MySQL, PostgreSQL, and SQLite databases.
+ * the same test method against MySQL and PostgreSQL databases.
  */
 trait DatabaseTestTrait {
     /**
@@ -20,7 +20,6 @@ trait DatabaseTestTrait {
     public static function databaseProvider(): array
     {
         return [
-            ['sqlite'], // SQLite is always available
             ['mysql'],  // MySQL may be available
             ['pgsql'],  // PostgreSQL may be available
         ];
@@ -46,15 +45,6 @@ trait DatabaseTestTrait {
         return [['pgsql']];
     }
 
-    /**
-     * Data provider for SQLite only.
-     *
-     * @return array<array{string}>
-     */
-    public static function sqliteProvider(): array
-    {
-        return [['sqlite']];
-    }
 
     /**
      * Get the current database connection based on the database name.
@@ -64,7 +54,6 @@ trait DatabaseTestTrait {
         return match ($databaseName) {
             'mysql' => $this->mysqlConnection,
             'pgsql' => $this->pgsqlConnection,
-            'sqlite' => $this->sqliteConnection,
             default => throw new \InvalidArgumentException("Unknown database: {$databaseName}")
         };
     }
@@ -77,7 +66,6 @@ trait DatabaseTestTrait {
         $connection = match ($databaseName) {
             'mysql' => $this->mysqlConnection ?? null,
             'pgsql' => $this->pgsqlConnection ?? null,
-            'sqlite' => $this->sqliteConnection ?? null,
             default => null
         };
 
@@ -99,11 +87,6 @@ trait DatabaseTestTrait {
      */
     protected function cleanDatabase(Connection $connection, string $databaseName): void
     {
-        // For SQLite, we rely on transactions being rolled back
-        if ($databaseName === 'sqlite') {
-            return;
-        }
-
         try {
             // Get all tables and drop them
             $tables = match ($databaseName) {

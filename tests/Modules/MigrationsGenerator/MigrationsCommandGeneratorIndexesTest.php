@@ -2,14 +2,13 @@
 
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
-use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 
 class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
     public function testDropsIndex()
@@ -31,7 +30,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` DROP INDEX `idx_test_table_id`',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -61,7 +60,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` DROP INDEX `idx_test_table_id`, MODIFY `id` VARCHAR(255) NOT NULL',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -91,7 +90,7 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL, ADD INDEX `idx_test_table_id` (`id`)',
-            (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
         );
     }
 
@@ -115,13 +114,13 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
         // PostgreSQL should use CONCURRENTLY
         $this->assertEquals(
             'ALTER TABLE "test_table" ADD CONCURRENTLY UNIQUE INDEX "idx_test_table_email" ("email")',
-            (MigrationsCommandGenerator::forDatabase(Connection::PGSQL))->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forPostgresql()->generate($tableCompareResult)
         );
 
         // MySQL should use ALGORITHM=INPLACE for the ALTER TABLE
         $this->assertEquals(
             'ALTER TABLE `test_table` ALGORITHM=INPLACE ADD UNIQUE INDEX `idx_test_table_email` (`email`)',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 }

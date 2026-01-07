@@ -37,8 +37,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         $tableName = $this->getTableName('test_basic', $databaseName);
         $dropSql = match ($databaseName) {
             'mysql' => "DROP TABLE IF EXISTS `{$tableName}`",
-            'pgsql' => "DROP TABLE IF EXISTS \"{$tableName}\"",
-            'sqlite' => "DROP TABLE IF EXISTS {$tableName}"
+            'pgsql' => "DROP TABLE IF EXISTS \"{$tableName}\""
         };
 
         try {
@@ -51,8 +50,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
         $sql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL)",
-            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL)",
-            'sqlite' => "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)"
+            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL)"
         };
 
         $connection->executeQuery($sql);
@@ -60,8 +58,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Verify table was created
         $result = match ($databaseName) {
             'mysql' => $connection->executeQuery("SHOW TABLES LIKE '{$tableName}'"),
-            'pgsql' => $connection->executeQuery("SELECT tablename FROM pg_tables WHERE tablename = '{$tableName}'"),
-            'sqlite' => $connection->executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='{$tableName}'")
+            'pgsql' => $connection->executeQuery("SELECT tablename FROM pg_tables WHERE tablename = '{$tableName}'")
         };
 
         $this->assertGreaterThan(0, count($result->fetchAll()), "Table {$tableName} should exist in {$databaseName}");
@@ -86,8 +83,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Create table
         $createSql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), value INT)",
-            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255), value INT)",
-            'sqlite' => "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, value INTEGER)"
+            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255), value INT)"
         };
 
         $connection->executeQuery($createSql);
@@ -95,8 +91,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Insert data
         $insertSql = match ($databaseName) {
             'mysql' => "INSERT INTO `{$tableName}` (name, value) VALUES (?, ?)",
-            'pgsql' => "INSERT INTO \"{$tableName}\" (name, value) VALUES (?, ?)",
-            'sqlite' => "INSERT INTO {$tableName} (name, value) VALUES (?, ?)"
+            'pgsql' => "INSERT INTO \"{$tableName}\" (name, value) VALUES (?, ?)"
         };
 
         $connection->executeQuery($insertSql, ['test_name', 42]);
@@ -104,8 +99,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Retrieve data
         $selectSql = match ($databaseName) {
             'mysql' => "SELECT * FROM `{$tableName}` WHERE id = 1",
-            'pgsql' => "SELECT * FROM \"{$tableName}\" WHERE id = 1",
-            'sqlite' => "SELECT * FROM {$tableName} WHERE id = 1"
+            'pgsql' => "SELECT * FROM \"{$tableName}\" WHERE id = 1"
         };
 
         $result = $connection->executeQuery($selectSql)->fetch();
@@ -167,29 +161,6 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         $this->assertEquals('value', $result['key_value']);
     }
 
-    /**
-     * Test that runs only on SQLite.
-     *
-     * @dataProvider sqliteProvider
-     * @group sqlite
-     */
-    public function testSqliteSpecificFeatures(string $databaseName): void
-    {
-        $connection = $this->getConnection($databaseName);
-        $this->setCurrentDatabase($connection, $databaseName);
-
-        // Test SQLite-specific features
-        $tableName = $this->getTableName('test_sqlite', $databaseName);
-        $sql = "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)";
-
-        $connection->executeQuery($sql);
-
-        // Test SQLite's AUTOINCREMENT behavior
-        $connection->executeQuery("INSERT INTO {$tableName} (data) VALUES (?)", ['test']);
-        $result = $connection->executeQuery('SELECT last_insert_rowid() as id')->fetch();
-
-        $this->assertGreaterThan(0, (int) $result['id']);
-    }
 
     /**
      * Example of a test that can be run on a single database for debugging.
@@ -197,7 +168,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
     public function testSingleDatabaseExample(): void
     {
         // For debugging, you can test against a specific database
-        $databaseName = 'sqlite'; // Change this to 'mysql' or 'pgsql' as needed
+        $databaseName = 'mysql'; // Change this to 'pgsql' as needed
         $this->skipIfDatabaseNotAvailable($databaseName);
 
         $connection = $this->getConnection($databaseName);
@@ -205,11 +176,17 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
         // Your test logic here
         $tableName = $this->getTableName('test_single', $databaseName);
-        $sql = "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY, name TEXT)";
+        $sql = match ($databaseName) {
+            'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))",
+            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255))"
+        };
 
         $connection->executeQuery($sql);
 
-        $result = $connection->executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='{$tableName}'");
+        $result = match ($databaseName) {
+            'mysql' => $connection->executeQuery("SHOW TABLES LIKE '{$tableName}'"),
+            'pgsql' => $connection->executeQuery("SELECT tablename FROM pg_tables WHERE tablename = '{$tableName}'")
+        };
         $this->assertGreaterThan(0, count($result->fetchAll()));
     }
 
@@ -236,8 +213,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Create parent table
         $parentSql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$parentTable}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))",
-            'pgsql' => "CREATE TABLE \"{$parentTable}\" (id SERIAL PRIMARY KEY, name VARCHAR(255))",
-            'sqlite' => "CREATE TABLE {$parentTable} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)"
+            'pgsql' => "CREATE TABLE \"{$parentTable}\" (id SERIAL PRIMARY KEY, name VARCHAR(255))"
         };
 
         $connection->executeQuery($parentSql);
@@ -245,8 +221,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Create child table with foreign key
         $childSql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$childTable}` (id INT PRIMARY KEY AUTO_INCREMENT, parent_id INT, FOREIGN KEY (parent_id) REFERENCES `{$parentTable}`(id))",
-            'pgsql' => "CREATE TABLE \"{$childTable}\" (id SERIAL PRIMARY KEY, parent_id INT REFERENCES \"{$parentTable}\"(id))",
-            'sqlite' => "CREATE TABLE {$childTable} (id INTEGER PRIMARY KEY AUTOINCREMENT, parent_id INTEGER REFERENCES {$parentTable}(id))"
+            'pgsql' => "CREATE TABLE \"{$childTable}\" (id SERIAL PRIMARY KEY, parent_id INT REFERENCES \"{$parentTable}\"(id))"
         };
 
         $connection->executeQuery($childSql);
@@ -254,8 +229,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Insert parent record
         $insertParentSql = match ($databaseName) {
             'mysql' => "INSERT INTO `{$parentTable}` (name) VALUES (?)",
-            'pgsql' => "INSERT INTO \"{$parentTable}\" (name) VALUES (?)",
-            'sqlite' => "INSERT INTO {$parentTable} (name) VALUES (?)"
+            'pgsql' => "INSERT INTO \"{$parentTable}\" (name) VALUES (?)"
         };
 
         $connection->executeQuery($insertParentSql, ['Parent Record']);
@@ -263,8 +237,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Get parent ID
         $parentIdResult = match ($databaseName) {
             'mysql' => $connection->executeQuery('SELECT LAST_INSERT_ID() as id'),
-            'pgsql' => $connection->executeQuery("SELECT currval(pg_get_serial_sequence('\"{$parentTable}\"', 'id')) as id"),
-            'sqlite' => $connection->executeQuery('SELECT last_insert_rowid() as id')
+            'pgsql' => $connection->executeQuery("SELECT currval(pg_get_serial_sequence('\"{$parentTable}\"', 'id')) as id")
         };
 
         $parentId = $parentIdResult->fetch()['id'];
@@ -272,8 +245,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Insert child record
         $insertChildSql = match ($databaseName) {
             'mysql' => "INSERT INTO `{$childTable}` (parent_id) VALUES (?)",
-            'pgsql' => "INSERT INTO \"{$childTable}\" (parent_id) VALUES (?)",
-            'sqlite' => "INSERT INTO {$childTable} (parent_id) VALUES (?)"
+            'pgsql' => "INSERT INTO \"{$childTable}\" (parent_id) VALUES (?)"
         };
 
         $connection->executeQuery($insertChildSql, [$parentId]);
@@ -281,8 +253,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         // Verify child record exists
         $selectSql = match ($databaseName) {
             'mysql' => "SELECT COUNT(*) as count FROM `{$childTable}`",
-            'pgsql' => "SELECT COUNT(*) as count FROM \"{$childTable}\"",
-            'sqlite' => "SELECT COUNT(*) as count FROM {$childTable}"
+            'pgsql' => "SELECT COUNT(*) as count FROM \"{$childTable}\""
         };
 
         $result = $connection->executeQuery($selectSql)->fetch();
