@@ -238,8 +238,17 @@ class RelationshipLoaderTest extends DatabaseTestCase {
     private function createAuthorAndBookTables(): void
     {
         // Create tables with exact names from entity attributes
-        $createAuthorSql = 'CREATE TABLE test_authors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)';
-        $createBookSql = 'CREATE TABLE test_books (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, author_id INTEGER NOT NULL)';
+        $createAuthorSql = match ($this->currentDatabaseName) {
+            'mysql' => 'CREATE TABLE test_authors (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL)',
+            'pgsql' => 'CREATE TABLE test_authors (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL)',
+            default => 'CREATE TABLE test_authors (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)'
+        };
+
+        $createBookSql = match ($this->currentDatabaseName) {
+            'mysql' => 'CREATE TABLE test_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, author_id INT NOT NULL)',
+            'pgsql' => 'CREATE TABLE test_books (id SERIAL PRIMARY KEY, title VARCHAR(255) NOT NULL, author_id INT NOT NULL)',
+            default => 'CREATE TABLE test_books (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, author_id INTEGER NOT NULL)'
+        };
 
         $this->currentConnection->executeQuery($createAuthorSql);
         $this->currentConnection->executeQuery($createBookSql);
@@ -251,7 +260,12 @@ class RelationshipLoaderTest extends DatabaseTestCase {
     private function insertAuthor(string $name): int
     {
         $this->currentConnection->executeQuery('INSERT INTO test_authors (name) VALUES (?)', [$name]);
-        $result = $this->currentConnection->executeQuery('SELECT last_insert_rowid() as id');
+
+        $result = match ($this->currentDatabaseName) {
+            'mysql' => $this->currentConnection->executeQuery('SELECT LAST_INSERT_ID() as id'),
+            'pgsql' => $this->currentConnection->executeQuery("SELECT currval(pg_get_serial_sequence('test_authors', 'id')) as id"),
+            default => $this->currentConnection->executeQuery('SELECT last_insert_rowid() as id')
+        };
 
         return (int) $result->fetch()['id'];
     }
@@ -262,7 +276,12 @@ class RelationshipLoaderTest extends DatabaseTestCase {
     private function insertBook(string $title, int $authorId): int
     {
         $this->currentConnection->executeQuery('INSERT INTO test_books (title, author_id) VALUES (?, ?)', [$title, $authorId]);
-        $result = $this->currentConnection->executeQuery('SELECT last_insert_rowid() as id');
+
+        $result = match ($this->currentDatabaseName) {
+            'mysql' => $this->currentConnection->executeQuery('SELECT LAST_INSERT_ID() as id'),
+            'pgsql' => $this->currentConnection->executeQuery("SELECT currval(pg_get_serial_sequence('test_books', 'id')) as id"),
+            default => $this->currentConnection->executeQuery('SELECT last_insert_rowid() as id')
+        };
 
         return (int) $result->fetch()['id'];
     }

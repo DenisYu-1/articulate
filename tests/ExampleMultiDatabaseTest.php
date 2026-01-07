@@ -174,8 +174,10 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
-        // Your test logic here
+        // Clean up any existing table first
         $tableName = $this->getTableName('test_single', $databaseName);
+        $this->cleanUpTables([$tableName]);
+
         $sql = match ($databaseName) {
             'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))",
             'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255))"

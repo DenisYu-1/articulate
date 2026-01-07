@@ -9,15 +9,14 @@ class ConnectionTest extends AbstractTestCase {
     {
         // We can't easily test the actual PDO construction without a real database
         // But we can test that the connection can be created with proper DSN
-        $this->expectNotToPerformAssertions();
 
         try {
-            // This will fail due to no real database, but we can catch the exception
+            // This will fail due to invalid driver, but we can catch the exception
             // The important thing is that the PDO options are set correctly in the constructor
-            new Connection('mysql:host=invalid;dbname=test', 'test', 'test');
+            new Connection('invalid:host=localhost;dbname=test', 'test', 'test');
         } catch (\Exception $e) {
-            // Expected to fail due to database connection
-            $this->assertStringContains('could not find driver', $e->getMessage());
+            // Expected to fail due to invalid driver
+            $this->assertStringContainsString('could not find driver', $e->getMessage());
         }
     }
 
