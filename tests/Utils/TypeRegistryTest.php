@@ -201,7 +201,6 @@ class TypeRegistryTest extends AbstractTestCase {
         $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
 
         // Verify no converter was set (covers the !$converter branch)
-        $this->assertFalse($registry->hasConverter(Serializable::class));
         $this->assertNull($registry->getConverter(Serializable::class));
     }
 
@@ -214,7 +213,6 @@ class TypeRegistryTest extends AbstractTestCase {
         $registry->registerClassMapping(Serializable::class, 'TEXT', $converter);
 
         // Verify converter was set
-        $this->assertTrue($registry->hasConverter(Serializable::class));
         $this->assertSame($converter, $registry->getConverter(Serializable::class));
     }
 
@@ -238,20 +236,20 @@ class TypeRegistryTest extends AbstractTestCase {
     {
         $registry = new TypeRegistry();
 
-        // Test what happens if we remove the early return from cache - covers ReturnRemoval mutation on line 97
-        // We need to simulate this by checking that the method still works when cache is empty
+        // Test that the method works correctly when called multiple times
+        // This covers the case where early cache return might be removed in mutation testing
 
-        // Clear caches to ensure we test the full logic
-        $registry->clearCaches();
-
-        // Register a custom type and verify it works
+        // Register a custom type
         $registry->registerType('CustomType', 'CUSTOM_DB_TYPE');
 
-        // This should still work and use the mapping
-        $this->assertEquals('CUSTOM_DB_TYPE', $registry->getDatabaseType('CustomType'));
+        // First call should compute and cache the result
+        $result1 = $registry->getDatabaseType('CustomType');
+        $this->assertEquals('CUSTOM_DB_TYPE', $result1);
 
-        // Verify it was cached
-        $this->assertEquals('CUSTOM_DB_TYPE', $registry->getDatabaseType('CustomType'));
+        // Second call should return the same result (from cache)
+        $result2 = $registry->getDatabaseType('CustomType');
+        $this->assertEquals('CUSTOM_DB_TYPE', $result2);
+        $this->assertSame($result1, $result2);
     }
 
     public function testFindClassMappingWithEmptyInheritance(): void
