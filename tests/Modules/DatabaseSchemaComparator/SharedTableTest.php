@@ -8,10 +8,10 @@ require_once __DIR__ . '/TestEntities/TestSharedTableRelationVariants.php';
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationOwnerA;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationOwnerB;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSharedTableRelationTarget;
@@ -46,7 +46,7 @@ class SharedTableTest extends AbstractTestCase {
         }
         $this->assertTrue($columnsByName['shared_field']->propertyData->isNullable);
 
-        $sql = MigrationsCommandGenerator::forMySql()->generate($table);
+        $sql = MigrationsGeneratorTestHelper::forMySql()->generate($table);
         $this->assertStringContainsString('`shared_field` INT', $sql);
     }
 
@@ -96,7 +96,7 @@ class SharedTableTest extends AbstractTestCase {
         array $tables,
         callable $columns,
     ): DatabaseSchemaComparator {
-        $reader = $this->createMock(DatabaseSchemaReader::class);
+        $reader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $reader->expects($this->once())->method('getTables')->willReturn($tables);
         $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
         $reader->expects($this->any())->method('getTableIndexes')->willReturn([]);

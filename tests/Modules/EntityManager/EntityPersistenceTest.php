@@ -12,7 +12,6 @@ use Articulate\Tests\AbstractTestCase;
 #[Entity]
 class TestUser {
     #[PrimaryKey]
-    #[Property]
     public ?int $id = null;
 
     #[Property]
@@ -60,7 +59,7 @@ class EntityPersistenceTest extends AbstractTestCase {
      */
     private function runTestForAllDatabases(callable $testFunction): void
     {
-        $databases = ['sqlite', 'mysql', 'pgsql'];
+        $databases = ['mysql', 'pgsql'];
 
         foreach ($databases as $databaseName) {
             if (!$this->isDatabaseAvailable($databaseName)) {
@@ -103,13 +102,6 @@ class EntityPersistenceTest extends AbstractTestCase {
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
-                age INTEGER NULL
-            )';
-        } else { // sqlite
-            $sql = 'CREATE TABLE test_user (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                email TEXT NOT NULL,
                 age INTEGER NULL
             )';
         }

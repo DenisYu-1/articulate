@@ -72,6 +72,28 @@ readonly class ReflectionProperty implements PropertyInterface {
         return $this->generatorOptions;
     }
 
+    /**
+     * Get the value of this property from an entity instance.
+     */
+    public function getValue(object $entity): mixed
+    {
+        $reflectionProperty = $this->property;
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($entity);
+    }
+
+    /**
+     * Set the value of this property on an entity instance.
+     */
+    public function setValue(object $entity, mixed $value): void
+    {
+        $reflectionProperty = $this->property;
+        $reflectionProperty->setAccessible(true);
+
+        $reflectionProperty->setValue($entity, $value);
+    }
+
     private function parseColumnName(): string
     {
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', $this->property->getName()));

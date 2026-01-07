@@ -10,7 +10,8 @@ class SchemaReaderFactory {
     {
         return match ($connection->getDriverName()) {
             Connection::MYSQL => new MySqlSchemaReader($connection),
-            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}"),
+            Connection::PGSQL => new PostgresqlSchemaReader($connection),
+            default => throw new InvalidArgumentException("Unsupported database driver: {$connection->getDriverName()}. Supported: MySQL, PostgreSQL"),
         };
     }
 }

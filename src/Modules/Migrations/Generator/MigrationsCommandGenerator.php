@@ -3,6 +3,8 @@
 namespace Articulate\Modules\Migrations\Generator;
 
 use Articulate\Connection;
+use Articulate\Modules\Database\MySqlTypeMapper;
+use Articulate\Modules\Database\PostgresqlTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 
 class MigrationsCommandGenerator {
@@ -15,31 +17,14 @@ class MigrationsCommandGenerator {
         $this->strategy = $this->createStrategy();
     }
 
-    public static function forMySql(): self
-    {
-        // Create a test connection with forced MySQL driver
-        $connection = new Connection('sqlite::memory:', '', '');
-
-        return new self($connection, Connection::MYSQL);
-    }
-
-    public static function forDatabase(string $driver): self
-    {
-        // Create a test connection with forced driver
-        $connection = new Connection('sqlite::memory:', '', '');
-
-        return new self($connection, $driver);
-    }
-
     private function createStrategy(): MigrationGeneratorInterface
     {
         $driverName = $this->forcedDriver ?? $this->connection->getDriverName();
 
         return match ($driverName) {
-            Connection::MYSQL => new MySqlMigrationGenerator(),
-            Connection::PGSQL => new PostgresqlMigrationGenerator(),
-            Connection::SQLITE => new SqliteMigrationGenerator(),
-            default => throw new \InvalidArgumentException("Unsupported database driver: {$driverName}"),
+            Connection::MYSQL => new MySqlMigrationGenerator(new MySqlTypeMapper()),
+            Connection::PGSQL => new PostgresqlMigrationGenerator(new PostgresqlTypeMapper()),
+            default => throw new \InvalidArgumentException("Unsupported database driver: {$driverName}. Supported: MySQL, PostgreSQL"),
         };
     }
 

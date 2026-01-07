@@ -25,7 +25,7 @@ The primary testing focus is validating the complete pipeline from PHP attribute
 
 ## Multi-Database Testing Setup
 
-The multi-database testing setup allows running the same tests across MySQL, PostgreSQL, and SQLite databases automatically.
+The multi-database testing setup allows running the same tests across MySQL and PostgreSQL databases automatically.
 
 ## Overview
 
@@ -88,7 +88,6 @@ Run tests for specific databases:
 ```bash
 vendor/bin/phpunit --testsuite="MySQL Tests"
 vendor/bin/phpunit --testsuite="PostgreSQL Tests"
-vendor/bin/phpunit --testsuite="SQLite Tests"
 ```
 
 Run tests by group:
@@ -96,7 +95,6 @@ Run tests by group:
 vendor/bin/phpunit --group=database
 vendor/bin/phpunit --group=mysql
 vendor/bin/phpunit --group=pgsql
-vendor/bin/phpunit --group=sqlite
 ```
 
 ## Data Providers
@@ -104,7 +102,7 @@ vendor/bin/phpunit --group=sqlite
 ### `databaseProvider()`
 Returns all available database connections as `[Connection, database_name]` pairs.
 
-### `mysqlProvider()`, `pgsqlProvider()`, `sqliteProvider()`
+### `mysqlProvider()`, `pgsqlProvider()`
 Return connections for specific databases only.
 
 ### Example Usage
@@ -147,7 +145,6 @@ public function testTableCreation(Connection $connection, string $databaseName):
     $sql = match ($databaseName) {
         'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255))",
         'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY, name VARCHAR(255))",
-        'sqlite' => "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT)"
     };
 
     $connection->executeQuery($sql);
@@ -156,7 +153,6 @@ public function testTableCreation(Connection $connection, string $databaseName):
     $verifySql = match ($databaseName) {
         'mysql' => "SHOW TABLES LIKE '{$tableName}'",
         'pgsql' => "SELECT tablename FROM pg_tables WHERE tablename = '{$tableName}'",
-        'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name='{$tableName}'"
     };
 
     $result = $connection->executeQuery($verifySql);
@@ -222,55 +218,6 @@ vendor/bin/phpunit --testsuite="Database Tests"
 4. **Test database-specific features** in separate methods when needed
 5. **Use appropriate groups** for filtering tests
 6. **Keep tests isolated** - each test should clean up after itself
-
-## Migration Guide
-
-To convert existing tests to multi-database:
-
-1. Change `extends AbstractTestCase` to `extends DatabaseTestCase`
-2. Add data provider annotation: `@dataProvider databaseProvider`
-3. Add group annotation: `@group database`
-4. Update method signature to accept `(Connection $connection, string $databaseName)`
-5. Add `$this->setCurrentDatabase($connection, $databaseName);` at the start
-6. Update SQL and assertions to handle multiple databases
-7. Use `$this->getTableName()` for table names
-
-### Before:
-```php
-class MyTest extends AbstractTestCase
-{
-    public function testSomething(): void
-    {
-        $this->sqliteConnection->executeQuery('CREATE TABLE test (id INTEGER PRIMARY KEY)');
-        // ...
-    }
-}
-```
-
-### After:
-```php
-class MyTest extends DatabaseTestCase
-{
-    /**
-     * @dataProvider databaseProvider
-     * @group database
-     */
-    public function testSomething(Connection $connection, string $databaseName): void
-    {
-        $this->setCurrentDatabase($connection, $databaseName);
-
-        $tableName = $this->getTableName('test', $databaseName);
-        $sql = match ($databaseName) {
-            'mysql' => "CREATE TABLE `{$tableName}` (id INT PRIMARY KEY AUTO_INCREMENT)",
-            'pgsql' => "CREATE TABLE \"{$tableName}\" (id SERIAL PRIMARY KEY)",
-            'sqlite' => "CREATE TABLE {$tableName} (id INTEGER PRIMARY KEY AUTOINCREMENT)"
-        };
-
-        $connection->executeQuery($sql);
-        // ...
-    }
-}
-```
 
 ## Examples
 

@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 
 /**
  * Aggregates and optimizes changes from multiple UnitOfWorks.
@@ -173,10 +174,16 @@ class ChangeAggregator {
         $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
 
         if (empty($primaryKeyColumns)) {
-            // Fallback to 'id' property
+            // Fallback to 'id' property - use metadata-driven access
             $idProperty = $reflectionEntity->getProperty('id');
-            $idProperty->setAccessible(true);
-            $id = $idProperty->getValue($entity);
+            if ($idProperty instanceof ArticulateReflectionProperty) {
+                $id = $idProperty->getValue($entity);
+            } else {
+                // Fallback to direct reflection if not a metadata property
+                $reflectionProperty = new \ReflectionProperty($entity, 'id');
+                $reflectionProperty->setAccessible(true);
+                $id = $reflectionProperty->getValue($entity);
+            }
 
             return $entity::class . ':' . ($id ?? 'null');
         }
@@ -186,11 +193,9 @@ class ChangeAggregator {
         foreach ($primaryKeyColumns as $column) {
             // Find the property for this column
             foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                if ($property->getColumnName() === $column) {
-                    $fieldName = $property->getFieldName();
-                    $reflectionProperty = new \ReflectionProperty($entity, $fieldName);
-                    $reflectionProperty->setAccessible(true);
-                    $value = $reflectionProperty->getValue($entity);
+                if ($property instanceof ArticulateReflectionProperty && $property->getColumnName() === $column) {
+                    // Use metadata-driven property access
+                    $value = $property->getValue($entity);
                     $identityParts[] = $value;
 
                     break;

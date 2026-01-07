@@ -77,8 +77,7 @@ class InitialCreationTest extends DatabaseTestCase {
     {
         return match ($databaseName) {
             'mysql' => "SHOW TABLES LIKE 'migrations'",
-            'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migrations'",
-            'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name='migrations'"
+            'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'migrations'"
         };
     }
 
@@ -86,15 +85,13 @@ class InitialCreationTest extends DatabaseTestCase {
     {
         $columnQuery = match ($databaseName) {
             'mysql' => 'SHOW COLUMNS FROM migrations',
-            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'migrations' ORDER BY ordinal_position",
-            'sqlite' => "PRAGMA table_info('migrations')"
+            'pgsql' => "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'migrations' ORDER BY ordinal_position"
         };
 
         $result = $connection->executeQuery($columnQuery);
         $columns = array_column($result->fetchAll(), match ($databaseName) {
             'mysql' => 'Field',
-            'pgsql' => 'column_name',
-            'sqlite' => 'name'
+            'pgsql' => 'column_name'
         });
 
         $this->assertSame(['id', 'name', 'executed_at', 'running_time'], $columns);
@@ -103,8 +100,8 @@ class InitialCreationTest extends DatabaseTestCase {
     private function insertSampleMigration(Connection $connection, string $databaseName): void
     {
         $sql = match ($databaseName) {
-            'mysql', 'pgsql' => "INSERT INTO migrations (name, executed_at, running_time) VALUES ('baseline', NOW(), 1)",
-            'sqlite' => "INSERT INTO migrations (name, executed_at, running_time) VALUES ('baseline', datetime('now'), 1)"
+            'mysql' => "INSERT INTO migrations (name, executed_at, running_time) VALUES ('baseline', NOW(), 1)",
+            'pgsql' => "INSERT INTO migrations (name, executed_at, running_time) VALUES ('baseline', NOW(), 1)"
         };
 
         $connection->executeQuery($sql);

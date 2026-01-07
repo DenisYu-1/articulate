@@ -136,10 +136,18 @@ Articulate provides a solid foundation for PHP ORM development with the followin
 
 ### ✅ Core Architecture
 - **Entity System**: Full attribute-based entity definition with comprehensive relation support
-- **Migration System**: Complete schema management with commands, generators, and execution strategies for MySQL, PostgreSQL, and SQLite
+- **Migration System**: Complete schema management with commands, generators, and execution strategies for MySQL and PostgreSQL
 - **Type Mapping System**: Flexible type conversion with custom converters and priority-based resolution
 - **EntityManager**: Robust implementation with Unit of Work pattern, change tracking, and identity maps
-- **Multi-Database Support**: Comprehensive testing across MySQL, PostgreSQL, and SQLite databases
+
+### ✅ Supported Databases
+
+Articulate currently supports:
+
+- **PostgreSQL** - Full support with all features
+- **MySQL / MariaDB** - Full support with all features
+
+**SQLite is not supported** at the moment due to its limited ALTER TABLE capabilities. Support may be added in the future as a separate package.
 
 ### ✅ Relations & Associations
 - **Standard Relations**: OneToOne, OneToMany, ManyToOne, ManyToMany with full lifecycle support
@@ -163,7 +171,7 @@ Articulate provides a solid foundation for PHP ORM development with the followin
 ## Current Gaps & Known Issues
 
 ### 🚧 High Priority
-- **Schema Reader**: Currently MySQL-only; returns empty results for PostgreSQL/SQLite and incorrectly handles typed columns (e.g., `int(11)` → `string`)
+- **Schema Reader**: Full support for MySQL and PostgreSQL with proper type handling
 - **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
 - **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
 
@@ -241,7 +249,8 @@ This section outlines planned enhancements and features for future versions of A
 
 **Planned Improvements**:
 - **Database-Specific Strategies**:
-  - MySQL/SQLite auto-increment (`AUTO_INCREMENT`)
+  - MySQL auto-increment (`AUTO_INCREMENT`)
+  - PostgreSQL serial types (`SERIAL`, `BIGSERIAL`)
   - PostgreSQL sequences (`SERIAL`, `NEXTVAL`)
   - SQL Server identity columns
 - **UUID/GUID Generation**: Built-in UUID v4/v7 generation with attribute configuration

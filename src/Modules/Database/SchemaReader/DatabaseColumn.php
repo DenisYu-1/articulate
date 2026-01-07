@@ -18,19 +18,28 @@ class DatabaseColumn {
         public readonly ?string $defaultValue,
         private readonly TypeRegistry $typeRegistry = new TypeRegistry(),
     ) {
-        // Handle parameterized types like VARCHAR(255), TINYINT(1)
-        if (preg_match('/^(\w+)\((\d+)\)$/', $type, $matches)) {
+        // Handle parameterized types like VARCHAR(255), NUMERIC(10,2)
+        if (preg_match('/^(\w+)\(([^)]+)\)$/', $type, $matches)) {
             $baseType = $matches[1];
-            $this->length = (int) $matches[2];
+            $params = $matches[2];
 
-            // Convert TINYINT(1) to bool
-            if (strtoupper($baseType) === 'TINYINT' && $this->length === 1) {
-                $this->type = 'TINYINT(1)';
-                $this->phpType = 'bool';
+            // Check if params contain comma (e.g., NUMERIC(10,2))
+            if (strpos($params, ',') !== false) {
+                $paramParts = explode(',', $params);
+                $this->length = (int) trim($paramParts[0]);
+                // For now, we don't handle scale separately, but we could extend this
             } else {
-                $this->type = $baseType;
-                $this->phpType = $this->typeRegistry->getPhpType($baseType);
+                $this->length = (int) $params;
             }
+
+            // Special handling for TINYINT(1) -> keep full type for boolean mapping
+            if (strtoupper($baseType) === 'TINYINT' && $this->length === 1) {
+                $this->type = $type; // Keep "TINYINT(1)"
+            } else {
+                $this->type = $baseType; // Store base type like "VARCHAR"
+            }
+
+            $this->phpType = $this->typeRegistry->getPhpType($type); // Pass full type string for special handling
 
             return;
         }

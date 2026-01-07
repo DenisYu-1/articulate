@@ -4,7 +4,7 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyComment;
@@ -19,7 +19,7 @@ class PolymorphicManyToManyIntegrationTest extends AbstractTestCase {
     public function testPolymorphicManyToManyRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database
-        $schemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn([]);
         $schemaReader->method('getTableColumns')->willReturn([]);
         $schemaReader->method('getTableIndexes')->willReturn([]);
@@ -81,7 +81,7 @@ class PolymorphicManyToManyIntegrationTest extends AbstractTestCase {
             'id' => (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
         ];
 
-        $schemaReader = $this->createMock(DatabaseSchemaReader::class);
+        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn(['taggables']);
         $schemaReader->method('getTableColumns')->willReturnCallback(function ($table) use ($existingColumns) {
             return $table === 'taggables' ? array_values($existingColumns) : [];

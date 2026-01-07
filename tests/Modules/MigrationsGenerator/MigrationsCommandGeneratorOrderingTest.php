@@ -7,8 +7,8 @@ use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 
 class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
     public function testDropOperationsOrderForeignKeysBeforeColumns()
@@ -35,7 +35,7 @@ class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
             ]
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
 
         // Should drop foreign keys first, then indexes, then columns
         $fkPos = strpos($result, 'DROP FOREIGN KEY `fk_old_column`');
@@ -74,7 +74,7 @@ class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
             ]
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
 
         // Should add columns first, then indexes, then foreign keys
         $colPos = strpos($result, 'ADD `new_column`');
@@ -118,7 +118,7 @@ class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
             ]
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult);
 
         // Rollback should reverse the forward migration order
         // Forward: DROP FKs -> DROP indexes -> DROP columns -> ADD columns -> ADD indexes -> ADD FKs
@@ -164,7 +164,7 @@ class MigrationsCommandGeneratorOrderingTest extends AbstractTestCase {
             ]
         );
 
-        $result = (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult);
+        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
 
         // Complex ordering: DROP FKs -> DROP indexes -> ADD columns -> DROP columns -> ADD indexes -> ADD FKs
         // Note: ADD operations come before DROP operations within the same ALTER TABLE to avoid conflicts

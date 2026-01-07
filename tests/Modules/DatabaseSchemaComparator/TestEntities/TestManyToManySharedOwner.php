@@ -4,7 +4,6 @@ namespace Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
-use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\MappingTableProperty;
@@ -12,7 +11,6 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 #[Entity(tableName: 'shared_mapping_owner')]
 class TestManyToManySharedOwner {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(
@@ -45,7 +43,6 @@ class TestManyToManySharedOwner {
 #[Entity(tableName: 'shared_mapping_target')]
 class TestManyToManySharedTarget {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[ManyToMany(ownedBy: 'firstRelations', targetEntity: TestManyToManySharedOwner::class)]

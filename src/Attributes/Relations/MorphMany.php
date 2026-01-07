@@ -6,9 +6,7 @@ use Attribute;
 
 #[Attribute(Attribute::TARGET_PROPERTY)]
 class MorphMany implements RelationAttributeInterface {
-    private ?string $resolvedTypeColumn = null;
-
-    private ?string $resolvedIdColumn = null;
+    use PolymorphicColumnResolution;
 
     /**
      * @param class-string $targetEntity The entity class this relation morphs to
@@ -44,45 +42,5 @@ class MorphMany implements RelationAttributeInterface {
     public function getMorphType(): string
     {
         return $this->morphType ?? $this->targetEntity;
-    }
-
-    /**
-     * Get the resolved type column name for this morph relation.
-     */
-    public function getTypeColumn(): string
-    {
-        return $this->resolvedTypeColumn ?? $this->typeColumn ?? '__UNRESOLVED_TYPE__';
-    }
-
-    /**
-     * Get the resolved ID column name for this morph relation.
-     */
-    public function getIdColumn(): string
-    {
-        return $this->resolvedIdColumn ?? $this->idColumn ?? '__UNRESOLVED_ID__';
-    }
-
-    /**
-     * Resolve column names based on property name
-     * Called by reflection system.
-     */
-    public function resolveColumnNames(string $propertyName): void
-    {
-        if ($this->typeColumn === null) {
-            $this->resolvedTypeColumn = $this->convertToSnakeCase($propertyName) . '_type';
-        } else {
-            $this->resolvedTypeColumn = $this->typeColumn;
-        }
-
-        if ($this->idColumn === null) {
-            $this->resolvedIdColumn = $this->convertToSnakeCase($propertyName) . '_id';
-        } else {
-            $this->resolvedIdColumn = $this->idColumn;
-        }
-    }
-
-    private function convertToSnakeCase(string $string): string
-    {
-        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $string));
     }
 }

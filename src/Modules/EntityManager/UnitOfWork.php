@@ -7,7 +7,6 @@ use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionP
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\Generators\GeneratorRegistry;
-use ReflectionClass;
 use ReflectionProperty;
 
 class UnitOfWork {
@@ -183,17 +182,6 @@ class UnitOfWork {
         }
     }
 
-    /**
-     * @deprecated Use getChangeSets() instead. This method is kept for backward compatibility with tests.
-     */
-    public function commit(): void
-    {
-        // For backward compatibility with tests, just clear changes
-        // In the new architecture, changes are collected via getChangeSets()
-        // and executed by ChangeAggregator + QueryExecutor
-        $this->clearChanges();
-    }
-
     public function registerManaged(object $entity, array $data): void
     {
         // TODO: Extract ID from entity based on metadata
@@ -266,15 +254,14 @@ class UnitOfWork {
 
         $primaryKeyProperty = $this->findPrimaryKeyProperty($entity);
         if ($primaryKeyProperty !== null) {
-            $primaryKeyProperty->setAccessible(true);
-
+            // Use metadata-driven property access instead of direct reflection
             return $primaryKeyProperty->getValue($entity);
         }
 
         return null;
     }
 
-    private function findPrimaryKeyProperty(object $entity): ?ReflectionProperty
+    private function findPrimaryKeyProperty(object $entity): ?ArticulateReflectionProperty
     {
         $reflectionEntity = new ReflectionEntity($entity::class);
 
@@ -282,14 +269,8 @@ class UnitOfWork {
         foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
             // Only check ReflectionProperty objects for primary key, not ReflectionRelation
             if ($property instanceof ArticulateReflectionProperty && $property->isPrimaryKey()) {
-                return new ReflectionProperty($entity, $property->getFieldName());
+                return $property; // Return the metadata object directly
             }
-        }
-
-        // Treat 'id' property as implicit primary key
-        $reflection = new ReflectionClass($entity);
-        if ($reflection->hasProperty('id')) {
-            return $reflection->getProperty('id');
         }
 
         return null;

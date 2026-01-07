@@ -6,8 +6,8 @@ use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
@@ -25,7 +25,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
         );
         $this->assertEquals(
             $query,
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -102,7 +102,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -125,7 +125,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -148,7 +148,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -178,7 +178,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
 
         $this->assertEquals(
             'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`, DROP `related_entity_id`',
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 
@@ -208,7 +208,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
 
         $this->assertEquals(
             'CREATE TABLE `test_table` (`related_entity_id` INT NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
-            (MigrationsCommandGenerator::forMySql())->rollback($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
         );
     }
 }

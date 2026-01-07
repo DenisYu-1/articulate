@@ -2,6 +2,9 @@
 
 namespace Articulate\Modules\Database;
 
+use Articulate\Utils\BoolTypeConverter;
+use Articulate\Utils\Point;
+use Articulate\Utils\PointTypeConverter;
 use Articulate\Utils\TypeRegistry;
 
 /**

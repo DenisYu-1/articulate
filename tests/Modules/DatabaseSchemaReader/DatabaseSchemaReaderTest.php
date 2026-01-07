@@ -3,7 +3,7 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaReader;
 
 use Articulate\Connection;
-use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReader;
+use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
 
@@ -18,8 +18,9 @@ class DatabaseSchemaReaderTest extends TestCase {
 
         $connection = $this->createMock(Connection::class);
         $connection->method('executeQuery')->willReturn($statement);
+        $connection->method('getDriverName')->willReturn(Connection::MYSQL);
 
-        $reader = new DatabaseSchemaReader($connection);
+        $reader = SchemaReaderFactory::create($connection);
 
         $indexes = $reader->getTableIndexes('test_table');
 

@@ -5,8 +5,8 @@ namespace Articulate\Tests\Modules\MigrationsGenerator;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\MigrationsGeneratorTestHelper;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
@@ -24,7 +24,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
         );
         $this->assertEquals(
             $query,
-            (MigrationsCommandGenerator::forMySql())->generate($tableCompareResult)
+            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
         );
     }
 

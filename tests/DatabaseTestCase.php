@@ -156,8 +156,8 @@ abstract class DatabaseTestCase extends AbstractTestCase {
                     "DROP TABLE IF EXISTS \"{$tableName}\" CASCADE",
                     "DROP TABLE IF EXISTS {$tableName} CASCADE",
                 ];
-            } else { // sqlite
-                $dropAttempts = ["DROP TABLE IF EXISTS {$tableName}"];
+            } else {
+                $dropAttempts = ["DROP TABLE IF EXISTS `{$tableName}`"];
             }
 
             foreach ($dropAttempts as $dropSql) {
