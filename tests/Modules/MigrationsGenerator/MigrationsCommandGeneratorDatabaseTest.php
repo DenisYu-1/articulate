@@ -20,7 +20,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
     public function testCreateTableWithForeignKeyAppliedToDatabase(string $databaseName): void
     {
 
-        $connection = $this->getConnectionOrSkip($databaseName);
+        $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing tables

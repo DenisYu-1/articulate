@@ -56,18 +56,6 @@ abstract class DatabaseTestCase extends AbstractTestCase {
     }
 
     /**
-     * Safely get a database connection, skipping the test if not available.
-     */
-    protected function getConnectionOrSkip(string $databaseName): Connection
-    {
-        try {
-            return $this->getConnection($databaseName);
-        } catch (\RuntimeException $e) {
-            $this->markTestSkipped("Database '{$databaseName}' is not available: " . $e->getMessage());
-        }
-    }
-
-    /**
      * Get the current database connection for the test.
      */
     protected function getCurrentConnection(): Connection

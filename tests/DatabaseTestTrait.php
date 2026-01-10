@@ -65,22 +65,6 @@ trait DatabaseTestTrait {
     }
 
     /**
-     * Skip test if specific database is not available.
-     */
-    protected function skipIfDatabaseNotAvailable(string $databaseName): void
-    {
-        $connection = match ($databaseName) {
-            'mysql' => $this->mysqlConnection ?? null,
-            'pgsql' => $this->pgsqlConnection ?? null,
-            default => null
-        };
-
-        if (!$connection) {
-            $this->markTestSkipped("{$databaseName} database is not available");
-        }
-    }
-
-    /**
      * Get database-specific table name to avoid conflicts.
      */
     protected function getTableName(string $baseName, string $databaseName): string

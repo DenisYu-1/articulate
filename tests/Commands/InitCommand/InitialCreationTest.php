@@ -16,7 +16,7 @@ class InitialCreationTest extends DatabaseTestCase {
      */
     public function testCreatesMigrationsTable(string $databaseName): void
     {
-        $connection = $this->getConnectionOrSkip($databaseName);
+        $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Ensure clean state by dropping migrations table
@@ -68,7 +68,7 @@ class InitialCreationTest extends DatabaseTestCase {
      */
     public function testDoesNothingWhenTableExists(string $databaseName): void
     {
-        $connection = $this->getConnectionOrSkip($databaseName);
+        $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Ensure clean state by dropping migrations table

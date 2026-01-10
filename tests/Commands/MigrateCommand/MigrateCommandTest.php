@@ -67,7 +67,7 @@ class MigrateCommandTest extends DatabaseTestCase
      */
     public function testExecutesMigrationsSuccessfully(string $databaseName): void
     {
-        $connection = $this->getConnectionOrSkip($databaseName);
+        $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Use a real InitCommand to ensure migrations table exists
@@ -263,7 +263,7 @@ PHP;
      */
     public function testQueriesExecutedMigrationsFromDatabase(string $databaseName): void
     {
-        $connection = $this->getConnectionOrSkip($databaseName);
+        $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Create migrations table first
