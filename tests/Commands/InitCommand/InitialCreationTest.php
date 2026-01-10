@@ -16,10 +16,27 @@ class InitialCreationTest extends DatabaseTestCase {
      */
     public function testCreatesMigrationsTable(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
-        $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+        // Ensure clean state by dropping migrations table
+        try {
+            $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+        } catch (\Exception $e) {
+            // Table might not exist or have constraints, try alternative approach
+            try {
+                if ($databaseName === 'mysql') {
+                    $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 0');
+                    $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+                    $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 1');
+                } elseif ($databaseName === 'pgsql') {
+                    $connection->executeQuery('DROP TABLE IF EXISTS migrations CASCADE');
+                }
+            } catch (\Exception $e2) {
+                // If we still can't drop it, the test will fail appropriately
+                error_log("Could not drop migrations table: " . $e2->getMessage());
+            }
+        }
 
         $command = new InitCommand($connection);
         $commandTester = new CommandTester($command);
@@ -51,10 +68,27 @@ class InitialCreationTest extends DatabaseTestCase {
      */
     public function testDoesNothingWhenTableExists(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
-        $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+        // Ensure clean state by dropping migrations table
+        try {
+            $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+        } catch (\Exception $e) {
+            // Table might not exist or have constraints, try alternative approach
+            try {
+                if ($databaseName === 'mysql') {
+                    $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 0');
+                    $connection->executeQuery('DROP TABLE IF EXISTS migrations');
+                    $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 1');
+                } elseif ($databaseName === 'pgsql') {
+                    $connection->executeQuery('DROP TABLE IF EXISTS migrations CASCADE');
+                }
+            } catch (\Exception $e2) {
+                // If we still can't drop it, the test will fail appropriately
+                error_log("Could not drop migrations table: " . $e2->getMessage());
+            }
+        }
 
         $command = new InitCommand($connection);
         $commandTester = new CommandTester($command);

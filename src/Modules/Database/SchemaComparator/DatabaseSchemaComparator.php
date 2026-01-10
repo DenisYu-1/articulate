@@ -13,13 +13,13 @@ use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationVali
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 
-readonly class DatabaseSchemaComparator {
-    private SchemaComparisonCoordinator $coordinator;
+class DatabaseSchemaComparator {
+    private readonly SchemaComparisonCoordinator $coordinator;
 
     public function __construct(
-        private DatabaseSchemaReaderInterface $databaseSchemaReader,
-        private SchemaNaming $schemaNaming,
-        private RelationValidatorFactory $relationValidatorFactory = new RelationValidatorFactory(),
+        private readonly DatabaseSchemaReaderInterface $databaseSchemaReader,
+        private readonly SchemaNaming $schemaNaming,
+        private readonly RelationValidatorFactory $relationValidatorFactory = new RelationValidatorFactory(),
     ) {
         $this->coordinator = new SchemaComparisonCoordinator(
             $this->databaseSchemaReader,

@@ -12,11 +12,11 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 
-readonly class MappingTableComparator {
+class MappingTableComparator {
     public function __construct(
-        private DatabaseSchemaReaderInterface $databaseSchemaReader,
-        private SchemaNaming $schemaNaming,
-        private IndexComparator $indexComparator,
+        private readonly DatabaseSchemaReaderInterface $databaseSchemaReader,
+        private readonly SchemaNaming $schemaNaming,
+        private readonly IndexComparator $indexComparator,
     ) {
     }
 

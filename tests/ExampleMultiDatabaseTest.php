@@ -25,7 +25,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
     public function testBasicTableCreation(string $databaseName): void
     {
         try {
-            $connection = $this->getConnection($databaseName);
+            $connection = $this->getConnectionOrSkip($databaseName);
         } catch (\Exception $e) {
             $this->markTestSkipped("{$databaseName} database not available: " . $e->getMessage());
         }
@@ -72,7 +72,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      */
     public function testDataInsertionAndRetrieval(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing table
@@ -116,7 +116,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      */
     public function testMySqlSpecificFeatures(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing table
@@ -141,7 +141,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      */
     public function testPostgresqlSpecificFeatures(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing table
@@ -168,9 +168,8 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
     {
         // For debugging, you can test against a specific database
         $databaseName = 'mysql'; // Change this to 'pgsql' as needed
-        $this->skipIfDatabaseNotAvailable($databaseName);
 
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing table first
@@ -199,7 +198,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      */
     public function testForeignKeyConstraints(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing tables

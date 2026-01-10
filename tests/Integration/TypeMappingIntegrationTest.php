@@ -17,7 +17,6 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestBoolEntit
 class TypeMappingIntegrationTest extends AbstractTestCase {
     public function testBoolTypeMappingInMigrations(): void
     {
-        $this->skipIfDatabaseNotAvailable('mysql');
         $connection = $this->getConnection('mysql');
 
         // Clean up any existing table

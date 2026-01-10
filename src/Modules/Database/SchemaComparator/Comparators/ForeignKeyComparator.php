@@ -9,10 +9,10 @@ use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Schema\SchemaNaming;
 
-readonly class ForeignKeyComparator {
+class ForeignKeyComparator {
     public function __construct(
-        private SchemaNaming $schemaNaming,
-        private RelationValidatorFactory $relationValidatorFactory,
+        private readonly SchemaNaming $schemaNaming,
+        private readonly RelationValidatorFactory $relationValidatorFactory,
     ) {
     }
 

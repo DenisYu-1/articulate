@@ -16,7 +16,7 @@ class ExistingTablesTest extends DatabaseTestCase {
      */
     public function testExecuteWithExistingMigrationsTable(string $databaseName): void
     {
-        $connection = $this->getConnection($databaseName);
+        $connection = $this->getConnectionOrSkip($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Clean up any existing migrations table first

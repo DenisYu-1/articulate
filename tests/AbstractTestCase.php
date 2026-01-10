@@ -103,14 +103,4 @@ abstract class AbstractTestCase extends TestCase {
             return false;
         }
     }
-
-    /**
-     * Skip test if database is not available.
-     */
-    protected function skipIfDatabaseNotAvailable(string $databaseName): void
-    {
-        if (!$this->isDatabaseAvailable($databaseName)) {
-            $this->markTestSkipped("{$databaseName} database is not available");
-        }
-    }
 }

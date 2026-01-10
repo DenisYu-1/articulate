@@ -6,7 +6,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 
-readonly class IndexComparator {
+class IndexComparator {
     /**
      * @param array<string, object> $entityIndexes
      * @param array<string, array> $existingIndexes
