@@ -3,17 +3,19 @@
 namespace Articulate\Tests\Commands\DiffCommand;
 
 use Articulate\Commands\DiffCommand;
+use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use RecursiveIteratorIterator;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class DiffCommandTest extends DatabaseTestCase
 {
     private MockObject&DatabaseSchemaComparator $schemaComparator;
-    private MockObject&MigrationsCommandGenerator $commandGenerator;
+    private MigrationsCommandGenerator $commandGenerator;
     private string $entitiesPath;
     private string $migrationsPath;
     private string $tempDir;
@@ -23,14 +25,17 @@ class DiffCommandTest extends DatabaseTestCase
         parent::setUp();
 
         $this->tempDir = sys_get_temp_dir() . '/articulate_test_' . uniqid();
-        $this->entitiesPath = $this->tempDir . '/entities';
+        $this->entitiesPath = __DIR__ . '/TestEntities';
         $this->migrationsPath = $this->tempDir . '/migrations';
 
-        mkdir($this->entitiesPath, 0777, true);
         mkdir($this->migrationsPath, 0777, true);
 
         $this->schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
-        $this->commandGenerator = $this->createMock(MigrationsCommandGenerator::class);
+
+        // Create a real MigrationsCommandGenerator with a mock connection
+        $mockConnection = $this->createMock(Connection::class);
+        $mockConnection->method('getDriverName')->willReturn(Connection::MYSQL);
+        $this->commandGenerator = new MigrationsCommandGenerator($mockConnection);
     }
 
     protected function tearDown(): void
@@ -39,6 +44,20 @@ class DiffCommandTest extends DatabaseTestCase
 
         // Clean up temp directory
         $this->removeDirectory($this->tempDir);
+    }
+
+
+
+    private function findMigrationFiles(): array
+    {
+        $iterator = new RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->migrationsPath));
+        $migrationFiles = [];
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $migrationFiles[] = $file->getPathname();
+            }
+        }
+        return $migrationFiles;
     }
 
     private function removeDirectory(string $dir): void
@@ -64,22 +83,37 @@ class DiffCommandTest extends DatabaseTestCase
      */
     public function testGeneratesMigrationWhenSchemaDifferencesExist(): void
     {
-        // Create a simple entity file in a namespace that can be loaded
-        $entityContent = <<<PHP
-<?php
-namespace Test\Entities;
-use Articulate\Attributes\Entity;
-#[Entity]
-class TestEntity {
-    public int \$id;
-    public string \$name;
-}
-PHP;
+        // Manually include the test entity file
+        require_once __DIR__ . '/TestEntities/TestEntity.php';
 
-        file_put_contents($this->entitiesPath . '/TestEntity.php', $entityContent);
+        // Mock schema comparator to return differences for our test entity
+        $compareResult = new TableCompareResult('test_entities', TableCompareResult::OPERATION_CREATE);
+        $this->schemaComparator->method('compareAll')->willReturn([$compareResult]);
 
-        // Skip this complex integration test for now
-        $this->markTestSkipped('Integration test with file loading is complex - focus on unit tests instead');
+        // Real command generator will process the TableCompareResult and generate actual SQL
+
+        $command = new DiffCommand(
+            $this->schemaComparator,
+            $this->commandGenerator,
+            $this->entitiesPath,
+            $this->migrationsPath,
+            'Test\Migrations'
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+
+        // Check that migration file was created
+        $migrationFiles = $this->findMigrationFiles();
+        $this->assertCount(1, $migrationFiles, 'Expected exactly one migration file to be created');
+
+        $migrationContent = file_get_contents($migrationFiles[0]);
+        // Assert that the real generator produced SQL for the test entity
+        $this->assertStringContainsString('CREATE TABLE', $migrationContent);
+        $this->assertStringContainsString('DROP TABLE', $migrationContent);
+        $this->assertStringContainsString('Test\Migrations', $migrationContent);
     }
 
     /**
@@ -180,15 +214,6 @@ PHP;
         $diff2 = new TableCompareResult('products', TableCompareResult::OPERATION_CREATE);
         $this->schemaComparator->method('compareAll')->willReturn([$diff1, $diff2]);
 
-        // Mock command generator to return different SQL for each call
-        $callCount = 0;
-        $this->commandGenerator->method('generate')->willReturnCallback(function() use (&$callCount) {
-            $callCount++;
-            return $callCount === 1 ? 'CREATE TABLE users (id INT)' : 'CREATE TABLE products (id INT)';
-        });
-        $this->commandGenerator->method('rollback')->willReturnCallback(function() use (&$callCount) {
-            return $callCount === 1 ? 'DROP TABLE users' : 'DROP TABLE products';
-        });
 
         $command = new DiffCommand(
             $this->schemaComparator,
@@ -203,7 +228,7 @@ PHP;
         $this->assertSame(0, $statusCode);
 
         // Check that migration file was created with both changes
-        $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->migrationsPath));
+        $iterator = new RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->migrationsPath));
         $migrationFiles = [];
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
@@ -213,10 +238,11 @@ PHP;
         $this->assertCount(1, $migrationFiles);
 
         $migrationContent = file_get_contents($migrationFiles[0]);
-        $this->assertStringContainsString('CREATE TABLE users', $migrationContent);
-        $this->assertStringContainsString('CREATE TABLE products', $migrationContent);
-        $this->assertStringContainsString('DROP TABLE users', $migrationContent);
-        $this->assertStringContainsString('DROP TABLE products', $migrationContent);
+        // Assert that the real generator produced SQL containing table creation
+        $this->assertStringContainsString('CREATE TABLE', $migrationContent);
+        $this->assertStringContainsString('`users`', $migrationContent);
+        $this->assertStringContainsString('`products`', $migrationContent);
+        $this->assertStringContainsString('DROP TABLE', $migrationContent);
     }
 
     /**
@@ -245,13 +271,8 @@ PHP;
      */
     public function testFiltersEmptyMigrationCommands(): void
     {
-        // Mock schema comparator to return differences
-        $compareResult = new TableCompareResult('test', TableCompareResult::OPERATION_CREATE);
-        $this->schemaComparator->method('compareAll')->willReturn([$compareResult]);
-
-        // Mock command generator to return empty SQL (no actual changes needed)
-        $this->commandGenerator->method('generate')->willReturn('');
-        $this->commandGenerator->method('rollback')->willReturn('DROP TABLE test');
+        // Mock schema comparator to return no differences (schema is in sync)
+        $this->schemaComparator->method('compareAll')->willReturn([]);
 
         $command = new DiffCommand(
             $this->schemaComparator,

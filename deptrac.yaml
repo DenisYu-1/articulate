@@ -1,9 +1,13 @@
 parameters:
   paths:
     - ./src
-  exclude_files:
-    - '#.*test.*#'
+    - ./tests
+  exclude_files: []
   layers:
+    - name: Tests
+      collectors:
+        - type: directory
+          value: tests
     - name: Attributes
       collectors:
         - type: directory
@@ -65,6 +69,20 @@ parameters:
           value: src/Commands
 
   ruleset:
+    Tests:
+      - Attributes
+      - Connection
+      - Utils
+      - Exceptions
+      - Schema
+      - Collection
+      - Database
+      - EntityManager
+      - Generators
+      - Migrations
+      - QueryBuilder
+      - Commands
+
     Attributes:
       - Schema
       - Collection
