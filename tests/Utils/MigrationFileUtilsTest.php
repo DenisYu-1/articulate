@@ -217,4 +217,87 @@ PHP;
 
         $this->assertSame('Late\Namespace', $result);
     }
+
+    public function testGetNamespaceFromFileWithNamespaceWithExtraSpaces(): void
+    {
+        $fileContent = <<<PHP
+<?php
+
+namespace   Extra   \Spaces   \In   \Namespace   ;
+
+class TestClass {}
+PHP;
+
+        $filePath = $this->tempDir . '/ExtraSpaces.php';
+        file_put_contents($filePath, $fileContent);
+
+        $result = MigrationFileUtils::getNamespaceFromFile($filePath);
+
+        // The regex trims the line, so spaces within the namespace should be preserved
+        $this->assertSame('Extra   \Spaces   \In   \Namespace   ', $result);
+    }
+
+    public function testGetNamespaceFromFileWithNamespaceWithoutSemicolon(): void
+    {
+        $fileContent = <<<PHP
+<?php
+namespace NoSemicolon
+class TestClass {}
+PHP;
+
+        $filePath = $this->tempDir . '/NoSemicolon.php';
+        file_put_contents($filePath, $fileContent);
+
+        // Should not match namespace without semicolon
+        $result = MigrationFileUtils::getNamespaceFromFile($filePath);
+
+        $this->assertNull($result);
+    }
+
+    public function testGetNamespaceFromFileWithNamespaceWithTabIndentation(): void
+    {
+        $fileContent = <<<PHP
+<?php
+	namespace TabIndented\Namespace;
+class TestClass {}
+PHP;
+
+        $filePath = $this->tempDir . '/TabIndented.php';
+        file_put_contents($filePath, $fileContent);
+
+        $result = MigrationFileUtils::getNamespaceFromFile($filePath);
+
+        $this->assertSame('TabIndented\Namespace', $result);
+    }
+
+    public function testGetNamespaceFromFileWithVeryLongFile(): void
+    {
+        // Create a file with many lines before the namespace
+        $lines = ["<?php"];
+        for ($i = 0; $i < 1000; $i++) {
+            $lines[] = "// Comment line " . $i;
+        }
+        $lines[] = "namespace Very\Deep\Namespace\After\Many\Lines;";
+        $lines[] = "class Test {}";
+
+        $fileContent = implode("\n", $lines);
+        $filePath = $this->tempDir . '/LongFile.php';
+        file_put_contents($filePath, $fileContent);
+
+        $result = MigrationFileUtils::getNamespaceFromFile($filePath);
+
+        $this->assertSame('Very\Deep\Namespace\After\Many\Lines', $result);
+    }
+
+    public function testGetNamespaceFromFileWithBOM(): void
+    {
+        // Test with UTF-8 BOM
+        $fileContent = "\xEF\xBB\xBF<?php\nnamespace BOM\Namespace;\nclass Test {}";
+        $filePath = $this->tempDir . '/BOMFile.php';
+        file_put_contents($filePath, $fileContent);
+
+        $result = MigrationFileUtils::getNamespaceFromFile($filePath);
+
+        $this->assertSame('BOM\Namespace', $result);
+    }
 }

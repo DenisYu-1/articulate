@@ -105,4 +105,30 @@ class BoolTypeConverterTest extends TestCase
         $this->assertNull($this->converter->convertToDatabase(null));
         $this->assertNull($this->converter->convertToPHP(null));
     }
+
+    public function testConvertToDatabaseWithObjects(): void
+    {
+        // Objects that evaluate to true/false in boolean context
+        $this->assertSame(1, $this->converter->convertToDatabase(new \stdClass()));
+        $this->assertSame(0, $this->converter->convertToDatabase(false)); // Already tested but adding for completeness
+    }
+
+    public function testConvertToPHPWithFloatValues(): void
+    {
+        // Float values should be treated as truthy if non-zero
+        $this->assertTrue($this->converter->convertToPHP(1.5));
+        $this->assertFalse($this->converter->convertToPHP(0.0));
+        $this->assertTrue($this->converter->convertToPHP(-1.5));
+    }
+
+    public function testConvertToPHPWithStringValues(): void
+    {
+        // Test string values - any non-empty string is truthy, empty string is falsy
+        $this->assertTrue($this->converter->convertToPHP('true'));
+        $this->assertTrue($this->converter->convertToPHP('TRUE'));
+        $this->assertTrue($this->converter->convertToPHP('false')); // 'false' is truthy as a string
+        $this->assertTrue($this->converter->convertToPHP('FALSE')); // 'FALSE' is truthy as a string
+        $this->assertTrue($this->converter->convertToPHP('anything_else')); // Non-empty string is truthy
+        $this->assertFalse($this->converter->convertToPHP('')); // Empty string is falsy
+    }
 }

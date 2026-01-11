@@ -306,4 +306,31 @@ class DiffCommandTest extends DatabaseTestCase
         $this->assertEquals('articulate:diff', $command->getName());
         $this->assertIsString($command->getDescription());
     }
+
+    /**
+     * Test diff command throws exception when no default entities directories exist.
+     */
+    public function testThrowsExceptionWhenNoDefaultEntitiesDirectoryExists(): void
+    {
+        $oldCwd = getcwd();
+        chdir($this->tempDir);
+
+        try {
+            $command = new DiffCommand(
+                $this->schemaComparator,
+                $this->commandGenerator,
+                null,
+                $this->migrationsPath
+            );
+
+            $commandTester = new CommandTester($command);
+
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Entities directory is not found. Expected one of: src/Entities, src/Entity, or set a custom path.');
+
+            $commandTester->execute([]);
+        } finally {
+            chdir($oldCwd);
+        }
+    }
 }

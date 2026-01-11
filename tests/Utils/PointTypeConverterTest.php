@@ -127,4 +127,36 @@ class PointTypeConverterTest extends TestCase
             $this->assertSame($expectedY, $point->y);
         }
     }
+
+    public function testConvertToPHPWithScientificNotation(): void
+    {
+        // Test scientific notation in POINT strings
+        $point = $this->converter->convertToPHP('POINT(1.23e2 4.56e-3)');
+        $this->assertSame(123.0, $point->x);
+        $this->assertSame(0.00456, $point->y);
+    }
+
+    public function testConvertToPHPWithVeryLargeNumbers(): void
+    {
+        // Test with very large coordinate values
+        $point = $this->converter->convertToPHP('POINT(999999.999999 -999999.999999)');
+        $this->assertSame(999999.999999, $point->x);
+        $this->assertSame(-999999.999999, $point->y);
+    }
+
+    public function testConvertToPHPWithZeroCoordinates(): void
+    {
+        $point = $this->converter->convertToPHP('POINT(0 0)');
+        $this->assertSame(0.0, $point->x);
+        $this->assertSame(0.0, $point->y);
+    }
+
+    public function testConvertToDatabaseWithIntegerCoordinates(): void
+    {
+        // Test with integer values (should be converted to float)
+        $point = new Point(5, 10);
+        $result = $this->converter->convertToDatabase($point);
+
+        $this->assertSame('POINT(5.000000 10.000000)', $result);
+    }
 }

@@ -25,7 +25,7 @@ class CustomGenerator extends AbstractGenerator {
         $this->strategies[] = $strategy;
     }
 
-    public function generate(string $entityClass, array $options = []): mixed
+    protected function generateInternal(string $entityClass, array $options = []): mixed
     {
         $generatorType = $options['generator'] ?? 'auto_increment';
 

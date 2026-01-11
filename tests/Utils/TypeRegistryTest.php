@@ -243,6 +243,120 @@ class TypeRegistryTest extends TestCase
         $result2 = $this->registry->getDatabaseType('cached_type');
         $this->assertSame('CACHED_DB_TYPE', $result2);
     }
+
+    public function testFindClassMappingWithMultipleCandidates(): void
+    {
+        // Register mappings with different priorities
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 10); // Lower priority
+        $this->registry->registerClassMapping(TestParentClass::class, 'PARENT_TYPE', null, 5);   // Higher priority
+
+        // Test that usort is called and higher priority wins
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('PARENT_TYPE', $result);
+    }
+
+    public function testGetInheritanceInfoForNonExistentClass(): void
+    {
+        // Test private method getInheritanceInfo for non-existent class
+        $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('getInheritanceInfo');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($registry, 'NonExistentClass');
+
+        $this->assertEquals(['interfaces' => [], 'parents' => []], $result);
+    }
+
+    public function testGetInheritanceInfoCaching(): void
+    {
+        // Test that inheritance info is cached
+        $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('getInheritanceInfo');
+        $method->setAccessible(true);
+
+        // First call
+        $result1 = $method->invoke($registry, TestChildClass::class);
+        $this->assertIsArray($result1);
+        $this->assertArrayHasKey('interfaces', $result1);
+        $this->assertArrayHasKey('parents', $result1);
+
+        // Second call should use cache
+        $result2 = $method->invoke($registry, TestChildClass::class);
+        $this->assertSame($result1, $result2);
+    }
+
+    public function testFindClassMappingReturnsNullWhenNoMatches(): void
+    {
+        // Test private method findClassMapping when no mappings exist
+        $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('findClassMapping');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($registry, 'SomeClassWithoutMappings');
+        $this->assertNull($result);
+    }
+
+    public function testFindClassMappingPrioritizesDirectClassMapping(): void
+    {
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 10); // Lower priority (higher number)
+        $this->registry->registerClassMapping(TestChildClass::class, 'DIRECT_TYPE', null, 5);   // Higher priority (lower number)
+
+        // Direct class mapping should win with higher priority (lower number)
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('DIRECT_TYPE', $result);
+    }
+
+    public function testRegisterTypeClearsMappingCache(): void
+    {
+        // First get a type to populate cache
+        $result1 = $this->registry->getDatabaseType('int');
+        $this->assertSame('INT', $result1);
+
+        // Register a new type, which should clear cache
+        $this->registry->registerType('test_type', 'TEST_DB_TYPE');
+
+        // Cache should be cleared, so this should work
+        $result2 = $this->registry->getDatabaseType('test_type');
+        $this->assertSame('TEST_DB_TYPE', $result2);
+    }
+
+    public function testRegisterClassMappingClearsMappingCache(): void
+    {
+        // First get a type to populate cache
+        $result1 = $this->registry->getDatabaseType('int');
+        $this->assertSame('INT', $result1);
+
+        // Register a class mapping, which should clear cache
+        $this->registry->registerClassMapping(\stdClass::class, 'STD_TYPE');
+
+        // Cache should be cleared, so this should work
+        $result2 = $this->registry->getDatabaseType(\stdClass::class);
+        $this->assertSame('STD_TYPE', $result2);
+    }
+
+    public function testGetDatabaseTypeForInheritedInterface(): void
+    {
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 5);
+
+        // TestChildClass inherits from TestParentClass which implements TestInterface
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('INTERFACE_TYPE', $result);
+    }
+
+    public function testComplexInheritanceWithMultipleMappings(): void
+    {
+        // Register multiple mappings with different priorities
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 20);    // Lowest priority
+        $this->registry->registerClassMapping(TestParentClass::class, 'PARENT_TYPE', null, 10);     // Medium priority
+        $this->registry->registerClassMapping(TestChildClass::class, 'CHILD_TYPE', null, 5);        // Highest priority
+
+        // Direct class mapping should win
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('CHILD_TYPE', $result);
+    }
 }
 
 // Test classes for inheritance testing

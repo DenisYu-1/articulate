@@ -220,7 +220,7 @@ class TypeRegistry {
     /**
      * Register built-in type mappings.
      */
-    private function registerBuiltInTypes(): void
+    protected function registerBuiltInTypes(): void
     {
         // Basic types (register non-nullable first) - using uppercase SQL standard
         $this->registerType('int', 'INT');
