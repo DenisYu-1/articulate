@@ -2,18 +2,13 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Attributes\Lifecycle\PostLoad;
 use Articulate\Attributes\Lifecycle\PostPersist;
-use Articulate\Attributes\Lifecycle\PostRemove;
-use Articulate\Attributes\Lifecycle\PostUpdate;
 use Articulate\Attributes\Lifecycle\PrePersist;
-use Articulate\Attributes\Lifecycle\PreRemove;
 use Articulate\Attributes\Lifecycle\PreUpdate;
 use Articulate\Modules\EntityManager\LifecycleCallbackManager;
 use PHPUnit\Framework\TestCase;
 
-class LifecycleCallbackManagerTest extends TestCase
-{
+class LifecycleCallbackManagerTest extends TestCase {
     private LifecycleCallbackManager $manager;
 
     protected function setUp(): void
@@ -88,7 +83,7 @@ class LifecycleCallbackManagerTest extends TestCase
     {
         $callbackTypes = [
             'prePersist', 'postPersist', 'preUpdate', 'postUpdate',
-            'preRemove', 'postRemove', 'postLoad'
+            'preRemove', 'postRemove', 'postLoad',
         ];
 
         foreach ($callbackTypes as $type) {
@@ -158,7 +153,9 @@ class LifecycleCallbackManagerTest extends TestCase
 // Test entity classes
 class TestEntityWithCallbacks {
     public bool $prepareForInsertCalled = false;
+
     public bool $afterInsertCalled = false;
+
     public bool $logInsertCalled = false;
 
     #[PrePersist]

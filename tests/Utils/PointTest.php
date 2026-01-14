@@ -5,8 +5,7 @@ namespace Articulate\Tests\Utils;
 use Articulate\Utils\Point;
 use PHPUnit\Framework\TestCase;
 
-class PointTest extends TestCase
-{
+class PointTest extends TestCase {
     public function testConstructsWithCoordinates(): void
     {
         $point = new Point(10.5, -20.3);

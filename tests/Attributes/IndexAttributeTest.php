@@ -9,8 +9,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use PHPUnit\Framework\TestCase;
 
-class IndexAttributeTest extends TestCase
-{
+class IndexAttributeTest extends TestCase {
     public function testIndexAttributeDefaultConstructor(): void
     {
         $index = new Index(['field1', 'field2']);
@@ -232,8 +231,7 @@ class IndexAttributeTest extends TestCase
 
 // Test entity for Index attribute testing
 #[Entity]
-class TestIndexEntity
-{
+class TestIndexEntity {
     #[PrimaryKey]
     #[Property]
     public int $id;

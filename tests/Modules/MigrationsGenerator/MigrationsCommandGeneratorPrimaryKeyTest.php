@@ -64,12 +64,12 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
                 "{$quote}id{$quote} {$intType} AUTO_INCREMENT NOT NULL, " .
                 "{$quote}name{$quote} VARCHAR(255) NOT NULL, " .
                 "PRIMARY KEY ({$quote}id{$quote})" .
-                ")",
+                ')',
             'pgsql' => "CREATE TABLE {$quote}users{$quote} (" .
                 "{$quote}id{$quote} {$intType}  NOT NULL, " .
                 "{$quote}name{$quote} VARCHAR(255) NOT NULL, " .
                 "PRIMARY KEY ({$quote}id{$quote})" .
-                ")",
+                ')',
         };
 
         $this->assertEquals($expected, $result);
@@ -203,7 +203,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             "{$quote}id{$quote} {$uuidType}  NOT NULL, " .
             "{$quote}name{$quote} VARCHAR(255) NOT NULL, " .
             "PRIMARY KEY ({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }
@@ -253,7 +253,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             "{$quote}id{$quote} ulid  NOT NULL, " .
             "{$quote}title{$quote} VARCHAR(255) NOT NULL, " .
             "PRIMARY KEY ({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }

@@ -3,10 +3,10 @@
 namespace Articulate\Tests\Attributes;
 
 use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\RelationAttributeInterface;
 use PHPUnit\Framework\TestCase;
 
-class OneToManyAttributeTest extends TestCase
-{
+class OneToManyAttributeTest extends TestCase {
     public function testOneToManyAttributeDefaultConstructor(): void
     {
         $relation = new OneToMany();
@@ -69,6 +69,6 @@ class OneToManyAttributeTest extends TestCase
     {
         $relation = new OneToMany();
 
-        $this->assertInstanceOf(\Articulate\Attributes\Relations\RelationAttributeInterface::class, $relation);
+        $this->assertInstanceOf(RelationAttributeInterface::class, $relation);
     }
 }

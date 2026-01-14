@@ -9,15 +9,17 @@ use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy
 use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\MockObject\MockObject;
-use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class MigrateCommandTest extends DatabaseTestCase
-{
+class MigrateCommandTest extends DatabaseTestCase {
     private string $migrationsPath;
+
     private string $tempDir;
+
     private MockObject&InitCommand $initCommand;
+
     private MockObject&MigrationExecutionStrategy $migrationStrategy;
+
     private MockObject&RollbackExecutionStrategy $rollbackStrategy;
 
     protected function setUp(): void
@@ -71,7 +73,7 @@ class MigrateCommandTest extends DatabaseTestCase
         $this->setCurrentDatabase($connection, $databaseName);
 
         // Use a real InitCommand to ensure migrations table exists
-        $realInitCommand = new \Articulate\Commands\InitCommand($connection);
+        $realInitCommand = new InitCommand($connection);
 
         // Create a unique migration class name to avoid conflicts
         $uniqueId = uniqid();
@@ -101,7 +103,7 @@ PHP;
 
         file_put_contents($this->migrationsPath . '/' . $fileName, $migrationContent);
 
-        $command = new \Articulate\Commands\MigrateCommand(
+        $command = new MigrateCommand(
             $connection,
             $realInitCommand,
             $this->migrationsPath
@@ -141,6 +143,7 @@ PHP;
                 } elseif ($query === 'SELECT name FROM migrations ORDER BY id DESC LIMIT 1') {
                     return $latestResultMock;
                 }
+
                 return null;
             });
 

@@ -9,8 +9,7 @@ use Articulate\Utils\TypeConverterInterface;
 use Articulate\Utils\TypeRegistry;
 use PHPUnit\Framework\TestCase;
 
-class TypeRegistryTest extends TestCase
-{
+class TypeRegistryTest extends TestCase {
     private TypeRegistry $registry;
 
     protected function setUp(): void
@@ -360,6 +359,9 @@ class TypeRegistryTest extends TestCase
 }
 
 // Test classes for inheritance testing
-interface TestInterface {}
-class TestParentClass implements TestInterface {}
-class TestChildClass extends TestParentClass {}
+interface TestInterface {
+}
+class TestParentClass implements TestInterface {
+}
+class TestChildClass extends TestParentClass {
+}

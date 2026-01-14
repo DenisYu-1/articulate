@@ -5,8 +5,7 @@ namespace Articulate\Tests\Collection;
 use Articulate\Collection\Collection;
 use PHPUnit\Framework\TestCase;
 
-class CollectionTest extends TestCase
-{
+class CollectionTest extends TestCase {
     public function testConstructsWithItems(): void
     {
         $items = ['item1', 'item2', 'item3'];
@@ -39,7 +38,7 @@ class CollectionTest extends TestCase
             true,
             null,
             ['nested' => 'array'],
-            (object)['property' => 'value']
+            (object) ['property' => 'value'],
         ];
 
         $collection = new Collection($items);

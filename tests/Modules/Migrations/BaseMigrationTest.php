@@ -5,11 +5,11 @@ namespace Articulate\Tests\Modules\Migrations;
 use Articulate\Connection;
 use Articulate\Modules\Migrations\Generator\BaseMigration;
 use Articulate\Tests\AbstractTestCase;
-use PDOStatement;
 use RuntimeException;
 
 class BaseMigrationTest extends AbstractTestCase {
     private Connection $connection;
+
     private BaseMigrationTestMigration $migration;
 
     protected function setUp(): void
@@ -138,12 +138,15 @@ class BaseMigrationTest extends AbstractTestCase {
 }
 
 /**
- * Test migration class for testing BaseMigration
+ * Test migration class for testing BaseMigration.
  */
 class BaseMigrationTestMigration extends BaseMigration {
     public bool $upExecuted = false;
+
     public bool $downExecuted = false;
+
     public bool $shouldThrowException = false;
+
     public bool $shouldThrowExceptionOnDown = false;
 
     protected function up(): void
@@ -171,7 +174,7 @@ class BaseMigrationTestMigration extends BaseMigration {
 }
 
 /**
- * Minimal migration class for testing optional down method
+ * Minimal migration class for testing optional down method.
  */
 class BaseMigrationTestMinimalMigration extends BaseMigration {
     public bool $rollbackExecuted = false;

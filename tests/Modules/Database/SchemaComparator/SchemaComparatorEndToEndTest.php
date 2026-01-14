@@ -5,11 +5,10 @@ namespace Articulate\Modules\Database\SchemaComparator;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
-use Articulate\Attributes\Relations\OneToOne;
-use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
@@ -17,8 +16,7 @@ use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity(tableName: 'test_users')]
-class TestUserEntity
-{
+class TestUserEntity {
     #[PrimaryKey(generator: PrimaryKey::GENERATOR_AUTO_INCREMENT, type: 'int')]
     public int $id;
 
@@ -36,8 +34,7 @@ class TestUserEntity
 }
 
 #[Entity(tableName: 'test_posts')]
-class TestPostEntity
-{
+class TestPostEntity {
     #[PrimaryKey(generator: PrimaryKey::GENERATOR_AUTO_INCREMENT, type: 'int')]
     public int $id;
 
@@ -55,8 +52,7 @@ class TestPostEntity
 }
 
 #[Entity(tableName: 'test_roles')]
-class TestRoleEntity
-{
+class TestRoleEntity {
     #[PrimaryKey(generator: PrimaryKey::GENERATOR_AUTO_INCREMENT, type: 'int')]
     public int $id;
 
@@ -68,8 +64,7 @@ class TestRoleEntity
 }
 
 #[Entity(tableName: 'test_tags')]
-class TestTagEntity
-{
+class TestTagEntity {
     #[PrimaryKey(generator: PrimaryKey::GENERATOR_AUTO_INCREMENT, type: 'int')]
     public int $id;
 
@@ -80,10 +75,11 @@ class TestTagEntity
     public $posts;
 }
 
-class SchemaComparatorEndToEndTest extends DatabaseTestCase
-{
+class SchemaComparatorEndToEndTest extends DatabaseTestCase {
     private Connection $connection;
+
     private DatabaseSchemaReaderInterface $schemaReader;
+
     private DatabaseSchemaComparator $comparator;
 
     protected function setUp(): void
@@ -131,7 +127,7 @@ class SchemaComparatorEndToEndTest extends DatabaseTestCase
         $this->assertNotEmpty($comparisonResults);
 
         // Check that we have table creation results
-        $tableNames = array_map(fn($result) => $result->name, $comparisonResults);
+        $tableNames = array_map(fn ($result) => $result->name, $comparisonResults);
         $this->assertContains('test_users', $tableNames);
         $this->assertContains('test_posts', $tableNames);
         $this->assertContains('test_roles', $tableNames);
@@ -150,7 +146,7 @@ class SchemaComparatorEndToEndTest extends DatabaseTestCase
         }
 
         // Test SQL generation for one of the tables
-        $userTableResult = array_find($comparisonResults, fn($result) => $result->name === 'test_users');
+        $userTableResult = array_find($comparisonResults, fn ($result) => $result->name === 'test_users');
         $this->assertNotNull($userTableResult);
 
         // Generate SQL (this would normally go to a migration generator)
@@ -158,12 +154,11 @@ class SchemaComparatorEndToEndTest extends DatabaseTestCase
         $this->assertGreaterThan(0, count($userTableResult->columns));
 
         // Check specific columns exist
-        $columnNames = array_map(fn($column) => $column->name, $userTableResult->columns);
+        $columnNames = array_map(fn ($column) => $column->name, $userTableResult->columns);
         $this->assertContains('id', $columnNames);
         $this->assertContains('name', $columnNames);
         $this->assertContains('email', $columnNames);
     }
-
 
     /**
      * @param string $databaseName

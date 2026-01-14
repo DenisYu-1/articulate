@@ -66,7 +66,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
             "{$quote}id{$quote} {$intType} {$autoIncrementSql} NOT NULL, " .
             "{$quote}name{$quote} VARCHAR(255) NOT NULL, " .
             "PRIMARY KEY ({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }
@@ -139,7 +139,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
             "{$quote}version{$quote} {$intType} {$autoIncrementSql} NOT NULL, " .
             "{$quote}title{$quote} VARCHAR(255) NOT NULL, " .
             "PRIMARY KEY ({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }

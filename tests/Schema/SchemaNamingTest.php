@@ -5,8 +5,7 @@ namespace Articulate\Tests\Schema;
 use Articulate\Schema\SchemaNaming;
 use PHPUnit\Framework\TestCase;
 
-class SchemaNamingTest extends TestCase
-{
+class SchemaNamingTest extends TestCase {
     private SchemaNaming $schemaNaming;
 
     protected function setUp(): void

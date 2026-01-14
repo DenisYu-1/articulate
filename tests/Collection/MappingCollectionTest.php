@@ -7,8 +7,7 @@ use Articulate\Collection\MappingItem;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-class MappingCollectionTest extends TestCase
-{
+class MappingCollectionTest extends TestCase {
     public function testConstructsWithEmptyArray(): void
     {
         $collection = new MappingCollection();
@@ -97,7 +96,7 @@ class MappingCollectionTest extends TestCase
 
         $collection = new MappingCollection([
             new MappingItem($entity1, $pivot1),
-            new MappingItem($entity2, $pivot2)
+            new MappingItem($entity2, $pivot2),
         ]);
 
         $this->assertSame($pivot1, $collection->pivotOf($entity1));
@@ -110,7 +109,7 @@ class MappingCollectionTest extends TestCase
         $unknownEntity = new stdClass();
 
         $collection = new MappingCollection([
-            new MappingItem($knownEntity, ['role' => 'admin'])
+            new MappingItem($knownEntity, ['role' => 'admin']),
         ]);
 
         $this->assertNull($collection->pivotOf($unknownEntity));
@@ -185,7 +184,7 @@ class MappingCollectionTest extends TestCase
         $entity->id = 1;
 
         $collection = new MappingCollection([
-            new MappingItem($entity, ['role' => 'admin'])
+            new MappingItem($entity, ['role' => 'admin']),
         ]);
 
         // Same object reference

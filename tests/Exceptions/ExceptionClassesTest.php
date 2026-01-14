@@ -11,8 +11,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use RuntimeException;
 
-class ExceptionClassesTest extends TestCase
-{
+class ExceptionClassesTest extends TestCase {
     public function testDatabaseSchemaExceptionCanBeInstantiated(): void
     {
         $message = 'Database schema error occurred';

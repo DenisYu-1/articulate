@@ -3,25 +3,29 @@
 namespace Articulate\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
+use Articulate\Attributes\Relations\MappingTableProperty;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-class RelationDefinitionCollectorNegativeTest extends TestCase
-{
+class RelationDefinitionCollectorNegativeTest extends TestCase {
     private RelationDefinitionCollector $collector;
 
     protected function setUp(): void
     {
         // Use the default validator factory
-        $this->collector = new RelationDefinitionCollector(new \Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory());
+        $this->collector = new RelationDefinitionCollector(new RelationValidatorFactory());
     }
 
     private function createCollectorWithCustomValidator(RelationValidatorInterface $customValidator): RelationDefinitionCollector
     {
         // Create a custom validator factory that includes our custom validator
-        $validatorFactory = new class($customValidator) extends \Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory {
+        $validatorFactory = new class($customValidator) extends RelationValidatorFactory {
             private RelationValidatorInterface $customValidator;
 
             public function __construct(RelationValidatorInterface $customValidator)
@@ -30,7 +34,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
                 parent::__construct();
             }
 
-            public function getValidator(\Articulate\Attributes\Reflection\RelationInterface $relation): \Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface
+            public function getValidator(RelationInterface $relation): RelationValidatorInterface
             {
                 // Check our custom validator first
                 if ($this->customValidator->supports($relation)) {
@@ -77,8 +81,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionManyToMany::class);
-        $relation2 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionManyToMany::class);
+        $relation1 = $this->createMock(ReflectionManyToMany::class);
+        $relation2 = $this->createMock(ReflectionManyToMany::class);
 
         // Both relations claim to be for the same table but have different join columns
         // Set up both relations with conflicting join columns
@@ -114,8 +118,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionMorphToMany::class);
-        $relation2 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionMorphToMany::class);
+        $relation1 = $this->createMock(ReflectionMorphToMany::class);
+        $relation2 = $this->createMock(ReflectionMorphToMany::class);
 
         // Both relations for same table but different morph names
         $relation1->method('getTableName')->willReturn('taggables');
@@ -146,8 +150,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionManyToMany::class);
-        $relation2 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionManyToMany::class);
+        $relation1 = $this->createMock(ReflectionManyToMany::class);
+        $relation2 = $this->createMock(ReflectionManyToMany::class);
 
         // Both relations for same table with conflicting extra properties
         $relation1->method('isOwningSide')->willReturn(true);
@@ -183,8 +187,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
             ->willReturn('Articulate\\Connection');
 
         // Conflicting extra properties - same name but different types
-        $property1 = new \Articulate\Attributes\Relations\MappingTableProperty('created_at', 'datetime', false, null, null);
-        $property2 = new \Articulate\Attributes\Relations\MappingTableProperty('created_at', 'timestamp', false, null, null); // Different type
+        $property1 = new MappingTableProperty('created_at', 'datetime', false, null, null);
+        $property2 = new MappingTableProperty('created_at', 'timestamp', false, null, null); // Different type
 
         $relation1->expects($this->once())
             ->method('getExtraProperties')
@@ -199,7 +203,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
             ->willReturn([$relation1, $relation2]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("Many-to-many misconfigured: mapping table \"user_posts\" property \"created_at\" conflicts between relations");
+        $this->expectExceptionMessage('Many-to-many misconfigured: mapping table "user_posts" property "created_at" conflicts between relations');
 
         $this->collector->collectManyToManyTables([$entity]);
     }
@@ -208,8 +212,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionMorphToMany::class);
-        $relation2 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionMorphToMany::class);
+        $relation1 = $this->createMock(ReflectionMorphToMany::class);
+        $relation2 = $this->createMock(ReflectionMorphToMany::class);
 
         // Both relations for same table with conflicting extra properties
         $relation1->method('getTableName')->willReturn('taggables');
@@ -231,8 +235,8 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
         $relation2->method('getPrimaryColumns')->willReturn(['taggable_type', 'taggable_id', 'tag_id']);
 
         // Conflicting extra properties - same name but different lengths
-        $property1 = new \Articulate\Attributes\Relations\MappingTableProperty('metadata', 'text', false, null, null);
-        $property2 = new \Articulate\Attributes\Relations\MappingTableProperty('metadata', 'varchar', false, 100, null); // Different type
+        $property1 = new MappingTableProperty('metadata', 'text', false, null, null);
+        $property2 = new MappingTableProperty('metadata', 'varchar', false, 100, null); // Different type
 
         $relation1->expects($this->once())
             ->method('getExtraProperties')
@@ -247,7 +251,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase
             ->willReturn([$relation1, $relation2]);
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("Many-to-many misconfigured: mapping table \"taggables\" property \"metadata\" conflicts between relations");
+        $this->expectExceptionMessage('Many-to-many misconfigured: mapping table "taggables" property "metadata" conflicts between relations');
 
         $this->collector->collectMorphToManyTables([$entity]);
     }

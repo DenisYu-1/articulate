@@ -5,8 +5,7 @@ namespace Articulate\Tests\Attributes;
 use Articulate\Attributes\Entity;
 use PHPUnit\Framework\TestCase;
 
-class EntityAttributeTest extends TestCase
-{
+class EntityAttributeTest extends TestCase {
     public function testEntityAttributeDefaultConstructor(): void
     {
         $entity = new Entity();

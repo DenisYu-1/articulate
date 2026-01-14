@@ -30,7 +30,9 @@ class QueryExecutorTestEntityWithoutId {
 
 class QueryExecutorTest extends TestCase {
     private QueryExecutor $queryExecutor;
+
     private Connection $connection;
+
     private GeneratorRegistry $generatorRegistry;
 
     protected function setUp(): void
@@ -85,7 +87,7 @@ class QueryExecutorTest extends TestCase {
 
         $changes = [
             'name' => 'Updated Name',
-            'description' => 'Updated Description'
+            'description' => 'Updated Description',
         ];
 
         $this->connection->expects($this->once())
@@ -130,7 +132,7 @@ class QueryExecutorTest extends TestCase {
     {
         $expectedResults = [
             ['id' => 1, 'name' => 'Test'],
-            ['id' => 2, 'name' => 'Test2']
+            ['id' => 2, 'name' => 'Test2'],
         ];
 
         $statement = $this->createMock(\PDOStatement::class);

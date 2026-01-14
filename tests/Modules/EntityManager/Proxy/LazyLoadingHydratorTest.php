@@ -14,8 +14,11 @@ use RuntimeException;
 
 class LazyLoadingHydratorTest extends AbstractTestCase {
     private LazyLoadingHydrator $hydrator;
+
     private UnitOfWork $unitOfWork;
+
     private ProxyManager $proxyManager;
+
     private EntityMetadataRegistry $metadataRegistry;
 
     protected function setUp(): void
@@ -283,10 +286,12 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
 }
 
 /**
- * Test entity for hydrator testing
+ * Test entity for hydrator testing.
  */
 class TestEntity {
     public ?int $id = null;
+
     public ?string $name = null;
+
     public ?string $userName = null;
 }

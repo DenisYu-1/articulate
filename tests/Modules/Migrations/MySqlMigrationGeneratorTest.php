@@ -2,19 +2,18 @@
 
 namespace Articulate\Tests\Modules\Migrations;
 
-use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\MySqlTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Database\MySqlTypeMapper;
 use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
-use Articulate\Utils\TypeRegistry;
 use Articulate\Tests\AbstractTestCase;
 
 class MySqlMigrationGeneratorTest extends AbstractTestCase {
     private MySqlMigrationGenerator $generator;
+
     private MySqlTypeMapper $typeMapper;
 
     protected function setUp(): void
@@ -75,7 +74,6 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
 
         $this->assertEquals('`id` INT AUTO_INCREMENT NOT NULL', $result);
     }
-
 
     public function testGetForeignKeyKeywordReturnsConstraint(): void
     {

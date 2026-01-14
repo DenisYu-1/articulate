@@ -7,8 +7,7 @@ use Attribute;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
-class AutoIncrementAttributeTest extends TestCase
-{
+class AutoIncrementAttributeTest extends TestCase {
     public function testAutoIncrementAttributeCanBeInstantiated(): void
     {
         $autoIncrement = new AutoIncrement();

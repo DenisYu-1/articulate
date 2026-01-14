@@ -14,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Entity]
 class EntityManagerTestEntity {
     public int $id;
+
     public string $name;
 }
 
@@ -310,6 +311,7 @@ class QueryBuilderTest extends TestCase {
                 $entity = new $class();
                 $entity->id = $row['id'];
                 $entity->name = $row['name'];
+
                 return $entity;
             });
 

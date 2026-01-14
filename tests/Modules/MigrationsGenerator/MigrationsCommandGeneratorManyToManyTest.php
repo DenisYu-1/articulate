@@ -78,7 +78,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}user_id{$quote}, {$quote}post_id{$quote}), " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }
@@ -161,7 +161,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}test_many_to_many_owner_id{$quote}, {$quote}test_many_to_many_target_id{$quote}), " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_owner', 'test_many_to_many_owner_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_owner_id{$quote}) REFERENCES {$quote}test_many_to_many_owner{$quote}({$quote}id{$quote}), " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_target', 'test_many_to_many_target_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_target_id{$quote}) REFERENCES {$quote}test_many_to_many_target{$quote}({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }
@@ -230,7 +230,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             "{$quote}post_id{$quote} {$intType} NOT NULL, " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
             "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
-            ")";
+            ')';
 
         $this->assertEquals($expected, $result);
     }

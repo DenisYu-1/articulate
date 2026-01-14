@@ -6,8 +6,7 @@ use Articulate\Utils\Point;
 use Articulate\Utils\PointTypeConverter;
 use PHPUnit\Framework\TestCase;
 
-class PointTypeConverterTest extends TestCase
-{
+class PointTypeConverterTest extends TestCase {
     private PointTypeConverter $converter;
 
     protected function setUp(): void

@@ -6,10 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\ChangeAggregator;
-use Articulate\Modules\EntityManager\ChangeTrackingStrategy;
-use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\TestCase;
 
@@ -25,10 +22,11 @@ class TestEntityForChangeAggregation {
     public bool $active = true;
 }
 
-class ChangeAggregatorTest extends TestCase
-{
+class ChangeAggregatorTest extends TestCase {
     private ChangeAggregator $aggregator;
+
     private Connection $connection;
+
     private EntityManager $entityManager;
 
     protected function setUp(): void
@@ -125,7 +123,6 @@ class ChangeAggregatorTest extends TestCase
         $this->assertCount(0, $result['deletes']);
         $this->assertSame($entity, $result['inserts'][0]);
     }
-
 }
 
 #[Entity]

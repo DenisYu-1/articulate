@@ -3,21 +3,22 @@
 namespace Articulate\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use PHPUnit\Framework\TestCase;
 
-class SchemaComparisonCoordinatorTest extends TestCase
-{
+class SchemaComparisonCoordinatorTest extends TestCase {
     private DatabaseSchemaReaderInterface $schemaReader;
+
     private RelationDefinitionCollector $relationDefinitionCollector;
+
     private EntityTableComparator $entityTableComparator;
+
     private MappingTableComparator $mappingTableComparator;
+
     private SchemaComparisonCoordinator $coordinator;
 
     protected function setUp(): void
@@ -130,7 +131,7 @@ class SchemaComparisonCoordinatorTest extends TestCase
         $results = iterator_to_array($result);
         $this->assertCount(2, $results);
 
-        $tableNames = array_map(fn($result) => $result->name, $results);
+        $tableNames = array_map(fn ($result) => $result->name, $results);
         $this->assertContains('old_table', $tableNames);
         $this->assertContains('another_table', $tableNames);
 
@@ -379,7 +380,7 @@ class SchemaComparisonCoordinatorTest extends TestCase
         $results = iterator_to_array($result);
         $this->assertCount(3, $results);
 
-        $operations = array_map(fn($result) => $result->operation, $results);
+        $operations = array_map(fn ($result) => $result->operation, $results);
         $this->assertContains(TableCompareResult::OPERATION_CREATE, $operations);
         $this->assertContains(TableCompareResult::OPERATION_DELETE, $operations);
     }

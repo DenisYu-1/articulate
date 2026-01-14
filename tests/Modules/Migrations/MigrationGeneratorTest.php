@@ -8,6 +8,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class MigrationGeneratorTest extends AbstractTestCase {
     private string $tempDir;
+
     private MigrationGenerator $generator;
 
     protected function setUp(): void
