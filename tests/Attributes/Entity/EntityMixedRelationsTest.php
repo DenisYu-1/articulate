@@ -78,7 +78,7 @@ class EntityMixedRelationsTest extends AbstractTestCase {
     public function testMappingTablePropertyDefaultValues(): void
     {
         // Test that MappingTableProperty has correct default values
-        // This covers the FalseValue mutation on line 10 of MappingTableProperty.php
+        // Test that MappingTableProperty has correct default values for nullable field
         $property = new MappingTableProperty('test_name', 'string');
 
         $this->assertEquals('test_name', $property->name);
@@ -91,7 +91,7 @@ class EntityMixedRelationsTest extends AbstractTestCase {
     public function testMorphManyDefaultForeignKeyValue(): void
     {
         // Test that MorphMany has correct default foreignKey value
-        // This covers the TrueValue mutation on line 28 of MorphMany.php
+        // Test that MorphMany has correct default foreignKey value
         $morphMany = new MorphMany(
             targetEntity: self::class,
             referencedBy: 'test'
@@ -104,7 +104,7 @@ class EntityMixedRelationsTest extends AbstractTestCase {
     public function testMorphToManyDefaultForeignKeyValue(): void
     {
         // Test that MorphToMany has correct default foreignKey value
-        // This covers the TrueValue mutation on line 32 of MorphToMany.php
+        // Test that MorphToMany has correct default foreignKey value
         $morphToMany = new MorphToMany(
             targetEntity: self::class,
             name: 'test'
@@ -117,7 +117,7 @@ class EntityMixedRelationsTest extends AbstractTestCase {
     public function testMorphedByManyDefaultForeignKeyValue(): void
     {
         // Test that MorphedByMany has correct default foreignKey value
-        // This covers the TrueValue mutation on line 26 of MorphedByMany.php
+        // Test that MorphedByMany has correct default foreignKey value
         $morphedByMany = new MorphedByMany(
             targetEntity: self::class,
             name: 'test'
@@ -130,7 +130,7 @@ class EntityMixedRelationsTest extends AbstractTestCase {
     public function testManyToManyIsForeignKeyRequired(): void
     {
         // Test that ManyToMany relations require foreign keys by default
-        // This covers the TrueValue mutation on line 121 of ReflectionRelation.php
+        // Test that relation properties have correct default foreignKey value
         $schemaNaming = new SchemaNaming();
         $attribute = new ManyToMany(targetEntity: self::class);
 

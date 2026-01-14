@@ -19,7 +19,6 @@ use Articulate\Tests\AbstractTestCase;
 #[Entity]
 class UuidEntity {
     #[PrimaryKey(generator: 'uuid_v4')]
-    #[Property]
     public ?string $id = null;
 
     #[Property]
@@ -29,7 +28,6 @@ class UuidEntity {
 #[Entity]
 class UuidV7Entity {
     #[PrimaryKey(generator: 'uuid_v7')]
-    #[Property]
     public ?string $id = null;
 
     #[Property]
@@ -39,7 +37,6 @@ class UuidV7Entity {
 #[Entity]
 class UlidEntity {
     #[PrimaryKey(generator: 'ulid')]
-    #[Property]
     public ?string $id = null;
 
     #[Property]
@@ -49,7 +46,6 @@ class UlidEntity {
 #[Entity]
 class SerialEntity {
     #[PrimaryKey(generator: 'serial')]
-    #[Property]
     public ?int $id = null;
 
     #[Property]
@@ -59,7 +55,6 @@ class SerialEntity {
 #[Entity]
 class PrefixedEntity {
     #[PrimaryKey(generator: 'prefixed_id', options: ['prefix' => 'USR_', 'length' => 6])]
-    #[Property]
     public ?string $id = null;
 
     #[Property]

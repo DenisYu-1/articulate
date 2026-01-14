@@ -28,7 +28,6 @@ Context-bounded entities allow multiple entity classes to point to the same data
 class LoginUser
 {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[Property(maxLength: 120)]
@@ -42,7 +41,6 @@ class LoginUser
 class User
 {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[Property(maxLength: 120)]

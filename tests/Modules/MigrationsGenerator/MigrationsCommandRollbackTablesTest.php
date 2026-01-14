@@ -5,34 +5,66 @@ namespace Articulate\Tests\Modules\MigrationsGenerator;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
-use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
-    #[DataProvider('cases')]
-    public function testCreateTable(string $query, string $operation, array $parameters)
+class MigrationsCommandRollbackTablesTest extends DatabaseTestCase {
+    /**
+     * Test rollback operations for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testCreateTable(string $databaseName): void
     {
-        $tableCompareResult = new TableCompareResult(
-            'test_table',
-            $operation,
-            [
-                new ColumnCompareResult(...$parameters),
-            ],
-            [],
-            [],
-        );
-        $this->assertEquals(
-            $query,
-            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
-        );
+        $cases = $this->getRollbackTestCases($databaseName);
+
+        foreach ($cases as $case) {
+            $tableCompareResult = new TableCompareResult(
+                'test_table',
+                $case['operation'],
+                [
+                    new ColumnCompareResult(...$case['parameters']),
+                ],
+                [],
+                [],
+            );
+
+            $generator = match ($databaseName) {
+                'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+                'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+            };
+
+            $this->assertEquals(
+                $case['query'],
+                $generator->rollback($tableCompareResult),
+                "Failed for database: {$databaseName}, operation: {$case['operation']}"
+            );
+        }
     }
 
-    public static function cases()
+    /**
+     * Get rollback test cases for the specified database.
+     */
+    private function getRollbackTestCases(string $databaseName): array
     {
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $updateSyntax = match ($databaseName) {
+            'mysql' => 'MODIFY',
+            'pgsql' => 'ALTER COLUMN',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
         return [
             [
-                'query' => 'DROP TABLE `test_table`',
+                'query' => "DROP TABLE {$quote}test_table{$quote}",
                 'operation' => 'create',
                 'parameters' => [
                     'name' => 'id',
@@ -42,7 +74,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'CREATE TABLE `test_table` (`id` VARCHAR(255) NOT NULL)',
+                'query' => "CREATE TABLE {$quote}test_table{$quote} ({$quote}id{$quote} VARCHAR(255) NOT NULL)",
                 'operation' => 'delete',
                 'parameters' => [
                     'name' => 'id',
@@ -52,7 +84,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` INT NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} {$intType} NOT NULL",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -62,7 +94,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` DROP `id`',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} DROP {$quote}id{$quote}",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -72,7 +104,7 @@ class MigrationsCommandRollbackTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` DROP `id`',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} DROP {$quote}id{$quote}",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

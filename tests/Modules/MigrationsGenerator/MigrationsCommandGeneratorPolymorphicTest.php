@@ -7,11 +7,16 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
 
-class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
-    public function testPolymorphicRelationCreatesCorrectMigration()
+class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
+    /**
+     * Test that polymorphic relation creates correct migration for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testPolymorphicRelationCreatesCorrectMigration(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'poll',
@@ -54,21 +59,50 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             primaryColumns: ['id']
         );
 
-        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
 
-        $expected = 'CREATE TABLE `poll` (' .
-            '`id` INT NOT NULL, ' .
-            '`question` VARCHAR(255) NOT NULL, ' .
-            '`pollable_type` VARCHAR(255) NOT NULL, ' .
-            '`pollable_id` INT NOT NULL, ' .
-            'PRIMARY KEY (`id`), ' .
-            'INDEX `pollable_morph_index` (`pollable_type`, `pollable_id`)' .
-            ')';
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
+        $result = $generator->generate($tableCompareResult);
+
+        $expected = match ($databaseName) {
+            'mysql' => "CREATE TABLE {$quote}poll{$quote} (" .
+                "{$quote}id{$quote} {$intType} NOT NULL, " .
+                "{$quote}question{$quote} VARCHAR(255) NOT NULL, " .
+                "{$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
+                "{$quote}pollable_id{$quote} {$intType} NOT NULL, " .
+                "PRIMARY KEY ({$quote}id{$quote}), " .
+                "INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})" .
+                ')',
+            'pgsql' => "CREATE TABLE {$quote}poll{$quote} (" .
+                "{$quote}id{$quote} {$intType} NOT NULL, " .
+                "{$quote}question{$quote} VARCHAR(255) NOT NULL, " .
+                "{$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
+                "{$quote}pollable_id{$quote} {$intType} NOT NULL, " .
+                "PRIMARY KEY ({$quote}id{$quote})" .
+                ')',
+        };
 
         $this->assertEquals($expected, $result);
     }
 
-    public function testPolymorphicRelationAlterTableMigration()
+    /**
+     * Test polymorphic relation alter table migration for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testPolymorphicRelationAlterTableMigration(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'poll',
@@ -98,17 +132,37 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             foreignKeys: []
         );
 
-        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
 
-        $expected = 'ALTER TABLE `poll` ' .
-            'ADD `pollable_type` VARCHAR(255) NOT NULL, ' .
-            'ADD `pollable_id` INT NOT NULL, ' .
-            'ADD INDEX `pollable_morph_index` (`pollable_type`, `pollable_id`)';
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
+        $result = $generator->generate($tableCompareResult);
+
+        $expected = "ALTER TABLE {$quote}poll{$quote} " .
+            "ADD {$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
+            "ADD {$quote}pollable_id{$quote} {$intType} NOT NULL, " .
+            "ADD INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})";
 
         $this->assertEquals($expected, $result);
     }
 
-    public function testPolymorphicRelationMigrationRollback()
+    /**
+     * Test polymorphic relation migration rollback for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testPolymorphicRelationMigrationRollback(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'poll',
@@ -138,12 +192,22 @@ class MigrationsCommandGeneratorPolymorphicTest extends AbstractTestCase {
             foreignKeys: []
         );
 
-        $result = MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult);
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
 
-        $expected = 'ALTER TABLE `poll` ' .
-            'DROP INDEX `pollable_morph_index`, ' .
-            'DROP `pollable_type`, ' .
-            'DROP `pollable_id`';
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $result = $generator->rollback($tableCompareResult);
+
+        $expected = "ALTER TABLE {$quote}poll{$quote} " .
+            "DROP INDEX {$quote}pollable_morph_index{$quote}, " .
+            "DROP {$quote}pollable_type{$quote}, " .
+            "DROP {$quote}pollable_id{$quote}";
 
         $this->assertEquals($expected, $result);
     }

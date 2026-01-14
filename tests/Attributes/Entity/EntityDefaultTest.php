@@ -17,8 +17,7 @@ class EntityDefaultTest extends AbstractTestCase {
 
     private int $propertyWithoutAttribute;
 
-    #[PrimaryKey]
-    #[Property(name: 'custom_pk')]
+    #[PrimaryKey(name: 'custom_pk')]
     public int $id;
 
     #[AutoIncrement]

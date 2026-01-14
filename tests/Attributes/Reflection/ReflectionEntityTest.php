@@ -18,7 +18,7 @@ use Articulate\Tests\AbstractTestCase;
 class ReflectionEntityTest extends AbstractTestCase {
     public function testGetEntityPropertiesWithOneToOneNonOwningSideSkipsRelation(): void
     {
-        // This test ensures the continue statement at line 62 is executed
+        // This test ensures non-owning OneToOne relations are skipped during property iteration
         $entity = new ReflectionEntity(TestEntityWithOneToOneNonOwning::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -31,7 +31,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityPropertiesWithOneToOneOwningSideIncludesRelation(): void
     {
-        // This test ensures the yield statement at line 64 is reached
+        // This test ensures owning OneToOne relations are included during property iteration
         $entity = new ReflectionEntity(TestEntityWithOneToOneOwning::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -50,7 +50,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityPropertiesWithManyToOneYieldsRelation(): void
     {
-        // This test ensures the yield statement at line 71-72 is reached
+        // This test ensures ManyToOne relations are included during property iteration
         $entity = new ReflectionEntity(TestEntityWithManyToOne::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -68,7 +68,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityPropertiesWithMorphToYieldsRelation(): void
     {
-        // This test ensures the yield statement at line 80-81 is reached
+        // This test ensures MorphTo relations are included during property iteration
         $entity = new ReflectionEntity(TestEntityWithMorphTo::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -86,7 +86,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityPropertiesWithMorphOneNonOwningSideSkipsRelation(): void
     {
-        // This test ensures the continue statement at line 91 is executed
+        // This test ensures certain relations are skipped during processing
         $entity = new ReflectionEntity(TestEntityWithMorphOneNonOwning::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -112,7 +112,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityPropertiesWithMorphManyNonOwningSideSkipsRelation(): void
     {
-        // This test ensures the continue statement at line 103 is executed
+        // This test ensures certain relations are skipped when processing owning sides
         $entity = new ReflectionEntity(TestEntityWithMorphManyNonOwning::class);
 
         $properties = iterator_to_array($entity->getEntityProperties());
@@ -138,7 +138,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityFieldsPropertiesWithMultipleProperties(): void
     {
-        // This test ensures the foreach loop at line 119 is executed multiple times
+        // This test ensures multiple relations are processed correctly
         $entity = new ReflectionEntity(TestEntityWithMultipleProperties::class);
 
         $properties = iterator_to_array($entity->getEntityFieldsProperties());
@@ -149,7 +149,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityFieldsPropertiesSkipsPropertiesWithoutOneToOne(): void
     {
-        // This test ensures the continue statement at line 123 is executed
+        // This test ensures non-inverse relations are properly handled
         $entity = new ReflectionEntity(TestEntityWithOnlyProperty::class);
 
         $properties = iterator_to_array($entity->getEntityFieldsProperties());
@@ -162,7 +162,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityFieldsPropertiesIncludesOneToOneRelations(): void
     {
-        // This test ensures the foreach loop at line 119 runs and processes OneToOne relations
+        // This test ensures OneToOne relations are processed in the iteration
         $entity = new ReflectionEntity(TestEntityWithOneToOneOwning::class);
 
         $properties = iterator_to_array($entity->getEntityFieldsProperties());
@@ -180,7 +180,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetEntityFieldsPropertiesSkipsNonOwningOneToOneRelations(): void
     {
-        // This test ensures the continue statement at line 127 is executed for non-owning relations
+        // This test ensures non-owning relations are skipped during inverse relation processing
         $entity = new ReflectionEntity(TestEntityWithOneToOneNonOwning::class);
 
         $properties = iterator_to_array($entity->getEntityFieldsProperties());
@@ -193,7 +193,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetPrimaryKeyColumnsReturnsEmptyArrayForNonEntity(): void
     {
-        // This test ensures the return statement at line 211 is crucial
+        // This test ensures proper return value for table name resolution
         $entity = new ReflectionEntity(TestNonEntity::class);
 
         $columns = $entity->getPrimaryKeyColumns();
@@ -204,7 +204,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetPrimaryKeyColumnsWithFallbackColumnNameUsesStrToLower(): void
     {
-        // This test ensures the strtolower function at line 227 is used
+        // This test ensures table names are properly converted to lowercase
         $entity = new ReflectionEntity(TestEntityWithCamelCasePrimaryKey::class);
 
         $columns = $entity->getPrimaryKeyColumns();
@@ -215,7 +215,7 @@ class ReflectionEntityTest extends AbstractTestCase {
 
     public function testGetPrimaryKeyColumnsWithEntityHavingPrimaryKeys(): void
     {
-        // This test ensures the return statement at line 211 is necessary
+        // This test ensures table name is properly returned when not cached
         $entity = new ReflectionEntity(TestEntityWithPrimaryKey::class);
 
         $columns = $entity->getPrimaryKeyColumns();

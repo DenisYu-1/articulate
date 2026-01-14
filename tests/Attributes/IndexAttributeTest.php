@@ -2,8 +2,11 @@
 
 namespace Articulate\Tests\Attributes;
 
+use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\Index;
+use Articulate\Attributes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use PHPUnit\Framework\TestCase;
 
 class IndexAttributeTest extends TestCase
@@ -185,4 +188,68 @@ class IndexAttributeTest extends TestCase
         $attribute = $attributes[0]->newInstance();
         $this->assertTrue(($attribute->flags & \Attribute::TARGET_CLASS) !== 0);
     }
+
+    public function testResolveColumnsWithSingleProperty(): void
+    {
+        $index = new Index(['name']);
+        $reflectionEntity = new ReflectionEntity(TestIndexEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['name'], $columns);
+    }
+
+    public function testResolveColumnsWithMultipleProperties(): void
+    {
+        $index = new Index(['name', 'email', 'status']);
+        $reflectionEntity = new ReflectionEntity(TestIndexEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['name', 'email', 'status'], $columns);
+    }
+
+    public function testResolveColumnsWithCustomPropertyName(): void
+    {
+        $index = new Index(['customName']);
+        $reflectionEntity = new ReflectionEntity(TestIndexEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['custom_column_name'], $columns);
+    }
+
+    public function testResolveColumnsWithoutPropertyAttribute(): void
+    {
+        $index = new Index(['noPropertyAttribute']);
+        $reflectionEntity = new ReflectionEntity(TestIndexEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEmpty($columns);
+    }
+}
+
+// Test entity for Index attribute testing
+#[Entity]
+class TestIndexEntity
+{
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
+
+    #[Property]
+    public string $name;
+
+    #[Property]
+    public string $email;
+
+    #[Property]
+    public string $status;
+
+    #[Property(name: 'custom_column_name')]
+    public string $customName;
+
+    // Property without Property attribute
+    public string $noPropertyAttribute;
 }

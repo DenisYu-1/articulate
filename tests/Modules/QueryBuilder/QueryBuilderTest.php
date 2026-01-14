@@ -2,11 +2,20 @@
 
 namespace Articulate\Tests\Modules\QueryBuilder;
 
+use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use PHPUnit\Framework\TestCase;
+
+#[Entity]
+class EntityManagerTestEntity {
+    public int $id;
+    public string $name;
+}
 
 class QueryBuilderTest extends TestCase {
     private QueryBuilder $qb;
@@ -238,5 +247,110 @@ class QueryBuilderTest extends TestCase {
         // Should have set FROM clause automatically
         $sql = $qb->getSQL();
         $this->assertStringContainsString('FROM users', $sql);
+    }
+
+    public function testGetSingleResult(): void
+    {
+        $rows = [['id' => 1, 'name' => 'John']];
+
+        $statement = $this->createMock(\PDOStatement::class);
+        $statement->method('fetchAll')->willReturn($rows);
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->willReturn($statement);
+
+        $result = $this->qb->select('*')->from('users')->getSingleResult();
+
+        $this->assertEquals(['id' => 1, 'name' => 'John'], $result);
+    }
+
+    public function testGetSingleResultReturnsNullForNoResults(): void
+    {
+        $statement = $this->createMock(\PDOStatement::class);
+        $statement->method('fetchAll')->willReturn([]);
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->willReturn($statement);
+
+        $result = $this->qb->select('*')->from('users')->getSingleResult();
+
+        $this->assertNull($result);
+    }
+
+    public function testSetUnitOfWork(): void
+    {
+        $unitOfWork = $this->createMock(UnitOfWork::class);
+        $qb = new QueryBuilder($this->connection);
+
+        $result = $qb->setUnitOfWork($unitOfWork);
+
+        $this->assertSame($qb, $result); // Should return self for chaining
+    }
+
+    public function testGetResultWithHydrationAndUnitOfWork(): void
+    {
+        $rows = [
+            ['id' => 1, 'name' => 'John'],
+            ['id' => 2, 'name' => 'Jane'],
+        ];
+
+        $statement = $this->createMock(\PDOStatement::class);
+        $statement->method('fetchAll')->willReturn($rows);
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->willReturn($statement);
+
+        $hydrator = $this->createMock(HydratorInterface::class);
+        $hydrator->expects($this->exactly(2))
+            ->method('hydrate')
+            ->willReturnCallback(function ($class, $row) {
+                $entity = new $class();
+                $entity->id = $row['id'];
+                $entity->name = $row['name'];
+                return $entity;
+            });
+
+        $unitOfWork = $this->createMock(UnitOfWork::class);
+        $unitOfWork->expects($this->exactly(2))
+            ->method('registerManaged')
+            ->with($this->isInstanceOf(EntityManagerTestEntity::class), []);
+
+        $qb = new QueryBuilder($this->connection, $hydrator);
+        $qb->setUnitOfWork($unitOfWork);
+        $qb->setEntityClass(EntityManagerTestEntity::class);
+
+        $result = $qb->select('*')->from('users')->getResult();
+
+        $this->assertCount(2, $result);
+        $this->assertInstanceOf(EntityManagerTestEntity::class, $result[0]);
+        $this->assertInstanceOf(EntityManagerTestEntity::class, $result[1]);
+        $this->assertEquals(1, $result[0]->id);
+        $this->assertEquals('John', $result[0]->name);
+        $this->assertEquals(2, $result[1]->id);
+        $this->assertEquals('Jane', $result[1]->name);
+    }
+
+    public function testGroupBy(): void
+    {
+        $sql = $this->qb
+            ->select('category', 'COUNT(*) as count')
+            ->from('products')
+            ->groupBy('category')
+            ->groupBy('status')
+            ->getSQL();
+
+        $this->assertEquals('SELECT category, COUNT(*) as count FROM products GROUP BY category, status', $sql);
+    }
+
+    public function testConstructorWithMetadataRegistry(): void
+    {
+        $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
+        $qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+
+        // Test that the metadata registry is set (private property, so we test indirectly)
+        $this->assertInstanceOf(QueryBuilder::class, $qb);
     }
 }

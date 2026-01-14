@@ -5,34 +5,61 @@ namespace Articulate\Tests\Modules\MigrationsGenerator;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
-use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
-    #[DataProvider('cases')]
-    public function testCreateTable(string $query, string $operation, array $parameters)
+class MigrationsCommandGeneratorTablesTest extends DatabaseTestCase {
+    /**
+     * Test table operations for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testCreateTable(string $databaseName): void
     {
-        $tableCompareResult = new TableCompareResult(
-            'test_table',
-            $operation,
-            [
-                new ColumnCompareResult(...$parameters),
-            ],
-            [],
-            [],
-        );
-        $this->assertEquals(
-            $query,
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
-        );
+        $cases = $this->getTableTestCases($databaseName);
+
+        foreach ($cases as $case) {
+            $tableCompareResult = new TableCompareResult(
+                'test_table',
+                $case['operation'],
+                [
+                    new ColumnCompareResult(...$case['parameters']),
+                ],
+                [],
+                [],
+            );
+
+            $generator = match ($databaseName) {
+                'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+                'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+            };
+
+            $this->assertEquals(
+                $case['query'],
+                $generator->generate($tableCompareResult),
+                "Failed for database: {$databaseName}, operation: {$case['operation']}"
+            );
+        }
     }
 
-    public static function cases()
+    /**
+     * Get table test cases for the specified database.
+     */
+    private function getTableTestCases(string $databaseName): array
     {
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $updateSyntax = match ($databaseName) {
+            'mysql' => 'MODIFY',
+            'pgsql' => 'ALTER COLUMN',
+        };
+
         return [
             [
-                'query' => 'CREATE TABLE `test_table` (`id` VARCHAR(255) NOT NULL)',
+                'query' => "CREATE TABLE {$quote}test_table{$quote} ({$quote}id{$quote} VARCHAR(255) NOT NULL)",
                 'operation' => 'create',
                 'parameters' => [
                     'name' => 'id',
@@ -42,7 +69,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'DROP TABLE `test_table`',
+                'query' => "DROP TABLE {$quote}test_table{$quote}",
                 'operation' => 'delete',
                 'parameters' => [
                     'name' => 'id',
@@ -52,7 +79,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -62,7 +89,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT \"test\"",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -72,7 +99,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255)',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255)",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',
@@ -82,7 +109,7 @@ class MigrationsCommandGeneratorTablesTest extends AbstractTestCase {
                 ],
             ],
             [
-                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(254)',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(254)",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

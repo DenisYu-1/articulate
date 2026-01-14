@@ -7,11 +7,16 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
 
-class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
-    public function testDropsIndex()
+class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
+    /**
+     * Test dropping indexes for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testDropsIndex(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'test_table',
@@ -28,13 +33,34 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $expected = match ($databaseName) {
+            'mysql' => "ALTER TABLE {$quote}test_table{$quote} DROP INDEX {$quote}idx_test_table_id{$quote}",
+            'pgsql' => "ALTER TABLE {$quote}test_table{$quote} DROP INDEX {$quote}idx_test_table_id{$quote}",
+        };
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` DROP INDEX `idx_test_table_id`',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testDropsIndexOnUpdate()
+    /**
+     * Test dropping indexes with column updates for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testDropsIndexOnUpdate(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'test_table',
@@ -58,13 +84,36 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $updateSyntax = match ($databaseName) {
+            'mysql' => 'MODIFY',
+            'pgsql' => 'ALTER COLUMN',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} DROP INDEX {$quote}idx_test_table_id{$quote}, {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` DROP INDEX `idx_test_table_id`, MODIFY `id` VARCHAR(255) NOT NULL',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testRestoresDeletedIndexOnRollback()
+    /**
+     * Test restoring deleted indexes on rollback for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testRestoresDeletedIndexOnRollback(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'test_table',
@@ -88,13 +137,31 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL, ADD INDEX {$quote}idx_test_table_id{$quote} ({$quote}id{$quote})";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL, ADD INDEX `idx_test_table_id` (`id`)',
-            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
+            $expected,
+            $generator->rollback($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testCreatesConcurrentIndex()
+    /**
+     * Test creating concurrent indexes for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testCreatesConcurrentIndex(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             name: 'test_table',
@@ -111,16 +178,20 @@ class MigrationsCommandGeneratorIndexesTest extends AbstractTestCase {
             ],
         );
 
-        // PostgreSQL should use CONCURRENTLY
-        $this->assertEquals(
-            'ALTER TABLE "test_table" ADD CONCURRENTLY UNIQUE INDEX "idx_test_table_email" ("email")',
-            MigrationsGeneratorTestHelper::forPostgresql()->generate($tableCompareResult)
-        );
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
 
-        // MySQL should use ALGORITHM=INPLACE for the ALTER TABLE
+        $expected = match ($databaseName) {
+            'mysql' => 'ALTER TABLE `test_table` ALGORITHM=INPLACE ADD UNIQUE INDEX `idx_test_table_email` (`email`)',
+            'pgsql' => 'ALTER TABLE "test_table" ADD CONCURRENTLY UNIQUE INDEX "idx_test_table_email" ("email")',
+        };
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` ALGORITHM=INPLACE ADD UNIQUE INDEX `idx_test_table_email` (`email`)',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 }

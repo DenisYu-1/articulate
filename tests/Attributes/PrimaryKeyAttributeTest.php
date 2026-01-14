@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Attributes;
 
 use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use PHPUnit\Framework\TestCase;
 
 class PrimaryKeyAttributeTest extends TestCase
@@ -112,7 +113,7 @@ class PrimaryKeyAttributeTest extends TestCase
 
     public function testPrimaryKeyAttributePropertiesArePublic(): void
     {
-        $primaryKey = new PrimaryKey('gen', 'seq', ['key' => 'value']);
+        $primaryKey = new PrimaryKey(generator: 'gen', sequence: 'seq', options: ['key' => 'value']);
 
         // Test modification
         $primaryKey->generator = 'new_gen';
@@ -122,5 +123,34 @@ class PrimaryKeyAttributeTest extends TestCase
         $this->assertEquals('new_gen', $primaryKey->generator);
         $this->assertEquals('new_seq', $primaryKey->sequence);
         $this->assertEquals(['new' => 'options'], $primaryKey->options);
+    }
+
+    public function testPrimaryKeyExtendsProperty(): void
+    {
+        $primaryKey = new PrimaryKey(
+            name: 'custom_id',
+            type: 'string',
+            nullable: true,
+            maxLength: 255,
+            generator: PrimaryKey::GENERATOR_UUID_V4
+        );
+
+        // Test Property parameters
+        $this->assertEquals('custom_id', $primaryKey->name);
+        $this->assertEquals('string', $primaryKey->type);
+        $this->assertTrue($primaryKey->nullable);
+        $this->assertEquals(255, $primaryKey->maxLength);
+
+        // Test PrimaryKey parameters
+        $this->assertEquals(PrimaryKey::GENERATOR_UUID_V4, $primaryKey->generator);
+    }
+
+    public function testPrimaryKeyInheritsPropertyInterface(): void
+    {
+        $primaryKey = new PrimaryKey(type: 'int', generator: PrimaryKey::GENERATOR_AUTO_INCREMENT);
+
+        $this->assertInstanceOf(Property::class, $primaryKey);
+        $this->assertEquals('int', $primaryKey->type);
+        $this->assertEquals(PrimaryKey::GENERATOR_AUTO_INCREMENT, $primaryKey->generator);
     }
 }

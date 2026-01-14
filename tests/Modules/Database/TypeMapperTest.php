@@ -147,4 +147,39 @@ class TypeMapperTest extends TestCase
         // Unknown types should fall back to themselves
         $this->assertSame('UNKNOWN_TYPE', $mapper->getDatabaseType('UNKNOWN_TYPE'));
     }
+
+    public function testPostgresqlTypeMapperInstantiation(): void
+    {
+        // Explicitly instantiate to ensure class coverage
+        $mapper = new PostgresqlTypeMapper();
+        $this->assertInstanceOf(PostgresqlTypeMapper::class, $mapper);
+    }
+
+    public function testPostgresqlTypeMapperUuidType(): void
+    {
+        $mapper = new PostgresqlTypeMapper();
+
+        $this->assertSame('string', $mapper->getPhpType('UUID'));
+        $this->assertSame('string', $mapper->getPhpType('uuid'));
+    }
+
+    public function testPostgresqlTypeMapperJsonTypes(): void
+    {
+        $mapper = new PostgresqlTypeMapper();
+
+        $this->assertSame('mixed', $mapper->getPhpType('JSON'));
+        $this->assertSame('mixed', $mapper->getPhpType('JSONB'));
+        $this->assertSame('mixed', $mapper->getPhpType('json'));
+        $this->assertSame('mixed', $mapper->getPhpType('jsonb'));
+    }
+
+    public function testPostgresqlTypeMapperSerialTypes(): void
+    {
+        $mapper = new PostgresqlTypeMapper();
+
+        $this->assertSame('int', $mapper->getPhpType('SERIAL'));
+        $this->assertSame('int', $mapper->getPhpType('BIGSERIAL'));
+        $this->assertSame('int', $mapper->getPhpType('SMALLSERIAL'));
+        $this->assertSame('int', $mapper->getPhpType('serial'));
+    }
 }

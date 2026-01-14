@@ -5,34 +5,61 @@ namespace Articulate\Tests\Modules\MigrationsGenerator;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
-use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
-    #[DataProvider('cases')]
-    public function testFieldMigration($query, $params)
+class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
+    /**
+     * Test field migration operations for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testFieldMigration(string $databaseName): void
     {
-        $tableCompareResult = new TableCompareResult(
-            'test_table',
-            'update',
-            [
-                new ColumnCompareResult(...$params),
-            ],
-            [],
-            [],
-        );
-        $this->assertEquals(
-            $query,
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
-        );
+        $cases = $this->getFieldMigrationCases($databaseName);
+
+        foreach ($cases as $case) {
+            $tableCompareResult = new TableCompareResult(
+                'test_table',
+                'update',
+                [
+                    new ColumnCompareResult(...$case['params']),
+                ],
+                [],
+                [],
+            );
+
+            $generator = match ($databaseName) {
+                'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+                'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+            };
+
+            $this->assertEquals(
+                $case['query'],
+                $generator->generate($tableCompareResult),
+                "Failed for database: {$databaseName}"
+            );
+        }
     }
 
-    public static function cases()
+    /**
+     * Get field migration test cases for the specified database.
+     */
+    private function getFieldMigrationCases(string $databaseName): array
     {
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $updateSyntax = match ($databaseName) {
+            'mysql' => 'MODIFY',
+            'pgsql' => 'ALTER COLUMN',
+        };
+
         return [
             [
-                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL",
                 'params' => [
                     'id',
                     'create',
@@ -40,7 +67,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` DROP `id`',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} DROP {$quote}id{$quote}",
                 'params' => [
                     'id',
                     'delete',
@@ -48,7 +75,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
                 'params' => [
                     'id',
                     'update',
@@ -56,7 +83,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT \"test\"",
                 'params' => [
                     'id',
                     'update',
@@ -64,7 +91,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(254) NOT NULL DEFAULT "test"',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT \"test\"",
                 'params' => [
                     'id',
                     'update',
@@ -72,7 +99,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` ADD `user_id` INT NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}user_id{$quote} " . ($databaseName === 'mysql' ? 'INT' : 'INTEGER') . " NOT NULL",
                 'params' => [
                     'user_id',
                     'create',
@@ -80,7 +107,7 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` DROP `old_column`',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} DROP {$quote}old_column{$quote}",
                 'params' => [
                     'old_column',
                     'delete',
@@ -91,7 +118,12 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
         ];
     }
 
-    public function testColumnQuotingInSql()
+    /**
+     * Test column quoting in generated SQL for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testColumnQuotingInSql(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -114,8 +146,18 @@ class MigrationsCommandGeneratorColumnsTest extends AbstractTestCase {
             []
         );
 
-        $result = MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult);
-        $this->assertStringContainsString('ADD `user_id`', $result);
-        $this->assertStringContainsString('DROP `old_column`', $result);
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $result = $generator->generate($tableCompareResult);
+        $this->assertStringContainsString("ADD {$quote}user_id{$quote}", $result);
+        $this->assertStringContainsString("DROP {$quote}old_column{$quote}", $result);
     }
 }
