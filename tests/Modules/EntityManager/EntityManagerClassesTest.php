@@ -5,12 +5,16 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\ChangeAggregator;
+use Articulate\Modules\EntityManager\ChangeTrackingStrategy;
 use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityMetadata;
+use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Modules\EntityManager\LifecycleCallbackManager;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
 #[Entity]
@@ -55,7 +59,7 @@ class EntityManagerClassesTest extends TestCase {
     public function testRelationshipLoaderCanBeInstantiated(): void
     {
         $entityManager = $this->createMock(EntityManager::class);
-        $metadataRegistry = $this->createMock(\Articulate\Modules\EntityManager\EntityMetadataRegistry::class);
+        $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
         $relationshipLoader = new RelationshipLoader($entityManager, $metadataRegistry);
         $this->assertInstanceOf(RelationshipLoader::class, $relationshipLoader);
     }
@@ -63,10 +67,10 @@ class EntityManagerClassesTest extends TestCase {
     public function testUnitOfWorkCanBeInstantiated(): void
     {
         $connection = $this->createMock(Connection::class);
-        $changeTrackingStrategy = $this->createMock(\Articulate\Modules\EntityManager\ChangeTrackingStrategy::class);
-        $generatorRegistry = $this->createMock(\Articulate\Modules\Generators\GeneratorRegistry::class);
-        $callbackManager = $this->createMock(\Articulate\Modules\EntityManager\LifecycleCallbackManager::class);
-        $metadataRegistry = $this->createMock(\Articulate\Modules\EntityManager\EntityMetadataRegistry::class);
+        $changeTrackingStrategy = $this->createMock(ChangeTrackingStrategy::class);
+        $generatorRegistry = $this->createMock(GeneratorRegistry::class);
+        $callbackManager = $this->createMock(LifecycleCallbackManager::class);
+        $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
 
         $unitOfWork = new UnitOfWork(
             $connection,

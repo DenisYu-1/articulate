@@ -5,15 +5,17 @@ namespace Articulate\Tests\Modules\Database\SchemaComparator;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\Database\SchemaComparator\SchemaComparisonCoordinator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use PHPUnit\Framework\TestCase;
 
-class DatabaseSchemaComparatorTest extends TestCase
-{
+class DatabaseSchemaComparatorTest extends TestCase {
     private DatabaseSchemaReaderInterface $schemaReader;
+
     private SchemaNaming $schemaNaming;
+
     private DatabaseSchemaComparator $comparator;
 
     protected function setUp(): void
@@ -78,7 +80,7 @@ class DatabaseSchemaComparatorTest extends TestCase
 
     public function testConstructorWithCustomRelationValidatorFactory(): void
     {
-        $validatorFactory = $this->createMock(\Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory::class);
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
 
         $comparator = new DatabaseSchemaComparator(
             $this->schemaReader,

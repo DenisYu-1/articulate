@@ -5,15 +5,17 @@ namespace Articulate\Modules\Database\SchemaComparator;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
+use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
-class RelationDefinitionCollectorTest extends TestCase
-{
+class RelationDefinitionCollectorTest extends TestCase {
     private RelationValidatorFactory $validatorFactory;
+
     private RelationDefinitionCollector $collector;
 
     protected function setUp(): void
@@ -30,8 +32,8 @@ class RelationDefinitionCollectorTest extends TestCase
     public function testValidateRelationsCallsValidatorForEachRelation(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation1 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionRelation::class);
-        $relation2 = $this->createMock(\Articulate\Attributes\Reflection\ReflectionRelation::class);
+        $relation1 = $this->createMock(ReflectionRelation::class);
+        $relation2 = $this->createMock(ReflectionRelation::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')
@@ -69,7 +71,7 @@ class RelationDefinitionCollectorTest extends TestCase
     public function testCollectManyToManyTablesWithNonManyToManyRelations(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation = $this->createMock(\Articulate\Attributes\Reflection\RelationInterface::class);
+        $relation = $this->createMock(RelationInterface::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')
@@ -507,7 +509,7 @@ class RelationDefinitionCollectorTest extends TestCase
         $property2 = new MappingTableProperty('column1', 'varchar', false, null, null); // Different type
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage("Many-to-many misconfigured: mapping table \"test_table\" property \"column1\" conflicts between relations");
+        $this->expectExceptionMessage('Many-to-many misconfigured: mapping table "test_table" property "column1" conflicts between relations');
 
         // Use reflection to test the private method
         $reflection = new \ReflectionClass($this->collector);

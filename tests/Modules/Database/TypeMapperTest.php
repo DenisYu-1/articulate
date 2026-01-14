@@ -5,10 +5,10 @@ namespace Articulate\Tests\Modules\Database;
 use Articulate\Modules\Database\MySqlTypeMapper;
 use Articulate\Modules\Database\PostgresqlTypeMapper;
 use Articulate\Utils\Point;
+use Articulate\Utils\TypeRegistry;
 use PHPUnit\Framework\TestCase;
 
-class TypeMapperTest extends TestCase
-{
+class TypeMapperTest extends TestCase {
     public function testMySqlTypeMapperBasicTypes(): void
     {
         $mapper = new MySqlTypeMapper();
@@ -105,13 +105,13 @@ class TypeMapperTest extends TestCase
     public function testMySqlTypeMapperInheritsFromTypeRegistry(): void
     {
         $mapper = new MySqlTypeMapper();
-        $this->assertInstanceOf(\Articulate\Utils\TypeRegistry::class, $mapper);
+        $this->assertInstanceOf(TypeRegistry::class, $mapper);
     }
 
     public function testPostgresqlTypeMapperInheritsFromTypeRegistry(): void
     {
         $mapper = new PostgresqlTypeMapper();
-        $this->assertInstanceOf(\Articulate\Utils\TypeRegistry::class, $mapper);
+        $this->assertInstanceOf(TypeRegistry::class, $mapper);
     }
 
     public function testMySqlTypeMapperCustomTypeRegistration(): void

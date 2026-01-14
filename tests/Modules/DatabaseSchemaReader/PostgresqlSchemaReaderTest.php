@@ -13,7 +13,9 @@ use PDOStatement;
 
 class PostgresqlSchemaReaderTest extends AbstractTestCase {
     private PostgresqlSchemaReader $reader;
+
     private Connection $mockConnection;
+
     private PDOStatement $mockStatement;
 
     protected function setUp(): void
@@ -290,42 +292,42 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'VARCHAR'
+                'expected' => 'VARCHAR',
             ],
             [
                 'data_type' => 'character',
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'CHAR'
+                'expected' => 'CHAR',
             ],
             [
                 'data_type' => 'double precision',
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'DOUBLE'
+                'expected' => 'DOUBLE',
             ],
             [
                 'data_type' => 'timestamp without time zone',
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'TIMESTAMP'
+                'expected' => 'TIMESTAMP',
             ],
             [
                 'data_type' => 'timestamp with time zone',
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'TIMESTAMPTZ'
+                'expected' => 'TIMESTAMPTZ',
             ],
             [
                 'data_type' => 'integer',
                 'character_maximum_length' => null,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'integer'
+                'expected' => 'integer',
             ],
         ];
 
@@ -347,21 +349,21 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
                 'character_maximum_length' => 255,
                 'numeric_precision' => null,
                 'numeric_scale' => null,
-                'expected' => 'VARCHAR(255)'
+                'expected' => 'VARCHAR(255)',
             ],
             [
                 'data_type' => 'numeric',
                 'character_maximum_length' => null,
                 'numeric_precision' => 10,
                 'numeric_scale' => 2,
-                'expected' => 'numeric(10,2)'
+                'expected' => 'numeric(10,2)',
             ],
             [
                 'data_type' => 'numeric',
                 'character_maximum_length' => null,
                 'numeric_precision' => 5,
                 'numeric_scale' => null,
-                'expected' => 'numeric(5,0)'
+                'expected' => 'numeric(5,0)',
             ],
         ];
 
@@ -387,7 +389,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
 
         foreach ($testCases as [$input, $expected]) {
             $result = $method->invoke($this->reader, $input);
-            $this->assertEquals($expected, $result, "Failed for input: " . var_export($input, true));
+            $this->assertEquals($expected, $result, 'Failed for input: ' . var_export($input, true));
         }
     }
 }

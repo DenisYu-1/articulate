@@ -12,12 +12,15 @@ use PHPUnit\Framework\MockObject\MockObject;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class DiffCommandTest extends DatabaseTestCase
-{
+class DiffCommandTest extends DatabaseTestCase {
     private MockObject&DatabaseSchemaComparator $schemaComparator;
+
     private MigrationsCommandGenerator $commandGenerator;
+
     private string $entitiesPath;
+
     private string $migrationsPath;
+
     private string $tempDir;
 
     protected function setUp(): void
@@ -46,8 +49,6 @@ class DiffCommandTest extends DatabaseTestCase
         $this->removeDirectory($this->tempDir);
     }
 
-
-
     private function findMigrationFiles(): array
     {
         $iterator = new RecursiveIteratorIterator(new \RecursiveDirectoryIterator($this->migrationsPath));
@@ -57,6 +58,7 @@ class DiffCommandTest extends DatabaseTestCase
                 $migrationFiles[] = $file->getPathname();
             }
         }
+
         return $migrationFiles;
     }
 
@@ -214,7 +216,6 @@ class DiffCommandTest extends DatabaseTestCase
         $diff2 = new TableCompareResult('products', TableCompareResult::OPERATION_CREATE);
         $this->schemaComparator->method('compareAll')->willReturn([$diff1, $diff2]);
 
-
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
@@ -264,7 +265,6 @@ class DiffCommandTest extends DatabaseTestCase
 
         $commandTester->execute([]);
     }
-
 
     /**
      * Test diff command filters out empty migration commands.

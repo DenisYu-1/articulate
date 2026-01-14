@@ -9,6 +9,7 @@ use Articulate\Tests\AbstractTestCase;
 
 class PostgresqlMigrationGeneratorTest extends AbstractTestCase {
     private PostgresqlMigrationGenerator $generator;
+
     private PostgresqlTypeMapper $typeMapper;
 
     protected function setUp(): void

@@ -53,6 +53,7 @@ class ReflectionEntity extends ReflectionClass {
                     $instance = $attr->newInstance();
                     if (!$instance instanceof PrimaryKey) {
                         $explicitProperty = $instance;
+
                         break;
                     }
                 }
@@ -186,6 +187,7 @@ class ReflectionEntity extends ReflectionClass {
                 $instance = $attr->newInstance();
                 if (!$instance instanceof PrimaryKey) {
                     $explicitProperty = $instance;
+
                     break;
                 }
             }

@@ -5,8 +5,7 @@ namespace Articulate\Tests\Collection;
 use Articulate\Collection\MappingItem;
 use PHPUnit\Framework\TestCase;
 
-class MappingItemTest extends TestCase
-{
+class MappingItemTest extends TestCase {
     public function testConstructsWithEntityAndEmptyPivot(): void
     {
         $entity = new \stdClass();
@@ -60,7 +59,7 @@ class MappingItemTest extends TestCase
             'float' => 3.14,
             'boolean' => true,
             'null' => null,
-            'array' => ['nested' => 'value']
+            'array' => ['nested' => 'value'],
         ];
 
         $mappingItem = new MappingItem(new \stdClass(), $pivot);

@@ -3,10 +3,10 @@
 namespace Articulate\Tests\Attributes;
 
 use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\Relations\RelationAttributeInterface;
 use PHPUnit\Framework\TestCase;
 
-class OneToOneAttributeTest extends TestCase
-{
+class OneToOneAttributeTest extends TestCase {
     public function testOneToOneAttributeDefaultConstructor(): void
     {
         $relation = new OneToOne();
@@ -160,6 +160,6 @@ class OneToOneAttributeTest extends TestCase
     {
         $relation = new OneToOne();
 
-        $this->assertInstanceOf(\Articulate\Attributes\Relations\RelationAttributeInterface::class, $relation);
+        $this->assertInstanceOf(RelationAttributeInterface::class, $relation);
     }
 }

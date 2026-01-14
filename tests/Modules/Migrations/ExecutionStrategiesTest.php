@@ -9,9 +9,9 @@ use Articulate\Modules\Migrations\Generator\BaseMigration;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-class ExecutionStrategiesTest extends TestCase
-{
+class ExecutionStrategiesTest extends TestCase {
     private Connection $connection;
+
     private SymfonyStyle $io;
 
     protected function setUp(): void

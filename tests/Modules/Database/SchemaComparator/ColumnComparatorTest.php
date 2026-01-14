@@ -13,8 +13,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use RuntimeException;
 
-class ColumnComparatorTest extends TestCase
-{
+class ColumnComparatorTest extends TestCase {
     private ColumnComparator $comparator;
 
     protected function setUp(): void
@@ -479,8 +478,8 @@ class ColumnComparatorTest extends TestCase
 
         $this->assertCount(3, $results);
 
-        $operations = array_map(fn($result) => $result->operation, $results);
-        $names = array_map(fn($result) => $result->name, $results);
+        $operations = array_map(fn ($result) => $result->operation, $results);
+        $names = array_map(fn ($result) => $result->name, $results);
 
         $this->assertContains(CompareResult::OPERATION_CREATE, $operations);
         $this->assertContains(CompareResult::OPERATION_UPDATE, $operations);
@@ -1294,7 +1293,6 @@ class ColumnComparatorTest extends TestCase
         $this->assertFalse($idColumn['nullable']); // Morph relation overrides to false
         $this->assertEquals($relation, $idColumn['relation']); // Morph relation assigned
     }
-
 
     // Additional test for edge case: ensure all merge paths are covered
 

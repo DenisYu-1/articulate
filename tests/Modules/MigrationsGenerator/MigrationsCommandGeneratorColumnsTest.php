@@ -99,7 +99,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}user_id{$quote} " . ($databaseName === 'mysql' ? 'INT' : 'INTEGER') . " NOT NULL",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}user_id{$quote} " . ($databaseName === 'mysql' ? 'INT' : 'INTEGER') . ' NOT NULL',
                 'params' => [
                     'user_id',
                     'create',

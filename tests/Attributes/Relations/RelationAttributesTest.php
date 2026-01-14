@@ -14,8 +14,7 @@ use Attribute;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
-class RelationAttributesTest extends TestCase
-{
+class RelationAttributesTest extends TestCase {
     public function testManyToManyAttributeDefaultConstructor(): void
     {
         $manyToMany = new ManyToMany();
@@ -581,10 +580,11 @@ class RelationAttributesTest extends TestCase
     public function testPolymorphicColumnResolutionTrait(): void
     {
         // Create a mock class that uses the trait
-        $mockClass = new class {
+        $mockClass = new class() {
             use PolymorphicColumnResolution;
 
             public ?string $typeColumn = null;
+
             public ?string $idColumn = null;
         };
 
@@ -597,10 +597,11 @@ class RelationAttributesTest extends TestCase
 
     public function testPolymorphicColumnResolutionWithCustomColumns(): void
     {
-        $mockClass = new class {
+        $mockClass = new class() {
             use PolymorphicColumnResolution;
 
             public ?string $typeColumn = 'morph_type';
+
             public ?string $idColumn = 'morph_id';
         };
 
@@ -612,10 +613,11 @@ class RelationAttributesTest extends TestCase
 
     public function testPolymorphicColumnResolutionUnresolved(): void
     {
-        $mockClass = new class {
+        $mockClass = new class() {
             use PolymorphicColumnResolution;
 
             public ?string $typeColumn = null;
+
             public ?string $idColumn = null;
         };
 
@@ -626,7 +628,7 @@ class RelationAttributesTest extends TestCase
 
     public function testPolymorphicColumnResolutionConvertToSnakeCase(): void
     {
-        $mockClass = new class {
+        $mockClass = new class() {
             use PolymorphicColumnResolution;
 
             public function convertToSnakeCasePublic(string $string): string

@@ -9,8 +9,7 @@ use PHPUnit\Framework\TestCase;
  * Test the TypeConverterInterface contract.
  * Since it's an interface, we test it through a mock implementation.
  */
-class TypeConverterInterfaceTest extends TestCase
-{
+class TypeConverterInterfaceTest extends TestCase {
     public function testInterfaceContract(): void
     {
         $converter = $this->createMock(TypeConverterInterface::class);

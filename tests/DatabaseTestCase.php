@@ -163,7 +163,7 @@ abstract class DatabaseTestCase extends AbstractTestCase {
                 }
             } catch (\Exception $e) {
                 // Ignore cleanup errors in tearDown
-                error_log("Cleanup failed in tearDown: " . $e->getMessage());
+                error_log('Cleanup failed in tearDown: ' . $e->getMessage());
             }
         }
 

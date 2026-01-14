@@ -7,11 +7,11 @@ use PHPUnit\Framework\TestCase;
 
 class TestEntityForIdentityMap {
     public ?int $id = null;
+
     public string $name;
 }
 
-class IdentityMapTest extends TestCase
-{
+class IdentityMapTest extends TestCase {
     private IdentityMap $identityMap;
 
     protected function setUp(): void

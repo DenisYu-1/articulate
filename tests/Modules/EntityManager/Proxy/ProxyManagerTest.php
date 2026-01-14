@@ -11,8 +11,11 @@ use Articulate\Tests\AbstractTestCase;
 
 class ProxyManagerTest extends AbstractTestCase {
     private ProxyManager $proxyManager;
+
     private EntityManager $entityManager;
+
     private EntityMetadataRegistry $metadataRegistry;
+
     private ProxyGenerator $proxyGenerator;
 
     protected function setUp(): void
@@ -176,39 +179,48 @@ class ProxyManagerTest extends AbstractTestCase {
 }
 
 /**
- * Test entity for proxy manager testing
+ * Test entity for proxy manager testing.
  */
 class ProxyManagerTestEntity {
     public ?int $id = null;
+
     public ?string $name = null;
+
     public string $publicField = '';
 }
 
 /**
- * Mock proxy class for testing
+ * Mock proxy class for testing.
  */
 class TestProxy extends ProxyManagerTestEntity implements ProxyInterface {
     public bool $isProxyInitialized = false;
+
     public string $proxyEntityClass = '';
+
     public mixed $proxyIdentifier = null;
 
-    public function isProxyInitialized(): bool {
+    public function isProxyInitialized(): bool
+    {
         return $this->isProxyInitialized;
     }
 
-    public function initializeProxy(): void {
+    public function initializeProxy(): void
+    {
         // Mock implementation
     }
 
-    public function markProxyInitialized(): void {
+    public function markProxyInitialized(): void
+    {
         $this->isProxyInitialized = true;
     }
 
-    public function getProxyEntityClass(): string {
+    public function getProxyEntityClass(): string
+    {
         return $this->proxyEntityClass;
     }
 
-    public function _getIdentifier(): mixed {
+    public function _getIdentifier(): mixed
+    {
         return $this->proxyIdentifier;
     }
 }

@@ -5,8 +5,7 @@ namespace Articulate\Tests\Attributes;
 use Articulate\Attributes\Property;
 use PHPUnit\Framework\TestCase;
 
-class PropertyAttributeTest extends TestCase
-{
+class PropertyAttributeTest extends TestCase {
     public function testPropertyAttributeDefaultConstructor(): void
     {
         $property = new Property();

@@ -5,8 +5,7 @@ namespace Articulate\Tests\Utils;
 use Articulate\Utils\MigrationFileUtils;
 use PHPUnit\Framework\TestCase;
 
-class MigrationFileUtilsTest extends TestCase
-{
+class MigrationFileUtilsTest extends TestCase {
     private string $tempDir;
 
     protected function setUp(): void
@@ -83,7 +82,7 @@ PHP;
 
     public function testGetNamespaceFromFileWithNoNamespace(): void
     {
-        $fileContent = <<<PHP
+        $fileContent = <<<'PHP'
 <?php
 
 class TestClass
@@ -112,7 +111,7 @@ PHP;
 
     public function testGetNamespaceFromFileWithNamespaceOnFirstLine(): void
     {
-        $fileContent = <<<PHP
+        $fileContent = <<<'PHP'
 <?php
 namespace SingleLine;
 class Test {}
@@ -239,7 +238,7 @@ PHP;
 
     public function testGetNamespaceFromFileWithNamespaceWithoutSemicolon(): void
     {
-        $fileContent = <<<PHP
+        $fileContent = <<<'PHP'
 <?php
 namespace NoSemicolon
 class TestClass {}
@@ -273,12 +272,12 @@ PHP;
     public function testGetNamespaceFromFileWithVeryLongFile(): void
     {
         // Create a file with many lines before the namespace
-        $lines = ["<?php"];
+        $lines = ['<?php'];
         for ($i = 0; $i < 1000; $i++) {
-            $lines[] = "// Comment line " . $i;
+            $lines[] = '// Comment line ' . $i;
         }
         $lines[] = "namespace Very\Deep\Namespace\After\Many\Lines;";
-        $lines[] = "class Test {}";
+        $lines[] = 'class Test {}';
 
         $fileContent = implode("\n", $lines);
         $filePath = $this->tempDir . '/LongFile.php';

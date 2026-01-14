@@ -34,7 +34,7 @@ class InitialCreationTest extends DatabaseTestCase {
                 }
             } catch (\Exception $e2) {
                 // If we still can't drop it, the test will fail appropriately
-                error_log("Could not drop migrations table: " . $e2->getMessage());
+                error_log('Could not drop migrations table: ' . $e2->getMessage());
             }
         }
 
@@ -86,7 +86,7 @@ class InitialCreationTest extends DatabaseTestCase {
                 }
             } catch (\Exception $e2) {
                 // If we still can't drop it, the test will fail appropriately
-                error_log("Could not drop migrations table: " . $e2->getMessage());
+                error_log('Could not drop migrations table: ' . $e2->getMessage());
             }
         }
 

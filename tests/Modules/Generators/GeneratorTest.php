@@ -15,6 +15,7 @@ use Articulate\Modules\Generators\UlidGenerator;
 use Articulate\Modules\Generators\UuidGenerator;
 use Articulate\Modules\Generators\UuidV7Generator;
 use Articulate\Tests\AbstractTestCase;
+use PHPUnit\Framework\TestCase;
 
 #[Entity]
 class UuidEntity {
@@ -230,8 +231,7 @@ class GeneratorTest extends AbstractTestCase {
 }
 
 // Test SerialGenerator specifically
-class SerialGeneratorTest extends \PHPUnit\Framework\TestCase
-{
+class SerialGeneratorTest extends TestCase {
     public function testSerialGeneratorTypeName(): void
     {
         $generator = new SerialGenerator();
@@ -288,7 +288,9 @@ class SerialGeneratorTest extends \PHPUnit\Framework\TestCase
 
 // Mock strategy for testing
 class TestStrategy implements GeneratorStrategyInterface {
-    public function __construct(private string $supportedType) {}
+    public function __construct(private string $supportedType)
+    {
+    }
 
     public function generate(string $entityClass, array $options = []): mixed
     {

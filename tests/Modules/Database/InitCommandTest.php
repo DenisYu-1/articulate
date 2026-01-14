@@ -4,13 +4,13 @@ namespace Articulate\Tests\Modules\Database;
 
 use Articulate\Connection;
 use Articulate\Modules\Database\InitCommandFactory;
+use Articulate\Modules\Database\InitCommandInterface;
 use Articulate\Modules\Database\MySqlInitCommand;
 use Articulate\Modules\Database\PostgresqlInitCommand;
 use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
-class InitCommandTest extends TestCase
-{
+class InitCommandTest extends TestCase {
     public function testMySqlInitCommandReturnsCorrectSql(): void
     {
         $command = new MySqlInitCommand();
@@ -81,13 +81,13 @@ class InitCommandTest extends TestCase
     public function testMySqlInitCommandImplementsInterface(): void
     {
         $command = new MySqlInitCommand();
-        $this->assertInstanceOf(\Articulate\Modules\Database\InitCommandInterface::class, $command);
+        $this->assertInstanceOf(InitCommandInterface::class, $command);
     }
 
     public function testPostgresqlInitCommandImplementsInterface(): void
     {
         $command = new PostgresqlInitCommand();
-        $this->assertInstanceOf(\Articulate\Modules\Database\InitCommandInterface::class, $command);
+        $this->assertInstanceOf(InitCommandInterface::class, $command);
     }
 
     public function testMySqlInitCommandReturnsValidSql(): void

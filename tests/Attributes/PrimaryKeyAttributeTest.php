@@ -6,8 +6,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use PHPUnit\Framework\TestCase;
 
-class PrimaryKeyAttributeTest extends TestCase
-{
+class PrimaryKeyAttributeTest extends TestCase {
     public function testPrimaryKeyAttributeDefaultConstructor(): void
     {
         $primaryKey = new PrimaryKey();

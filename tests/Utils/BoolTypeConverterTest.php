@@ -5,8 +5,7 @@ namespace Articulate\Tests\Utils;
 use Articulate\Utils\BoolTypeConverter;
 use PHPUnit\Framework\TestCase;
 
-class BoolTypeConverterTest extends TestCase
-{
+class BoolTypeConverterTest extends TestCase {
     private BoolTypeConverter $converter;
 
     protected function setUp(): void

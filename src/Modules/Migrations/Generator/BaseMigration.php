@@ -60,7 +60,7 @@ abstract class BaseMigration {
     {
         $this->connection->executeQuery(
             'INSERT INTO migrations (name, executed_at, running_time) VALUES (?, ?, ?)',
-            [static::class, date('Y-m-d H:i:s'), (int)($runningTime * 1000000)] // Store as microseconds
+            [static::class, date('Y-m-d H:i:s'), (int) ($runningTime * 1000000)] // Store as microseconds
         );
     }
 

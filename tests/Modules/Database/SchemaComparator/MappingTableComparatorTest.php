@@ -5,21 +5,19 @@ namespace Articulate\Tests\Modules\Database\SchemaComparator;
 use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Modules\Database\SchemaComparator\Comparators\IndexComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
-use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
-use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
-use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
-use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use PHPUnit\Framework\TestCase;
 
-class MappingTableComparatorTest extends TestCase
-{
+class MappingTableComparatorTest extends TestCase {
     private MappingTableComparator $comparator;
+
     private DatabaseSchemaReaderInterface $databaseSchemaReader;
+
     private SchemaNaming $schemaNaming;
+
     private IndexComparator $indexComparator;
 
     protected function setUp(): void
@@ -66,13 +64,13 @@ class MappingTableComparatorTest extends TestCase
 
         // Should have columns for the join table
         $this->assertCount(2, $result->columns);
-        $columnNames = array_map(fn($col) => $col->name, $result->columns);
+        $columnNames = array_map(fn ($col) => $col->name, $result->columns);
         $this->assertContains('user_id', $columnNames);
         $this->assertContains('role_id', $columnNames);
 
         // Should have foreign keys
         $this->assertCount(2, $result->foreignKeys);
-        $fkNames = array_map(fn($fk) => $fk->name, $result->foreignKeys);
+        $fkNames = array_map(fn ($fk) => $fk->name, $result->foreignKeys);
         $this->assertContains('fk_user_roles_users_user_id', $fkNames);
         $this->assertContains('fk_user_roles_roles_role_id', $fkNames);
 
@@ -106,7 +104,7 @@ class MappingTableComparatorTest extends TestCase
 
         // Should have 4 columns: 2 join columns + 2 extra
         $this->assertCount(4, $result->columns);
-        $columnNames = array_map(fn($col) => $col->name, $result->columns);
+        $columnNames = array_map(fn ($col) => $col->name, $result->columns);
         $this->assertContains('user_id', $columnNames);
         $this->assertContains('permission_id', $columnNames);
         $this->assertContains('created_at', $columnNames);
@@ -134,8 +132,8 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table structure
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 // Missing created_at column
             ]);
 
@@ -192,9 +190,9 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table with extra column
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'extra_column', 'type' => 'varchar', 'isNullable' => true, 'defaultValue' => 'default', 'length' => 100],
+                (object) ['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'extra_column', 'type' => 'varchar', 'isNullable' => true, 'defaultValue' => 'default', 'length' => 100],
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -246,9 +244,9 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table with different column properties
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'created_at', 'type' => 'datetime', 'isNullable' => true, 'defaultValue' => null, 'length' => null], // Different nullable
+                (object) ['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'created_at', 'type' => 'datetime', 'isNullable' => true, 'defaultValue' => null, 'length' => null], // Different nullable
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -299,8 +297,8 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table that matches definition exactly
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -357,7 +355,7 @@ class MappingTableComparatorTest extends TestCase
 
         // Should have columns: id, taggable_type, taggable_id, tag_id
         $this->assertCount(4, $result->columns);
-        $columnNames = array_map(fn($col) => $col->name, $result->columns);
+        $columnNames = array_map(fn ($col) => $col->name, $result->columns);
         $this->assertContains('id', $columnNames);
         $this->assertContains('taggable_type', $columnNames);
         $this->assertContains('taggable_id', $columnNames);
@@ -402,7 +400,7 @@ class MappingTableComparatorTest extends TestCase
 
         // Should have 6 columns: id, type, id, target, notes, priority
         $this->assertCount(6, $result->columns);
-        $columnNames = array_map(fn($col) => $col->name, $result->columns);
+        $columnNames = array_map(fn ($col) => $col->name, $result->columns);
         $this->assertContains('id', $columnNames);
         $this->assertContains('commentable_type', $columnNames);
         $this->assertContains('commentable_id', $columnNames);
@@ -433,10 +431,10 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table structure
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
-                (object)['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 // Missing created_at
             ]);
 
@@ -494,10 +492,10 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table that matches definition exactly
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
-                (object)['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -549,11 +547,11 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table with nullable created_at
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
-                (object)['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'created_at', 'type' => 'datetime', 'isNullable' => true, 'defaultValue' => null, 'length' => null], // Different
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'created_at', 'type' => 'datetime', 'isNullable' => true, 'defaultValue' => null, 'length' => null], // Different
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -606,8 +604,8 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table missing foreign keys
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'user_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'role_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
@@ -623,10 +621,10 @@ class MappingTableComparatorTest extends TestCase
 
         // Should have 2 foreign keys to create
         $this->assertCount(2, $result->foreignKeys);
-        $fkNames = array_map(fn($fk) => $fk->name, $result->foreignKeys);
+        $fkNames = array_map(fn ($fk) => $fk->name, $result->foreignKeys);
         $this->assertContains('fk_user_roles_users_user_id', $fkNames);
         $this->assertContains('fk_user_roles_roles_role_id', $fkNames);
-        $this->assertContains(CompareResult::OPERATION_CREATE, array_map(fn($fk) => $fk->operation, $result->foreignKeys));
+        $this->assertContains(CompareResult::OPERATION_CREATE, array_map(fn ($fk) => $fk->operation, $result->foreignKeys));
     }
 
     public function testCompareMorphToManyTableWithMissingIndex(): void
@@ -649,10 +647,10 @@ class MappingTableComparatorTest extends TestCase
         // Mock existing table missing the morph index
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object)['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
-                (object)['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
-                (object)['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
             ]);
 
         $this->databaseSchemaReader->method('getTableForeignKeys')

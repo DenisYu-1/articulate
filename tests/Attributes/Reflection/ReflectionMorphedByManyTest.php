@@ -2,16 +2,14 @@
 
 namespace Articulate\Tests\Attributes\Reflection;
 
-use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
-use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Attributes\Relations\MappingTable;
+use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use ReflectionProperty;
-use RuntimeException;
 
 class ReflectionMorphedByManyTest extends AbstractTestCase {
     /** @var MappingCollection<int, TestEntity> */

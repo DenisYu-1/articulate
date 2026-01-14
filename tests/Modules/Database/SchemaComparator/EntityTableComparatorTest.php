@@ -11,9 +11,13 @@ use PHPUnit\Framework\TestCase;
 
 class EntityTableComparatorTest extends TestCase {
     private EntityTableComparator $comparator;
+
     private DatabaseSchemaReaderInterface $schemaReader;
+
     private ColumnComparator $columnComparator;
+
     private IndexComparator $indexComparator;
+
     private ForeignKeyComparator $foreignKeyComparator;
 
     protected function setUp(): void

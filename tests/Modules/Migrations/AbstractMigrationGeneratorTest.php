@@ -2,18 +2,18 @@
 
 namespace Articulate\Tests\Modules\Migrations;
 
-use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\AbstractMigrationGenerator;
-use Articulate\Utils\TypeRegistry;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Utils\TypeRegistry;
 
 class AbstractMigrationGeneratorTest extends AbstractTestCase {
     private TestMigrationGenerator $generator;
+
     private TypeRegistry $typeRegistry;
 
     protected function setUp(): void
@@ -343,7 +343,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 }
 
 /**
- * Test implementation of AbstractMigrationGenerator for testing
+ * Test implementation of AbstractMigrationGenerator for testing.
  */
 class TestMigrationGenerator extends AbstractMigrationGenerator {
     public function getIdentifierQuote(): string
