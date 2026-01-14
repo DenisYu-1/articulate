@@ -98,8 +98,8 @@ jobs:
       - name: Create build directory
         run: mkdir -p build/coverage
 
-      - name: Run tests with coverage
-        run: composer test:coverage
+      - name: Run tests
+        run: composer test
 
       - name: Run mutation tests
         run: composer test:mutation
