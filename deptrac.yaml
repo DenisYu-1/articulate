@@ -96,6 +96,8 @@ parameters:
 
     EntityManager:
       - Connection
+      - Exceptions
+      - Utils
       - Attributes
       - QueryBuilder
       - Generators

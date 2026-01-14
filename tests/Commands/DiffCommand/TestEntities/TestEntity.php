@@ -1,6 +1,6 @@
 <?php
 
-namespace Test\Entities;
+namespace Articulate\Tests\Commands\DiffCommand\TestEntities;
 
 use Articulate\Attributes\Entity;
 
