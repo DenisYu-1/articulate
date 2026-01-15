@@ -24,11 +24,7 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      */
     public function testBasicTableCreation(string $databaseName): void
     {
-        try {
-            $connection = $this->getConnection($databaseName);
-        } catch (\Exception $e) {
-            $this->markTestSkipped("{$databaseName} database not available: " . $e->getMessage());
-        }
+        $connection = $this->getConnection($databaseName);
 
         // Set the current database for this test
         $this->setCurrentDatabase($connection, $databaseName);
@@ -168,7 +164,6 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
     {
         // For debugging, you can test against a specific database
         $databaseName = 'mysql'; // Change this to 'pgsql' as needed
-        $this->skipIfDatabaseNotAvailable($databaseName);
 
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);

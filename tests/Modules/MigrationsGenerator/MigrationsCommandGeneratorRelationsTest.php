@@ -6,34 +6,61 @@ use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
-use PHPUnit\Framework\Attributes\DataProvider;
 
-class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
-    #[DataProvider('cases')]
-    public function testFieldMigration($query, $params)
+class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
+    /**
+     * Test field migration operations for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testFieldMigration(string $databaseName): void
     {
-        $tableCompareResult = new TableCompareResult(
-            'test_table',
-            'update',
-            [
-                new ColumnCompareResult(...$params),
-            ],
-            [],
-            [],
-        );
-        $this->assertEquals(
-            $query,
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
-        );
+        $cases = $this->getFieldMigrationCases($databaseName);
+
+        foreach ($cases as $case) {
+            $tableCompareResult = new TableCompareResult(
+                'test_table',
+                'update',
+                [
+                    new ColumnCompareResult(...$case['params']),
+                ],
+                [],
+                [],
+            );
+
+            $generator = match ($databaseName) {
+                'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+                'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+            };
+
+            $this->assertEquals(
+                $case['query'],
+                $generator->generate($tableCompareResult),
+                "Failed for database: {$databaseName}"
+            );
+        }
     }
 
-    public static function cases()
+    /**
+     * Get field migration test cases for the specified database.
+     */
+    private function getFieldMigrationCases(string $databaseName): array
     {
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $updateSyntax = match ($databaseName) {
+            'mysql' => 'MODIFY',
+            'pgsql' => 'ALTER COLUMN',
+        };
+
         return [
             [
-                'query' => 'ALTER TABLE `test_table` ADD `id` VARCHAR(255) NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL",
                 'params' => [
                     'id',
                     'create',
@@ -41,7 +68,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` DROP `id`',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} DROP {$quote}id{$quote}",
                 'params' => [
                     'id',
                     'delete',
@@ -49,7 +76,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
                 'params' => [
                     'id',
                     'update',
@@ -57,7 +84,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(255) NOT NULL DEFAULT "test"',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT \"test\"",
                 'params' => [
                     'id',
                     'update',
@@ -65,7 +92,7 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => 'ALTER TABLE `test_table` MODIFY `id` VARCHAR(254) NOT NULL DEFAULT "test"',
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT \"test\"",
                 'params' => [
                     'id',
                     'update',
@@ -76,7 +103,12 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
         ];
     }
 
-    public function testOneToOneForeignKeyCreation()
+    /**
+     * Test one-to-one foreign key creation for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testOneToOneForeignKeyCreation(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -100,13 +132,36 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL, ADD CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote})";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL, ADD CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`)',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testOneToOneForeignKeySkipped()
+    /**
+     * Test one-to-one foreign key skipped for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testOneToOneForeignKeySkipped(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -123,13 +178,36 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
             [],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` ADD `related_entity_id` INT NOT NULL',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testOneToOneForeignKeyDrop()
+    /**
+     * Test one-to-one foreign key drop for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testOneToOneForeignKeyDrop(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -146,13 +224,36 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $fkKeyword = match ($databaseName) {
+            'mysql' => 'FOREIGN KEY',
+            'pgsql' => 'CONSTRAINT',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testForeignKeyAndColumnDropCombined()
+    /**
+     * Test foreign key and column drop combined for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testForeignKeyAndColumnDropCombined(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -176,13 +277,36 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $fkKeyword = match ($databaseName) {
+            'mysql' => 'FOREIGN KEY',
+            'pgsql' => 'CONSTRAINT',
+        };
+
+        $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}, DROP {$quote}related_entity_id{$quote}";
+
         $this->assertEquals(
-            'ALTER TABLE `test_table` DROP FOREIGN KEY `fk_test_table_related_entity_related_entity_id`, DROP `related_entity_id`',
-            MigrationsGeneratorTestHelper::forMySql()->generate($tableCompareResult)
+            $expected,
+            $generator->generate($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 
-    public function testRollbackRecreatesForeignKeyOnTableRestore()
+    /**
+     * Test rollback recreates foreign key on table restore for both databases.
+     *
+     * @dataProvider databaseProvider
+     */
+    public function testRollbackRecreatesForeignKeyOnTableRestore(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
             'test_table',
@@ -206,9 +330,27 @@ class MigrationsCommandGeneratorRelationsTest extends AbstractTestCase {
             ],
         );
 
+        $generator = match ($databaseName) {
+            'mysql' => MigrationsGeneratorTestHelper::forMySql(),
+            'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
+        };
+
+        $quote = match ($databaseName) {
+            'mysql' => '`',
+            'pgsql' => '"',
+        };
+
+        $intType = match ($databaseName) {
+            'mysql' => 'INT',
+            'pgsql' => 'INTEGER',
+        };
+
+        $expected = "CREATE TABLE {$quote}test_table{$quote} ({$quote}related_entity_id{$quote} {$intType} NOT NULL, CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote}))";
+
         $this->assertEquals(
-            'CREATE TABLE `test_table` (`related_entity_id` INT NOT NULL, CONSTRAINT `fk_test_table_related_entity_related_entity_id` FOREIGN KEY (`related_entity_id`) REFERENCES `related_entity`(`id`))',
-            MigrationsGeneratorTestHelper::forMySql()->rollback($tableCompareResult)
+            $expected,
+            $generator->rollback($tableCompareResult),
+            "Failed for database: {$databaseName}"
         );
     }
 }

@@ -12,10 +12,4 @@
     </testsuite>
   </testsuites>
 
-  <source>
-    <include>
-      <directory suffix=".php">./src</directory>
-    </include>
-  </source>
-
 </phpunit>

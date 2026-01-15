@@ -14,7 +14,7 @@ use Articulate\Tests\AbstractTestCase;
 class ReflectionMorphToManyTest extends AbstractTestCase {
     public function testConstructorCallsAssertCollectionType(): void
     {
-        // This test ensures the assertCollectionType() method call at line 30 is executed
+        // This test ensures collection type validation is performed during construction
         $this->expectNotToPerformAssertions();
 
         try {
@@ -28,7 +28,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetExtraPropertiesWithNullMappingTableReturnsEmptyArray(): void
     {
-        // This test ensures the null-safe property access and coalesce at line 97 work correctly
+        // This test ensures null-safe access works when mapping table is not specified
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
@@ -41,7 +41,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetTargetPrimaryColumnReturnsFirstColumnFromEntity(): void
     {
-        // This test ensures the array access $columns[0] at line 105 works correctly
+        // This test ensures the first primary key column is correctly retrieved
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
@@ -54,7 +54,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetTargetPrimaryColumnFallsBackToIdWhenNoPrimaryKeys(): void
     {
-        // This test ensures the coalesce operator ?? 'id' at line 105 works correctly
+        // This test ensures fallback to 'id' when no primary keys are found
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
         $attribute = new MorphToMany(TestEntityNoPrimaryKey::class, 'taggable');
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
@@ -80,7 +80,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testAssertCollectionTypeAllowsNullType(): void
     {
-        // This test ensures the identical comparison $type === null at line 142 works
+        // This test ensures proper handling when type column name is null
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyNoType::class, 'tags');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
 
@@ -160,7 +160,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetExtraPropertiesWithMappingTable(): void
     {
-        // This test ensures the null-safe property access and coalesce at line 95 work correctly
+        // This test ensures null-safe access when mapping table is not configured
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
         $mappingTable = new MappingTable(name: 'custom_table');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable', mappingTable: $mappingTable);
@@ -174,7 +174,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetTargetPrimaryColumnWithEntityHavingMultiplePrimaryKeys(): void
     {
-        // This test ensures the array access $columns[0] at line 103 works correctly
+        // This test ensures the first primary key column is accessed correctly
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
         $attribute = new MorphToMany(TestEntityWithMultiplePrimaryKeys::class, 'taggable');
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
@@ -187,7 +187,7 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetOwnerPrimaryColumnWithEntityHavingMultiplePrimaryKeys(): void
     {
-        // This test ensures the array access $columns[0] at line 111 works correctly
+        // This test ensures the first primary key column is retrieved correctly
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMultiplePrimaryKeys::class, 'tags');
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);

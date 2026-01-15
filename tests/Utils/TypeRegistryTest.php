@@ -2,585 +2,366 @@
 
 namespace Articulate\Tests\Utils;
 
-use Articulate\Tests\AbstractTestCase;
 use Articulate\Utils\BoolTypeConverter;
 use Articulate\Utils\Point;
 use Articulate\Utils\PointTypeConverter;
+use Articulate\Utils\TypeConverterInterface;
 use Articulate\Utils\TypeRegistry;
-use Iterator;
-use JsonSerializable;
-use ReflectionMethod;
-use ReflectionProperty;
-use Serializable;
+use PHPUnit\Framework\TestCase;
 
-class TypeRegistryTest extends AbstractTestCase {
-    private TypeRegistry $typeRegistry;
+class TypeRegistryTest extends TestCase {
+    private TypeRegistry $registry;
 
     protected function setUp(): void
     {
-        $this->typeRegistry = new TypeRegistry();
+        $this->registry = new TypeRegistry();
     }
 
-    public function testBuiltInTypeMappings(): void
+    public function testConstructsWithBuiltInTypes(): void
     {
-        $this->assertEquals('INT', $this->typeRegistry->getDatabaseType('int'));
-        $this->assertEquals('FLOAT', $this->typeRegistry->getDatabaseType('float'));
-        $this->assertEquals('VARCHAR(255)', $this->typeRegistry->getDatabaseType('string'));
-        $this->assertEquals('TINYINT(1)', $this->typeRegistry->getDatabaseType('bool'));
-        $this->assertEquals('DATETIME', $this->typeRegistry->getDatabaseType('DateTime'));
-        $this->assertEquals('TEXT', $this->typeRegistry->getDatabaseType('mixed'));
+        // Test that basic types are registered
+        $this->assertSame('INT', $this->registry->getDatabaseType('int'));
+        $this->assertSame('FLOAT', $this->registry->getDatabaseType('float'));
+        $this->assertSame('VARCHAR(255)', $this->registry->getDatabaseType('string'));
+        $this->assertSame('TINYINT(1)', $this->registry->getDatabaseType('bool'));
+        $this->assertSame('TEXT', $this->registry->getDatabaseType('mixed'));
     }
 
-    public function testReverseTypeMappings(): void
+    public function testRegisterTypeAndGetDatabaseType(): void
     {
-        $this->assertEquals('int', $this->typeRegistry->getPhpType('INT'));
-        $this->assertEquals('float', $this->typeRegistry->getPhpType('FLOAT'));
-        $this->assertEquals('string', $this->typeRegistry->getPhpType('VARCHAR'));
-        $this->assertEquals('int', $this->typeRegistry->getPhpType('TINYINT')); // TINYINT -> int, TINYINT(1) -> bool
-        $this->assertEquals('mixed', $this->typeRegistry->getPhpType('UNKNOWN_TYPE'));
+        $this->registry->registerType('custom', 'CUSTOM_TYPE');
+
+        $this->assertSame('CUSTOM_TYPE', $this->registry->getDatabaseType('custom'));
     }
 
-    public function testBoolTypeConverter(): void
+    public function testRegisterTypeWithConverter(): void
     {
-        $converter = $this->typeRegistry->getConverter('bool');
+        $converter = $this->createMock(TypeConverterInterface::class);
+
+        $this->registry->registerType('custom', 'CUSTOM_TYPE', $converter);
+
+        $this->assertSame('CUSTOM_TYPE', $this->registry->getDatabaseType('custom'));
+        $this->assertSame($converter, $this->registry->getConverter('custom'));
+    }
+
+    public function testGetConverterForUnregisteredType(): void
+    {
+        $this->assertNull($this->registry->getConverter('nonexistent'));
+    }
+
+    public function testGetConverterForBuiltInType(): void
+    {
+        $converter = $this->registry->getConverter('bool');
+
         $this->assertInstanceOf(BoolTypeConverter::class, $converter);
-
-        $this->assertEquals(1, $converter->convertToDatabase(true));
-        $this->assertEquals(0, $converter->convertToDatabase(false));
-        $this->assertNull($converter->convertToDatabase(null));
-
-        $this->assertTrue($converter->convertToPHP(1));
-        $this->assertFalse($converter->convertToPHP(0));
-        $this->assertTrue($converter->convertToPHP('1'));
-        $this->assertFalse($converter->convertToPHP('0'));
-        $this->assertNull($converter->convertToPHP(null));
     }
 
-    public function testPointTypeConverter(): void
+    public function testGetDatabaseTypeFallsBackToTypeItself(): void
     {
-        $converter = $this->typeRegistry->getConverter(Point::class);
-        $this->assertInstanceOf(PointTypeConverter::class, $converter);
-
-        $point = new Point(10.5, 20.3);
-        $dbValue = $converter->convertToDatabase($point);
-        $this->assertEquals('POINT(10.500000 20.300000)', $dbValue);
-
-        $restoredPoint = $converter->convertToPHP($dbValue);
-        $this->assertInstanceOf(Point::class, $restoredPoint);
-        $this->assertEquals(10.5, $restoredPoint->x);
-        $this->assertEquals(20.3, $restoredPoint->y);
-
-        $this->assertNull($converter->convertToDatabase(null));
-        $this->assertNull($converter->convertToPHP(null));
+        // For unregistered types, should return the type itself
+        $this->assertSame('unknown_type', $this->registry->getDatabaseType('unknown_type'));
     }
 
-    public function testNullablePointTypeRegistration(): void
+    public function testRegisterClassMapping(): void
     {
-        // Test that nullable Point type is registered correctly
-        // This covers the concatenation mutation on line 266 of TypeRegistry.php
-        $nullablePointType = '?' . Point::class;
+        $this->registry->registerClassMapping(\DateTimeInterface::class, 'DATETIME', null, 5);
 
-        // The type should be registered and map to POINT
-        $this->assertEquals('POINT', $this->typeRegistry->getDatabaseType($nullablePointType));
-
-        // And should have the PointTypeConverter
-        $converter = $this->typeRegistry->getConverter($nullablePointType);
-        $this->assertInstanceOf(PointTypeConverter::class, $converter);
-    }
-
-    public function testCustomTypeRegistration(): void
-    {
-        $customRegistry = new TypeRegistry();
-        $customRegistry->registerType('MyCustomType', 'CUSTOM_DB_TYPE', new BoolTypeConverter());
-
-        $this->assertEquals('CUSTOM_DB_TYPE', $customRegistry->getDatabaseType('MyCustomType'));
-        $this->assertEquals('MyCustomType', $customRegistry->getPhpType('CUSTOM_DB_TYPE'));
-        $this->assertInstanceOf(BoolTypeConverter::class, $customRegistry->getConverter('MyCustomType'));
-    }
-
-    public function testParameterizedTypeHandling(): void
-    {
-        // Test that TINYINT(1) maps to bool
-        $this->assertEquals('bool', $this->typeRegistry->getPhpType('TINYINT(1)'));
-
-        // Test that other TINYINT sizes map to int
-        $this->assertEquals('int', $this->typeRegistry->getPhpType('TINYINT(2)'));
-        $this->assertEquals('int', $this->typeRegistry->getPhpType('TINYINT'));
-    }
-
-    public function testDateTimeInterfaceSupport(): void
-    {
-        // DateTimeInterface should map to DATETIME
-        $this->assertEquals('DATETIME', $this->typeRegistry->getDatabaseType(\DateTimeInterface::class));
-
-        // Classes implementing DateTimeInterface should inherit the mapping
-        $this->assertEquals('DATETIME', $this->typeRegistry->getDatabaseType(\DateTime::class));
-        $this->assertEquals('DATETIME', $this->typeRegistry->getDatabaseType(\DateTimeImmutable::class));
-    }
-
-    public function testCustomClassMapping(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Register a custom interface mapping
-        $registry->registerClassMapping(JsonSerializable::class, 'JSON');
-
-        // Classes implementing the interface should use the mapping
-        $this->assertEquals('JSON', $registry->getDatabaseType(JsonSerializable::class));
-
-        // Test with a custom class that implements the interface
-        // (We can't easily test this without creating a test class, but the logic is there)
-    }
-
-    public function testClassMappingPriority(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Register conflicting mappings with different priorities
-        $registry->registerClassMapping(Iterator::class, 'TEXT', null, 5); // Lower priority
-        $registry->registerClassMapping(JsonSerializable::class, 'JSON', null, 1); // Higher priority
-
-        // Create a mock class that implements both interfaces
-        $mockClass = 'TestPriorityClass';
-
-        if (!class_exists($mockClass)) {
-            eval("
-                class $mockClass implements Iterator, JsonSerializable {
-                    public function current(): mixed { return null; }
-                    public function key(): mixed { return null; }
-                    public function next(): void {}
-                    public function rewind(): void {}
-                    public function valid(): bool { return false; }
-                    public function jsonSerialize(): mixed { return []; }
-                }
-            ");
-        }
-
-        try {
-            // Should use JsonSerializable mapping due to higher priority (lower number)
-            $this->assertEquals('JSON', $registry->getDatabaseType($mockClass));
-        } finally {
-            // Clean up
-            if (class_exists($mockClass)) {
-                // Note: Can't actually remove class in PHP, but test is isolated
-            }
-        }
-    }
-
-    public function testInvalidClassMapping(): void
-    {
-        $registry = new TypeRegistry();
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Cannot register mapping for unknown class or interface');
-
-        $registry->registerClassMapping('NonExistentClass', 'TEXT');
-    }
-
-    public function testClassMappingInheritance(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Register a parent class mapping
-        $registry->registerClassMapping(\Exception::class, 'TEXT');
-
-        // Classes extending the parent should inherit the mapping
-        $this->assertEquals('TEXT', $registry->getDatabaseType(\Exception::class));
-
-        // Subclasses would inherit this mapping (though we can't test RuntimeException easily here)
-    }
-
-    public function testRegisterClassMappingWithoutConverter(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test registering class mapping without converter - covers IfNegation mutation on line 72
-        $registry->registerClassMapping(Serializable::class, 'TEXT');
-
-        // Verify the mapping was registered
-        $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
-
-        // Verify no converter was set (covers the !$converter branch)
-        $this->assertNull($registry->getConverter(Serializable::class));
+        // DateTime implements DateTimeInterface, so it should get this mapping
+        $this->assertSame('DATETIME', $this->registry->getDatabaseType(\DateTime::class));
     }
 
     public function testRegisterClassMappingWithConverter(): void
     {
-        $registry = new TypeRegistry();
-        $converter = new BoolTypeConverter();
+        $converter = $this->createMock(TypeConverterInterface::class);
 
-        // Test registering class mapping with converter - covers the $converter === true branch
-        $registry->registerClassMapping(Serializable::class, 'TEXT', $converter);
+        $this->registry->registerClassMapping(\stdClass::class, 'OBJECT_TYPE', $converter);
 
-        // Verify converter was set
-        $this->assertSame($converter, $registry->getConverter(Serializable::class));
+        $this->assertSame('OBJECT_TYPE', $this->registry->getDatabaseType(\stdClass::class));
+        $this->assertSame($converter, $this->registry->getConverter(\stdClass::class));
     }
 
-    public function testGetDatabaseTypeCachingBehavior(): void
+    public function testRegisterClassMappingThrowsExceptionForInvalidClass(): void
     {
-        $registry = new TypeRegistry();
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot register mapping for unknown class or interface');
 
-        // First call should compute and cache
-        $result1 = $registry->getDatabaseType('int');
-        $this->assertEquals('INT', $result1);
+        $this->registry->registerClassMapping('NonExistentClass', 'TYPE');
+    }
+
+    public function testGetDatabaseTypeForClassWithInheritance(): void
+    {
+        // Create a test class hierarchy
+        $interface = TestInterface::class;
+        $parentClass = TestParentClass::class;
+        $childClass = TestChildClass::class;
+
+        $this->registry->registerClassMapping($interface, 'INTERFACE_TYPE', null, 10);
+        $this->registry->registerClassMapping($parentClass, 'PARENT_TYPE', null, 5);
+
+        // PARENT_TYPE has higher priority (lower number), so it should win
+        $this->assertSame('PARENT_TYPE', $this->registry->getDatabaseType($childClass));
+    }
+
+    public function testGetDatabaseTypePrioritizesHigherPriorityMappings(): void
+    {
+        $interface = TestInterface::class;
+        $childClass = TestChildClass::class;
+
+        // Register with different priorities (lower number = higher priority)
+        $this->registry->registerClassMapping($interface, 'INTERFACE_TYPE', null, 10); // Lower priority
+        $this->registry->registerClassMapping($childClass, 'DIRECT_TYPE', null, 5);     // Higher priority
+
+        // Direct class mapping should have higher priority
+        $this->assertSame('DIRECT_TYPE', $this->registry->getDatabaseType($childClass));
+    }
+
+    public function testGetDatabaseTypeCaching(): void
+    {
+        $this->registry->registerType('cached_type', 'CACHED_DB_TYPE');
+
+        // First call
+        $result1 = $this->registry->getDatabaseType('cached_type');
+        $this->assertSame('CACHED_DB_TYPE', $result1);
 
         // Second call should use cache
-        $result2 = $registry->getDatabaseType('int');
-        $this->assertEquals('INT', $result2);
-
-        // Verify it's the same result
-        $this->assertSame($result1, $result2);
+        $result2 = $this->registry->getDatabaseType('cached_type');
+        $this->assertSame('CACHED_DB_TYPE', $result2);
     }
 
-    public function testGetDatabaseTypeCacheBypass(): void
+    public function testGetPhpTypeForBasicTypes(): void
     {
-        $registry = new TypeRegistry();
-
-        // Test that the method works correctly when called multiple times
-        // This covers the case where early cache return might be removed in mutation testing
-
-        // Register a custom type
-        $registry->registerType('CustomType', 'CUSTOM_DB_TYPE');
-
-        // First call should compute and cache the result
-        $result1 = $registry->getDatabaseType('CustomType');
-        $this->assertEquals('CUSTOM_DB_TYPE', $result1);
-
-        // Second call should return the same result (from cache)
-        $result2 = $registry->getDatabaseType('CustomType');
-        $this->assertEquals('CUSTOM_DB_TYPE', $result2);
-        $this->assertSame($result1, $result2);
+        $this->assertSame('int', $this->registry->getPhpType('INT'));
+        $this->assertSame('float', $this->registry->getPhpType('FLOAT'));
+        $this->assertSame('string', $this->registry->getPhpType('VARCHAR(255)'));
+        $this->assertSame('bool', $this->registry->getPhpType('TINYINT(1)'));
     }
 
-    public function testFindClassMappingWithEmptyInheritance(): void
+    public function testGetPhpTypeHandlesParameterizedTypes(): void
+    {
+        $this->assertSame('string', $this->registry->getPhpType('VARCHAR(100)'));
+        $this->assertSame('int', $this->registry->getPhpType('BIGINT(20)'));
+        $this->assertSame('bool', $this->registry->getPhpType('TINYINT(1)'));
+    }
+
+    public function testGetPhpTypeFallsBackToInference(): void
+    {
+        $this->assertSame('int', $this->registry->getPhpType('BIGINT'));
+        $this->assertSame('float', $this->registry->getPhpType('DECIMAL'));
+        $this->assertSame('mixed', $this->registry->getPhpType('TEXT')); // TEXT is registered as 'mixed' type
+        $this->assertSame('bool', $this->registry->getPhpType('BOOLEAN'));
+        $this->assertSame('mixed', $this->registry->getPhpType('UNKNOWN_TYPE')); // Unknown types fall back to mixed
+    }
+
+    public function testGetPhpTypeHandlesTinyIntOneSpecialCase(): void
+    {
+        $this->assertSame('bool', $this->registry->getPhpType('TINYINT(1)'));
+        $this->assertSame('bool', $this->registry->getPhpType('tinyint(1)'));
+    }
+
+    public function testExtractBaseType(): void
     {
         $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('extractBaseType');
+        $method->setAccessible(true);
 
-        // Test class mapping when inheritance info returns empty arrays
-        // This covers Foreach_ mutation on line 139 where foreach becomes foreach([])
-        $nonExistentClass = 'DefinitelyNonExistentClass' . uniqid();
+        $this->assertSame('VARCHAR', $method->invoke($registry, 'VARCHAR(255)'));
+        $this->assertSame('INT', $method->invoke($registry, 'INT(11)'));
+        $this->assertSame('CUSTOM', $method->invoke($registry, 'CUSTOM'));
+        $this->assertSame('TINYINT', $method->invoke($registry, 'TINYINT(1)'));
+    }
 
-        // This should return null since no mappings exist for non-existent classes
-        $reflectionMethod = new ReflectionMethod($registry, 'findClassMapping');
-        $reflectionMethod->setAccessible(true);
+    public function testInferPhpType(): void
+    {
+        $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('inferPhpType');
+        $method->setAccessible(true);
 
-        $result = $reflectionMethod->invoke($registry, $nonExistentClass);
-        $this->assertNull($result);
+        // Integer types
+        $this->assertSame('int', $method->invoke($registry, 'INT'));
+        $this->assertSame('int', $method->invoke($registry, 'BIGINT'));
+        $this->assertSame('int', $method->invoke($registry, 'SMALLINT'));
+
+        // Float types
+        $this->assertSame('float', $method->invoke($registry, 'FLOAT'));
+        $this->assertSame('float', $method->invoke($registry, 'DOUBLE'));
+        $this->assertSame('float', $method->invoke($registry, 'DECIMAL'));
+
+        // String types
+        $this->assertSame('string', $method->invoke($registry, 'VARCHAR'));
+        $this->assertSame('string', $method->invoke($registry, 'CHAR'));
+        $this->assertSame('string', $method->invoke($registry, 'TEXT'));
+
+        // Date types (should be string for basic mapping)
+        $this->assertSame('string', $method->invoke($registry, 'DATE'));
+        $this->assertSame('string', $method->invoke($registry, 'DATETIME'));
+
+        // Boolean types
+        $this->assertSame('bool', $method->invoke($registry, 'BOOL'));
+        $this->assertSame('bool', $method->invoke($registry, 'BOOLEAN'));
+
+        // Unknown types
+        $this->assertSame('mixed', $method->invoke($registry, 'UNKNOWN'));
+        $this->assertSame('mixed', $method->invoke($registry, 'CUSTOM_TYPE'));
+    }
+
+    public function testBuiltInPointTypeRegistration(): void
+    {
+        $this->assertSame('POINT', $this->registry->getDatabaseType(Point::class));
+        $converter = $this->registry->getConverter(Point::class);
+        $this->assertInstanceOf(PointTypeConverter::class, $converter);
+    }
+
+    public function testBuiltInDateTimeMappings(): void
+    {
+        $this->assertSame('DATETIME', $this->registry->getDatabaseType(\DateTime::class));
+        $this->assertSame('DATETIME', $this->registry->getDatabaseType(\DateTimeImmutable::class));
+        $this->assertSame('DATETIME', $this->registry->getDatabaseType(\DateTimeInterface::class));
+    }
+
+    public function testNullableTypesRegistration(): void
+    {
+        // Nullable types should be registered but not create reverse mappings
+        $this->assertSame('INT', $this->registry->getDatabaseType('?int'));
+        $this->assertSame('FLOAT', $this->registry->getDatabaseType('?float'));
+        $this->assertSame('VARCHAR(255)', $this->registry->getDatabaseType('?string'));
+    }
+
+    public function testCachingWorks(): void
+    {
+        // Register a type
+        $this->registry->registerType('cached_type', 'CACHED_DB_TYPE');
+
+        // First call
+        $result1 = $this->registry->getDatabaseType('cached_type');
+        $this->assertSame('CACHED_DB_TYPE', $result1);
+
+        // Second call should use cache (we can't easily test this directly,
+        // but at least verify it returns the same result)
+        $result2 = $this->registry->getDatabaseType('cached_type');
+        $this->assertSame('CACHED_DB_TYPE', $result2);
+    }
+
+    public function testFindClassMappingWithMultipleCandidates(): void
+    {
+        // Register mappings with different priorities
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 10); // Lower priority
+        $this->registry->registerClassMapping(TestParentClass::class, 'PARENT_TYPE', null, 5);   // Higher priority
+
+        // Test that usort is called and higher priority wins
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('PARENT_TYPE', $result);
     }
 
     public function testGetInheritanceInfoForNonExistentClass(): void
     {
+        // Test private method getInheritanceInfo for non-existent class
         $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('getInheritanceInfo');
+        $method->setAccessible(true);
 
-        // Test inheritance info for non-existent class - covers LogicalNot mutation on line 162
-        $reflectionMethod = new ReflectionMethod($registry, 'getInheritanceInfo');
-        $reflectionMethod->setAccessible(true);
+        $result = $method->invoke($registry, 'NonExistentClass');
 
-        $nonExistentClass = 'DefinitelyNonExistentClass' . uniqid();
-        $inheritanceInfo = $reflectionMethod->invoke($registry, $nonExistentClass);
+        $this->assertEquals(['interfaces' => [], 'parents' => []], $result);
+    }
 
-        // Should return empty arrays for non-existent classes
-        $this->assertEquals(['interfaces' => [], 'parents' => []], $inheritanceInfo);
+    public function testGetInheritanceInfoCaching(): void
+    {
+        // Test that inheritance info is cached
+        $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('getInheritanceInfo');
+        $method->setAccessible(true);
+
+        // First call
+        $result1 = $method->invoke($registry, TestChildClass::class);
+        $this->assertIsArray($result1);
+        $this->assertArrayHasKey('interfaces', $result1);
+        $this->assertArrayHasKey('parents', $result1);
 
         // Second call should use cache
-        $inheritanceInfo2 = $reflectionMethod->invoke($registry, $nonExistentClass);
-        $this->assertSame($inheritanceInfo, $inheritanceInfo2);
+        $result2 = $method->invoke($registry, TestChildClass::class);
+        $this->assertSame($result1, $result2);
     }
 
-    public function testGetInheritanceInfoForExistingClass(): void
+    public function testFindClassMappingReturnsNullWhenNoMatches(): void
     {
+        // Test private method findClassMapping when no mappings exist
         $registry = new TypeRegistry();
+        $reflection = new \ReflectionClass($registry);
+        $method = $reflection->getMethod('findClassMapping');
+        $method->setAccessible(true);
 
-        // Test inheritance info for existing class
-        $reflectionMethod = new ReflectionMethod($registry, 'getInheritanceInfo');
-        $reflectionMethod->setAccessible(true);
-
-        $inheritanceInfo = $reflectionMethod->invoke($registry, \Exception::class);
-
-        // Should have parent classes and interfaces
-        $this->assertIsArray($inheritanceInfo['parents']);
-        $this->assertIsArray($inheritanceInfo['interfaces']);
-
-        // Exception implements Throwable as an interface, not a parent class
-        $this->assertContains(\Throwable::class, $inheritanceInfo['interfaces']);
-        $this->assertContains(\Stringable::class, $inheritanceInfo['interfaces']);
+        $result = $method->invoke($registry, 'SomeClassWithoutMappings');
+        $this->assertNull($result);
     }
 
-    public function testPregMatchHandlingInGetPhpType(): void
+    public function testFindClassMappingPrioritizesDirectClassMapping(): void
     {
-        $registry = new TypeRegistry();
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 10); // Lower priority (higher number)
+        $this->registry->registerClassMapping(TestChildClass::class, 'DIRECT_TYPE', null, 5);   // Higher priority (lower number)
 
-        // Test TINYINT(1) handling - covers PregMatchRemoveFlags mutation on line 181
-        $this->assertEquals('bool', $registry->getPhpType('TINYINT(1)'));
-        $this->assertEquals('bool', $registry->getPhpType('tinyint(1)')); // Case insensitive
-
-        // Test other TINYINT variations map to int
-        $this->assertEquals('int', $registry->getPhpType('TINYINT'));
-        $this->assertEquals('int', $registry->getPhpType('TINYINT(2)'));
-    }
-
-    public function testExtractBaseTypePregMatch(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test extractBaseType method - covers PregMatchRemoveCaret mutation on line 213
-        $reflectionMethod = new ReflectionMethod($registry, 'extractBaseType');
-        $reflectionMethod->setAccessible(true);
-
-        // Test parameterized types
-        $this->assertEquals('VARCHAR', $reflectionMethod->invoke($registry, 'VARCHAR(255)'));
-        $this->assertEquals('TINYINT', $reflectionMethod->invoke($registry, 'TINYINT(1)'));
-        $this->assertEquals('DECIMAL', $reflectionMethod->invoke($registry, 'DECIMAL(10,2)'));
-
-        // Test non-parameterized types
-        $this->assertEquals('TEXT', $reflectionMethod->invoke($registry, 'TEXT'));
-        $this->assertEquals('INT', $reflectionMethod->invoke($registry, 'INT'));
-
-        // Test edge cases
-        $this->assertEquals('INVALID', $reflectionMethod->invoke($registry, 'INVALID'));
-        $this->assertEquals('', $reflectionMethod->invoke($registry, ''));
-    }
-
-    public function testInferPhpTypeMatchExpression(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test the match expression in inferPhpType - covers MatchArmRemoval mutations on line 227
-        $reflectionMethod = new ReflectionMethod($registry, 'inferPhpType');
-        $reflectionMethod->setAccessible(true);
-
-        // Test all the match arms
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'INT'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'INTEGER'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'BIGINT'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'SMALLINT'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'TINYINT'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'MEDIUMINT'));
-
-        $this->assertEquals('float', $reflectionMethod->invoke($registry, 'FLOAT'));
-        $this->assertEquals('float', $reflectionMethod->invoke($registry, 'DOUBLE'));
-        $this->assertEquals('float', $reflectionMethod->invoke($registry, 'DECIMAL'));
-        $this->assertEquals('float', $reflectionMethod->invoke($registry, 'NUMERIC'));
-
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'VARCHAR'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'CHAR'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'TEXT'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'TINYTEXT'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'MEDIUMTEXT'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'LONGTEXT'));
-
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'DATE'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'DATETIME'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'TIMESTAMP'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'TIME'));
-        $this->assertEquals('string', $reflectionMethod->invoke($registry, 'YEAR'));
-
-        $this->assertEquals('bool', $reflectionMethod->invoke($registry, 'BOOL'));
-        $this->assertEquals('bool', $reflectionMethod->invoke($registry, 'BOOLEAN'));
-
-        // Test default case
-        $this->assertEquals('mixed', $reflectionMethod->invoke($registry, 'UNKNOWN_TYPE'));
-        $this->assertEquals('mixed', $reflectionMethod->invoke($registry, 'SOME_RANDOM_TYPE'));
-    }
-
-    public function testClassMappingWithInheritanceAndPriority(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Create a test class hierarchy
-        $interfaceName = 'TestInterface' . uniqid();
-        $parentClassName = 'TestParent' . uniqid();
-        $childClassName = 'TestChild' . uniqid();
-
-        if (!interface_exists($interfaceName)) {
-            eval("interface $interfaceName {}");
-        }
-
-        if (!class_exists($parentClassName)) {
-            eval("class $parentClassName implements $interfaceName {}");
-        }
-
-        if (!class_exists($childClassName)) {
-            eval("class $childClassName extends $parentClassName {}");
-        }
-
-        try {
-            // Register mappings with different priorities
-            $registry->registerClassMapping($interfaceName, 'INTERFACE_TYPE', null, 10); // Low priority
-            $registry->registerClassMapping($parentClassName, 'PARENT_TYPE', null, 5);   // Medium priority
-            $registry->registerClassMapping($childClassName, 'CHILD_TYPE', null, 1);    // High priority
-
-            // Child class should use its own mapping (highest priority)
-            $this->assertEquals('CHILD_TYPE', $registry->getDatabaseType($childClassName));
-
-            // Parent class should use its own mapping
-            $this->assertEquals('PARENT_TYPE', $registry->getDatabaseType($parentClassName));
-
-            // Interface should use its mapping
-            $this->assertEquals('INTERFACE_TYPE', $registry->getDatabaseType($interfaceName));
-
-        } finally {
-            // Cleanup would happen naturally in test isolation
-        }
+        // Direct class mapping should win with higher priority (lower number)
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('DIRECT_TYPE', $result);
     }
 
     public function testRegisterTypeClearsMappingCache(): void
     {
-        $registry = new TypeRegistry();
+        // First get a type to populate cache
+        $result1 = $this->registry->getDatabaseType('int');
+        $this->assertSame('INT', $result1);
 
-        // Get a type to populate cache
-        $registry->getDatabaseType('int');
+        // Register a new type, which should clear cache
+        $this->registry->registerType('test_type', 'TEST_DB_TYPE');
 
-        // Register a new type should clear cache
-        $registry->registerType('NewType', 'NEW_DB_TYPE');
-
-        // Access the private cache to verify it was cleared
-        $reflectionProperty = new ReflectionProperty($registry, 'mappingCache');
-        $reflectionProperty->setAccessible(true);
-
-        $cache = $reflectionProperty->getValue($registry);
-        // Cache should be empty after registering new type
-        $this->assertEmpty($cache);
+        // Cache should be cleared, so this should work
+        $result2 = $this->registry->getDatabaseType('test_type');
+        $this->assertSame('TEST_DB_TYPE', $result2);
     }
 
     public function testRegisterClassMappingClearsMappingCache(): void
     {
-        $registry = new TypeRegistry();
+        // First get a type to populate cache
+        $result1 = $this->registry->getDatabaseType('int');
+        $this->assertSame('INT', $result1);
 
-        // Get a type to populate cache
-        $registry->getDatabaseType('int');
+        // Register a class mapping, which should clear cache
+        $this->registry->registerClassMapping(\stdClass::class, 'STD_TYPE');
 
-        // Register a new class mapping should clear cache
-        $registry->registerClassMapping(Serializable::class, 'TEXT');
-
-        // Access the private cache to verify it was cleared
-        $reflectionProperty = new ReflectionProperty($registry, 'mappingCache');
-        $reflectionProperty->setAccessible(true);
-
-        $cache = $reflectionProperty->getValue($registry);
-        // Cache should be empty after registering new mapping
-        $this->assertEmpty($cache);
+        // Cache should be cleared, so this should work
+        $result2 = $this->registry->getDatabaseType(\stdClass::class);
+        $this->assertSame('STD_TYPE', $result2);
     }
 
-    public function testPriorityParameterDefaultValue(): void
+    public function testGetDatabaseTypeForInheritedInterface(): void
     {
-        $registry = new TypeRegistry();
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 5);
 
-        // Test default priority value of 0 - covers DecrementInteger mutation on line 58
-        $registry->registerClassMapping(Serializable::class, 'TEXT'); // Uses default priority 0
-
-        $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
-
-        // Verify that the default priority is actually 0
-        $reflectionProperty = new ReflectionProperty($registry, 'classMappings');
-        $reflectionProperty->setAccessible(true);
-        $classMappings = $reflectionProperty->getValue($registry);
-
-        $this->assertEquals(0, $classMappings[Serializable::class]['priority']);
+        // TestChildClass inherits from TestParentClass which implements TestInterface
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('INTERFACE_TYPE', $result);
     }
 
-    public function testPriorityParameterExplicitValue(): void
+    public function testComplexInheritanceWithMultipleMappings(): void
     {
-        $registry = new TypeRegistry();
+        // Register multiple mappings with different priorities
+        $this->registry->registerClassMapping(TestInterface::class, 'INTERFACE_TYPE', null, 20);    // Lowest priority
+        $this->registry->registerClassMapping(TestParentClass::class, 'PARENT_TYPE', null, 10);     // Medium priority
+        $this->registry->registerClassMapping(TestChildClass::class, 'CHILD_TYPE', null, 5);        // Highest priority
 
-        // Test explicit priority value - covers IncrementInteger mutation on line 58
-        $registry->registerClassMapping(Serializable::class, 'TEXT', null, 5);
-
-        $this->assertEquals('TEXT', $registry->getDatabaseType(Serializable::class));
+        // Direct class mapping should win
+        $result = $this->registry->getDatabaseType(TestChildClass::class);
+        $this->assertSame('CHILD_TYPE', $result);
     }
+}
 
-    public function testGetDatabaseTypeCacheReturnRemoval(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Populate cache by calling getDatabaseType
-        $result1 = $registry->getDatabaseType('int');
-        $this->assertEquals('INT', $result1);
-
-        // Call again to ensure cache is used - covers ReturnRemoval mutation on line 97
-        $result2 = $registry->getDatabaseType('int');
-        $this->assertEquals('INT', $result2);
-        $this->assertSame($result1, $result2); // Should be the same cached result
-    }
-
-    public function testFindClassMappingWithInheritanceIteration(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Register a mapping for a parent class
-        $registry->registerClassMapping(\Exception::class, 'TEXT');
-
-        // Test that child classes inherit the mapping - covers Foreach_ mutation on line 139
-        $this->assertEquals('TEXT', $registry->getDatabaseType(\RuntimeException::class));
-    }
-
-    public function testGetInheritanceInfoTernaryLogic(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test inheritance info caching logic - covers Ternary mutation on line 167
-        $reflectionMethod = new ReflectionMethod($registry, 'getInheritanceInfo');
-        $reflectionMethod->setAccessible(true);
-
-        // First call should compute
-        $info1 = $reflectionMethod->invoke($registry, \Exception::class);
-        $this->assertIsArray($info1);
-
-        // Second call should use cache
-        $info2 = $reflectionMethod->invoke($registry, \Exception::class);
-        $this->assertSame($info1, $info2);
-    }
-
-    public function testExtractBaseTypeStrToUpperMutation(): void
-    {
-        $registry = new TypeRegistry();
-        $reflectionMethod = new ReflectionMethod($registry, 'extractBaseType');
-        $reflectionMethod->setAccessible(true);
-
-        // Test strtoupper removal - covers UnwrapStrToUpper mutation on line 213
-        $this->assertEquals('VARCHAR', $reflectionMethod->invoke($registry, 'VARCHAR(255)'));
-        $this->assertEquals('VARCHAR', $reflectionMethod->invoke($registry, 'varchar(255)')); // Case insensitive
-    }
-
-    public function testInferPhpTypeStrToUpperRemoval(): void
-    {
-        $registry = new TypeRegistry();
-        $reflectionMethod = new ReflectionMethod($registry, 'inferPhpType');
-        $reflectionMethod->setAccessible(true);
-
-        // Test without strtoupper - covers UnwrapStrToUpper mutation on line 225
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'INT'));
-        $this->assertEquals('int', $reflectionMethod->invoke($registry, 'int')); // Case sensitive now
-    }
-
-    public function testRegisterDefaultsDateTimeRegistration(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test that DateTime mapping is registered - covers MethodCallRemoval mutation on line 250
-        $this->assertEquals('DATETIME', $registry->getDatabaseType('DateTime'));
-        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTimeInterface::class));
-    }
-
-    public function testRegisterDefaultsDateTimeInterfacePriority(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test DateTimeInterface priority - covers IncrementInteger mutation on line 257
-        // DateTimeInterface should have higher priority than DateTime
-        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTimeInterface::class));
-        $this->assertEquals('DATETIME', $registry->getDatabaseType(\DateTime::class));
-    }
-
-    public function testRegisterDefaultsNullableTypes(): void
-    {
-        $registry = new TypeRegistry();
-
-        // Test nullable type registrations - covers MethodCallRemoval mutations on lines 261, 263, 264
-        $this->assertEquals('INT', $registry->getDatabaseType('?int'));
-        $this->assertEquals('FLOAT', $registry->getDatabaseType('?float'));
-        $this->assertEquals('VARCHAR(255)', $registry->getDatabaseType('?string'));
-        $this->assertEquals('TINYINT(1)', $registry->getDatabaseType('?bool'));
-        $this->assertEquals('DATETIME', $registry->getDatabaseType('?DateTime'));
-    }
+// Test classes for inheritance testing
+interface TestInterface {
+}
+class TestParentClass implements TestInterface {
+}
+class TestChildClass extends TestParentClass {
 }

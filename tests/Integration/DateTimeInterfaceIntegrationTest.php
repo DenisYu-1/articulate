@@ -17,7 +17,6 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestDateTimeE
 class DateTimeInterfaceIntegrationTest extends AbstractTestCase {
     public function testDateTimeInterfaceMappingInMigrations(): void
     {
-        $this->skipIfDatabaseNotAvailable('mysql');
         $connection = $this->getConnection('mysql');
 
         $entity = new ReflectionEntity(TestDateTimeEntity::class);

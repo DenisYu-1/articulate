@@ -9,9 +9,9 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use RuntimeException;
 
-readonly class RelationDefinitionCollector {
+class RelationDefinitionCollector {
     public function __construct(
-        private RelationValidatorFactory $relationValidatorFactory,
+        private readonly RelationValidatorFactory $relationValidatorFactory,
     ) {
     }
 

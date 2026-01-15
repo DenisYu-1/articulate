@@ -47,30 +47,21 @@ trait DatabaseTestTrait {
 
     /**
      * Get the current database connection based on the database name.
+     * @throws \RuntimeException if database connection is not available
      */
     protected function getConnection(string $databaseName): Connection
     {
-        return match ($databaseName) {
+        $connection = match ($databaseName) {
             'mysql' => $this->mysqlConnection,
             'pgsql' => $this->pgsqlConnection,
             default => throw new \InvalidArgumentException("Unknown database: {$databaseName}")
         };
-    }
 
-    /**
-     * Skip test if specific database is not available.
-     */
-    protected function skipIfDatabaseNotAvailable(string $databaseName): void
-    {
-        $connection = match ($databaseName) {
-            'mysql' => $this->mysqlConnection ?? null,
-            'pgsql' => $this->pgsqlConnection ?? null,
-            default => null
-        };
-
-        if (!$connection) {
-            $this->markTestSkipped("{$databaseName} database is not available");
+        if ($connection === null) {
+            throw new \RuntimeException("Database '{$databaseName}' is not available. Make sure the database is running and properly configured.");
         }
+
+        return $connection;
     }
 
     /**

@@ -8,12 +8,12 @@ use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableCompara
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 
-readonly class SchemaComparisonCoordinator {
+class SchemaComparisonCoordinator {
     public function __construct(
-        private DatabaseSchemaReaderInterface $databaseSchemaReader,
-        private RelationDefinitionCollector $relationDefinitionCollector,
-        private EntityTableComparator $entityTableComparator,
-        private MappingTableComparator $mappingTableComparator,
+        private readonly DatabaseSchemaReaderInterface $databaseSchemaReader,
+        private readonly RelationDefinitionCollector $relationDefinitionCollector,
+        private readonly EntityTableComparator $entityTableComparator,
+        private readonly MappingTableComparator $mappingTableComparator,
     ) {
     }
 

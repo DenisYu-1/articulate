@@ -221,7 +221,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
             new DatabaseColumn('id', 'int', false, null),
         ]);
-        // Return empty array for indexes - this tests the UnwrapArrayKeys mutation on line 56
+        // Return empty array for indexes - this tests handling of empty index arrays
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([]);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
         $result = iterator_to_array($databaseSchemaComparator->compareAll([
@@ -249,7 +249,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
-        // Test different combinations of column properties to cover LogicalOr mutations on line 147
+        // Test different combinations of column properties to cover complex matching logic
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
             new DatabaseColumn('id', 'INT(11)', false, null), // Different length
         ]);
@@ -270,7 +270,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
     {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
-        // Test when all properties match to cover the negative case of the LogicalOr on line 147
+        // Test when all properties match to cover the case where no updates are needed
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
             new DatabaseColumn('id', 'int', false, null), // Exact match
         ]);
@@ -289,7 +289,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([
             new DatabaseColumn('id', 'int', false, null),
         ]);
-        // Test with index that has empty columns array - covers UnwrapArrayKeys mutation on line 183
+        // Test with index that has empty columns array - covers handling of indexes without columns
         $databaseSchemaReader->expects($this->once())->method('getTableIndexes')->willReturn([
             'test_index' => ['columns' => [], 'unique' => false],
         ]);
@@ -334,7 +334,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         ]));
         $this->assertEquals(1, count($result));
         $this->assertEquals('create', $result[0]->operation);
-        // For create operations, foreign key processing should be skipped (covers Continue_ on line 201)
+        // For create operations, foreign key processing should be skipped
     }
 
     public function testForeignKeyColumnWithoutRelation()
@@ -429,7 +429,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
     public function testForeignKeyValidationFailureDuringColumnCreation()
     {
-        // This test covers the MethodCallRemoval mutation on validator->validate() during column creation (line 130)
+        // This test covers validation during column creation
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]); // No existing tables
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);
@@ -508,7 +508,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
     public function testColumnMatchingLogicPartialMatches()
     {
-        // This test covers LogicalOr mutations on line 166 by testing partial matching scenarios
+        // This test covers partial matching scenarios for index comparisons
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         // Test case where type matches but other properties don't - covers LogicalOr precedence changes
@@ -554,7 +554,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
     public function testCreatedColumnsWithForeignKeysFlagHandling()
     {
-        // This test covers the TrueValue mutation on line 144 where createdColumnsWithForeignKeys flag is set
+        // This test covers the flag tracking for columns created with foreign keys
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn([]); // No existing tables
         $databaseSchemaReader->expects($this->once())->method('getTableColumns')->willReturn([]);

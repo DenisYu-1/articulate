@@ -58,17 +58,17 @@ abstract class BaseMigration {
 
     private function addMigration(float $runningTime)
     {
-        $this->connection->executeQuery('
-            INSERT INTO migrations (name, executed_at, running_time) 
-            VALUES("' . str_replace('\\', '\\\\', static::class) . '", "' . date('Y-m-d H:i:s') . '", "' . $runningTime . '")
-        ');
+        $this->connection->executeQuery(
+            'INSERT INTO migrations (name, executed_at, running_time) VALUES (?, ?, ?)',
+            [static::class, date('Y-m-d H:i:s'), (int) ($runningTime * 1000000)] // Store as microseconds
+        );
     }
 
     private function removeMigration()
     {
-        $this->connection->executeQuery('
-            DELETE FROM migrations 
-            WHERE name = "' . str_replace('\\', '\\\\', static::class) . '"
-        ');
+        $this->connection->executeQuery(
+            'DELETE FROM migrations WHERE name = ?',
+            [static::class]
+        );
     }
 }

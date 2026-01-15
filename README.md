@@ -28,7 +28,6 @@ Context-bounded entities allow multiple entity classes to point to the same data
 class LoginUser
 {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[Property(maxLength: 120)]
@@ -42,7 +41,6 @@ class LoginUser
 class User
 {
     #[PrimaryKey]
-    #[Property]
     public int $id;
 
     #[Property(maxLength: 120)]
@@ -160,7 +158,7 @@ Articulate currently supports:
 - **Hydration System**: Multiple hydrators (Object, Array, Scalar, Partial) for different use cases
 - **Proxy System**: Lazy loading infrastructure for performance optimization
 - **Lifecycle Callbacks**: Pre/Post persist, update, remove, and load hooks
-- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields
+- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields (schema merging & conflict detection implemented, runtime behavior needs completion)
 
 ### ✅ Development & Testing
 - **Comprehensive Test Suite**: 2000+ mutations with 83%+ kill rate
@@ -174,6 +172,7 @@ Articulate currently supports:
 - **Schema Reader**: Full support for MySQL and PostgreSQL with proper type handling
 - **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
 - **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
+- **Context-Bounded Entities Runtime**: Schema merging works, but entity manager runtime behavior needs integration tests
 
 ### 📋 Medium Priority
 - **Repository Pattern**: No abstraction layer for entity-specific queries and operations

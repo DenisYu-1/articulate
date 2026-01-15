@@ -20,7 +20,6 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
 
     public function testGetReferenceReturnsProxyWithoutDatabaseQuery(): void
     {
-        $this->skipIfDatabaseNotAvailable('mysql');
         $connection = $this->getConnection('mysql');
         $entityManager = new EntityManager($connection);
 
@@ -40,7 +39,6 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
 
     public function testRefreshUpdatesEntityWithFreshData(): void
     {
-        $this->skipIfDatabaseNotAvailable('mysql');
         $connection = $this->getConnection('mysql');
         $entityManager = new EntityManager($connection);
 
@@ -70,7 +68,6 @@ class EntityManagerMethodsIntegrationTest extends AbstractTestCase {
 
     public function testRefreshThrowsExceptionForNonExistentEntity(): void
     {
-        $this->skipIfDatabaseNotAvailable('mysql');
         $connection = $this->getConnection('mysql');
         $entityManager = new EntityManager($connection);
 

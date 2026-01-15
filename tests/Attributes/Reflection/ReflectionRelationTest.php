@@ -493,8 +493,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToManyRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the IfNegation mutant on line 63 - ensures OneToMany path is taken
-        // and assertOneToManyCollectionType is called
+        // This test ensures OneToMany relations are properly handled with collection type validation
         $this->assertEquals(TestEntity::class, $reflection->getTargetEntity());
     }
 
@@ -507,14 +506,14 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestEntity::class, 'id');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the LogicalAnd mutation on line 68 - when type is builtin, should still return target entity
+        // This test ensures builtin types are handled correctly when determining target entity
         $this->assertEquals(TestEntity::class, $reflection->getTargetEntity());
     }
 
     public function testGetInversedByThrowsExceptionWhenBothOwnedByAndReferencedBySpecified()
     {
         $schemaNaming = new SchemaNaming();
-        // This tests the LogicalAndAllSubExprNegation mutant on line 97
+        // This test ensures validation that ownedBy and referencedBy cannot both be specified
         $attribute = new OneToOne(targetEntity: TestEntity::class, ownedBy: 'owned', referencedBy: 'referenced');
 
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
@@ -533,7 +532,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the ReturnRemoval mutant on line 101 - ensures the return statement is executed
+        // This test ensures referencedBy value is properly returned
         $this->assertEquals('referencedProperty', $reflection->getInversedBy());
     }
 
@@ -546,7 +545,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the Coalesce mutation on line 106 - but since referencedBy is set, it returns that instead
+        // This test ensures referencedBy takes precedence when set
         $this->assertEquals('customProperty', $reflection->getInversedBy());
     }
 
@@ -558,7 +557,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the LogicalAndSingleSubExprNegation mutant on line 115
+        // This test ensures validation of mapping configuration
         // OneToOne with mappedBy should return false
         $this->assertFalse($reflection->isForeignKeyRequired());
     }
@@ -571,7 +570,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the ReturnRemoval mutant on line 116 - ensures early return
+        // This test ensures proper early return when referencedBy is set
         $this->assertFalse($reflection->isForeignKeyRequired());
     }
 
@@ -584,7 +583,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'manyToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the FalseValue mutant on line 140 - ensures false is returned for non-nullable
+        // This test ensures correct nullability detection for different property types
         $this->assertFalse($reflection->isNullable());
     }
 
@@ -596,7 +595,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'manyToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the Coalesce mutation on line 176 - ensures fallback to 'id'
+        // This test ensures fallback logic when no referenced column is specified
         $this->assertEquals('id', $reflection->getReferencedColumnName());
     }
 
@@ -608,7 +607,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the LogicalOr mutations on line 277 - MorphOne should not be owning side
+        // This test ensures MorphOne relations are correctly identified as non-owning
         $this->assertFalse($reflection->isOwningSide());
     }
 
@@ -620,7 +619,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToManyRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the LogicalOr mutations on line 277 - MorphMany should not be owning side
+        // This test ensures MorphMany relations are correctly identified as non-owning
         $this->assertFalse($reflection->isOwningSide());
     }
 
@@ -632,7 +631,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $property = new ReflectionProperty(TestRelationClass::class, 'oneToOneRelation');
         $reflection = new ReflectionRelation($attribute, $property, $schemaNaming);
 
-        // This tests the ReturnRemoval mutant on line 278 - ensures return false for MorphOne/MorphMany
+        // This test ensures MorphOne and MorphMany relations return false for isOwningSide
         $this->assertFalse($reflection->isOwningSide());
     }
 }

@@ -41,30 +41,59 @@ class ReflectionEntity extends ReflectionClass {
         }
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<Property>[] $entityProperty */
-            $entityProperty = $property->getAttributes(Property::class);
+            $entityProperty = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
             /** @var ReflectionAttribute<PrimaryKey>[] $primaryKeyProperty */
             $primaryKeyProperty = $property->getAttributes(PrimaryKey::class);
 
             // A property is considered an entity property if it has either Property or PrimaryKey attribute
             if (!empty($entityProperty) || !empty($primaryKeyProperty)) {
-                // Extract generator type from PrimaryKey attribute
-                $generatorType = null;
-                if (!empty($primaryKeyProperty)) {
-                    $primaryKeyInstance = $primaryKeyProperty[0]->newInstance();
-                    $generatorType = $primaryKeyInstance->generator;
+                // Find the explicit Property attribute (not PrimaryKey)
+                $explicitProperty = null;
+                foreach ($entityProperty as $attr) {
+                    $instance = $attr->newInstance();
+                    if (!$instance instanceof PrimaryKey) {
+                        $explicitProperty = $instance;
+
+                        break;
+                    }
                 }
 
-                // Use the Property attribute if present, otherwise create a default one
-                $propertyAttribute = !empty($entityProperty)
-                    ? $entityProperty[0]->newInstance()
-                    : new Property(); // Default property configuration for primary keys
+                // Use explicit Property if available, otherwise use PrimaryKey
+                if ($explicitProperty !== null) {
+                    $propertyAttribute = $explicitProperty;
+                } elseif (!empty($primaryKeyProperty)) {
+                    $propertyAttribute = $primaryKeyProperty[0]->newInstance();
+                } else {
+                    // Fallback to first Property attribute
+                    $propertyAttribute = $entityProperty[0]->newInstance();
+                }
+
+                // Check if this property is a primary key
+                $isPrimaryKey = !empty($primaryKeyProperty) || $propertyAttribute instanceof PrimaryKey;
+                $generatorType = null;
+                $sequence = null;
+                $generatorOptions = null;
+                if ($isPrimaryKey) {
+                    // Get generator info from PrimaryKey attribute
+                    $primaryKeyInstance = !empty($primaryKeyProperty)
+                        ? $primaryKeyProperty[0]->newInstance()
+                        : ($propertyAttribute instanceof PrimaryKey ? $propertyAttribute : null);
+
+                    if ($primaryKeyInstance) {
+                        $generatorType = $primaryKeyInstance->generator;
+                        $sequence = $primaryKeyInstance->sequence;
+                        $generatorOptions = $primaryKeyInstance->options;
+                    }
+                }
 
                 yield new ReflectionProperty(
                     $propertyAttribute,
                     $property,
                     isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
-                    isset($property->getAttributes(PrimaryKey::class)[0]) ?? false,
+                    $isPrimaryKey,
                     $generatorType,
+                    $sequence,
+                    $generatorOptions,
                 );
 
                 continue;
@@ -147,11 +176,30 @@ class ReflectionEntity extends ReflectionClass {
         }
         foreach ($this->getProperties() as $property) {
             /** @var ReflectionAttribute<Property>[] $entityProperty */
-            $entityProperty = $property->getAttributes(Property::class);
+            $entityProperty = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
             if (empty($entityProperty)) {
                 continue;
             }
-            yield new ReflectionProperty($entityProperty[0]->newInstance(), $property);
+
+            // Find the explicit Property attribute (not PrimaryKey) or use PrimaryKey
+            $explicitProperty = null;
+            foreach ($entityProperty as $attr) {
+                $instance = $attr->newInstance();
+                if (!$instance instanceof PrimaryKey) {
+                    $explicitProperty = $instance;
+
+                    break;
+                }
+            }
+
+            // Use explicit Property if available, otherwise use PrimaryKey
+            if ($explicitProperty !== null) {
+                $propertyAttribute = $explicitProperty;
+            } else {
+                $propertyAttribute = $entityProperty[0]->newInstance();
+            }
+
+            yield new ReflectionProperty($propertyAttribute, $property);
         }
 
     }
@@ -227,19 +275,11 @@ class ReflectionEntity extends ReflectionClass {
         }
         $columns = [];
         foreach ($this->getProperties() as $property) {
-            $primaryKeyAttribute = $property->getAttributes(PrimaryKey::class);
-            if (empty($primaryKeyAttribute)) {
-                continue;
-            }
-
-            // Check if property has Property attribute for custom column name
-            $propertyAttribute = $property->getAttributes(Property::class);
-            if (!empty($propertyAttribute)) {
-                $reflectionProperty = new ReflectionProperty($propertyAttribute[0]->newInstance(), $property);
+            $primaryKeyAttributes = $property->getAttributes(PrimaryKey::class);
+            if (!empty($primaryKeyAttributes)) {
+                $primaryKeyAttribute = $primaryKeyAttributes[0]->newInstance();
+                $reflectionProperty = new ReflectionProperty($primaryKeyAttribute, $property);
                 $columns[] = $reflectionProperty->getColumnName();
-            } else {
-                // Fall back to default column name parsing
-                $columns[] = strtolower(preg_replace('/\B([A-Z])/', '_$1', $property->getName()));
             }
         }
         sort($columns);

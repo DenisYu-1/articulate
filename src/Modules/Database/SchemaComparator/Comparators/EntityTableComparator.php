@@ -10,12 +10,12 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 
-readonly class EntityTableComparator {
+class EntityTableComparator {
     public function __construct(
-        private DatabaseSchemaReaderInterface $databaseSchemaReader,
-        private ColumnComparator $columnComparator,
-        private IndexComparator $indexComparator,
-        private ForeignKeyComparator $foreignKeyComparator,
+        private readonly DatabaseSchemaReaderInterface $databaseSchemaReader,
+        private readonly ColumnComparator $columnComparator,
+        private readonly IndexComparator $indexComparator,
+        private readonly ForeignKeyComparator $foreignKeyComparator,
     ) {
     }
 

@@ -5,15 +5,15 @@ namespace Articulate\Attributes\Reflection;
 use Articulate\Attributes\Property;
 use ReflectionProperty as BaseReflectionProperty;
 
-readonly class ReflectionProperty implements PropertyInterface {
+class ReflectionProperty implements PropertyInterface {
     public function __construct(
-        private Property $entityProperty,
-        private BaseReflectionProperty $property,
-        private bool $autoIncrement = false,
-        private bool $primaryKey = false,
-        private ?string $generatorType = null,
-        private ?string $sequence = null,
-        private ?array $generatorOptions = null,
+        private readonly Property $entityProperty,
+        private readonly BaseReflectionProperty $property,
+        private readonly bool $autoIncrement = false,
+        private readonly bool $primaryKey = false,
+        private readonly ?string $generatorType = null,
+        private readonly ?string $sequence = null,
+        private readonly ?array $generatorOptions = null,
     ) {
     }
 

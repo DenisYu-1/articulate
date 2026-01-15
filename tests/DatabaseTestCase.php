@@ -39,6 +39,9 @@ abstract class DatabaseTestCase extends AbstractTestCase {
     {
         parent::setUp();
 
+        // Ensure clean state at the start of each test
+        $this->ensureCleanDatabaseState();
+
         // If this is a data provider test, the parameters will be set
         // by the data provider. Otherwise, we'll use the default behavior.
     }
@@ -85,59 +88,6 @@ abstract class DatabaseTestCase extends AbstractTestCase {
             return;
         }
 
-        // First, drop foreign key constraints
-        if ($this->currentDatabaseName === 'mysql') {
-            foreach ($tableNames as $tableName) {
-                try {
-                    // Get foreign key constraint names for this table
-                    $fkResult = $this->currentConnection->executeQuery(
-                        "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS
-                         WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
-                         AND TABLE_NAME = '{$tableName}'
-                         AND TABLE_SCHEMA = DATABASE()"
-                    );
-
-                    $constraints = $fkResult->fetchAll();
-                    foreach ($constraints as $constraint) {
-                        $constraintName = $constraint['CONSTRAINT_NAME'];
-
-                        try {
-                            $this->currentConnection->executeQuery("ALTER TABLE `{$tableName}` DROP FOREIGN KEY `{$constraintName}`");
-                        } catch (\Exception $e) {
-                            error_log("Failed to drop FK {$constraintName} from {$tableName}: " . $e->getMessage());
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore errors when checking constraints
-                }
-            }
-        } elseif ($this->currentDatabaseName === 'pgsql') {
-            foreach ($tableNames as $tableName) {
-                try {
-                    // Get foreign key constraint names for this table in PostgreSQL
-                    $fkResult = $this->currentConnection->executeQuery(
-                        "SELECT conname FROM pg_constraint
-                         INNER JOIN pg_class ON conrelid = pg_class.oid
-                         WHERE contype = 'f'
-                         AND pg_class.relname = '{$tableName}'"
-                    );
-
-                    $constraints = $fkResult->fetchAll();
-                    foreach ($constraints as $constraint) {
-                        $constraintName = $constraint['conname'];
-
-                        try {
-                            $this->currentConnection->executeQuery("ALTER TABLE \"{$tableName}\" DROP CONSTRAINT \"{$constraintName}\"");
-                        } catch (\Exception $e) {
-                            error_log("Failed to drop FK {$constraintName} from {$tableName}: " . $e->getMessage());
-                        }
-                    }
-                } catch (\Exception $e) {
-                    // Ignore errors when checking constraints
-                }
-            }
-        }
-
         // Now drop tables in reverse order (child tables first)
         $tableNamesReversed = array_reverse($tableNames);
 
@@ -148,7 +98,7 @@ abstract class DatabaseTestCase extends AbstractTestCase {
             if ($this->currentDatabaseName === 'mysql') {
                 $dropAttempts = [
                     "DROP TABLE IF EXISTS `{$tableName}`",
-                    "DROP TABLE IF EXISTS {$tableName}",
+                    "SET FOREIGN_KEY_CHECKS = 0; DROP TABLE IF EXISTS `{$tableName}`; SET FOREIGN_KEY_CHECKS = 1;",
                 ];
             } elseif ($this->currentDatabaseName === 'pgsql') {
                 // Use CASCADE for PostgreSQL to handle dependencies
@@ -162,13 +112,105 @@ abstract class DatabaseTestCase extends AbstractTestCase {
 
             foreach ($dropAttempts as $dropSql) {
                 try {
-                    $this->currentConnection->executeQuery($dropSql);
+                    if (str_contains($dropSql, ';')) {
+                        // Multiple statements for MySQL
+                        foreach (array_map('trim', explode(';', $dropSql)) as $stmt) {
+                            if (!empty($stmt)) {
+                                $this->currentConnection->executeQuery($stmt);
+                            }
+                        }
+                    } else {
+                        $this->currentConnection->executeQuery($dropSql);
+                    }
 
                     break; // If successful, don't try other variations
                 } catch (\Exception $e) {
                     // Continue to next attempt
                     error_log("Failed to drop table {$tableName} with SQL: {$dropSql} - " . $e->getMessage());
                 }
+            }
+        }
+    }
+
+    /**
+     * Tear down method to clean up after each test.
+     */
+    protected function tearDown(): void
+    {
+        // Clean up common test tables that might be left behind
+        if ($this->currentConnection && $this->currentDatabaseName) {
+            try {
+                // Try to rollback any failed transaction first
+                try {
+                    $this->currentConnection->rollbackTransaction();
+                } catch (\Exception $e) {
+                    // Transaction might not be active, that's fine
+                }
+
+                // Start a fresh transaction for cleanup
+                $this->currentConnection->beginTransaction();
+
+                try {
+                    $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test']);
+                    $this->currentConnection->commit();
+                } catch (\Exception $e) {
+                    // If cleanup fails, rollback
+                    try {
+                        $this->currentConnection->rollbackTransaction();
+                    } catch (\Exception $rollbackException) {
+                        // Ignore rollback errors
+                    }
+                }
+            } catch (\Exception $e) {
+                // Ignore cleanup errors in tearDown
+                error_log('Cleanup failed in tearDown: ' . $e->getMessage());
+            }
+        }
+
+        parent::tearDown();
+    }
+
+    /**
+     * Ensure database is in a clean state by attempting to drop common test tables.
+     */
+    private function ensureCleanDatabaseState(): void
+    {
+        // Try to clean up tables for both databases if they're available
+        $databases = ['mysql', 'pgsql'];
+
+        foreach ($databases as $dbName) {
+            try {
+                $connection = $this->getConnection($dbName);
+                $this->setCurrentDatabase($connection, $dbName);
+
+                // Try to rollback any failed transaction first
+                try {
+                    $connection->rollbackTransaction();
+                } catch (\Exception $e) {
+                    // Transaction might not be active, that's fine
+                }
+
+                // Start a fresh transaction for cleanup
+                $connection->beginTransaction();
+
+                try {
+                    $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test']);
+                    $connection->commit();
+                } catch (\Exception $e) {
+                    // If cleanup fails, rollback and continue
+                    try {
+                        $connection->rollbackTransaction();
+                    } catch (\Exception $rollbackException) {
+                        // Ignore rollback errors
+                    }
+                }
+
+                // Reset current database state
+                $this->currentConnection = null;
+                $this->currentDatabaseName = null;
+            } catch (\Exception $e) {
+                // Database not available or connection failed, skip cleanup
+                continue;
             }
         }
     }

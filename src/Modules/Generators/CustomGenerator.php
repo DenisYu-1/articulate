@@ -12,6 +12,11 @@ class CustomGenerator extends AbstractGenerator {
      */
     private array $strategies = [];
 
+    /**
+     * @var array<string, int>
+     */
+    private array $sequences = [];
+
     public function __construct()
     {
         parent::__construct('custom');
@@ -25,7 +30,7 @@ class CustomGenerator extends AbstractGenerator {
         $this->strategies[] = $strategy;
     }
 
-    public function generate(string $entityClass, array $options = []): mixed
+    protected function generateInternal(string $entityClass, array $options = []): mixed
     {
         $generatorType = $options['generator'] ?? 'auto_increment';
 
@@ -41,11 +46,10 @@ class CustomGenerator extends AbstractGenerator {
 
     private function generateFallback(string $entityClass): int
     {
-        static $sequences = [];
-        if (!isset($sequences[$entityClass])) {
-            $sequences[$entityClass] = 0;
+        if (!isset($this->sequences[$entityClass])) {
+            $this->sequences[$entityClass] = 0;
         }
 
-        return ++$sequences[$entityClass];
+        return ++$this->sequences[$entityClass];
     }
 }

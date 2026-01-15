@@ -62,12 +62,6 @@ class EntityPersistenceTest extends AbstractTestCase {
         $databases = ['mysql', 'pgsql'];
 
         foreach ($databases as $databaseName) {
-            if (!$this->isDatabaseAvailable($databaseName)) {
-                $this->markTestSkipped("Database '{$databaseName}' is not available");
-
-                continue;
-            }
-
             $connection = $this->getConnection($databaseName);
             $connection->beginTransaction();
 

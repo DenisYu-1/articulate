@@ -3,16 +3,24 @@
 namespace Articulate\Modules\Migrations\Generator;
 
 use DateTimeImmutable;
+use Symfony\Component\Console\Output\OutputInterface;
 
 class MigrationGenerator {
     private string $templatePath;
 
     private string $outputDirectory;
 
-    public function __construct(string $outputDirectory)
-    {
+    public function __construct(
+        string $outputDirectory,
+        private readonly ?OutputInterface $output = null
+    ) {
         $this->templatePath = __DIR__ . '/migration_template.php.dist';
         $this->outputDirectory = $outputDirectory;
+    }
+
+    public function getOutputDirectory(): string
+    {
+        return $this->outputDirectory;
     }
 
     public function generate(string $namespace, string $className, string $upScript, string $downScript): void
@@ -38,6 +46,8 @@ class MigrationGenerator {
         // Write the migration content to the specified file
         file_put_contents($fileName, $migrationContent);
 
-        echo "Migration $className generated successfully at $fileName\n";
+        if ($this->output) {
+            $this->output->writeln("Migration $className generated successfully at $fileName");
+        }
     }
 }

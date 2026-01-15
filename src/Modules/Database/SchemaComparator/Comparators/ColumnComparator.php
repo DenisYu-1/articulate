@@ -10,7 +10,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use RuntimeException;
 
-readonly class ColumnComparator {
+class ColumnComparator {
     /**
      * @param array<string, array{
      *     type: string|null,

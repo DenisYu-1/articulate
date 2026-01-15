@@ -116,7 +116,6 @@ class RelationshipLoaderTest extends DatabaseTestCase {
     public function testLoadOneToManyRelationship(): void
     {
         $databaseName = 'mysql';
-        $this->skipIfDatabaseNotAvailable($databaseName);
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
@@ -173,7 +172,6 @@ class RelationshipLoaderTest extends DatabaseTestCase {
     public function testLoadManyToOneRelationship(): void
     {
         $databaseName = 'mysql';
-        $this->skipIfDatabaseNotAvailable($databaseName);
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
