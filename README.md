@@ -4,7 +4,7 @@
   <img src="logo.svg" alt="Articulate Logo" width="80" height="80">
 </p>
 
-A context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts.
+A modern, context-driven PHP ORM library that enables domain-aware entity management and memory-efficient operations through bounded contexts. 
 Work in progress.
 
 ## Badges
@@ -130,13 +130,14 @@ class MoneyConverter implements TypeConverterInterface {
 
 ## What's Implemented
 
-Articulate provides a solid foundation for PHP ORM development with the following core features:
+Articulate provides a comprehensive ORM foundation with production-ready core features:
 
 ### ✅ Core Architecture
 - **Entity System**: Full attribute-based entity definition with comprehensive relation support
 - **Migration System**: Complete schema management with commands, generators, and execution strategies for MySQL and PostgreSQL
 - **Type Mapping System**: Flexible type conversion with custom converters and priority-based resolution
 - **EntityManager**: Robust implementation with Unit of Work pattern, change tracking, and identity maps
+- **Schema Reader**: Full support for reading existing database schemas from MySQL and PostgreSQL
 
 ### ✅ Supported Databases
 
@@ -154,58 +155,92 @@ Articulate currently supports:
 - **Foreign Key Management**: Automatic FK creation with constraint validation
 
 ### ✅ Entity Management
-- **Unit of Work Pattern**: Memory-efficient change tracking with multiple strategies
+- **Unit of Work Pattern**: Memory-efficient change tracking with multiple strategies (Deferred Implicit/Explicit)
 - **Hydration System**: Multiple hydrators (Object, Array, Scalar, Partial) for different use cases
-- **Proxy System**: Lazy loading infrastructure for performance optimization
+- **Proxy System**: Lazy loading infrastructure with runtime proxy generation
 - **Lifecycle Callbacks**: Pre/Post persist, update, remove, and load hooks
-- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields (schema merging & conflict detection implemented, runtime behavior needs completion)
+- **Context-Bounded Entities**: Multiple entity classes sharing the same table with different fields (full schema merging & conflict detection implemented)
+- **Identity Map**: Efficient entity caching and reference consistency
+- **Change Tracking**: Metadata-driven property extraction and comparison
+
+### ✅ Query Builder
+- **Basic SQL Generation**: SELECT, FROM, WHERE, JOIN, ORDER BY, LIMIT/OFFSET support
+- **Entity Integration**: Automatic table name resolution and result hydration
+- **Parameter Binding**: Safe query execution with prepared statements
 
 ### ✅ Development & Testing
 - **Comprehensive Test Suite**: 2000+ mutations with 83%+ kill rate
 - **Multi-Database Testing**: Automated testing across all supported databases
 - **Code Quality**: PHP-CS-Fixer, PHPStan static analysis, Deptrac architecture validation
 - **CI/CD Pipeline**: GitHub Actions with automated QA checks
+- **Mutation Testing**: Infection framework with high mutation kill rate
+
+## Testing Strategy
+
+Articulate employs a rigorous testing approach focused on quality and reliability:
+
+### Multi-Database Testing
+- **Parallel Test Execution**: Tests run simultaneously across MySQL and PostgreSQL
+- **Database-Specific Logic**: Conditional SQL handling for database differences
+- **Isolation**: Each test uses unique table names and transaction rollbacks
+- **Real Database Connections**: Functional tests over mocks for accuracy
+
+### Mutation Testing
+- **Infection Framework**: 2000+ mutations with 83%+ kill rate
+- **Code Quality Assurance**: Ensures test coverage catches actual bugs
+- **Continuous Improvement**: High mutation scores indicate robust test suites
+
+### Test Categories
+- **Unit Tests**: Core logic and algorithms
+- **Integration Tests**: Full workflow testing with real databases
+- **Functional Tests**: End-to-end entity operations
+- **Migration Tests**: Schema changes and database compatibility
+
+### Quality Assurance Pipeline
+```bash
+composer qa  # Runs: CS check → Architecture check → Tests → Mutation testing
+```
 
 ## Current Gaps & Known Issues
 
 ### 🚧 High Priority
-- **Schema Reader**: Full support for MySQL and PostgreSQL with proper type handling
-- **QueryBuilder**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions)
-- **Change Tracking**: Uses basic reflection instead of metadata-driven property extraction
-- **Context-Bounded Entities Runtime**: Schema merging works, but entity manager runtime behavior needs integration tests
+- **QueryBuilder Enhancement**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions, JOIN optimizations)
+- **Context-Bounded Entities Runtime**: Schema merging and conflict detection work, but runtime behavior needs comprehensive integration tests
 
 ### 📋 Medium Priority
 - **Repository Pattern**: No abstraction layer for entity-specific queries and operations
-- **Caching**: Missing query result cache and second-level entity cache
 - **Advanced Query Features**: Criteria API, native SQL queries, bulk operations
-- **Lock Modes**: No pessimistic or optimistic locking support
+- **Caching Layer**: Query result cache and second-level entity cache
+- **Lock Modes**: Pessimistic and optimistic locking support
+- **Event System**: Limited to lifecycle callbacks; broader event architecture would be beneficial
 
 ### 🔄 Low Priority
-- **Event System**: Limited to lifecycle callbacks; could benefit from broader event architecture
-- **ID Generation**: Basic auto-increment; missing UUID, sequences, custom generators
+- **ID Generation Strategies**: Currently supports auto-increment; could add UUID, sequences, custom generators
+- **Performance Optimizations**: Statement caching, connection pooling strategies
 
-### 📚 Documentation
-- **Relations Guide**: `src/Attributes/Relations/README.md` (comprehensive coverage of all relation types)
-
-## Local Development & Testing
+## Development Environment
 
 ### Prerequisites
 
-- Docker & Docker Compose (for database testing)
+- Docker & Docker Compose (required for all development tasks)
+- PHP scripts must be executed inside Docker containers
 
-### Database Setup
+### Docker Environment Setup
 
-For running tests locally, start the required databases:
+All development work must be done inside Docker containers:
 
 ```bash
+# Start all services (MySQL, PostgreSQL, PHP)
 docker compose up -d
+
+# Access PHP container for development
+docker compose exec php bash
 ```
 
 ### Environment Configuration
 
-1. **Creating a `.env` file**:
+1. **Local `.env` file** (optional, for custom database connections):
    ```env
-   # For local development (outside Docker)
    DATABASE_HOST=127.0.0.1
    DATABASE_HOST_PGSQL=127.0.0.1
    DATABASE_USER=articulate_user
@@ -213,89 +248,81 @@ docker compose up -d
    DATABASE_NAME=articulate_test
    ```
 
-2. **Modifying `docker-compose.override.yml`** for custom local configuration
+2. **Docker Compose Override** (for custom configurations):
+   Modify `docker-compose.override.yml` for local environment adjustments
 
-### Running Tests
+### Development Workflow
 
-#### Local Development (without Docker)
+All commands should be run inside the PHP container:
+
 ```bash
-# Install dependencies
+# Access PHP container
+docker compose exec php bash
+
+# Install/update dependencies
 composer install
 
-# Run all QA checks (code style + tests + mutation testing)
+# Run complete QA pipeline
 composer qa
 
-# Run only unit tests
+# Run tests only
 composer test
 
-# Run tests with coverage
+# Run tests with coverage report
 composer test:coverage
 
-# Run mutation tests
+# Run mutation tests (time-intensive)
 composer test:mutation
 
 # Fix code style issues
 composer cs:fix
+
+# Check architecture dependencies
+composer architecture:check
+
+# Run complexity analysis
+composer complexity:check
 ```
 
-## Future Improvements
+### Database Testing
 
-This section outlines planned enhancements and features for future versions of Articulate.
+The project includes automated multi-database testing:
 
-### ID Generation Strategies
+```bash
+# Run all database tests
+docker compose exec php composer test -- --testsuite="Database Tests"
 
-**Current State**: Basic auto-increment ID generation for entities without existing IDs.
+# Run MySQL-specific tests
+docker compose exec php composer test -- --group=mysql
 
-**Planned Improvements**:
-- **Database-Specific Strategies**:
-  - MySQL auto-increment (`AUTO_INCREMENT`)
-  - PostgreSQL serial types (`SERIAL`, `BIGSERIAL`)
-  - PostgreSQL sequences (`SERIAL`, `NEXTVAL`)
-  - SQL Server identity columns
-- **UUID/GUID Generation**: Built-in UUID v4/v7 generation with attribute configuration
-- **Custom ID Generators**: Pluggable strategies for application-specific ID generation
-- **Natural Key Support**: Using business-meaningful fields as primary keys (non-auto-generated)
-- **Sequence Support**: Named sequences for enterprise databases
-
-**Note**: Composite primary keys (multi-column) are intentionally out of scope for Articulate's initial versions, as they add significant complexity and are not commonly needed in modern application development. Surrogate keys (single-column auto-generated IDs) are recommended for most use cases.
-
-**Example Usage**:
-```php
-#[Entity]
-#[Id(strategy: 'uuid')]
-class Product {
-    #[Id]
-    public string $id; // Auto-generated UUID
-
-    public string $name;
-}
-
-#[Entity]
-#[Id(strategy: 'sequence', sequence: 'user_seq')]
-class User {
-    #[Id]
-    public int $id; // From PostgreSQL sequence
-
-    public string $email;
-}
-
-#[Entity]
-#[Id(strategy: 'auto')] // Default auto-increment
-class Order {
-    #[Id]
-    public int $id; // MySQL AUTO_INCREMENT or PostgreSQL SERIAL
-
-    public string $orderNumber; // Natural key, not auto-generated
-}
+# Run PostgreSQL-specific tests
+docker compose exec php composer test -- --group=pgsql
 ```
 
-## CI/CD
+### Available Services
 
-This project uses GitHub Actions for continuous integration. The QA workflow runs on every push and pull request to main/master/develop branches.
+- `php`: PHP 8.4 application container
+- `mysql`: MySQL 8.0 database
+- `pgsql`: PostgreSQL 15 database
 
-### QA Checks
+## Roadmap
 
-The `composer qa` command runs the following checks:
-- **Code style**: `php-cs-fixer fix --dry-run --diff --allow-risky=yes`
-- **Unit tests**: `phpunit` (requires MySQL and PostgreSQL)
-- **Mutation testing**: `infection --threads=max`
+### Next Phase: Query Builder Enhancement
+
+The next major development phase focuses on expanding the Query Builder capabilities:
+
+- **Advanced SQL Features**: Subqueries, aggregations (COUNT, SUM, AVG), complex WHERE conditions
+- **JOIN Optimizations**: Efficient multi-table queries with relation-aware joins
+- **Criteria API**: Object-oriented query building for complex conditions
+- **Native SQL Queries**: Direct SQL execution with result mapping
+- **Bulk Operations**: Efficient batch inserts, updates, and deletes
+
+### Future Enhancements
+
+- **Repository Pattern**: Abstraction layer for entity-specific queries and operations
+- **Caching Layer**: Query result cache and second-level entity cache
+- **Lock Modes**: Pessimistic and optimistic locking support
+- **Event System**: Broader event architecture beyond lifecycle callbacks
+- **ID Generation Strategies**: UUID, sequences, and custom generators
+- **Performance Optimizations**: Statement caching and connection pooling
+
