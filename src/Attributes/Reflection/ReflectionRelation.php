@@ -69,6 +69,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         // Check for explicit target entity
         if ($this->entityProperty->getTargetEntity()) {
             $this->validateAndReturnEntity($this->entityProperty->getTargetEntity(), $this->isOneToMany());
+
             return $this->entityProperty->getTargetEntity();
         }
 
@@ -81,6 +82,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         $type = $this->property->getType();
         if ($type && !$type->isBuiltin()) {
             $this->validateAndReturnEntity($type->getName(), false);
+
             return $type->getName();
         }
 

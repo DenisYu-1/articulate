@@ -123,6 +123,7 @@ class ColumnComparator {
 
         if (!isset($propertiesIndexed[$columnName])) {
             $propertiesIndexed[$columnName] = $incoming;
+
             return $propertiesIndexed;
         }
 

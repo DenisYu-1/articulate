@@ -43,26 +43,32 @@ class ReflectionEntity extends ReflectionClass {
         foreach ($this->getProperties() as $property) {
             if ($result = $this->processPropertyAttribute($property)) {
                 yield $result;
+
                 continue;
             }
             if ($result = $this->processOneToOneAttribute($property)) {
                 yield $result;
+
                 continue;
             }
             if ($result = $this->processManyToOneAttribute($property)) {
                 yield $result;
+
                 continue;
             }
             if ($result = $this->processMorphToAttribute($property)) {
                 yield $result;
+
                 continue;
             }
             if ($result = $this->processMorphOneAttribute($property)) {
                 yield $result;
+
                 continue;
             }
             if ($result = $this->processMorphManyAttribute($property)) {
                 yield $result;
+
                 continue;
             }
         }
@@ -111,6 +117,7 @@ class ReflectionEntity extends ReflectionClass {
             $instance = $attr->newInstance();
             if (!$instance instanceof PrimaryKey) {
                 $explicitProperty = $instance;
+
                 break;
             }
         }
@@ -194,6 +201,7 @@ class ReflectionEntity extends ReflectionClass {
         }
 
         $propertyInstance = $entityProperty[0]->newInstance();
+
         return new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
     }
 
@@ -210,6 +218,7 @@ class ReflectionEntity extends ReflectionClass {
         }
 
         $propertyInstance = $entityProperty[0]->newInstance();
+
         return new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
     }
 
@@ -394,6 +403,15 @@ class ReflectionEntity extends ReflectionClass {
         }
 
         return $this->getAttributes(Entity::class)[0]->newInstance()->tableName ?? $this->parseTableName();
+    }
+
+    public function getRepositoryClass(): ?string
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        return $this->getAttributes(Entity::class)[0]->newInstance()->repositoryClass;
     }
 
     private function parseTableName(): string

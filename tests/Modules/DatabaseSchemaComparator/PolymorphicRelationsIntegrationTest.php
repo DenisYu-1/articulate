@@ -2,20 +2,21 @@
 
 namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
+use Articulate\Attributes\Entity as EntityAttr;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
-use Articulate\Attributes\Entity as EntityAttr;
-use Articulate\Attributes\Indexes\PrimaryKey;
-use Articulate\Attributes\Property;
-use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCommentEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestMorphToEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPostEntity;
+use Exception;
 
 #[EntityAttr(tableName: 'test_polymorphic_entity')]
 class TestPolymorphicEntity {
@@ -173,12 +174,14 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
         try {
             // Create test tables for polymorphic relationships
             $this->createTestTables($connection, $databaseName);
+
             return true;
         } catch (Exception $e) {
             // If table creation fails, try to drop and recreate
             try {
                 $this->dropTestTables($connection);
                 $this->createTestTables($connection, $databaseName);
+
                 return true;
             } catch (Exception $dropException) {
                 // If we still can't create the tables, skip this database

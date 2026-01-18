@@ -6,6 +6,8 @@ use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Modules\Repository\RepositoryFactory;
+use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
 
 class EntityManager {
@@ -31,6 +33,8 @@ class EntityManager {
     private QueryExecutor $queryExecutor;
 
     private ?Proxy\ProxyManager $proxyManager = null;
+
+    private RepositoryFactory $repositoryFactory;
 
     public function __construct(
         Connection $connection,
@@ -77,6 +81,9 @@ class EntityManager {
 
         // Initialize QueryBuilder
         $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
+
+        // Initialize RepositoryFactory
+        $this->repositoryFactory = new RepositoryFactory($this);
     }
 
     // Persistence operations
@@ -585,6 +592,17 @@ class EntityManager {
     public function createProxy(string $entityClass, mixed $identifier): Proxy\ProxyInterface
     {
         return $this->proxyManager->createProxy($entityClass, $identifier);
+    }
+
+    /**
+     * Get a repository for the given entity class.
+     *
+     * If the entity specifies a custom repository class via the Entity attribute,
+     * that class will be used. Otherwise, a generic EntityRepository will be returned.
+     */
+    public function getRepository(string $entityClass): RepositoryInterface
+    {
+        return $this->repositoryFactory->getRepository($entityClass);
     }
 
     /**

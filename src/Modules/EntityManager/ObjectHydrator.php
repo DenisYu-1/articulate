@@ -279,6 +279,7 @@ class ObjectHydrator implements HydratorInterface {
         $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
         if (!empty($primaryKeyColumns)) {
             $firstKey = $primaryKeyColumns[0];
+
             return $data[$firstKey] ?? null;
         }
 

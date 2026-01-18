@@ -1,0 +1,32 @@
+<?php
+
+namespace Articulate\Modules\Repository;
+
+interface RepositoryInterface {
+    public function find(mixed $id): ?object;
+
+    public function findAll(): array;
+
+    /**
+     * @param array<string, mixed> $criteria
+     * @param array<string, 'ASC'|'DESC'>|null $orderBy
+     * @param int|null $limit
+     * @param int|null $offset
+     * @return object[]
+     */
+    public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array;
+
+    /**
+     * @param array<string, mixed> $criteria
+     * @param array<string, 'ASC'|'DESC'>|null $orderBy
+     * @return object|null
+     */
+    public function findOneBy(array $criteria, ?array $orderBy = null): ?object;
+
+    /**
+     * @param array<string, mixed> $criteria
+     */
+    public function count(array $criteria = []): int;
+
+    public function exists(mixed $id): bool;
+}

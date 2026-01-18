@@ -89,6 +89,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
                 }
             }
         }
+
         return $changes;
     }
 
@@ -112,6 +113,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
                 }
             }
         }
+
         return $changes;
     }
 
@@ -132,6 +134,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
                 $changes[] = $this->generateForwardColumnChange($column);
             }
         }
+
         return array_filter($changes); // Remove empty strings
     }
 
@@ -152,6 +155,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
         }
 
         $parts[] = $this->columnDefinition($column->name, $column->propertyData);
+
         return implode(' ', $parts);
     }
 
@@ -175,6 +179,7 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
         }
 
         $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
+
         return implode(' ', $columnParts);
     }
 

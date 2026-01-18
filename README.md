@@ -128,6 +128,104 @@ class MoneyConverter implements TypeConverterInterface {
 }
 ```
 
+## Repository Pattern
+
+Articulate provides a flexible repository pattern that allows you to organize entity-specific queries and operations in dedicated classes.
+
+### Basic Usage
+
+Get a repository for any entity using the EntityManager:
+
+```php
+$userRepository = $em->getRepository(User::class);
+
+// Basic CRUD operations
+$user = $userRepository->find(1);
+$allUsers = $userRepository->findAll();
+$activeUsers = $userRepository->findBy(['status' => 'active']);
+$user = $userRepository->findOneBy(['email' => 'user@example.com']);
+$userCount = $userRepository->count(['status' => 'active']);
+$exists = $userRepository->exists(1);
+```
+
+### Custom Repository Classes
+
+Create custom repository classes for entity-specific operations:
+
+```php
+#[Entity(repositoryClass: UserRepository::class)]
+class User
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $email;
+
+    #[Property]
+    public string $status;
+}
+
+class UserRepository extends AbstractRepository
+{
+    public function findByEmail(string $email): ?User
+    {
+        return $this->findOneBy(['email' => $email]);
+    }
+
+    public function findActiveUsers(): array
+    {
+        return $this->createQueryBuilder()
+            ->where('status = ?', 'active')
+            ->orderBy('created_at', 'DESC')
+            ->getResult();
+    }
+
+    public function findUsersByStatusPaginated(string $status, int $page = 1, int $limit = 20): array
+    {
+        return $this->findBy(
+            ['status' => $status],
+            ['created_at' => 'DESC'],
+            $limit,
+            ($page - 1) * $limit
+        );
+    }
+}
+
+// Usage
+$userRepo = $em->getRepository(User::class); // Returns UserRepository
+$user = $userRepo->findByEmail('user@example.com');
+$activeUsers = $userRepo->findActiveUsers();
+```
+
+### Repository Interface
+
+All repositories implement `RepositoryInterface`:
+
+```php
+interface RepositoryInterface
+{
+    public function find(mixed $id): ?object;
+    public function findAll(): array;
+    public function findBy(array $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array;
+    public function findOneBy(array $criteria, ?array $orderBy = null): ?object;
+    public function count(array $criteria = []): int;
+    public function exists(mixed $id): bool;
+}
+```
+
+### Default Repository
+
+Entities without a custom repository class automatically get an `EntityRepository` instance that provides all standard operations.
+
+```php
+#[Entity] // No repositoryClass specified
+class Product { ... }
+
+// Returns EntityRepository<Product>
+$productRepo = $em->getRepository(Product::class);
+```
+
 ## What's Implemented
 
 Articulate provides a comprehensive ORM foundation with production-ready core features:
@@ -167,6 +265,14 @@ Articulate currently supports:
 - **Basic SQL Generation**: SELECT, FROM, WHERE, JOIN, ORDER BY, LIMIT/OFFSET support
 - **Entity Integration**: Automatic table name resolution and result hydration
 - **Parameter Binding**: Safe query execution with prepared statements
+
+### ✅ Repository Pattern
+- **RepositoryInterface**: Standardized contract for entity-specific operations
+- **AbstractRepository**: Base implementation with common CRUD operations (find, findAll, findBy, findOneBy, count, exists)
+- **EntityRepository**: Generic repository for entities without custom logic
+- **Custom Repositories**: Extend AbstractRepository for entity-specific query methods
+- **Entity Attribute Integration**: Specify custom repository class via `#[Entity(repositoryClass: CustomRepo::class)]`
+- **QueryBuilder Integration**: Repositories use QueryBuilder for complex queries
 
 ### ✅ Development & Testing
 - **Comprehensive Test Suite**: 2000+ mutations with 83%+ kill rate
@@ -319,7 +425,6 @@ The next major development phase focuses on expanding the Query Builder capabili
 
 ### Future Enhancements
 
-- **Repository Pattern**: Abstraction layer for entity-specific queries and operations
 - **Caching Layer**: Query result cache and second-level entity cache
 - **Lock Modes**: Pessimistic and optimistic locking support
 - **Event System**: Broader event architecture beyond lifecycle callbacks

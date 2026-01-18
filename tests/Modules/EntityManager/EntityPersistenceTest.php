@@ -29,12 +29,14 @@ class EntityPersistenceTest extends AbstractTestCase {
     {
         try {
             $this->createTestUserTable($connection, $databaseName);
+
             return true;
         } catch (Exception $e) {
             // If table creation fails (e.g., table already exists), try to drop and recreate
             try {
                 $connection->executeQuery('DROP TABLE IF EXISTS test_user');
                 $this->createTestUserTable($connection, $databaseName);
+
                 return true;
             } catch (Exception $dropException) {
                 // If we still can't create the table, skip this database

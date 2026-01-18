@@ -18,6 +18,8 @@ class EntityMetadata {
 
     private ?string $tableName = null;
 
+    private ?string $repositoryClass = null;
+
     private array $properties = [];
 
     private array $relations = [];
@@ -40,6 +42,7 @@ class EntityMetadata {
         }
 
         $this->tableName = $this->reflectionEntity->getTableName();
+        $this->repositoryClass = $this->reflectionEntity->getRepositoryClass();
         $this->primaryKeyColumns = $this->reflectionEntity->getPrimaryKeyColumns();
 
         // Load properties from getEntityProperties (includes Property attributes)
@@ -94,6 +97,14 @@ class EntityMetadata {
     public function getTableName(): string
     {
         return $this->tableName;
+    }
+
+    /**
+     * Get the repository class for this entity.
+     */
+    public function getRepositoryClass(): ?string
+    {
+        return $this->repositoryClass;
     }
 
     /**

@@ -201,6 +201,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
                 }
             }
         }
+
         return $changes;
     }
 
@@ -224,6 +225,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
                 }
             }
         }
+
         return $changes;
     }
 
@@ -244,6 +246,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
                 $changes[] = $this->generateForwardColumnChange($column);
             }
         }
+
         return array_filter($changes); // Remove empty strings
     }
 
@@ -264,6 +267,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
         }
 
         $parts[] = $this->columnDefinition($column->name, $column->propertyData);
+
         return implode(' ', $parts);
     }
 
@@ -287,6 +291,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
         }
 
         $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
+
         return implode(' ', $columnParts);
     }
 
