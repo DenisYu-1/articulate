@@ -205,6 +205,13 @@ class QueryBuilder {
         return $this;
     }
 
+    public function resetHaving(): self
+    {
+        $this->having = [];
+
+        return $this;
+    }
+
     public function reset(): self
     {
         $this->select = [];

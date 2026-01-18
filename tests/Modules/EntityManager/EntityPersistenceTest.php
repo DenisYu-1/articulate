@@ -25,8 +25,6 @@ class TestUser {
 }
 
 class EntityPersistenceTest extends AbstractTestCase {
-    protected bool $useTransactions = false;
-
     protected function setUpTestTables(Connection $connection, string $databaseName): bool
     {
         try {

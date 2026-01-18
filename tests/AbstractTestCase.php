@@ -9,11 +9,6 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 abstract class AbstractTestCase extends TestCase {
-    /**
-     * Whether this test class should start transactions automatically.
-     * Override in subclasses that need DDL operations.
-     */
-    protected bool $useTransactions = true;
     protected ?Connection $mysqlConnection = null;
 
     protected ?Connection $pgsqlConnection = null;
@@ -47,7 +42,7 @@ abstract class AbstractTestCase extends TestCase {
             // DDL operations must be done outside transactions (they cause implicit commits)
             if (!$this->setUpTestTables($this->mysqlConnection, 'mysql')) {
                 $this->mysqlConnection = null;
-            } elseif ($this->useTransactions) {
+            } else {
                 $this->mysqlConnection->beginTransaction();
             }
         } catch (Exception $e) {
@@ -60,7 +55,7 @@ abstract class AbstractTestCase extends TestCase {
             // DDL operations must be done outside transactions (they cause implicit commits)
             if (!$this->setUpTestTables($this->pgsqlConnection, 'pgsql')) {
                 $this->pgsqlConnection = null;
-            } elseif ($this->useTransactions) {
+            } else {
                 $this->pgsqlConnection->beginTransaction();
             }
         } catch (Exception $e) {
@@ -72,10 +67,8 @@ abstract class AbstractTestCase extends TestCase {
     {
         if ($this->pgsqlConnection) {
             try {
-                if ($this->useTransactions) {
-                    $this->pgsqlConnection->rollbackTransaction();
-                }
-                // Clean up test tables after transaction is complete (or immediately if no transaction)
+                $this->pgsqlConnection->rollbackTransaction();
+                // Clean up test tables after transaction is complete
                 $this->tearDownTestTables($this->pgsqlConnection, 'pgsql');
             } catch (Exception $e) {
                 // Ignore rollback errors
@@ -84,10 +77,8 @@ abstract class AbstractTestCase extends TestCase {
 
         if ($this->mysqlConnection) {
             try {
-                if ($this->useTransactions) {
-                    $this->mysqlConnection->rollbackTransaction();
-                }
-                // Clean up test tables after transaction is complete (or immediately if no transaction)
+                $this->mysqlConnection->rollbackTransaction();
+                // Clean up test tables after transaction is complete
                 $this->tearDownTestTables($this->mysqlConnection, 'mysql');
             } catch (Exception $e) {
                 // Ignore rollback errors

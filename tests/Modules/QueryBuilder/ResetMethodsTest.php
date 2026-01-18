@@ -98,7 +98,25 @@ class ResetMethodsTest extends TestCase {
         $this->assertEquals('SELECT category, COUNT(*) FROM products GROUP BY brand', $sql);
     }
 
-    // HAVING tests moved to Phase 2 (Aggregates/HAVING)
+    public function testResetHaving(): void
+    {
+        $qb = $this->qb
+            ->select('category', 'COUNT(*)')
+            ->from('products')
+            ->groupBy('category')
+            ->having('COUNT(*) > ?', 5)
+            ->having('SUM(price) < ?', 1000)
+            ->resetHaving()
+            ->having('AVG(price) > ?', 50);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT category, COUNT(*) FROM products GROUP BY category HAVING AVG(price) > ?', $sql);
+        $this->assertEquals([50], $params);
+    }
+
+    // HAVING functionality is now implemented (Phase 2)
 
     public function testResetFull(): void
     {
@@ -170,7 +188,7 @@ class ResetMethodsTest extends TestCase {
         $this->assertSame($qb, $qb->resetJoins());
         $this->assertSame($qb, $qb->resetOrderBy());
         $this->assertSame($qb, $qb->resetGroupBy());
-        // resetHaving() not implemented in Phase 1
+        $this->assertSame($qb, $qb->resetHaving());
     }
 
     public function testBuildQueryAfterReset(): void
