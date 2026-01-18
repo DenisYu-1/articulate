@@ -2,6 +2,7 @@
 
 namespace Articulate\Attributes\Reflection;
 
+use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MorphMany;
 use Articulate\Attributes\Relations\MorphOne;
@@ -267,6 +268,11 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
     public function isOneToMany(): bool
     {
         return $this->entityProperty instanceof OneToMany;
+    }
+
+    public function isManyToMany(): bool
+    {
+        return $this->entityProperty instanceof ManyToMany;
     }
 
     public function isMorphTo(): bool

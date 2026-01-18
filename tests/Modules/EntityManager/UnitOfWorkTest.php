@@ -188,12 +188,18 @@ class UnitOfWorkTest extends TestCase {
 
     public function testIsInIdentityMap(): void
     {
-        $entity = new class() {
-            public int $id = 1;
-        };
+        $entity = new TestEntityForId();
+        $entity->id = 1;
+        $entity->name = 'Test Entity';
 
-        // Currently returns false as it's not implemented
+        // Entity not yet registered should return false
         $this->assertFalse($this->unitOfWork->isInIdentityMap($entity));
+
+        // Register the entity
+        $this->unitOfWork->registerManaged($entity, ['id' => 1]);
+
+        // Now it should be in the identity map
+        $this->assertTrue($this->unitOfWork->isInIdentityMap($entity));
     }
 
     public function testPersistEntityWithExistingIdDoesNotOverwrite(): void

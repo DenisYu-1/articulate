@@ -70,6 +70,9 @@ class QueryExecutor {
             $values[] = $value;
         }
 
+        // Handle MorphTo relationships
+        $this->addMorphToColumns($entity, $columns, $placeholders, $values);
+
         // Generate INSERT SQL
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
@@ -149,6 +152,9 @@ class QueryExecutor {
         if (empty($setParts)) {
             return; // No non-relation properties changed
         }
+
+        // Handle MorphTo relationships - add any morph columns that changed
+        $this->addMorphToChanges($entity, $setParts, $values);
 
         // Prepare WHERE clause - try primary key first, then fall back to 'id' property
         [$whereClause, $whereValues] = $this->buildWhereClause($entity);
@@ -339,7 +345,7 @@ class QueryExecutor {
         // Use reflection to find the primary key generator type
         $reflectionEntity = new ReflectionEntity($entityClass);
 
-        foreach ($reflectionEntity->getEntityProperties() as $property) {
+        foreach ($reflectionEntity->getEntityFieldsProperties() as $property) {
             if ($property->isPrimaryKey()) {
                 $generatorType = $property->getGeneratorType();
 
@@ -403,7 +409,7 @@ class QueryExecutor {
         $reflectionEntity = new ReflectionEntity($entity::class);
 
         // First try to find primary key from entity metadata
-        foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+        foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
             if ($property->isPrimaryKey()) {
                 return new NativeReflectionProperty($entity, $property->getFieldName());
             }
@@ -416,5 +422,77 @@ class QueryExecutor {
         }
 
         return null;
+    }
+
+    /**
+     * Add MorphTo relationship columns to the insert/update operation.
+     */
+    private function addMorphToColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        // Get all relations
+        $relations = $entityMetadata->getRelations();
+
+        foreach ($relations as $relation) {
+            if ($relation->isMorphTo()) {
+                // Get the relationship value
+                $propertyName = $relation->getPropertyName();
+                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty->setAccessible(true);
+                $relatedEntity = $reflectionProperty->getValue($entity);
+
+                if ($relatedEntity !== null) {
+                    // Extract type and ID from the related entity
+                    $morphType = $relatedEntity::class;
+                    $relatedId = $this->extractEntityId($relatedEntity);
+
+                    // Add the morph columns
+                    $columns[] = $relation->getMorphTypeColumnName();
+                    $placeholders[] = '?';
+                    $values[] = $morphType;
+
+                    $columns[] = $relation->getMorphIdColumnName();
+                    $placeholders[] = '?';
+                    $values[] = $relatedId;
+                }
+            }
+        }
+    }
+
+    /**
+     * Add MorphTo relationship changes to the update operation.
+     */
+    private function addMorphToChanges(object $entity, array &$setParts, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        // Get all relations
+        $relations = $entityMetadata->getRelations();
+
+        foreach ($relations as $relation) {
+            if ($relation->isMorphTo()) {
+                // Get the relationship value
+                $propertyName = $relation->getPropertyName();
+                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty->setAccessible(true);
+                $relatedEntity = $reflectionProperty->getValue($entity);
+
+                // For updates, we always include morph columns if the relationship is set
+                // (in a full implementation, we'd track if the relationship actually changed)
+                if ($relatedEntity !== null) {
+                    // Extract type and ID from the related entity
+                    $morphType = $relatedEntity::class;
+                    $relatedId = $this->extractEntityId($relatedEntity);
+
+                    // Add the morph columns
+                    $setParts[] = $relation->getMorphTypeColumnName() . ' = ?';
+                    $values[] = $morphType;
+
+                    $setParts[] = $relation->getMorphIdColumnName() . ' = ?';
+                    $values[] = $relatedId;
+                }
+            }
+        }
     }
 }

@@ -69,8 +69,11 @@ class EntityManager {
             $proxyGenerator
         );
 
+        // Initialize type registry for type conversion
+        $typeRegistry = new TypeRegistry();
+
         // Initialize hydrator
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager, $typeRegistry);
 
         // Initialize QueryBuilder
         $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
@@ -302,8 +305,18 @@ class EntityManager {
         $primaryKeyColumn = $primaryKeyColumns[0];
 
         // Build and execute query directly to get raw data
+        $columnNames = $metadata->getColumnNames();
+
+        // Add morph columns from relations
+        foreach ($metadata->getRelations() as $relation) {
+            if ($relation->isMorphTo()) {
+                $columnNames[] = $relation->getMorphTypeColumnName();
+                $columnNames[] = $relation->getMorphIdColumnName();
+            }
+        }
+
         $qb = $this->createQueryBuilder()
-            ->select(...$metadata->getColumnNames())
+            ->select(...$columnNames)
             ->from($tableName)
             ->where("$primaryKeyColumn = ?", $id)
             ->limit(1);

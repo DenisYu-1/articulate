@@ -184,7 +184,6 @@ class UnitOfWork {
 
     public function registerManaged(object $entity, array $data): void
     {
-        // TODO: Extract ID from entity based on metadata
         $id = $this->extractEntityId($entity);
         $oid = spl_object_id($entity);
 
@@ -208,9 +207,12 @@ class UnitOfWork {
 
     public function isInIdentityMap(object $entity): bool
     {
-        // TODO: Check if entity is in identity map
-        // This requires extracting the ID from the entity
-        return false;
+        $id = $this->extractEntityId($entity);
+        if ($id === null) {
+            return false;
+        }
+
+        return $this->identityMap->has($entity::class, $id);
     }
 
     /**
