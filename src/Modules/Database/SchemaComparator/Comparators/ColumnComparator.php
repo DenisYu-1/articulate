@@ -119,7 +119,29 @@ class ColumnComparator {
      */
     public function mergeColumnDefinition(array $propertiesIndexed, string $columnName, ReflectionProperty|ReflectionRelation $property, string $tableName): array
     {
-        $incoming = [
+        $incoming = $this->buildColumnProperties($property);
+
+        if (!isset($propertiesIndexed[$columnName])) {
+            $propertiesIndexed[$columnName] = $incoming;
+            return $propertiesIndexed;
+        }
+
+        $existing = $propertiesIndexed[$columnName];
+
+        $this->validateColumnConflicts($incoming, $existing, $columnName, $tableName);
+        $this->validateRelationConflicts($incoming, $existing, $columnName, $tableName);
+
+        $propertiesIndexed[$columnName] = $this->mergeColumnProperties($incoming, $existing);
+
+        return $propertiesIndexed;
+    }
+
+    /**
+     * Builds column properties array from a property or relation.
+     */
+    private function buildColumnProperties(ReflectionProperty|ReflectionRelation $property): array
+    {
+        return [
             'type' => $this->normalizeTypeName($property->getType()),
             'nullable' => $property->isNullable(),
             'default' => $property->getDefaultValue(),
@@ -132,15 +154,13 @@ class ColumnComparator {
             'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
             'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
         ];
+    }
 
-        if (!isset($propertiesIndexed[$columnName])) {
-            $propertiesIndexed[$columnName] = $incoming;
-
-            return $propertiesIndexed;
-        }
-
-        $existing = $propertiesIndexed[$columnName];
-
+    /**
+     * Validates column conflicts (type, length, default value mismatches).
+     */
+    private function validateColumnConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
+    {
         if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
             throw new RuntimeException(
                 sprintf(
@@ -150,7 +170,13 @@ class ColumnComparator {
                 ),
             );
         }
+    }
 
+    /**
+     * Validates relation-specific conflicts.
+     */
+    private function validateRelationConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
+    {
         if (($incoming['relation'] !== null) !== ($existing['relation'] !== null)) {
             throw new RuntimeException(
                 sprintf(
@@ -180,8 +206,14 @@ class ColumnComparator {
                 }
             }
         }
+    }
 
-        $propertiesIndexed[$columnName] = [
+    /**
+     * Merges column properties from incoming and existing definitions.
+     */
+    private function mergeColumnProperties(array $incoming, array $existing): array
+    {
+        return [
             'type' => $existing['type'],
             'nullable' => $existing['nullable'] || $incoming['nullable'],
             'default' => $existing['default'],
@@ -194,8 +226,6 @@ class ColumnComparator {
             'isPrimaryKey' => $existing['isPrimaryKey'] ?? $incoming['isPrimaryKey'],
             'isAutoIncrement' => $existing['isAutoIncrement'] ?? $incoming['isAutoIncrement'],
         ];
-
-        return $propertiesIndexed;
     }
 
     /**

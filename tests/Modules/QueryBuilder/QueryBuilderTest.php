@@ -9,7 +9,7 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
-use PHPUnit\Framework\TestCase;
+use Articulate\Tests\DatabaseTestCase;
 
 #[Entity]
 class EntityManagerTestEntity {
@@ -18,21 +18,22 @@ class EntityManagerTestEntity {
     public string $name;
 }
 
-class QueryBuilderTest extends TestCase {
+class QueryBuilderTest extends DatabaseTestCase {
     private QueryBuilder $qb;
 
     private Connection $connection;
 
     private EntityManager $entityManager;
 
-    protected function setUp(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testBasicSelect(string $databaseName): void
     {
-        $this->connection = $this->createMock(Connection::class);
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
-    }
 
-    public function testBasicSelect(): void
-    {
         $sql = $this->qb
             ->select('id', 'name')
             ->from('users')
@@ -41,8 +42,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT id, name FROM users', $sql);
     }
 
-    public function testSelectAll(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSelectAll(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->from('users')
             ->getSQL();
@@ -50,8 +58,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT * FROM users', $sql);
     }
 
-    public function testWhereClause(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereClause(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $qb = $this->qb
             ->select('id', 'name')
             ->from('users')
@@ -64,8 +79,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals([1], $params);
     }
 
-    public function testMultipleWhereClauses(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testMultipleWhereClauses(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $qb = $this->qb
             ->select('id', 'name')
             ->from('users')
@@ -79,8 +101,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals([true], $params);
     }
 
-    public function testJoin(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testJoin(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->select('u.id', 'u.name', 'p.title')
             ->from('users', 'u')
@@ -90,8 +119,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT u.id, u.name, p.title FROM users u JOIN posts ON p.user_id = u.id', $sql);
     }
 
-    public function testLeftJoin(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testLeftJoin(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->select('u.id', 'u.name', 'COUNT(p.id) as post_count')
             ->from('users', 'u')
@@ -101,8 +137,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT u.id, u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON p.user_id = u.id', $sql);
     }
 
-    public function testLimitAndOffset(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testLimitAndOffset(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->select('id', 'name')
             ->from('users')
@@ -113,8 +156,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT id, name FROM users LIMIT 10 OFFSET 20', $sql);
     }
 
-    public function testOrderBy(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testOrderBy(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->select('id', 'name')
             ->from('users')
@@ -125,8 +175,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT id, name FROM users ORDER BY name ASC, id DESC', $sql);
     }
 
-    public function testComplexQuery(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testComplexQuery(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $qb = $this->qb
             ->select('u.id', 'u.name', 'u.email', 'COUNT(p.id) as post_count')
             ->from('users', 'u')
@@ -148,55 +205,78 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals([true, true, '2023-01-01'], $params);
     }
 
-    public function testGetResultReturnsEmptyArrayForNoResults(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGetResultReturnsEmptyArrayForNoResults(string $databaseName): void
     {
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('fetchAll')->willReturn([]);
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
+        // Create a test table first
+        $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
 
-        $result = $this->qb->select('*')->from('users')->getResult();
+        $result = $this->qb->select('*')->from('test_users')->getResult();
 
         $this->assertEquals([], $result);
     }
 
-    public function testGetResultReturnsRawData(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGetResultReturnsRawData(string $databaseName): void
     {
-        $rows = [
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        // Create a test table and insert data
+        $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
+        $this->connection->executeQuery('INSERT INTO test_users (id, name) VALUES (1, \'John\'), (2, \'Jane\')');
+
+        $result = $this->qb->select('*')->from('test_users')->getResult();
+
+        $expected = [
             ['id' => 1, 'name' => 'John'],
             ['id' => 2, 'name' => 'Jane'],
         ];
 
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('fetchAll')->willReturn($rows);
-
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
-
-        $result = $this->qb->select('*')->from('users')->getResult();
-
-        $this->assertEquals($rows, $result);
+        $this->assertEquals($expected, $result);
     }
 
-    public function testExecuteReturnsRowCount(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testExecuteReturnsRowCount(string $databaseName): void
     {
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('rowCount')->willReturn(5);
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
+        // Create a test table and insert data
+        $activeColumnType = $databaseName === 'mysql' ? 'TINYINT(1)' : 'BOOLEAN';
+        $activeValueFalse = $databaseName === 'mysql' ? '0' : 'false';
+        $activeValueTrue = $databaseName === 'mysql' ? '1' : 'true';
+        $this->connection->executeQuery("CREATE TABLE test_users (id INT, name VARCHAR(255), active {$activeColumnType})");
+        $this->connection->executeQuery("INSERT INTO test_users (id, name, active) VALUES (1, 'John', {$activeValueFalse}), (2, 'Jane', {$activeValueTrue})");
 
-        $result = $this->qb->from('users')->where('active = ?', false)->execute();
+        // For MySQL, active = 0, for PostgreSQL, active = false
+        $activeCondition = $databaseName === 'mysql' ? 'active = 0' : 'active = false';
+        $result = $this->qb->from('test_users')->where($activeCondition)->execute();
 
-        $this->assertEquals(5, $result);
+        $this->assertEquals(1, $result);
     }
 
-    public function testSetAndGetHydrator(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSetAndGetHydrator(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $hydrator = $this->createMock(HydratorInterface::class);
 
         $this->qb->setHydrator($hydrator);
@@ -207,16 +287,28 @@ class QueryBuilderTest extends TestCase {
         $this->assertNull($this->qb->getHydrator());
     }
 
-    public function testConstructorWithHydrator(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testConstructorWithHydrator(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $hydrator = $this->createMock(HydratorInterface::class);
         $qb = new QueryBuilder($this->connection, $hydrator);
 
         $this->assertSame($hydrator, $qb->getHydrator());
     }
 
-    public function testSetEntityClass(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSetEntityClass(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $qb = new QueryBuilder($this->connection);
 
         $qb->setEntityClass('App\\Entity\\User');
@@ -226,8 +318,14 @@ class QueryBuilderTest extends TestCase {
         $this->assertStringContainsString('users', $qb->getSQL());
     }
 
-    public function testResolveTableName(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testResolveTableName(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $qb = new QueryBuilder($this->connection);
 
         // Test the private method via reflection
@@ -240,8 +338,14 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('comments', $method->invoke($qb, 'MyNamespace\\Comment'));
     }
 
-    public function testEntityClassAutoTableResolution(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testEntityClassAutoTableResolution(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $qb = new QueryBuilder($this->connection);
         $qb->setEntityClass('User');
 
@@ -250,38 +354,49 @@ class QueryBuilderTest extends TestCase {
         $this->assertStringContainsString('FROM users', $sql);
     }
 
-    public function testGetSingleResult(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGetSingleResult(string $databaseName): void
     {
-        $rows = [['id' => 1, 'name' => 'John']];
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
 
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('fetchAll')->willReturn($rows);
+        // Create a test table and insert data
+        $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
+        $this->connection->executeQuery('INSERT INTO test_users (id, name) VALUES (1, \'John\')');
 
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
-
-        $result = $this->qb->select('*')->from('users')->getSingleResult();
+        $result = $this->qb->select('*')->from('test_users')->getSingleResult();
 
         $this->assertEquals(['id' => 1, 'name' => 'John'], $result);
     }
 
-    public function testGetSingleResultReturnsNullForNoResults(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGetSingleResultReturnsNullForNoResults(string $databaseName): void
     {
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('fetchAll')->willReturn([]);
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
+        // Create a test table
+        $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
 
-        $result = $this->qb->select('*')->from('users')->getSingleResult();
+        $result = $this->qb->select('*')->from('test_users')->getSingleResult();
 
         $this->assertNull($result);
     }
 
-    public function testSetUnitOfWork(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSetUnitOfWork(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $unitOfWork = $this->createMock(UnitOfWork::class);
         $qb = new QueryBuilder($this->connection);
 
@@ -290,19 +405,17 @@ class QueryBuilderTest extends TestCase {
         $this->assertSame($qb, $result); // Should return self for chaining
     }
 
-    public function testGetResultWithHydrationAndUnitOfWork(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGetResultWithHydrationAndUnitOfWork(string $databaseName): void
     {
-        $rows = [
-            ['id' => 1, 'name' => 'John'],
-            ['id' => 2, 'name' => 'Jane'],
-        ];
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
 
-        $statement = $this->createMock(\PDOStatement::class);
-        $statement->method('fetchAll')->willReturn($rows);
-
-        $this->connection->expects($this->once())
-            ->method('executeQuery')
-            ->willReturn($statement);
+        // Create a test table and insert data
+        $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
+        $this->connection->executeQuery('INSERT INTO test_users (id, name) VALUES (1, \'John\'), (2, \'Jane\')');
 
         $hydrator = $this->createMock(HydratorInterface::class);
         $hydrator->expects($this->exactly(2))
@@ -324,7 +437,7 @@ class QueryBuilderTest extends TestCase {
         $qb->setUnitOfWork($unitOfWork);
         $qb->setEntityClass(EntityManagerTestEntity::class);
 
-        $result = $qb->select('*')->from('users')->getResult();
+        $result = $qb->select('*')->from('test_users')->getResult();
 
         $this->assertCount(2, $result);
         $this->assertInstanceOf(EntityManagerTestEntity::class, $result[0]);
@@ -335,8 +448,15 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('Jane', $result[1]->name);
     }
 
-    public function testGroupBy(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testGroupBy(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
         $sql = $this->qb
             ->select('category', 'COUNT(*) as count')
             ->from('products')
@@ -347,8 +467,14 @@ class QueryBuilderTest extends TestCase {
         $this->assertEquals('SELECT category, COUNT(*) as count FROM products GROUP BY category, status', $sql);
     }
 
-    public function testConstructorWithMetadataRegistry(): void
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testConstructorWithMetadataRegistry(string $databaseName): void
     {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+
         $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
         $qb = new QueryBuilder($this->connection, null, $metadataRegistry);
 

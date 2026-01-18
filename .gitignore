@@ -1,5 +1,6 @@
 /vendor/
 .idea
+.cursor/
 .env
 .phpunit.cache
 .php-cs-fixer.cache

@@ -21,9 +21,17 @@ class QueryBuilder {
 
     private array $select = [];
 
-    private array $where = [];
+    private array $where = []; // [['operator' => 'AND|OR', 'condition' => '...', 'params' => [...], 'group' => null|array], ...]
+
+    private array $having = []; // [['operator' => 'AND|OR', 'condition' => '...', 'params' => [...]], ...]
 
     private array $joins = []; // [['sql' => '...', 'params' => [...]], ...]
+
+    private bool $distinct = false;
+
+    private ?string $rawSql = null;
+
+    private array $rawParams = [];
 
     private ?int $limit = null;
 
@@ -62,7 +70,280 @@ class QueryBuilder {
 
     public function where(string $condition, mixed ...$params): self
     {
-        $this->where[] = ['condition' => $condition, 'params' => $params];
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => $condition,
+            'params' => $params,
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhere(string $condition, mixed ...$params): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => $condition,
+            'params' => $params,
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereIn(string $column, array $values): self
+    {
+        if (empty($values)) {
+            // Empty IN clause - generate a condition that never matches
+            return $this->where('1 = 0');
+        } else {
+            return $this->where("{$column} IN (?)", $values);
+        }
+    }
+
+    public function whereNotIn(string $column, array $values): self
+    {
+        if (empty($values)) {
+            // Empty NOT IN clause - generate a condition that always matches
+            return $this->where('1 = 1');
+        } else {
+            return $this->where("{$column} NOT IN (?)", $values);
+        }
+    }
+
+    public function whereNull(string $column): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} IS NULL",
+            'params' => [],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereNotNull(string $column): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} IS NOT NULL",
+            'params' => [],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereBetween(string $column, mixed $min, mixed $max): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} BETWEEN ? AND ?",
+            'params' => [$min, $max],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereGroup(callable $callback): self
+    {
+        // Create a temporary QueryBuilder to collect group conditions
+        $tempQb = new self($this->connection, $this->hydrator, $this->metadataRegistry);
+
+        // Execute the callback to build the group conditions
+        $callback($tempQb);
+
+        // Add the group conditions to our where array
+        if (!empty($tempQb->where)) {
+            $this->where[] = [
+                'operator' => 'AND',
+                'condition' => null, // Will be computed in getSQL()
+                'params' => [],
+                'group' => $tempQb->where, // Store the group conditions
+            ];
+        }
+
+        return $this;
+    }
+
+    // Reset methods
+    public function resetWhere(): self
+    {
+        $this->where = [];
+
+        return $this;
+    }
+
+    public function resetSelect(): self
+    {
+        $this->select = [];
+
+        return $this;
+    }
+
+    public function resetJoins(): self
+    {
+        $this->joins = [];
+
+        return $this;
+    }
+
+    public function resetOrderBy(): self
+    {
+        $this->orderBy = [];
+
+        return $this;
+    }
+
+    public function resetGroupBy(): self
+    {
+        $this->groupBy = [];
+
+        return $this;
+    }
+
+    public function reset(): self
+    {
+        $this->select = [];
+        $this->from = '';
+        $this->where = [];
+        $this->having = [];
+        $this->joins = [];
+        $this->orderBy = [];
+        $this->groupBy = [];
+        $this->limit = null;
+        $this->offset = null;
+        $this->distinct = false;
+
+        return $this;
+    }
+
+    // Aggregate functions
+    public function count(string $column = '*', ?string $alias = null): self
+    {
+        $aggregate = "COUNT({$column})";
+        if ($alias) {
+            $aggregate .= " as {$alias}";
+        }
+        $this->select[] = $aggregate;
+
+        return $this;
+    }
+
+    public function sum(string $column, ?string $alias = null): self
+    {
+        $aggregate = "SUM({$column})";
+        if ($alias) {
+            $aggregate .= " as {$alias}";
+        }
+        $this->select[] = $aggregate;
+
+        return $this;
+    }
+
+    public function avg(string $column, ?string $alias = null): self
+    {
+        $aggregate = "AVG({$column})";
+        if ($alias) {
+            $aggregate .= " as {$alias}";
+        }
+        $this->select[] = $aggregate;
+
+        return $this;
+    }
+
+    public function max(string $column, ?string $alias = null): self
+    {
+        $aggregate = "MAX({$column})";
+        if ($alias) {
+            $aggregate .= " as {$alias}";
+        }
+        $this->select[] = $aggregate;
+
+        return $this;
+    }
+
+    public function min(string $column, ?string $alias = null): self
+    {
+        $aggregate = "MIN({$column})";
+        if ($alias) {
+            $aggregate .= " as {$alias}";
+        }
+        $this->select[] = $aggregate;
+
+        return $this;
+    }
+
+    public function distinct(): self
+    {
+        $this->distinct = true;
+
+        return $this;
+    }
+
+    // HAVING clause
+    public function having(string $condition, mixed ...$params): self
+    {
+        $this->having[] = [
+            'operator' => 'AND',
+            'condition' => $condition,
+            'params' => $params,
+        ];
+
+        return $this;
+    }
+
+    public function orHaving(string $condition, mixed ...$params): self
+    {
+        $this->having[] = [
+            'operator' => 'OR',
+            'condition' => $condition,
+            'params' => $params,
+        ];
+
+        return $this;
+    }
+
+    // Raw SQL methods
+    public function raw(string $sql, mixed ...$params): self
+    {
+        $this->rawSql = $sql;
+        // Handle both single array parameter and multiple parameters
+        if (count($params) === 1 && is_array($params[0])) {
+            $this->rawParams = $params[0];
+        } else {
+            $this->rawParams = $params;
+        }
+
+        return $this;
+    }
+
+    public function selectRaw(string $expression, mixed ...$params): self
+    {
+        $this->select[] = ['raw' => true, 'expression' => $expression, 'params' => $params];
+
+        return $this;
+    }
+
+    public function whereRaw(string $condition, mixed ...$params): self
+    {
+        // Handle both single array parameter and multiple parameters
+        if (count($params) === 1 && is_array($params[0])) {
+            $actualParams = $params[0];
+        } else {
+            $actualParams = $params;
+        }
+
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => $condition,
+            'params' => $actualParams,
+            'group' => null,
+            'raw' => true,
+        ];
 
         return $this;
     }
@@ -156,7 +437,13 @@ class QueryBuilder {
 
     public function getSQL(): string
     {
-        $sql = 'SELECT ' . (empty($this->select) ? '*' : implode(', ', $this->select));
+        // If raw SQL is set, return it directly
+        if ($this->rawSql !== null) {
+            return $this->rawSql;
+        }
+
+        $selectClause = $this->distinct ? 'SELECT DISTINCT ' : 'SELECT ';
+        $sql = $selectClause . $this->buildSelectClause();
         $sql .= ' FROM ' . $this->from;
 
         if (!empty($this->joins)) {
@@ -165,12 +452,17 @@ class QueryBuilder {
         }
 
         if (!empty($this->where)) {
-            $conditions = array_column($this->where, 'condition');
-            $sql .= ' WHERE ' . implode(' AND ', $conditions);
+            $whereClause = $this->buildWhereClause($this->where);
+            $sql .= ' WHERE ' . $whereClause;
         }
 
         if (!empty($this->groupBy)) {
             $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
+        }
+
+        if (!empty($this->having)) {
+            $havingClause = $this->buildHavingClause($this->having);
+            $sql .= ' HAVING ' . $havingClause;
         }
 
         if (!empty($this->orderBy)) {
@@ -190,6 +482,11 @@ class QueryBuilder {
 
     public function getParameters(): array
     {
+        // If raw SQL is set, return raw parameters
+        if ($this->rawSql !== null) {
+            return $this->rawParams;
+        }
+
         $params = [];
 
         // Add join parameters first (they appear in SQL before WHERE)
@@ -197,9 +494,19 @@ class QueryBuilder {
             $params = array_merge($params, $join['params']);
         }
 
+        // Add SELECT raw parameters
+        foreach ($this->select as $selectItem) {
+            if (is_array($selectItem) && isset($selectItem['raw']) && $selectItem['raw']) {
+                $params = array_merge($params, $selectItem['params']);
+            }
+        }
+
         // Add WHERE parameters
-        foreach ($this->where as $whereClause) {
-            $params = array_merge($params, $whereClause['params']);
+        $params = array_merge($params, $this->collectWhereParameters($this->where));
+
+        // Add HAVING parameters
+        foreach ($this->having as $havingClause) {
+            $params = array_merge($params, $havingClause['params']);
         }
 
         return $params;
@@ -275,5 +582,109 @@ class QueryBuilder {
         $className = basename(str_replace('\\', '/', $entityClass));
 
         return strtolower($className) . 's';
+    }
+
+    /**
+     * Build a HAVING clause from the having conditions array.
+     */
+    private function buildHavingClause(array $conditions): string
+    {
+        $result = '';
+
+        foreach ($conditions as $index => $condition) {
+            if ($index === 0) {
+                $result .= $condition['condition'];
+            } else {
+                $operator = $condition['operator'];
+                $result .= " {$operator} {$condition['condition']}";
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Build a SELECT clause handling raw expressions.
+     */
+    private function buildSelectClause(): string
+    {
+        if (empty($this->select)) {
+            return '*';
+        }
+
+        $selectParts = [];
+        foreach ($this->select as $selectItem) {
+            if (is_array($selectItem) && isset($selectItem['raw']) && $selectItem['raw']) {
+                $selectParts[] = $selectItem['expression'];
+            } else {
+                $selectParts[] = $selectItem;
+            }
+        }
+
+        return implode(', ', $selectParts);
+    }
+
+    /**
+     * Build a WHERE clause from the where conditions array.
+     */
+    private function buildWhereClause(array $conditions): string
+    {
+        $parts = [];
+
+        foreach ($conditions as $condition) {
+            if ($condition['group'] !== null) {
+                // This is a group condition
+                $groupClause = $this->buildWhereClause($condition['group']);
+                $parts[] = "({$groupClause})";
+            } else {
+                // This is a regular condition
+                $parts[] = $condition['condition'];
+            }
+        }
+
+        // Join with operators - first condition has no operator prefix
+        $result = '';
+        foreach ($conditions as $index => $condition) {
+            if ($index === 0) {
+                // First condition - handle group or regular
+                if ($condition['group'] !== null) {
+                    $groupClause = $this->buildWhereClause($condition['group']);
+                    $result .= "({$groupClause})";
+                } else {
+                    $result .= $condition['condition'];
+                }
+            } else {
+                // Subsequent conditions with operator
+                $operator = $condition['operator'];
+                if ($condition['group'] !== null) {
+                    $groupClause = $this->buildWhereClause($condition['group']);
+                    $result .= " {$operator} ({$groupClause})";
+                } else {
+                    $result .= " {$operator} {$condition['condition']}";
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Collect parameters from where conditions recursively.
+     */
+    private function collectWhereParameters(array $conditions): array
+    {
+        $params = [];
+
+        foreach ($conditions as $condition) {
+            if ($condition['group'] !== null) {
+                // Recursively collect from group
+                $params = array_merge($params, $this->collectWhereParameters($condition['group']));
+            } else {
+                // Add direct parameters
+                $params = array_merge($params, $condition['params']);
+            }
+        }
+
+        return $params;
     }
 }

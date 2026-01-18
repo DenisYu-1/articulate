@@ -21,12 +21,12 @@ class DiffCommand extends Command {
     public function __construct(
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
         private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
+        string $migrationsPath,
         private readonly ?string $entitiesPath = null,
-        ?string $migrationsPath = null,
         private readonly ?string $migrationsNamespace = null,
     ) {
         parent::__construct();
-        $this->migrationGenerator = new MigrationGenerator($migrationsPath ?: '/app/migrations');
+        $this->migrationGenerator = new MigrationGenerator($migrationsPath);
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

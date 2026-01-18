@@ -38,8 +38,52 @@ class MappingTableComparator {
     public function compareManyToManyTable(array $definition, array $existingTables): ?TableCompareResult
     {
         $tableName = $definition['tableName'];
-        $operation = null;
 
+        [$operation, $columnsIndexed, $existingForeignKeys, $foreignKeysToRemove, $existingIndexes, $indexesToRemove] =
+            $this->initializeMappingTableState($tableName, $existingTables);
+
+        $requiredProperties = $this->buildRequiredProperties($definition);
+
+        $columnsCompareResults = $this->compareColumnsForMapping($requiredProperties, $columnsIndexed, $operation);
+
+        $foreignKeysByName = $this->compareForeignKeysForMapping(
+            $tableName,
+            $definition,
+            $existingForeignKeys,
+            $foreignKeysToRemove,
+            $operation
+        );
+
+        $indexCompareResults = $this->compareIndexesForMapping($existingIndexes, $indexesToRemove, $definition, $existingForeignKeys, $operation);
+
+        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
+            throw new EmptyPropertiesList($tableName);
+        }
+
+        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
+            return null;
+        }
+
+        return new TableCompareResult(
+            $tableName,
+            $operation ?? CompareResult::OPERATION_UPDATE,
+            array_values($columnsCompareResults),
+            $indexCompareResults,
+            array_values($foreignKeysByName),
+            $definition['primaryColumns'],
+        );
+    }
+
+    /**
+     * Initializes the state for comparing a mapping table.
+     *
+     * @return array{string|null, array, array, array, array, array} Returns [
+     *     operation, columnsIndexed, existingForeignKeys, foreignKeysToRemove, existingIndexes, indexesToRemove
+     * ]
+     */
+    private function initializeMappingTableState(string $tableName, array $existingTables): array
+    {
+        $operation = null;
         $columnsIndexed = [];
         $existingForeignKeys = [];
         $foreignKeysToRemove = [];
@@ -59,6 +103,14 @@ class MappingTableComparator {
             $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
         }
 
+        return [$operation, $columnsIndexed, $existingForeignKeys, $foreignKeysToRemove, $existingIndexes, $indexesToRemove];
+    }
+
+    /**
+     * Builds the required properties for a mapping table.
+     */
+    private function buildRequiredProperties(array $definition): array
+    {
         $requiredProperties = [];
         $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null);
         $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null);
@@ -66,6 +118,16 @@ class MappingTableComparator {
             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
         }
 
+        return $requiredProperties;
+    }
+
+    /**
+     * Compares columns for a mapping table.
+     *
+     * @return ColumnCompareResult[]
+     */
+    private function compareColumnsForMapping(array $requiredProperties, array $columnsIndexed, ?string &$operation): array
+    {
         $columnsCompareResults = [];
         $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
         $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
@@ -105,6 +167,21 @@ class MappingTableComparator {
             );
         }
 
+        return $columnsCompareResults;
+    }
+
+    /**
+     * Compares foreign keys for a mapping table.
+     *
+     * @return ForeignKeyCompareResult[]
+     */
+    private function compareForeignKeysForMapping(
+        string $tableName,
+        array $definition,
+        array $existingForeignKeys,
+        array &$foreignKeysToRemove,
+        ?string &$operation
+    ): array {
         $foreignKeysByName = [];
         $desiredForeignKeys = [
             $this->schemaNaming->foreignKeyName($tableName, $definition['ownerTable'], $definition['ownerJoinColumn']) => [
@@ -145,6 +222,21 @@ class MappingTableComparator {
             );
         }
 
+        return $foreignKeysByName;
+    }
+
+    /**
+     * Compares indexes for a mapping table.
+     *
+     * @return IndexCompareResult[]
+     */
+    private function compareIndexesForMapping(
+        array $existingIndexes,
+        array &$indexesToRemove,
+        array $definition,
+        array $existingForeignKeys,
+        ?string &$operation
+    ): array {
         $indexCompareResults = [];
         foreach (array_keys($indexesToRemove) as $indexName) {
             if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
@@ -161,22 +253,7 @@ class MappingTableComparator {
             );
         }
 
-        if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new EmptyPropertiesList($tableName);
-        }
-
-        if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
-            return null;
-        }
-
-        return new TableCompareResult(
-            $tableName,
-            $operation ?? CompareResult::OPERATION_UPDATE,
-            array_values($columnsCompareResults),
-            $indexCompareResults,
-            array_values($foreignKeysByName),
-            $definition['primaryColumns'],
-        );
+        return $indexCompareResults;
     }
 
     /**

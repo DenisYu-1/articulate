@@ -9,6 +9,11 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 abstract class AbstractTestCase extends TestCase {
+    /**
+     * Whether this test class should start transactions automatically.
+     * Override in subclasses that need DDL operations.
+     */
+    protected bool $useTransactions = true;
     protected ?Connection $mysqlConnection = null;
 
     protected ?Connection $pgsqlConnection = null;
@@ -38,14 +43,26 @@ abstract class AbstractTestCase extends TestCase {
         // Initialize connections, catching exceptions for unavailable databases
         try {
             $this->mysqlConnection = new Connection('mysql:host=' . (getenv('DATABASE_HOST')) . ';dbname=' . $databaseName . ';charset=utf8mb4', getenv('DATABASE_USER') ?? 'root', getenv('DATABASE_PASSWORD'));
-            $this->mysqlConnection->beginTransaction();
+
+            // DDL operations must be done outside transactions (they cause implicit commits)
+            if (!$this->setUpTestTables($this->mysqlConnection, 'mysql')) {
+                $this->mysqlConnection = null;
+            } elseif ($this->useTransactions) {
+                $this->mysqlConnection->beginTransaction();
+            }
         } catch (Exception $e) {
             $this->mysqlConnection = null;
         }
 
         try {
             $this->pgsqlConnection = new Connection('pgsql:host=' . getenv('DATABASE_HOST_PGSQL') . ';port=5432;dbname=' . $databaseName, getenv('DATABASE_USER') ?? 'postgres', getenv('DATABASE_PASSWORD'));
-            $this->pgsqlConnection->beginTransaction();
+
+            // DDL operations must be done outside transactions (they cause implicit commits)
+            if (!$this->setUpTestTables($this->pgsqlConnection, 'pgsql')) {
+                $this->pgsqlConnection = null;
+            } elseif ($this->useTransactions) {
+                $this->pgsqlConnection->beginTransaction();
+            }
         } catch (Exception $e) {
             $this->pgsqlConnection = null;
         }
@@ -55,7 +72,11 @@ abstract class AbstractTestCase extends TestCase {
     {
         if ($this->pgsqlConnection) {
             try {
-                $this->pgsqlConnection->rollbackTransaction();
+                if ($this->useTransactions) {
+                    $this->pgsqlConnection->rollbackTransaction();
+                }
+                // Clean up test tables after transaction is complete (or immediately if no transaction)
+                $this->tearDownTestTables($this->pgsqlConnection, 'pgsql');
             } catch (Exception $e) {
                 // Ignore rollback errors
             }
@@ -63,7 +84,11 @@ abstract class AbstractTestCase extends TestCase {
 
         if ($this->mysqlConnection) {
             try {
-                $this->mysqlConnection->rollbackTransaction();
+                if ($this->useTransactions) {
+                    $this->mysqlConnection->rollbackTransaction();
+                }
+                // Clean up test tables after transaction is complete (or immediately if no transaction)
+                $this->tearDownTestTables($this->mysqlConnection, 'mysql');
             } catch (Exception $e) {
                 // Ignore rollback errors
             }
@@ -102,5 +127,27 @@ abstract class AbstractTestCase extends TestCase {
         } catch (Exception) {
             return false;
         }
+    }
+
+    /**
+     * Set up test tables for the specific test class.
+     * Override this method in test classes that need custom table setup.
+     * DDL operations must be done outside transactions.
+     * Return true if setup succeeds, false if the database should be skipped.
+     */
+    protected function setUpTestTables(Connection $connection, string $databaseName): bool
+    {
+        // Default implementation does nothing and succeeds
+        return true;
+    }
+
+    /**
+     * Clean up test tables after transactions are complete.
+     * Override this method in test classes that need custom table cleanup.
+     */
+    protected function tearDownTestTables(Connection $connection, string $databaseName): void
+    {
+        // Default implementation does nothing
+        // Override in test classes that need table cleanup
     }
 }

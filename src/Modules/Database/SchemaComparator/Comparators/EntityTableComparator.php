@@ -26,8 +26,36 @@ class EntityTableComparator {
      */
     public function compareEntityTable(array $entityGroup, array $existingTables, string $tableName): ?TableCompareResult
     {
-        $operation = null;
+        [$operation, $existingIndexes, $indexesToRemove, $existingForeignKeys, $foreignKeysToRemove, $columnsIndexed] =
+            $this->initializeTableState($tableName, $existingTables);
 
+        [$propertiesIndexed, $entityIndexes, $primaryColumns] = $this->collectEntityMetadata($entityGroup, $tableName);
+
+        return $this->determineTableOperation(
+            $tableName,
+            $operation,
+            $propertiesIndexed,
+            $entityIndexes,
+            $primaryColumns,
+            $existingIndexes,
+            $indexesToRemove,
+            $existingForeignKeys,
+            $foreignKeysToRemove,
+            $columnsIndexed,
+            $entityGroup
+        );
+    }
+
+    /**
+     * Initializes the state for comparing an entity table.
+     *
+     * @return array{string|null, array, array, array, array, array} Returns [
+     *     operation, existingIndexes, indexesToRemove, existingForeignKeys, foreignKeysToRemove, columnsIndexed
+     * ]
+     */
+    private function initializeTableState(string $tableName, array $existingTables): array
+    {
+        $operation = null;
         $existingIndexes = $indexesToRemove = [];
         $existingForeignKeys = [];
         $foreignKeysToRemove = [];
@@ -54,6 +82,17 @@ class EntityTableComparator {
             $columnsIndexed[$column->name] = $column;
         }
 
+        return [$operation, $existingIndexes, $indexesToRemove, $existingForeignKeys, $foreignKeysToRemove, $columnsIndexed];
+    }
+
+    /**
+     * Collects entity metadata including properties and indexes.
+     *
+     * @param ReflectionEntity[] $entityGroup
+     * @return array{array, array, array} Returns [propertiesIndexed, entityIndexes, primaryColumns]
+     */
+    private function collectEntityMetadata(array $entityGroup, string $tableName): array
+    {
         $entityIndexes = $propertiesIndexed = [];
         $primaryColumns = $entityGroup[0]->getPrimaryKeyColumns();
 
@@ -88,6 +127,25 @@ class EntityTableComparator {
             }
         }
 
+        return [$propertiesIndexed, $entityIndexes, $primaryColumns];
+    }
+
+    /**
+     * Determines the table operation and creates the comparison result.
+     */
+    private function determineTableOperation(
+        string $tableName,
+        ?string $operation,
+        array $propertiesIndexed,
+        array $entityIndexes,
+        array $primaryColumns,
+        array $existingIndexes,
+        array $indexesToRemove,
+        array $existingForeignKeys,
+        array $foreignKeysToRemove,
+        array $columnsIndexed,
+        array $entityGroup
+    ): ?TableCompareResult {
         $columnsCompareResults = $this->columnComparator->compareColumns($propertiesIndexed, $columnsIndexed);
 
         if (!empty($columnsCompareResults)) {

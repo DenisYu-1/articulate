@@ -7,6 +7,7 @@ use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 #[Entity]
 class TestChangeTrackingEntity {
@@ -112,7 +113,7 @@ class DeferredImplicitStrategyTest extends TestCase {
         $original = ['id' => 1, 'name' => 'original'];
         $current = ['id' => 1, 'name' => 'original', 'age' => 25];
 
-        $reflectionMethod = new \ReflectionMethod($this->strategy, 'calculateDifferences');
+        $reflectionMethod = new ReflectionMethod($this->strategy, 'calculateDifferences');
         $reflectionMethod->setAccessible(true);
 
         $changes = $reflectionMethod->invoke($this->strategy, $original, $current);
@@ -125,7 +126,7 @@ class DeferredImplicitStrategyTest extends TestCase {
         $original = ['id' => 1, 'name' => 'original', 'age' => 25];
         $current = ['id' => 1, 'name' => 'original'];
 
-        $reflectionMethod = new \ReflectionMethod($this->strategy, 'calculateDifferences');
+        $reflectionMethod = new ReflectionMethod($this->strategy, 'calculateDifferences');
         $reflectionMethod->setAccessible(true);
 
         $changes = $reflectionMethod->invoke($this->strategy, $original, $current);
@@ -140,7 +141,7 @@ class DeferredImplicitStrategyTest extends TestCase {
         $entity->name = 'test';
         $entity->age = 25;
 
-        $reflectionMethod = new \ReflectionMethod($this->strategy, 'extractEntityData');
+        $reflectionMethod = new ReflectionMethod($this->strategy, 'extractEntityData');
         $reflectionMethod->setAccessible(true);
 
         $data = $reflectionMethod->invoke($this->strategy, $entity);
