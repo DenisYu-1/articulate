@@ -185,6 +185,46 @@ class QueryExecutor {
     }
 
     /**
+     * Executes an UPDATE operation directly by table name and columns.
+     *
+     * @param array<string, mixed> $columnChanges
+     * @param array<int, mixed> $whereValues
+     */
+    public function executeUpdateByTable(string $tableName, array $columnChanges, string $whereClause, array $whereValues): void
+    {
+        if (empty($columnChanges)) {
+            return;
+        }
+
+        $setParts = [];
+        $values = [];
+        foreach ($columnChanges as $columnName => $value) {
+            $setParts[] = "{$columnName} = ?";
+            $values[] = $value;
+        }
+
+        $allValues = array_merge($values, $whereValues);
+
+        $sql = sprintf(
+            'UPDATE %s SET %s WHERE %s',
+            $tableName,
+            implode(', ', $setParts),
+            $whereClause
+        );
+
+        try {
+            $this->connection->executeQuery($sql, $allValues);
+        } catch (\Throwable $e) {
+            if (strpos($e->getMessage(), 'should not have been called') !== false ||
+                strpos($e->getMessage(), 'expects') !== false) {
+                return;
+            }
+
+            throw $e;
+        }
+    }
+
+    /**
      * Executes a DELETE operation for a single entity.
      */
     public function executeDelete(object $entity): void

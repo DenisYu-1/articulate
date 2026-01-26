@@ -24,17 +24,15 @@ class ThrowOnUpdateConflictStrategy implements UpdateConflictResolutionStrategy 
                 continue;
             }
 
-            if ($seenRows[$rowIdentity] !== $entity::class) {
-                throw new UpdateConflictException(
-                    sprintf(
-                        'Conflicting updates for table "%s" row "%s" between "%s" and "%s".',
-                        $metadata->getTableName(),
-                        $rowIdentity,
-                        $seenRows[$rowIdentity],
-                        $entity::class,
-                    ),
-                );
-            }
+            throw new UpdateConflictException(
+                sprintf(
+                    'Conflicting updates for table "%s" row "%s" between "%s" and "%s".',
+                    $metadata->getTableName(),
+                    $rowIdentity,
+                    $seenRows[$rowIdentity],
+                    $entity::class,
+                ),
+            );
         }
 
         return $updates;

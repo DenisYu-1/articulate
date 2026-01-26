@@ -148,6 +148,17 @@ class EntityManager {
 
         // Execute updates (order doesn't matter for foreign key constraints)
         foreach ($changes['updates'] as $update) {
+            if (isset($update['table'])) {
+                $this->queryExecutor->executeUpdateByTable(
+                    tableName: $update['table'],
+                    columnChanges: $update['set'],
+                    whereClause: $update['where'],
+                    whereValues: $update['whereValues'],
+                );
+
+                continue;
+            }
+
             $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
         }
 
