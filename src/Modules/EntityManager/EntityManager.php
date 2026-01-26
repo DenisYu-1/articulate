@@ -36,13 +36,16 @@ class EntityManager {
 
     private RepositoryFactory $repositoryFactory;
 
+    private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
+
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?HydratorInterface $hydrator = null,
         ?GeneratorRegistry $generatorRegistry = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
-        ?QueryExecutor $queryExecutor = null
+        ?QueryExecutor $queryExecutor = null,
+        ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -55,7 +58,8 @@ class EntityManager {
         $this->callbackManager = new LifecycleCallbackManager();
 
         // Initialize change aggregator and query executor
-        $this->changeAggregator = new ChangeAggregator();
+        $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy ?? new MergeUpdateConflictResolutionStrategy();
+        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
         // Create default UnitOfWork
@@ -121,6 +125,12 @@ class EntityManager {
         foreach ($this->unitOfWorks as $unitOfWork) {
             $unitOfWork->clear();
         }
+    }
+
+    public function flushAndClear(): void
+    {
+        $this->flush();
+        $this->clear();
     }
 
     /**
@@ -514,6 +524,17 @@ class EntityManager {
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
+    }
+
+    public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
+    {
+        $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy;
+        $this->changeAggregator->setUpdateConflictResolutionStrategy($updateConflictResolutionStrategy);
+    }
+
+    public function getUpdateConflictResolutionStrategy(): UpdateConflictResolutionStrategy
+    {
+        return $this->updateConflictResolutionStrategy;
     }
 
     // Query builder

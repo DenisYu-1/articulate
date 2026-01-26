@@ -6,6 +6,7 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
 
 class QueryBuilder {
@@ -54,6 +55,11 @@ class QueryBuilder {
         $this->metadataRegistry = $metadataRegistry;
     }
 
+    public function createSubQueryBuilder(): QueryBuilder
+    {
+        return new self($this->connection, $this->hydrator, $this->metadataRegistry);
+    }
+
     public function select(string ...$fields): self
     {
         $this->select = array_merge($this->select, $fields);
@@ -92,8 +98,23 @@ class QueryBuilder {
         return $this;
     }
 
-    public function whereIn(string $column, array $values): self
+    public function whereIn(string $column, array|QueryBuilder $values): self
     {
+        if ($values instanceof QueryBuilder) {
+            $subquerySql = $values->getSQL();
+            $subqueryParams = $values->getParameters();
+
+            $this->where[] = [
+                'operator' => 'AND',
+                'condition' => "{$column} IN ({$subquerySql})",
+                'params' => $subqueryParams,
+                'group' => null,
+            ];
+
+            return $this;
+        }
+
+        // Handle array values (original logic)
         if (empty($values)) {
             // Empty IN clause - generate a condition that never matches
             return $this->where('1 = 0');
@@ -102,8 +123,23 @@ class QueryBuilder {
         }
     }
 
-    public function whereNotIn(string $column, array $values): self
+    public function whereNotIn(string $column, array|QueryBuilder $values): self
     {
+        if ($values instanceof QueryBuilder) {
+            $subquerySql = $values->getSQL();
+            $subqueryParams = $values->getParameters();
+
+            $this->where[] = [
+                'operator' => 'AND',
+                'condition' => "{$column} NOT IN ({$subquerySql})",
+                'params' => $subqueryParams,
+                'group' => null,
+            ];
+
+            return $this;
+        }
+
+        // Handle array values (original logic)
         if (empty($values)) {
             // Empty NOT IN clause - generate a condition that always matches
             return $this->where('1 = 1');
@@ -148,23 +184,282 @@ class QueryBuilder {
         return $this;
     }
 
-    public function whereGroup(callable $callback): self
+    public function whereNotBetween(string $column, mixed $min, mixed $max): self
     {
-        // Create a temporary QueryBuilder to collect group conditions
-        $tempQb = new self($this->connection, $this->hydrator, $this->metadataRegistry);
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} NOT BETWEEN ? AND ?",
+            'params' => [$min, $max],
+            'group' => null,
+        ];
 
-        // Execute the callback to build the group conditions
-        $callback($tempQb);
+        return $this;
+    }
 
-        // Add the group conditions to our where array
-        if (!empty($tempQb->where)) {
+    public function whereLike(string $column, string $pattern): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} LIKE ?",
+            'params' => [$pattern],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereNotLike(string $column, string $pattern): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} NOT LIKE ?",
+            'params' => [$pattern],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereGreaterThan(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} > ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereGreaterThanOrEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} >= ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereLessThan(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} < ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereLessThanOrEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} <= ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereNotEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "{$column} != ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereExists(QueryBuilder $subquery): self
+    {
+        $subquerySql = $subquery->getSQL();
+        $subqueryParams = $subquery->getParameters();
+
+        $this->where[] = [
+            'operator' => 'AND',
+            'condition' => "EXISTS ({$subquerySql})",
+            'params' => $subqueryParams,
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function whereGroup(CriteriaInterface $criteria): self
+    {
+        $groupBuilder = $this->createSubQueryBuilder();
+        $criteria->apply($groupBuilder);
+
+        if (!empty($groupBuilder->where)) {
             $this->where[] = [
                 'operator' => 'AND',
                 'condition' => null, // Will be computed in getSQL()
                 'params' => [],
-                'group' => $tempQb->where, // Store the group conditions
+                'group' => $groupBuilder->where,
             ];
         }
+
+        return $this;
+    }
+
+    public function whereNotGroup(CriteriaInterface $criteria): self
+    {
+        $groupBuilder = $this->createSubQueryBuilder();
+        $criteria->apply($groupBuilder);
+
+        if (!empty($groupBuilder->where)) {
+            $groupClause = $this->buildWhereClause($groupBuilder->where);
+            $this->where[] = [
+                'operator' => 'AND',
+                'condition' => "NOT ({$groupClause})",
+                'params' => $this->collectWhereParameters($groupBuilder->where),
+                'group' => null,
+            ];
+        }
+
+        return $this;
+    }
+
+    public function orWhereGroup(CriteriaInterface $criteria): self
+    {
+        $groupBuilder = $this->createSubQueryBuilder();
+        $criteria->apply($groupBuilder);
+
+        if (!empty($groupBuilder->where)) {
+            $this->where[] = [
+                'operator' => 'OR',
+                'condition' => null, // Will be computed in getSQL()
+                'params' => [],
+                'group' => $groupBuilder->where,
+            ];
+        }
+
+        return $this;
+    }
+
+    public function orWhereNotGroup(CriteriaInterface $criteria): self
+    {
+        $groupBuilder = $this->createSubQueryBuilder();
+        $criteria->apply($groupBuilder);
+
+        if (!empty($groupBuilder->where)) {
+            $groupClause = $this->buildWhereClause($groupBuilder->where);
+            $this->where[] = [
+                'operator' => 'OR',
+                'condition' => "NOT ({$groupClause})",
+                'params' => $this->collectWhereParameters($groupBuilder->where),
+                'group' => null,
+            ];
+        }
+
+        return $this;
+    }
+
+    public function orWhereLike(string $column, string $pattern): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} LIKE ?",
+            'params' => [$pattern],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereNotLike(string $column, string $pattern): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} NOT LIKE ?",
+            'params' => [$pattern],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereGreaterThan(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} > ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereGreaterThanOrEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} >= ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereLessThan(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} < ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereLessThanOrEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} <= ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereNotEqual(string $column, mixed $value): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "{$column} != ?",
+            'params' => [$value],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereExists(QueryBuilder $subquery): self
+    {
+        $subquerySql = $subquery->getSQL();
+        $subqueryParams = $subquery->getParameters();
+
+        $this->where[] = [
+            'operator' => 'OR',
+            'condition' => "EXISTS ({$subquerySql})",
+            'params' => $subqueryParams,
+            'group' => null,
+        ];
 
         return $this;
     }
@@ -335,6 +630,21 @@ class QueryBuilder {
         return $this;
     }
 
+    public function selectSub(QueryBuilder $subquery, ?string $alias = null): self
+    {
+        $subquerySql = $subquery->getSQL();
+        $subqueryParams = $subquery->getParameters();
+
+        $expression = "({$subquerySql})";
+        if ($alias) {
+            $expression .= " as {$alias}";
+        }
+
+        $this->select[] = ['raw' => true, 'expression' => $expression, 'params' => $subqueryParams];
+
+        return $this;
+    }
+
     public function whereRaw(string $condition, mixed ...$params): self
     {
         // Handle both single array parameter and multiple parameters
@@ -370,6 +680,26 @@ class QueryBuilder {
         $this->joins[] = [
             'sql' => "LEFT JOIN {$table} ON {$condition}",
             'params' => $params,
+        ];
+
+        return $this;
+    }
+
+    public function rightJoin(string $table, string $condition, mixed ...$params): self
+    {
+        $this->joins[] = [
+            'sql' => "RIGHT JOIN {$table} ON {$condition}",
+            'params' => $params,
+        ];
+
+        return $this;
+    }
+
+    public function crossJoin(string $table): self
+    {
+        $this->joins[] = [
+            'sql' => "CROSS JOIN {$table}",
+            'params' => [],
         ];
 
         return $this;
@@ -496,16 +826,16 @@ class QueryBuilder {
 
         $params = [];
 
-        // Add join parameters first (they appear in SQL before WHERE)
-        foreach ($this->joins as $join) {
-            $params = array_merge($params, $join['params']);
-        }
-
-        // Add SELECT raw parameters
+        // Add SELECT raw parameters (appear before joins in SQL)
         foreach ($this->select as $selectItem) {
             if (is_array($selectItem) && isset($selectItem['raw']) && $selectItem['raw']) {
                 $params = array_merge($params, $selectItem['params']);
             }
+        }
+
+        // Add join parameters
+        foreach ($this->joins as $join) {
+            $params = array_merge($params, $join['params']);
         }
 
         // Add WHERE parameters
@@ -616,6 +946,18 @@ class QueryBuilder {
     private function buildSelectClause(): string
     {
         if (empty($this->select)) {
+            if ($this->entityClass && $this->metadataRegistry) {
+                try {
+                    $columns = $this->metadataRegistry
+                        ->getMetadata($this->entityClass)
+                        ->getColumnNames();
+                    if (!empty($columns)) {
+                        return implode(', ', $columns);
+                    }
+                } catch (InvalidArgumentException $e) {
+                }
+            }
+
             return '*';
         }
 

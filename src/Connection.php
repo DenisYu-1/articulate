@@ -30,9 +30,23 @@ class Connection {
     public function executeQuery(string $sql, array $parameters = []): PDOStatement
     {
         $statement = $this->pdo->prepare($sql);
+        if ($parameters !== []) {
+            $parameters = $this->normalizeParameters($parameters);
+        }
         $statement->execute($parameters);
 
         return $statement;
+    }
+
+    private function normalizeParameters(array $parameters): array
+    {
+        foreach ($parameters as $key => $value) {
+            if (is_bool($value)) {
+                $parameters[$key] = $value ? 1 : 0;
+            }
+        }
+
+        return $parameters;
     }
 
     public function getDriverName(): string

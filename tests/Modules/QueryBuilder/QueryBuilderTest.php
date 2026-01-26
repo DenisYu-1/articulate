@@ -9,6 +9,10 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Modules\Repository\Criteria\AndCriteria;
+use Articulate\Modules\Repository\Criteria\EqualsCriteria;
+use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
+use Articulate\Modules\Repository\Criteria\LessThanCriteria;
 use Articulate\Tests\DatabaseTestCase;
 
 #[Entity]
@@ -82,6 +86,41 @@ class QueryBuilderTest extends DatabaseTestCase {
     /**
      * @dataProvider databaseProvider
      */
+    public function testQueryBuilderExecutesQueriesAgainstDatabase(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $activeColumnType = $databaseName === 'mysql' ? 'TINYINT(1)' : 'BOOLEAN';
+        $activeValueFalse = $databaseName === 'mysql' ? 0 : false;
+        $activeValueTrue = $databaseName === 'mysql' ? 1 : true;
+
+        $this->connection->executeQuery("CREATE TABLE test_users (id INT, name VARCHAR(255), active {$activeColumnType})");
+        $this->connection->executeQuery(
+            'INSERT INTO test_users (id, name, active) VALUES (1, ?, ?), (2, ?, ?), (3, ?, ?)',
+            ['John', $activeValueTrue, 'Jane', $activeValueFalse, 'Mark', $activeValueTrue]
+        );
+
+        $result = $this->qb
+            ->select('id', 'name')
+            ->from('test_users')
+            ->where('active = ?', $activeValueTrue)
+            ->orderBy('id')
+            ->getResult();
+
+        $this->assertEquals(
+            [
+                ['id' => 1, 'name' => 'John'],
+                ['id' => 3, 'name' => 'Mark'],
+            ],
+            $result
+        );
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
     public function testMultipleWhereClauses(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -99,6 +138,59 @@ class QueryBuilderTest extends DatabaseTestCase {
 
         $this->assertEquals('SELECT id, name FROM users WHERE active = ? AND deleted_at IS NULL', $sql);
         $this->assertEquals([true], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereNotGroup(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereNotGroup(
+                new AndCriteria([
+                    new EqualsCriteria('status', 'active'),
+                    new GreaterThanCriteria('age', 18),
+                ])
+            );
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE NOT (status = ? AND age > ?)', $sql);
+        $this->assertEquals(['active', 18], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testOrWhereNotGroup(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->where('active = ?', true)
+            ->orWhereNotGroup(
+                new AndCriteria([
+                    new EqualsCriteria('status', 'blocked'),
+                    new LessThanCriteria('age', 21),
+                ])
+            );
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE active = ? OR NOT (status = ? AND age < ?)', $sql);
+        $this->assertEquals([true, 'blocked', 21], $params);
     }
 
     /**
@@ -480,5 +572,481 @@ class QueryBuilderTest extends DatabaseTestCase {
 
         // Test that the metadata registry is set (private property, so we test indirectly)
         $this->assertInstanceOf(QueryBuilder::class, $qb);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testRightJoin(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $sql = $this->qb
+            ->select('u.id', 'u.name', 'p.title')
+            ->from('users', 'u')
+            ->rightJoin('posts p', 'p.user_id = u.id')
+            ->getSQL();
+
+        $this->assertEquals('SELECT u.id, u.name, p.title FROM users u RIGHT JOIN posts p ON p.user_id = u.id', $sql);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testCrossJoin(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $sql = $this->qb
+            ->select('u.name', 'c.name')
+            ->from('users', 'u')
+            ->crossJoin('categories')
+            ->getSQL();
+
+        $this->assertEquals('SELECT u.name, c.name FROM users u CROSS JOIN categories', $sql);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereLike(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereLike('name', '%john%');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE name LIKE ?', $sql);
+        $this->assertEquals(['%john%'], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereNotLike(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereNotLike('email', '%.test.%');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE email NOT LIKE ?', $sql);
+        $this->assertEquals(['%.test.%'], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereGreaterThan(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereGreaterThan('age', 18);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE age > ?', $sql);
+        $this->assertEquals([18], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereGreaterThanOrEqual(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('products')
+            ->whereGreaterThanOrEqual('price', 100);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM products WHERE price >= ?', $sql);
+        $this->assertEquals([100], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereLessThan(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereLessThan('age', 65);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE age < ?', $sql);
+        $this->assertEquals([65], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereLessThanOrEqual(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('products')
+            ->whereLessThanOrEqual('stock', 10);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM products WHERE stock <= ?', $sql);
+        $this->assertEquals([10], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereNotEqual(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereNotEqual('status', 'banned');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE status != ?', $sql);
+        $this->assertEquals(['banned'], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereExists(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('u.*')
+            ->from('users', 'u')
+            ->whereExists(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->select('1')
+                    ->from('posts')
+                    ->where('posts.user_id = u.id')
+            );
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expected = 'SELECT u.* FROM users u WHERE EXISTS (SELECT 1 FROM posts WHERE posts.user_id = u.id)';
+        $this->assertEquals($expected, $sql);
+        $this->assertEquals([], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testOrWhereLike(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->where('active = ?', true)
+            ->orWhereLike('name', '%admin%');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $this->assertEquals('SELECT * FROM users WHERE active = ? OR name LIKE ?', $sql);
+        $this->assertEquals([true, '%admin%'], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereInWithSubquery(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereIn(
+                'id',
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->select('user_id')
+                    ->from('premium_users')
+                    ->where('expires_at > ?', '2024-01-01')
+            );
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expected = 'SELECT * FROM users WHERE id IN (SELECT user_id FROM premium_users WHERE expires_at > ?)';
+        $this->assertEquals($expected, $sql);
+        $this->assertEquals(['2024-01-01'], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testWhereNotInWithSubquery(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->whereNotIn(
+                'role',
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->select('role_name')
+                    ->from('banned_roles')
+            );
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expected = 'SELECT * FROM users WHERE role NOT IN (SELECT role_name FROM banned_roles)';
+        $this->assertEquals($expected, $sql);
+        $this->assertEquals([], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSelectSub(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('u.name')
+            ->selectSub(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->selectRaw('COUNT(*)')
+                    ->from('posts')
+                    ->where('posts.user_id = u.id'),
+                'post_count'
+            )
+            ->from('users', 'u');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expected = 'SELECT u.name, (SELECT COUNT(*) FROM posts WHERE posts.user_id = u.id) as post_count FROM users u';
+        $this->assertEquals($expected, $sql);
+        $this->assertEquals([], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testSelectSubWithoutAlias(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('u.name')
+            ->selectSub(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->selectRaw('COUNT(*)')
+                    ->from('posts')
+                    ->where('posts.user_id = u.id')
+            )
+            ->from('users', 'u');
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expected = 'SELECT u.name, (SELECT COUNT(*) FROM posts WHERE posts.user_id = u.id) FROM users u';
+        $this->assertEquals($expected, $sql);
+        $this->assertEquals([], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testParameterOrderWithSelectRawAndJoin(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->selectRaw('COUNT(CASE WHEN p.published = ? THEN 1 END) as published_count', true)
+            ->select('u.id', 'u.name')
+            ->from('users', 'u')
+            ->leftJoin('posts p', 'p.user_id = u.id AND p.visibility = ?', 'public')
+            ->where('u.active = ?', true)
+            ->having('published_count > ?', 5);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expectedSql = 'SELECT COUNT(CASE WHEN p.published = ? THEN 1 END) as published_count, u.id, u.name FROM users u ' .
+            'LEFT JOIN posts p ON p.user_id = u.id AND p.visibility = ? ' .
+            'WHERE u.active = ? HAVING published_count > ?';
+
+        $this->assertEquals($expectedSql, $sql);
+        $this->assertEquals([true, 'public', true, 5], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testParameterOrderWithSelectSubAndWhereIn(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('u.id', 'u.name')
+            ->selectSub(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->selectRaw('COUNT(*)')
+                    ->from('posts')
+                    ->where('posts.user_id = u.id')
+                    ->where('posts.published = ?', true),
+                'post_count'
+            )
+            ->from('users', 'u')
+            ->whereIn(
+                'u.role',
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->select('role')
+                    ->from('roles')
+                    ->where('roles.active = ?', true)
+            )
+            ->where('u.active = ?', true);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        $expectedSql = 'SELECT u.id, u.name, (SELECT COUNT(*) FROM posts WHERE posts.user_id = u.id AND posts.published = ?) as post_count ' .
+            'FROM users u WHERE u.role IN (SELECT role FROM roles WHERE roles.active = ?) AND u.active = ?';
+
+        $this->assertEquals($expectedSql, $sql);
+        $this->assertEquals([true, true, true], $params);
+    }
+
+    /**
+     * @dataProvider databaseProvider
+     */
+    public function testComplexQueryWithNewFeatures(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->connection = $this->getCurrentConnection();
+        $this->qb = new QueryBuilder($this->connection);
+
+        $qb = $this->qb
+            ->select('u.id', 'u.name', 'u.email')
+            ->selectSub(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->selectRaw('COUNT(*)')
+                    ->from('posts')
+                    ->where('posts.user_id = u.id')
+                    ->where('posts.published = ?', true),
+                'published_posts'
+            )
+            ->from('users', 'u')
+            ->leftJoin('profiles p', 'p.user_id = u.id')
+            ->where('u.active = ?', true)
+            ->whereLike('u.name', '%john%')
+            ->whereGreaterThan('u.created_at', '2023-01-01')
+            ->whereExists(
+                $this->qb
+                    ->createSubQueryBuilder()
+                    ->select('1')
+                    ->from('user_permissions')
+                    ->where('user_permissions.user_id = u.id')
+                    ->where('user_permissions.permission = ?', 'read')
+            )
+            ->whereIn('u.role', ['admin', 'moderator'])
+            ->orderBy('u.name')
+            ->limit(50);
+
+        $sql = $qb->getSQL();
+        $params = $qb->getParameters();
+
+        // This is a complex query, so we'll just verify it contains the key elements
+        $this->assertStringContainsString('SELECT u.id, u.name, u.email, (SELECT COUNT(*)', $sql);
+        $this->assertStringContainsString('LEFT JOIN profiles p ON p.user_id = u.id', $sql);
+        $this->assertStringContainsString('WHERE u.active = ?', $sql);
+        $this->assertStringContainsString('u.name LIKE ?', $sql);
+        $this->assertStringContainsString('u.created_at > ?', $sql);
+        $this->assertStringContainsString('EXISTS (SELECT 1', $sql);
+        $this->assertStringContainsString('u.role IN (?)', $sql);
+        $this->assertStringContainsString('ORDER BY u.name ASC LIMIT 50', $sql);
+
+        $expectedParams = [true, true, '%john%', '2023-01-01', 'read', ['admin', 'moderator']];
+        $this->assertEquals($expectedParams, $params);
     }
 }

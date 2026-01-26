@@ -2,9 +2,6 @@
 
 namespace Articulate\Modules\EntityManager;
 
-use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
-
 /**
  * Aggregates and optimizes changes from multiple UnitOfWorks.
  *
@@ -15,6 +12,12 @@ use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionP
 class ChangeAggregator {
     /** @var array<string, array{insert: object[], update: array{entity: object, changes: array}[], delete: object[]}> */
     private array $aggregatedChanges = [];
+
+    public function __construct(
+        private readonly EntityMetadataRegistry $metadataRegistry,
+        private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy,
+    ) {
+    }
 
     /**
      * Aggregates changes from multiple UnitOfWorks into an optimized execution plan.
@@ -32,9 +35,17 @@ class ChangeAggregator {
 
         return [
             'inserts' => $this->optimizeInserts(),
-            'updates' => $this->optimizeUpdates(),
+            'updates' => $this->updateConflictResolutionStrategy->resolve(
+                $this->optimizeUpdates(),
+                $this->metadataRegistry,
+            ),
             'deletes' => $this->optimizeDeletes(),
         ];
+    }
+
+    public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
+    {
+        $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy;
     }
 
     /**
@@ -42,27 +53,20 @@ class ChangeAggregator {
      */
     private function collectChangesFromUnitOfWork(UnitOfWork $unitOfWork): void
     {
-        // Get scheduled operations from the UnitOfWork
-        $scheduledInserts = $this->getScheduledInserts($unitOfWork);
-        $scheduledUpdates = $this->getScheduledUpdates($unitOfWork);
-        $scheduledDeletes = $this->getScheduledDeletes($unitOfWork);
+        $changeSets = $unitOfWork->getChangeSets();
 
         // Group by entity class
-        foreach ($scheduledInserts as $entity) {
+        foreach ($changeSets['inserts'] as $entity) {
             $class = $entity::class;
             $this->aggregatedChanges[$class]['insert'][] = $entity;
         }
 
-        foreach ($scheduledUpdates as $entity) {
-            $class = $entity::class;
-            $changes = $unitOfWork->getEntityChangeSet($entity);
-            $this->aggregatedChanges[$class]['update'][] = [
-                'entity' => $entity,
-                'changes' => $changes,
-            ];
+        foreach ($changeSets['updates'] as $update) {
+            $class = $update['entity']::class;
+            $this->aggregatedChanges[$class]['update'][] = $update;
         }
 
-        foreach ($scheduledDeletes as $entity) {
+        foreach ($changeSets['deletes'] as $entity) {
             $class = $entity::class;
             $this->aggregatedChanges[$class]['delete'][] = $entity;
         }
@@ -170,69 +174,25 @@ class ChangeAggregator {
      */
     private function getEntityIdentity(object $entity): string
     {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
+        $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
 
         if (empty($primaryKeyColumns)) {
-            // Fallback to 'id' property - use metadata-driven access
-            $idProperty = $reflectionEntity->getProperty('id');
-            if ($idProperty instanceof ArticulateReflectionProperty) {
-                $id = $idProperty->getValue($entity);
-            } else {
-                // Fallback to direct reflection if not a metadata property
-                $reflectionProperty = new \ReflectionProperty($entity, 'id');
-                $reflectionProperty->setAccessible(true);
-                $id = $reflectionProperty->getValue($entity);
-            }
+            $idProperty = $metadata->getProperty('id');
+            $id = $idProperty ? $idProperty->getValue($entity) : null;
 
-            return $entity::class . ':' . ($id ?? 'null');
+            return $entity::class . ':' . ($id ?? spl_object_id($entity));
         }
 
         // Use primary key values
         $identityParts = [$entity::class];
         foreach ($primaryKeyColumns as $column) {
-            // Find the property for this column
-            foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                if ($property instanceof ArticulateReflectionProperty && $property->getColumnName() === $column) {
-                    // Use metadata-driven property access
-                    $value = $property->getValue($entity);
-                    $identityParts[] = $value;
-
-                    break;
-                }
-            }
+            $propertyName = $metadata->getPropertyNameForColumn($column);
+            $property = $propertyName ? $metadata->getProperty($propertyName) : null;
+            $value = $property ? $property->getValue($entity) : null;
+            $identityParts[] = $value;
         }
 
         return implode(':', $identityParts);
-    }
-
-    // Methods to access UnitOfWork private properties via reflection
-    // These would ideally be replaced with proper getters in UnitOfWork
-
-    private function getScheduledInserts(UnitOfWork $unitOfWork): array
-    {
-        $reflection = new \ReflectionClass($unitOfWork);
-        $property = $reflection->getProperty('scheduledInserts');
-        $property->setAccessible(true);
-
-        return $property->getValue($unitOfWork);
-    }
-
-    private function getScheduledUpdates(UnitOfWork $unitOfWork): array
-    {
-        $reflection = new \ReflectionClass($unitOfWork);
-        $property = $reflection->getProperty('scheduledUpdates');
-        $property->setAccessible(true);
-
-        return $property->getValue($unitOfWork);
-    }
-
-    private function getScheduledDeletes(UnitOfWork $unitOfWork): array
-    {
-        $reflection = new \ReflectionClass($unitOfWork);
-        $property = $reflection->getProperty('scheduledDeletes');
-        $property->setAccessible(true);
-
-        return $property->getValue($unitOfWork);
     }
 }

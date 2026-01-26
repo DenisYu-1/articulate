@@ -4,6 +4,7 @@ namespace Articulate\Modules\Repository;
 
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 
 abstract class AbstractRepository implements RepositoryInterface {
     protected EntityManager $entityManager;
@@ -100,6 +101,67 @@ abstract class AbstractRepository implements RepositoryInterface {
     public function exists(mixed $id): bool
     {
         return $this->find($id) !== null;
+    }
+
+    /**
+     * Find entities by criteria object.
+     */
+    public function findByCriteria(CriteriaInterface $criteria, ?array $orderBy = null, ?int $limit = null, ?int $offset = null): array
+    {
+        $qb = $this->createQueryBuilder();
+
+        // Apply criteria
+        $criteria->apply($qb);
+
+        // Apply ordering
+        if ($orderBy !== null) {
+            foreach ($orderBy as $field => $direction) {
+                $qb->orderBy($field, $direction);
+            }
+        }
+
+        // Apply limit and offset
+        if ($limit !== null) {
+            $qb->limit($limit);
+        }
+        if ($offset !== null) {
+            $qb->offset($offset);
+        }
+
+        return $qb->getResult();
+    }
+
+    /**
+     * Find one entity by criteria object.
+     */
+    public function findOneByCriteria(CriteriaInterface $criteria, ?array $orderBy = null): ?object
+    {
+        $results = $this->findByCriteria($criteria, $orderBy, 1);
+
+        return $results[0] ?? null;
+    }
+
+    /**
+     * Count entities by criteria object.
+     */
+    public function countByCriteria(CriteriaInterface $criteria): int
+    {
+        $qb = $this->createQueryBuilder();
+
+        // Apply criteria
+        $criteria->apply($qb);
+
+        $qb->count();
+
+        return $qb->getSingleResult() ?? 0;
+    }
+
+    /**
+     * Check if any entity exists by criteria object.
+     */
+    public function existsByCriteria(CriteriaInterface $criteria): bool
+    {
+        return $this->countByCriteria($criteria) > 0;
     }
 
     /**

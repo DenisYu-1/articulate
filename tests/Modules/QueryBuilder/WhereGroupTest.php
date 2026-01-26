@@ -4,6 +4,19 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Modules\Repository\Criteria\AndCriteria;
+use Articulate\Modules\Repository\Criteria\BetweenCriteria;
+use Articulate\Modules\Repository\Criteria\EqualsCriteria;
+use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
+use Articulate\Modules\Repository\Criteria\GreaterThanOrEqualCriteria;
+use Articulate\Modules\Repository\Criteria\GroupCriteria;
+use Articulate\Modules\Repository\Criteria\InCriteria;
+use Articulate\Modules\Repository\Criteria\IsNotNullCriteria;
+use Articulate\Modules\Repository\Criteria\IsNullCriteria;
+use Articulate\Modules\Repository\Criteria\LessThanCriteria;
+use Articulate\Modules\Repository\Criteria\LessThanOrEqualCriteria;
+use Articulate\Modules\Repository\Criteria\LikeCriteria;
+use Articulate\Modules\Repository\Criteria\NotInCriteria;
 use PHPUnit\Framework\TestCase;
 
 class WhereGroupTest extends TestCase {
@@ -23,10 +36,12 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('status = ?', 'active')
-            ->whereGroup(function ($qb) {
-                $qb->where('role = ?', 'admin')
-                   ->orWhere('permissions LIKE ?', '%superuser%');
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new EqualsCriteria('role', 'admin'),
+                    (new LikeCriteria('permissions', '%superuser%'))->or(),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -41,10 +56,12 @@ class WhereGroupTest extends TestCase {
             ->select('id', 'name')
             ->from('users')
             ->where('active = ?', true)
-            ->whereGroup(function ($qb) {
-                $qb->where('age >= ?', 18)
-                   ->where('age <= ?', 65);
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new GreaterThanOrEqualCriteria('age', 18),
+                    new LessThanOrEqualCriteria('age', 65),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -58,14 +75,18 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('products')
-            ->whereGroup(function ($qb) {
-                $qb->where('category = ?', 'electronics')
-                   ->orWhere('category = ?', 'books');
-            })
-            ->whereGroup(function ($qb) {
-                $qb->where('price > ?', 10)
-                   ->where('price < ?', 100);
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new EqualsCriteria('category', 'electronics'),
+                    (new EqualsCriteria('category', 'books'))->or(),
+                ])
+            )
+            ->whereGroup(
+                new AndCriteria([
+                    new GreaterThanCriteria('price', 10),
+                    new LessThanCriteria('price', 100),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -80,13 +101,17 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'name', 'email')
             ->from('users')
-            ->whereGroup(function ($qb) {
-                $qb->where('status = ?', 'active')
-                   ->whereGroup(function ($qb) {
-                       $qb->where('role = ?', 'admin')
-                          ->orWhere('role = ?', 'moderator');
-                   });
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new EqualsCriteria('status', 'active'),
+                    new GroupCriteria(
+                        new AndCriteria([
+                            new EqualsCriteria('role', 'admin'),
+                            (new EqualsCriteria('role', 'moderator'))->or(),
+                        ])
+                    ),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -101,17 +126,23 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('complex_table')
-            ->whereGroup(function ($qb) {
-                $qb->where('a = ?', 1)
-                   ->whereGroup(function ($qb) {
-                       $qb->where('b = ?', 2)
-                          ->orWhere('b = ?', 3)
-                          ->whereGroup(function ($qb) {
-                              $qb->where('c = ?', 4)
-                                 ->orWhere('c = ?', 5);
-                          });
-                   });
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new EqualsCriteria('a', 1),
+                    new GroupCriteria(
+                        new AndCriteria([
+                            new EqualsCriteria('b', 2),
+                            (new EqualsCriteria('b', 3))->or(),
+                            new GroupCriteria(
+                                new AndCriteria([
+                                    new EqualsCriteria('c', 4),
+                                    (new EqualsCriteria('c', 5))->or(),
+                                ])
+                            ),
+                        ])
+                    ),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -127,10 +158,12 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('deleted_at IS NULL')
-            ->whereGroup(function ($qb) {
-                $qb->where('role = ?', 'admin')
-                   ->orWhere('role = ?', 'moderator');
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new EqualsCriteria('role', 'admin'),
+                    (new EqualsCriteria('role', 'moderator'))->or(),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -144,10 +177,12 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'name')
             ->from('users')
-            ->whereGroup(function ($qb) {
-                $qb->whereIn('role', ['admin', 'moderator'])
-                   ->whereNotIn('status', ['banned', 'suspended']);
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new InCriteria('role', ['admin', 'moderator']),
+                    new NotInCriteria('status', ['banned', 'suspended']),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -162,10 +197,12 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('posts')
-            ->whereGroup(function ($qb) {
-                $qb->whereNotNull('published_at')
-                   ->whereNull('deleted_at');
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new IsNotNullCriteria('published_at'),
+                    new IsNullCriteria('deleted_at'),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -179,10 +216,12 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'title', 'price')
             ->from('products')
-            ->whereGroup(function ($qb) {
-                $qb->whereBetween('price', 10, 100)
-                   ->whereBetween('created_at', '2023-01-01', '2023-12-31');
-            });
+            ->whereGroup(
+                new AndCriteria([
+                    new BetweenCriteria(field: 'price', min: 10, max: 100),
+                    new BetweenCriteria(field: 'created_at', min: '2023-01-01', max: '2023-12-31'),
+                ])
+            );
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -198,10 +237,12 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->whereGroup(function ($qb) {
-                $qb->where('age >= ?', 18)
-                   ->orWhere('parental_consent = ?', true);
-            })
+            ->whereGroup(
+                new AndCriteria([
+                    new GreaterThanOrEqualCriteria('age', 18),
+                    (new EqualsCriteria('parental_consent', true))->or(),
+                ])
+            )
             ->where('country = ?', 'US');
 
         $sql = $qb->getSQL();
@@ -219,9 +260,7 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->whereGroup(function ($qb) {
-                // Empty callback - no conditions added
-            });
+            ->whereGroup(new AndCriteria([]));
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -237,14 +276,18 @@ class WhereGroupTest extends TestCase {
             ->select('id', 'name')
             ->from('users')
             ->where('active = ?', true)
-            ->whereGroup(function ($qb) {
-                $qb->where('age > ?', 21)
-                   ->whereGroup(function ($qb) {
-                       $qb->where('country = ?', 'US')
-                          ->orWhere('country = ?', 'CA');
-                   })
-                   ->where('verified = ?', true);
-            })
+            ->whereGroup(
+                new AndCriteria([
+                    new GreaterThanCriteria('age', 21),
+                    new GroupCriteria(
+                        new AndCriteria([
+                            new EqualsCriteria('country', 'US'),
+                            (new EqualsCriteria('country', 'CA'))->or(),
+                        ])
+                    ),
+                    new EqualsCriteria('verified', true),
+                ])
+            )
             ->where('created_at > ?', '2023-01-01');
 
         $sql = $qb->getSQL();

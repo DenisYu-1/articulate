@@ -126,6 +126,11 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return 'VARCHAR(' . $propertyData->length . ')';
         }
 
+        // For integer primary keys, use INT UNSIGNED
+        if ($propertyData->type === 'int' && $propertyData->isPrimaryKey) {
+            return 'INT UNSIGNED';
+        }
+
         return $dbType;
     }
 
