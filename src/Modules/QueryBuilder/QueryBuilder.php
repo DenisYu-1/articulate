@@ -3,6 +3,7 @@
 namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
+use Articulate\Exceptions\TransactionRequiredException;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
@@ -43,6 +44,8 @@ class QueryBuilder {
     private array $groupBy = [];
 
     private ?UnitOfWork $unitOfWork = null;
+
+    private bool $lockForUpdate = false;
 
     public function __construct(
         Connection $connection,
@@ -519,6 +522,7 @@ class QueryBuilder {
         $this->limit = null;
         $this->offset = null;
         $this->distinct = false;
+        $this->lockForUpdate = false;
 
         return $this;
     }
@@ -733,6 +737,13 @@ class QueryBuilder {
         return $this;
     }
 
+    public function lock(): self
+    {
+        $this->lockForUpdate = true;
+
+        return $this;
+    }
+
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
@@ -814,6 +825,10 @@ class QueryBuilder {
             $sql .= ' OFFSET ' . $this->offset;
         }
 
+        if ($this->lockForUpdate) {
+            $sql .= ' FOR UPDATE';
+        }
+
         return $sql;
     }
 
@@ -851,6 +866,10 @@ class QueryBuilder {
 
     public function getResult(?string $entityClass = null): mixed
     {
+        if ($this->lockForUpdate && !$this->connection->inTransaction()) {
+            throw new TransactionRequiredException('lock() requires an active transaction');
+        }
+
         $sql = $this->getSQL();
         $params = $this->getParameters();
 
@@ -895,6 +914,10 @@ class QueryBuilder {
 
     public function execute(): int
     {
+        if ($this->lockForUpdate && !$this->connection->inTransaction()) {
+            throw new TransactionRequiredException('lock() requires an active transaction');
+        }
+
         $sql = $this->getSQL();
         $params = $this->getParameters();
 

@@ -72,4 +72,9 @@ class Connection {
             $this->pdo->rollBack();
         }
     }
+
+    public function inTransaction(): bool
+    {
+        return $this->pdo->inTransaction();
+    }
 }
