@@ -9,6 +9,7 @@ use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
+use Psr\Cache\CacheItemPoolInterface;
 
 class QueryBuilder {
     private Connection $connection;
@@ -47,20 +48,35 @@ class QueryBuilder {
 
     private bool $lockForUpdate = false;
 
+    private QueryResultCache $resultCache;
+
+    private SqlCompiler $sqlCompiler;
+
+    private bool $softDeleteEnabled = true;
+
+    private bool $includeDeleted = false;
+
     public function __construct(
         Connection $connection,
         ?HydratorInterface $hydrator = null,
-        ?EntityMetadataRegistry $metadataRegistry = null
+        ?EntityMetadataRegistry $metadataRegistry = null,
+        ?CacheItemPoolInterface $resultCache = null
     ) {
         $this->connection = $connection;
         $this->hydrator = $hydrator;
         $this->entityClass = null;
         $this->metadataRegistry = $metadataRegistry;
+        $this->resultCache = new QueryResultCache($resultCache);
+        $this->sqlCompiler = new SqlCompiler($metadataRegistry);
     }
 
     public function createSubQueryBuilder(): QueryBuilder
     {
-        return new self($this->connection, $this->hydrator, $this->metadataRegistry);
+        $subBuilder = new self($this->connection, $this->hydrator, $this->metadataRegistry, null);
+        $subBuilder->sqlCompiler->setEntityClass($this->entityClass);
+        $subBuilder->setSoftDeleteEnabled($this->softDeleteEnabled);
+        $subBuilder->includeDeleted = $this->includeDeleted;
+        return $subBuilder;
     }
 
     public function select(string ...$fields): self
@@ -321,11 +337,11 @@ class QueryBuilder {
         $criteria->apply($groupBuilder);
 
         if (!empty($groupBuilder->where)) {
-            $groupClause = $this->buildWhereClause($groupBuilder->where);
+            $groupClause = $groupBuilder->sqlCompiler->buildWhereClause($groupBuilder->where);
             $this->where[] = [
                 'operator' => 'AND',
                 'condition' => "NOT ({$groupClause})",
-                'params' => $this->collectWhereParameters($groupBuilder->where),
+                'params' => $groupBuilder->sqlCompiler->collectWhereParametersPublic($groupBuilder->where),
                 'group' => null,
             ];
         }
@@ -356,11 +372,11 @@ class QueryBuilder {
         $criteria->apply($groupBuilder);
 
         if (!empty($groupBuilder->where)) {
-            $groupClause = $this->buildWhereClause($groupBuilder->where);
+            $groupClause = $groupBuilder->sqlCompiler->buildWhereClause($groupBuilder->where);
             $this->where[] = [
                 'operator' => 'OR',
                 'condition' => "NOT ({$groupClause})",
-                'params' => $this->collectWhereParameters($groupBuilder->where),
+                'params' => $groupBuilder->sqlCompiler->collectWhereParametersPublic($groupBuilder->where),
                 'group' => null,
             ];
         }
@@ -744,6 +760,36 @@ class QueryBuilder {
         return $this;
     }
 
+    /**
+     * Enable result caching for this query.
+     *
+     * Note: Locked queries (using lock()) will never be cached, even if caching is enabled.
+     * This ensures transactional integrity.
+     *
+     * @param int $lifetime Cache lifetime in seconds (must be positive)
+     * @param string|null $resultCacheId Optional custom cache key. If not provided, key is auto-generated from query characteristics.
+     * @return self
+     * @throws InvalidArgumentException If cache pool is not configured or lifetime is invalid
+     */
+    public function enableResultCache(int $lifetime, ?string $resultCacheId = null): self
+    {
+        $this->resultCache->enable($lifetime, $resultCacheId);
+
+        return $this;
+    }
+
+    /**
+     * Disable result caching for this query.
+     *
+     * @return self
+     */
+    public function disableResultCache(): self
+    {
+        $this->resultCache->disable();
+
+        return $this;
+    }
+
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
@@ -769,11 +815,26 @@ class QueryBuilder {
     public function setEntityClass(string $entityClass): self
     {
         $this->entityClass = $entityClass;
+        $this->sqlCompiler->setEntityClass($entityClass);
 
         // If no FROM clause set yet, try to set it from entity
         if (empty($this->from)) {
             $this->from($this->resolveTableName($entityClass));
         }
+
+        return $this;
+    }
+
+    public function setSoftDeleteEnabled(bool $enabled): self
+    {
+        $this->softDeleteEnabled = $enabled;
+
+        return $this;
+    }
+
+    public function withDeleted(): self
+    {
+        $this->includeDeleted = true;
 
         return $this;
     }
@@ -785,81 +846,46 @@ class QueryBuilder {
 
     public function getSQL(): string
     {
-        // If raw SQL is set, return it directly
-        if ($this->rawSql !== null) {
-            return $this->rawSql;
-        }
+        $where = $this->applySoftDeleteFilter($this->where);
 
-        $selectClause = $this->distinct ? 'SELECT DISTINCT ' : 'SELECT ';
-        $sql = $selectClause . $this->buildSelectClause();
-        $sql .= ' FROM ' . $this->from;
-
-        if (!empty($this->joins)) {
-            $joinSqls = array_column($this->joins, 'sql');
-            $sql .= ' ' . implode(' ', $joinSqls);
-        }
-
-        if (!empty($this->where)) {
-            $whereClause = $this->buildWhereClause($this->where);
-            $sql .= ' WHERE ' . $whereClause;
-        }
-
-        if (!empty($this->groupBy)) {
-            $sql .= ' GROUP BY ' . implode(', ', $this->groupBy);
-        }
-
-        if (!empty($this->having)) {
-            $havingClause = $this->buildHavingClause($this->having);
-            $sql .= ' HAVING ' . $havingClause;
-        }
-
-        if (!empty($this->orderBy)) {
-            $sql .= ' ORDER BY ' . implode(', ', $this->orderBy);
-        }
-
-        if ($this->limit !== null) {
-            $sql .= ' LIMIT ' . $this->limit;
-        }
-
-        if ($this->offset !== null) {
-            $sql .= ' OFFSET ' . $this->offset;
-        }
-
-        if ($this->lockForUpdate) {
-            $sql .= ' FOR UPDATE';
-        }
+        [$sql] = $this->sqlCompiler->compile(
+            $this->rawSql,
+            $this->rawParams,
+            $this->from,
+            $this->select,
+            $this->joins,
+            $where,
+            $this->groupBy,
+            $this->having,
+            $this->orderBy,
+            $this->limit,
+            $this->offset,
+            $this->distinct,
+            $this->lockForUpdate
+        );
 
         return $sql;
     }
 
     public function getParameters(): array
     {
-        // If raw SQL is set, return raw parameters
-        if ($this->rawSql !== null) {
-            return $this->rawParams;
-        }
+        $where = $this->applySoftDeleteFilter($this->where);
 
-        $params = [];
-
-        // Add SELECT raw parameters (appear before joins in SQL)
-        foreach ($this->select as $selectItem) {
-            if (is_array($selectItem) && isset($selectItem['raw']) && $selectItem['raw']) {
-                $params = array_merge($params, $selectItem['params']);
-            }
-        }
-
-        // Add join parameters
-        foreach ($this->joins as $join) {
-            $params = array_merge($params, $join['params']);
-        }
-
-        // Add WHERE parameters
-        $params = array_merge($params, $this->collectWhereParameters($this->where));
-
-        // Add HAVING parameters
-        foreach ($this->having as $havingClause) {
-            $params = array_merge($params, $havingClause['params']);
-        }
+        [, $params] = $this->sqlCompiler->compile(
+            $this->rawSql,
+            $this->rawParams,
+            $this->from,
+            $this->select,
+            $this->joins,
+            $where,
+            $this->groupBy,
+            $this->having,
+            $this->orderBy,
+            $this->limit,
+            $this->offset,
+            $this->distinct,
+            $this->lockForUpdate
+        );
 
         return $params;
     }
@@ -870,18 +896,73 @@ class QueryBuilder {
             throw new TransactionRequiredException('lock() requires an active transaction');
         }
 
+        $targetClass = $entityClass ?? $this->entityClass;
         $sql = $this->getSQL();
         $params = $this->getParameters();
+
+        // Check cache if enabled (but not for locked queries - they must always hit the database)
+        if (!$this->lockForUpdate && $this->resultCache->isEnabled()) {
+            $cacheKey = $this->resultCache->getCacheId() ?? $this->resultCache->generateCacheKey(
+                $targetClass,
+                $sql,
+                $params,
+                $this->distinct,
+                $this->limit,
+                $this->offset,
+                $this->orderBy,
+                $this->groupBy,
+                $this->having
+            );
+
+            $rawResults = $this->resultCache->get($cacheKey);
+            if ($rawResults !== null) {
+                if (empty($rawResults)) {
+                    return [];
+                }
+
+                // Hydrate if entity class is available
+                if ($targetClass && $this->hydrator) {
+                    $entities = array_map(
+                        fn ($row) => $this->hydrator->hydrate($targetClass, $row),
+                        $rawResults
+                    );
+
+                    if ($this->unitOfWork) {
+                        foreach ($entities as $entity) {
+                            $this->unitOfWork->registerManaged($entity, []);
+                        }
+                    }
+
+                    return $entities;
+                }
+
+                return $rawResults;
+            }
+        }
 
         $statement = $this->connection->executeQuery($sql, $params);
         $rawResults = $statement->fetchAll();
 
+        // Store in cache if enabled (but not for locked queries)
+        if (!$this->lockForUpdate && $this->resultCache->isEnabled()) {
+            $cacheKey = $this->resultCache->getCacheId() ?? $this->resultCache->generateCacheKey(
+                $targetClass,
+                $sql,
+                $params,
+                $this->distinct,
+                $this->limit,
+                $this->offset,
+                $this->orderBy,
+                $this->groupBy,
+                $this->having
+            );
+
+            $this->resultCache->set($cacheKey, $rawResults);
+        }
+
         if (empty($rawResults)) {
             return [];
         }
-
-        // Use provided entity class, or fall back to set entity class
-        $targetClass = $entityClass ?? $this->entityClass;
 
         // If entity class available and hydrator available, return hydrated objects
         if ($targetClass && $this->hydrator) {
@@ -893,7 +974,7 @@ class QueryBuilder {
             // Register entities with UnitOfWork if one is set
             if ($this->unitOfWork) {
                 foreach ($entities as $entity) {
-                    $this->unitOfWork->registerManaged($entity, []); // Empty array for original data since we don't have it
+                    $this->unitOfWork->registerManaged($entity, []);
                 }
             }
 
@@ -906,8 +987,10 @@ class QueryBuilder {
 
     public function getSingleResult(?string $entityClass = null): mixed
     {
-        $this->limit(1);
+        $originalLimit = $this->limit;
+        $this->limit = 1;
         $results = $this->getResult($entityClass);
+        $this->limit = $originalLimit;
 
         return is_array($results) ? ($results[0] ?? null) : $results;
     }
@@ -928,14 +1011,8 @@ class QueryBuilder {
 
     private function resolveTableName(string $entityClass): string
     {
-        // Use metadata registry if available, otherwise fall back to simple pluralization
         if ($this->metadataRegistry) {
-            try {
-                return $this->metadataRegistry->getTableName($entityClass);
-            } catch (InvalidArgumentException $e) {
-                // Entity is not properly configured, fall back to simple pluralization
-                // This allows QueryBuilder to work even with misconfigured entities
-            }
+            return $this->metadataRegistry->getTableName($entityClass);
         }
 
         // Fallback: simple pluralization: User -> users, Post -> posts
@@ -944,119 +1021,70 @@ class QueryBuilder {
         return strtolower($className) . 's';
     }
 
-    /**
-     * Build a HAVING clause from the having conditions array.
-     */
-    private function buildHavingClause(array $conditions): string
+    private function applySoftDeleteFilter(array $where): array
     {
-        $result = '';
-
-        foreach ($conditions as $index => $condition) {
-            if ($index === 0) {
-                $result .= $condition['condition'];
-            } else {
-                $operator = $condition['operator'];
-                $result .= " {$operator} {$condition['condition']}";
-            }
+        // Don't apply filter if:
+        // - Raw SQL is used
+        // - Soft-delete is disabled globally
+        // - withDeleted() was called
+        // - No entity class is set
+        // - No metadata registry available
+        if ($this->rawSql !== null || !$this->softDeleteEnabled || $this->includeDeleted || $this->entityClass === null || $this->metadataRegistry === null) {
+            return $where;
         }
 
-        return $result;
-    }
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($this->entityClass);
+            if (!$metadata->isSoftDeleteable()) {
+                return $where;
+            }
 
-    /**
-     * Build a SELECT clause handling raw expressions.
-     */
-    private function buildSelectClause(): string
-    {
-        if (empty($this->select)) {
-            if ($this->entityClass && $this->metadataRegistry) {
-                try {
-                    $columns = $this->metadataRegistry
-                        ->getMetadata($this->entityClass)
-                        ->getColumnNames();
-                    if (!empty($columns)) {
-                        return implode(', ', $columns);
+            $softDeleteColumn = $metadata->getSoftDeleteColumn();
+            if ($softDeleteColumn === null) {
+                return $where;
+            }
+
+            // Check if soft-delete filter is already present in where conditions
+            $hasSoftDeleteFilter = false;
+            foreach ($where as $condition) {
+                if ($condition['group'] !== null) {
+                    $hasSoftDeleteFilter = $this->hasSoftDeleteFilterInGroup($condition['group'], $softDeleteColumn);
+                    if ($hasSoftDeleteFilter) {
+                        break;
                     }
-                } catch (InvalidArgumentException $e) {
+                } elseif (isset($condition['condition']) && str_contains($condition['condition'], $softDeleteColumn) && str_contains($condition['condition'], 'IS NULL')) {
+                    $hasSoftDeleteFilter = true;
+                    break;
                 }
             }
 
-            return '*';
-        }
-
-        $selectParts = [];
-        foreach ($this->select as $selectItem) {
-            if (is_array($selectItem) && isset($selectItem['raw']) && $selectItem['raw']) {
-                $selectParts[] = $selectItem['expression'];
-            } else {
-                $selectParts[] = $selectItem;
+            if (!$hasSoftDeleteFilter) {
+                $where[] = [
+                    'operator' => 'AND',
+                    'condition' => "{$softDeleteColumn} IS NULL",
+                    'params' => [],
+                    'group' => null,
+                ];
             }
+        } catch (\InvalidArgumentException $e) {
+            // Entity not found in metadata registry, skip filtering
         }
 
-        return implode(', ', $selectParts);
+        return $where;
     }
 
-    /**
-     * Build a WHERE clause from the where conditions array.
-     */
-    private function buildWhereClause(array $conditions): string
+    private function hasSoftDeleteFilterInGroup(array $group, string $softDeleteColumn): bool
     {
-        $parts = [];
-
-        foreach ($conditions as $condition) {
+        foreach ($group as $condition) {
             if ($condition['group'] !== null) {
-                // This is a group condition
-                $groupClause = $this->buildWhereClause($condition['group']);
-                $parts[] = "({$groupClause})";
-            } else {
-                // This is a regular condition
-                $parts[] = $condition['condition'];
-            }
-        }
-
-        // Join with operators - first condition has no operator prefix
-        $result = '';
-        foreach ($conditions as $index => $condition) {
-            if ($index === 0) {
-                // First condition - handle group or regular
-                if ($condition['group'] !== null) {
-                    $groupClause = $this->buildWhereClause($condition['group']);
-                    $result .= "({$groupClause})";
-                } else {
-                    $result .= $condition['condition'];
+                if ($this->hasSoftDeleteFilterInGroup($condition['group'], $softDeleteColumn)) {
+                    return true;
                 }
-            } else {
-                // Subsequent conditions with operator
-                $operator = $condition['operator'];
-                if ($condition['group'] !== null) {
-                    $groupClause = $this->buildWhereClause($condition['group']);
-                    $result .= " {$operator} ({$groupClause})";
-                } else {
-                    $result .= " {$operator} {$condition['condition']}";
-                }
+            } elseif (isset($condition['condition']) && str_contains($condition['condition'], $softDeleteColumn) && str_contains($condition['condition'], 'IS NULL')) {
+                return true;
             }
         }
 
-        return $result;
-    }
-
-    /**
-     * Collect parameters from where conditions recursively.
-     */
-    private function collectWhereParameters(array $conditions): array
-    {
-        $params = [];
-
-        foreach ($conditions as $condition) {
-            if ($condition['group'] !== null) {
-                // Recursively collect from group
-                $params = array_merge($params, $this->collectWhereParameters($condition['group']));
-            } else {
-                // Add direct parameters
-                $params = array_merge($params, $condition['params']);
-            }
-        }
-
-        return $params;
+        return false;
     }
 }

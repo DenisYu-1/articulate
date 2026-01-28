@@ -15,6 +15,7 @@ use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\SoftDeleteable;
 use Articulate\Schema\SchemaNaming;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -419,5 +420,19 @@ class ReflectionEntity extends ReflectionClass {
         $className = explode('\\', $this->getName());
 
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', end($className)));
+    }
+
+    public function getSoftDeleteableAttribute(): ?SoftDeleteable
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        $attributes = $this->getAttributes(SoftDeleteable::class);
+        if (empty($attributes)) {
+            return null;
+        }
+
+        return $attributes[0]->newInstance();
     }
 }

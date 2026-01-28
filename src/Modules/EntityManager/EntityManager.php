@@ -9,6 +9,7 @@ use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\RepositoryFactory;
 use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
+use Psr\Cache\CacheItemPoolInterface;
 
 class EntityManager {
     private Connection $connection;
@@ -38,6 +39,10 @@ class EntityManager {
 
     private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
 
+    private ?CacheItemPoolInterface $resultCache = null;
+
+    private bool $softDeleteEnabled = true;
+
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
@@ -45,7 +50,8 @@ class EntityManager {
         ?GeneratorRegistry $generatorRegistry = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
         ?QueryExecutor $queryExecutor = null,
-        ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null
+        ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
+        ?CacheItemPoolInterface $resultCache = null
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -83,8 +89,12 @@ class EntityManager {
         // Initialize hydrator
         $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager, $typeRegistry);
 
+        // Store result cache
+        $this->resultCache = $resultCache;
+
         // Initialize QueryBuilder
-        $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
+        $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache);
+        $this->queryBuilder->setSoftDeleteEnabled($this->softDeleteEnabled);
 
         // Initialize RepositoryFactory
         $this->repositoryFactory = new RepositoryFactory($this);
@@ -343,7 +353,7 @@ class EntityManager {
             }
         }
 
-        $qb = $this->createQueryBuilder()
+        $qb = $this->createQueryBuilder($class)
             ->select(...$columnNames)
             ->from($tableName)
             ->where("$primaryKeyColumn = ?", $id)
@@ -376,7 +386,7 @@ class EntityManager {
         $tableName = $metadata->getTableName();
 
         // Build and execute query to get all records
-        $qb = $this->createQueryBuilder()
+        $qb = $this->createQueryBuilder($class)
             ->select(...$metadata->getColumnNames())
             ->from($tableName);
 
@@ -459,7 +469,7 @@ class EntityManager {
 
         // Query database for fresh data
         $tableName = $metadata->getTableName();
-        $qb = $this->createQueryBuilder()
+        $qb = $this->createQueryBuilder($entityClass)
             ->select(...$metadata->getColumnNames())
             ->from($tableName)
             ->where("$primaryKeyColumn = ?", $id)
@@ -551,10 +561,13 @@ class EntityManager {
     // Query builder
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache);
 
         // Set the default UnitOfWork for entity management
         $qb->setUnitOfWork($this->getDefaultUnitOfWork());
+
+        // Set soft-delete enabled state
+        $qb->setSoftDeleteEnabled($this->softDeleteEnabled);
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
@@ -616,6 +629,23 @@ class EntityManager {
     public function getMetadataRegistry(): EntityMetadataRegistry
     {
         return $this->metadataRegistry;
+    }
+
+    /**
+     * Enable or disable soft-delete filtering globally.
+     */
+    public function setSoftDeleteEnabled(bool $enabled): void
+    {
+        $this->softDeleteEnabled = $enabled;
+        $this->queryBuilder->setSoftDeleteEnabled($enabled);
+    }
+
+    /**
+     * Check if soft-delete filtering is enabled globally.
+     */
+    public function isSoftDeleteEnabled(): bool
+    {
+        return $this->softDeleteEnabled;
     }
 
     /**
