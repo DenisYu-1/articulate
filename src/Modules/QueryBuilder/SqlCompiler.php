@@ -3,6 +3,8 @@
 namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Modules\QueryBuilder\Cursor;
+use Articulate\Modules\QueryBuilder\CursorDirection;
 use InvalidArgumentException;
 
 class SqlCompiler {
@@ -33,7 +35,8 @@ class SqlCompiler {
         ?int $limit,
         ?int $offset,
         bool $distinct,
-        bool $lockForUpdate
+        bool $lockForUpdate,
+        ?Cursor $cursor = null
     ): array {
         if ($rawSql !== null) {
             return [$rawSql, $rawParams];
@@ -48,8 +51,21 @@ class SqlCompiler {
             $sql .= ' ' . implode(' ', $joinSqls);
         }
 
-        if (!empty($where)) {
-            $whereClause = $this->buildWhereClause($where);
+        $whereWithCursor = $where;
+        if ($cursor !== null && !empty($orderBy)) {
+            $cursorCondition = $this->buildCursorCondition($orderBy, $cursor);
+            if ($cursorCondition !== null) {
+                $whereWithCursor[] = [
+                    'operator' => 'AND',
+                    'condition' => $cursorCondition['condition'],
+                    'params' => $cursorCondition['params'],
+                    'group' => null,
+                ];
+            }
+        }
+
+        if (!empty($whereWithCursor)) {
+            $whereClause = $this->buildWhereClause($whereWithCursor);
             $sql .= ' WHERE ' . $whereClause;
         }
 
@@ -63,7 +79,11 @@ class SqlCompiler {
         }
 
         if (!empty($orderBy)) {
-            $sql .= ' ORDER BY ' . implode(', ', $orderBy);
+            $effectiveOrderBy = $orderBy;
+            if ($cursor !== null && $cursor->getDirection() === CursorDirection::PREV) {
+                $effectiveOrderBy = $this->reverseOrderBy($orderBy);
+            }
+            $sql .= ' ORDER BY ' . implode(', ', $effectiveOrderBy);
         }
 
         if ($limit !== null) {
@@ -78,9 +98,109 @@ class SqlCompiler {
             $sql .= ' FOR UPDATE';
         }
 
-        $params = $this->collectParameters($select, $joins, $where, $having);
+        $params = $this->collectParameters($select, $joins, $whereWithCursor, $having);
 
         return [$sql, $params];
+    }
+
+    private function buildCursorCondition(array $orderBy, Cursor $cursor): ?array
+    {
+        if (empty($orderBy)) {
+            return null;
+        }
+
+        $parsedOrderBy = $this->parseOrderBy($orderBy);
+        $cursorValues = $cursor->getValues();
+        $direction = $cursor->getDirection();
+
+        if (count($cursorValues) !== count($parsedOrderBy)) {
+            throw new InvalidArgumentException('Cursor values count must match ORDER BY columns count');
+        }
+
+        $isPrev = $direction === CursorDirection::PREV;
+
+        $conditions = [];
+        $params = [];
+
+        if (count($parsedOrderBy) === 1) {
+            $column = $parsedOrderBy[0]['column'];
+            $orderDirection = $parsedOrderBy[0]['direction'];
+            $value = $cursorValues[0];
+
+            $effectiveDirection = $isPrev ? $this->reverseDirection($orderDirection) : $orderDirection;
+            $operator = $this->getCursorOperator($effectiveDirection);
+            $conditions[] = "{$column} {$operator} ?";
+            $params[] = $value;
+        } else {
+            $col1 = $parsedOrderBy[0]['column'];
+            $dir1 = $parsedOrderBy[0]['direction'];
+            $val1 = $cursorValues[0];
+
+            $col2 = $parsedOrderBy[1]['column'];
+            $dir2 = $parsedOrderBy[1]['direction'];
+            $val2 = $cursorValues[1];
+
+            $effectiveDir1 = $isPrev ? $this->reverseDirection($dir1) : $dir1;
+            $effectiveDir2 = $isPrev ? $this->reverseDirection($dir2) : $dir2;
+
+            $op1 = $this->getCursorOperator($effectiveDir1);
+            $op2 = $this->getCursorOperator($effectiveDir2);
+
+            $conditions[] = "({$col1} {$op1} ? OR ({$col1} = ? AND {$col2} {$op2} ?))";
+            $params[] = $val1;
+            $params[] = $val1;
+            $params[] = $val2;
+        }
+
+        return [
+            'condition' => implode(' AND ', $conditions),
+            'params' => $params,
+        ];
+    }
+
+    private function parseOrderBy(array $orderBy): array
+    {
+        $parsed = [];
+        foreach ($orderBy as $orderItem) {
+            if (preg_match('/^(.+?)\s+(ASC|DESC)$/i', trim($orderItem), $matches)) {
+                $parsed[] = [
+                    'column' => trim($matches[1]),
+                    'direction' => strtoupper($matches[2]),
+                ];
+            } else {
+                $parsed[] = [
+                    'column' => trim($orderItem),
+                    'direction' => 'ASC',
+                ];
+            }
+        }
+        return $parsed;
+    }
+
+    private function getCursorOperator(string $orderDirection): string
+    {
+        return strtoupper($orderDirection) === 'ASC' ? '>' : '<';
+    }
+
+    private function reverseDirection(string $direction): string
+    {
+        return strtoupper($direction) === 'ASC' ? 'DESC' : 'ASC';
+    }
+
+    private function reverseOrderBy(array $orderBy): array
+    {
+        $reversed = [];
+        foreach ($orderBy as $orderItem) {
+            if (preg_match('/^(.+?)\s+(ASC|DESC)$/i', trim($orderItem), $matches)) {
+                $column = trim($matches[1]);
+                $direction = strtoupper($matches[2]);
+                $reversedDirection = $direction === 'ASC' ? 'DESC' : 'ASC';
+                $reversed[] = "{$column} {$reversedDirection}";
+            } else {
+                $reversed[] = trim($orderItem) . ' DESC';
+            }
+        }
+        return $reversed;
     }
 
     private function buildSelectClause(array $select): string
@@ -195,5 +315,114 @@ class SqlCompiler {
     public function collectWhereParametersPublic(array $conditions): array
     {
         return $this->collectWhereParameters($conditions);
+    }
+
+    /**
+     * Compile INSERT SQL statement.
+     *
+     * @param string $table Table name
+     * @param array $columns Column names
+     * @param array $valuesRows Array of value arrays (for multi-row insert)
+     * @param array $returning Columns to return (PostgreSQL)
+     * @return array{string, array} [sql, params]
+     */
+    public function compileInsert(string $table, array $columns, array $valuesRows, array $returning = []): array
+    {
+        if (empty($columns)) {
+            throw new InvalidArgumentException('INSERT requires at least one column');
+        }
+
+        if (empty($valuesRows)) {
+            throw new InvalidArgumentException('INSERT requires at least one row of values');
+        }
+
+        $sql = 'INSERT INTO ' . $table . ' (' . implode(', ', $columns) . ') VALUES ';
+
+        $params = [];
+        $valueParts = [];
+
+        foreach ($valuesRows as $rowValues) {
+            if (count($rowValues) !== count($columns)) {
+                throw new InvalidArgumentException('Number of values must match number of columns');
+            }
+
+            $valueParts[] = '(' . implode(', ', array_fill(0, count($columns), '?')) . ')';
+            $params = array_merge($params, $rowValues);
+        }
+
+        $sql .= implode(', ', $valueParts);
+
+        if (!empty($returning)) {
+            $sql .= ' RETURNING ' . implode(', ', $returning);
+        }
+
+        return [$sql, $params];
+    }
+
+    /**
+     * Compile UPDATE SQL statement.
+     *
+     * @param string $table Table name
+     * @param array $set Array of [column => value] pairs
+     * @param array $where Where conditions
+     * @param array $returning Columns to return (PostgreSQL)
+     * @return array{string, array} [sql, params]
+     */
+    public function compileUpdate(string $table, array $set, array $where, array $returning = []): array
+    {
+        if (empty($set)) {
+            throw new InvalidArgumentException('UPDATE requires at least one SET clause');
+        }
+
+        $sql = 'UPDATE ' . $table . ' SET ';
+
+        $setParts = [];
+        $params = [];
+
+        foreach ($set as $column => $value) {
+            $setParts[] = $column . ' = ?';
+            $params[] = $value;
+        }
+
+        $sql .= implode(', ', $setParts);
+
+        if (!empty($where)) {
+            $whereClause = $this->buildWhereClause($where);
+            $sql .= ' WHERE ' . $whereClause;
+            $params = array_merge($params, $this->collectWhereParameters($where));
+        }
+
+        if (!empty($returning)) {
+            $sql .= ' RETURNING ' . implode(', ', $returning);
+        }
+
+        return [$sql, $params];
+    }
+
+    /**
+     * Compile DELETE SQL statement.
+     *
+     * @param string $table Table name
+     * @param array $where Where conditions
+     * @param array $returning Columns to return (PostgreSQL)
+     * @return array{string, array} [sql, params]
+     */
+    public function compileDelete(string $table, array $where, array $returning = []): array
+    {
+        $sql = 'DELETE FROM ' . $table;
+
+        $params = [];
+
+        if (!empty($where)) {
+            $whereClause = $this->buildWhereClause($where);
+            $sql .= ' WHERE ' . $whereClause;
+            $params = array_merge($params, $this->collectWhereParameters($where));
+        }
+
+        if (!empty($returning)) {
+            $sql .= ' RETURNING ' . implode(', ', $returning);
+        }
+
+        return [$sql, $params];
     }
 }

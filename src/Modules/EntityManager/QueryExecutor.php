@@ -535,4 +535,58 @@ class QueryExecutor {
             }
         }
     }
+
+    /**
+     * Extract column names and values from an entity for INSERT operations.
+     *
+     * @return array{columns: string[], values: array}
+     */
+    public function extractInsertData(object $entity): array
+    {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+
+        $properties = array_filter(
+            iterator_to_array($reflectionEntity->getEntityProperties()),
+            fn ($property) => $property instanceof ReflectionProperty
+        );
+
+        $columns = [];
+        $values = [];
+
+        foreach ($properties as $property) {
+            $columnName = $property->getColumnName();
+            $fieldName = $property->getFieldName();
+
+            $reflectionProperty = new NativeReflectionProperty($entity, $fieldName);
+            $reflectionProperty->setAccessible(true);
+            $value = $reflectionProperty->getValue($entity);
+
+            if ($property->isPrimaryKey() && $value === null) {
+                continue;
+            }
+
+            if ($value === null && !$property->isNullable() && $property->getDefaultValue() === null) {
+                continue;
+            }
+
+            $columns[] = $columnName;
+            $values[] = $value;
+        }
+
+        $this->addMorphToColumns($entity, $columns, $columns, $values);
+
+        return ['columns' => $columns, 'values' => $values];
+    }
+
+    /**
+     * Build WHERE clause for an entity based on its primary key.
+     *
+     * @return array{clause: string, values: array}
+     */
+    public function buildEntityWhereClause(object $entity): array
+    {
+        [$clause, $values] = $this->buildWhereClause($entity);
+
+        return ['clause' => $clause, 'values' => $values];
+    }
 }

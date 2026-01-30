@@ -2,6 +2,7 @@
 
 namespace Articulate\Modules\Repository;
 
+use Articulate\Modules\QueryBuilder\CursorPaginator;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 
 interface RepositoryInterface {
@@ -61,4 +62,34 @@ interface RepositoryInterface {
      * Check if any entity exists by criteria object.
      */
     public function existsByCriteria(CriteriaInterface $criteria): bool;
+
+    /**
+     * Find entities with cursor pagination.
+     *
+     * @param string|null $cursor Cursor token for pagination
+     * @param int $limit Number of items per page
+     * @param array<string, 'ASC'|'DESC'>|null $orderBy Ordering specification
+     * @return CursorPaginator
+     */
+    public function findWithCursor(
+        ?string $cursor = null,
+        int $limit = 20,
+        ?array $orderBy = null
+    ): CursorPaginator;
+
+    /**
+     * Find entities with cursor pagination by criteria.
+     *
+     * @param CriteriaInterface $criteria Search criteria
+     * @param string|null $cursor Cursor token for pagination
+     * @param int $limit Number of items per page
+     * @param array<string, 'ASC'|'DESC'>|null $orderBy Ordering specification
+     * @return CursorPaginator
+     */
+    public function findWithCursorByCriteria(
+        CriteriaInterface $criteria,
+        ?string $cursor = null,
+        int $limit = 20,
+        ?array $orderBy = null
+    ): CursorPaginator;
 }

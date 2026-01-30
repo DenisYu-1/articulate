@@ -17,11 +17,15 @@ class GroupCriteria implements CriteriaInterface {
     public function apply(QueryBuilder $qb): void
     {
         if ($this->operator === 'OR') {
-            $qb->orWhereGroup($this->criteria);
+            $qb->orWhere(function($q) {
+                $q->apply($this->criteria);
+            });
             return;
         }
 
-        $qb->whereGroup($this->criteria);
+        $qb->where(function($q) {
+            $q->apply($this->criteria);
+        });
     }
 
     public function or(): self

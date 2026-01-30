@@ -3,6 +3,8 @@
 namespace Articulate\Modules\Repository;
 
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\QueryBuilder\CursorDirection;
+use Articulate\Modules\QueryBuilder\CursorPaginator;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 
@@ -111,7 +113,7 @@ abstract class AbstractRepository implements RepositoryInterface {
         $qb = $this->createQueryBuilder();
 
         // Apply criteria
-        $criteria->apply($qb);
+        $qb->apply($criteria);
 
         // Apply ordering
         if ($orderBy !== null) {
@@ -149,7 +151,7 @@ abstract class AbstractRepository implements RepositoryInterface {
         $qb = $this->createQueryBuilder();
 
         // Apply criteria
-        $criteria->apply($qb);
+        $qb->apply($criteria);
 
         $qb->count();
 
@@ -162,6 +164,53 @@ abstract class AbstractRepository implements RepositoryInterface {
     public function existsByCriteria(CriteriaInterface $criteria): bool
     {
         return $this->countByCriteria($criteria) > 0;
+    }
+
+    public function findWithCursor(
+        ?string $cursor = null,
+        int $limit = 20,
+        ?array $orderBy = null
+    ): CursorPaginator {
+        $qb = $this->createQueryBuilder();
+
+        if ($orderBy !== null) {
+            foreach ($orderBy as $field => $direction) {
+                $qb->orderBy($field, $direction);
+            }
+        }
+
+        if ($cursor !== null) {
+            $qb->cursor($cursor, CursorDirection::NEXT);
+        }
+
+        $qb->cursorLimit($limit);
+
+        return $qb->getCursorPaginatedResult();
+    }
+
+    public function findWithCursorByCriteria(
+        CriteriaInterface $criteria,
+        ?string $cursor = null,
+        int $limit = 20,
+        ?array $orderBy = null
+    ): CursorPaginator {
+        $qb = $this->createQueryBuilder();
+
+        $qb->apply($criteria);
+
+        if ($orderBy !== null) {
+            foreach ($orderBy as $field => $direction) {
+                $qb->orderBy($field, $direction);
+            }
+        }
+
+        if ($cursor !== null) {
+            $qb->cursor($cursor, CursorDirection::NEXT);
+        }
+
+        $qb->cursorLimit($limit);
+
+        return $qb->getCursorPaginatedResult();
     }
 
     /**

@@ -152,12 +152,12 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereNotGroup(
-                new AndCriteria([
+            ->whereNot(function($q) {
+                $q->apply(new AndCriteria([
                     new EqualsCriteria('status', 'active'),
                     new GreaterThanCriteria('age', 18),
-                ])
-            );
+                ]));
+            });
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -179,12 +179,14 @@ class QueryBuilderTest extends DatabaseTestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->orWhereNotGroup(
-                new AndCriteria([
-                    new EqualsCriteria('status', 'blocked'),
-                    new LessThanCriteria('age', 21),
-                ])
-            );
+            ->orWhere(function($q) {
+                $q->whereNot(function($q2) {
+                    $q2->apply(new AndCriteria([
+                        new EqualsCriteria('status', 'blocked'),
+                        new LessThanCriteria('age', 21),
+                    ]));
+                });
+            });
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -625,7 +627,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereLike('name', '%john%');
+            ->where('name', 'like', '%john%');
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -646,7 +648,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereNotLike('email', '%.test.%');
+            ->where('email', 'not like', '%.test.%');
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -670,7 +672,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereGreaterThan('age', 18);
+            ->where('age', '>', 18);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -691,7 +693,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('products')
-            ->whereGreaterThanOrEqual('price', 100);
+            ->where('price', '>=', 100);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -712,7 +714,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereLessThan('age', 65);
+            ->where('age', '<', 65);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -733,7 +735,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('products')
-            ->whereLessThanOrEqual('stock', 10);
+            ->where('stock', '<=', 10);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -754,7 +756,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereNotEqual('status', 'banned');
+            ->where('status', '!=', 'banned');
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -804,7 +806,7 @@ class QueryBuilderTest extends DatabaseTestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->orWhereLike('name', '%admin%');
+            ->orWhere('name', 'like', '%admin%');
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -1019,8 +1021,8 @@ class QueryBuilderTest extends DatabaseTestCase {
             ->from('users', 'u')
             ->leftJoin('profiles p', 'p.user_id = u.id')
             ->where('u.active = ?', true)
-            ->whereLike('u.name', '%john%')
-            ->whereGreaterThan('u.created_at', '2023-01-01')
+            ->where('u.name', 'like', '%john%')
+            ->where('u.created_at', '>', '2023-01-01')
             ->whereExists(
                 $this->qb
                     ->createSubQueryBuilder()

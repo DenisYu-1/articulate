@@ -77,4 +77,9 @@ class Connection {
     {
         return $this->pdo->inTransaction();
     }
+
+    public function lastInsertId(?string $name = null): string|false
+    {
+        return $this->pdo->lastInsertId($name);
+    }
 }

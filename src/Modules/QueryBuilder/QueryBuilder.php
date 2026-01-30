@@ -2,11 +2,18 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
+use Articulate\Modules\EntityManager\EntityMetadata;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Exceptions\CursorPaginationException;
+use Articulate\Modules\QueryBuilder\Cursor;
+use Articulate\Modules\QueryBuilder\CursorCodec;
+use Articulate\Modules\QueryBuilder\CursorDirection;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -42,6 +49,14 @@ class QueryBuilder {
 
     private array $orderBy = [];
 
+    private ?Cursor $cursor = null;
+
+    private ?int $cursorLimit = null;
+
+    private CursorCodec $cursorCodec;
+
+    private CursorPaginationHandler $cursorPaginationHandler;
+
     private array $groupBy = [];
 
     private ?UnitOfWork $unitOfWork = null;
@@ -50,11 +65,27 @@ class QueryBuilder {
 
     private QueryResultCache $resultCache;
 
+    private QueryResultExecutor $resultExecutor;
+
     private SqlCompiler $sqlCompiler;
+
+    private SoftDeleteFilter $softDeleteFilter;
 
     private bool $softDeleteEnabled = true;
 
     private bool $includeDeleted = false;
+
+    private ?string $dmlCommand = null;
+
+    private array $insertColumns = [];
+
+    private array $insertValues = [];
+
+    private array $updateSet = [];
+
+    private ?object $dmlEntity = null;
+
+    private array $returning = [];
 
     public function __construct(
         Connection $connection,
@@ -68,6 +99,10 @@ class QueryBuilder {
         $this->metadataRegistry = $metadataRegistry;
         $this->resultCache = new QueryResultCache($resultCache);
         $this->sqlCompiler = new SqlCompiler($metadataRegistry);
+        $this->cursorCodec = new CursorCodec();
+        $this->softDeleteFilter = new SoftDeleteFilter($metadataRegistry);
+        $this->cursorPaginationHandler = new CursorPaginationHandler($this->cursorCodec, $metadataRegistry);
+        $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null);
     }
 
     public function createSubQueryBuilder(): QueryBuilder
@@ -93,24 +128,97 @@ class QueryBuilder {
         return $this;
     }
 
-    public function where(string $condition, mixed ...$params): self
+    public function where(string|callable $columnOrCallback, mixed $operatorOrValue = null, mixed $value = null): self
     {
+        if (is_callable($columnOrCallback)) {
+            return $this->whereGroupCallback($columnOrCallback, 'AND');
+        }
+
+        if ($value === null) {
+            $value = $operatorOrValue;
+            $operator = '=';
+        } else {
+            $operator = $operatorOrValue;
+        }
+
+        $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
         $this->where[] = [
             'operator' => 'AND',
-            'condition' => $condition,
-            'params' => $params,
+            'condition' => $condition['condition'],
+            'params' => $condition['params'],
             'group' => null,
         ];
 
         return $this;
     }
 
-    public function orWhere(string $condition, mixed ...$params): self
+    private function buildConditionFromOperator(string $column, string $operator, mixed $value): array
     {
+        $operator = strtolower(trim($operator));
+
+        return match ($operator) {
+            '=', 'eq' => ['condition' => "{$column} = ?", 'params' => [$value]],
+            '!=', '<>', 'ne' => ['condition' => "{$column} != ?", 'params' => [$value]],
+            '>', 'gt' => ['condition' => "{$column} > ?", 'params' => [$value]],
+            '<', 'lt' => ['condition' => "{$column} < ?", 'params' => [$value]],
+            '>=', 'gte' => ['condition' => "{$column} >= ?", 'params' => [$value]],
+            '<=', 'lte' => ['condition' => "{$column} <= ?", 'params' => [$value]],
+            'like' => ['condition' => "{$column} LIKE ?", 'params' => [$value]],
+            'not like' => ['condition' => "{$column} NOT LIKE ?", 'params' => [$value]],
+            'between' => $this->buildBetweenCondition($column, $value, false),
+            'not between' => $this->buildBetweenCondition($column, $value, true),
+            default => throw new InvalidArgumentException("Unsupported operator: {$operator}"),
+        };
+    }
+
+    private function buildBetweenCondition(string $column, mixed $value, bool $not): array
+    {
+        if (!is_array($value) || count($value) !== 2) {
+            throw new InvalidArgumentException('BETWEEN operator requires an array with exactly 2 values');
+        }
+
+        $operator = $not ? 'NOT BETWEEN' : 'BETWEEN';
+        return [
+            'condition' => "{$column} {$operator} ? AND ?",
+            'params' => [$value[0], $value[1]],
+        ];
+    }
+
+    private function whereGroupCallback(callable $callback, string $operator): self
+    {
+        $groupBuilder = $this->createSubQueryBuilder();
+        $callback($groupBuilder);
+
+        if (!empty($groupBuilder->where)) {
+            $this->where[] = [
+                'operator' => $operator,
+                'condition' => null,
+                'params' => [],
+                'group' => $groupBuilder->where,
+            ];
+        }
+
+        return $this;
+    }
+
+    public function orWhere(string|callable $columnOrCallback, mixed $operatorOrValue = null, mixed $value = null): self
+    {
+        if (is_callable($columnOrCallback)) {
+            return $this->whereGroupCallback($columnOrCallback, 'OR');
+        }
+
+        if ($value === null) {
+            $value = $operatorOrValue;
+            $operator = '=';
+        } else {
+            $operator = $operatorOrValue;
+        }
+
+        $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
         $this->where[] = [
             'operator' => 'OR',
-            'condition' => $condition,
-            'params' => $params,
+            'condition' => $condition['condition'],
+            'params' => $condition['params'],
             'group' => null,
         ];
 
@@ -191,113 +299,6 @@ class QueryBuilder {
         return $this;
     }
 
-    public function whereBetween(string $column, mixed $min, mixed $max): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} BETWEEN ? AND ?",
-            'params' => [$min, $max],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereNotBetween(string $column, mixed $min, mixed $max): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} NOT BETWEEN ? AND ?",
-            'params' => [$min, $max],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereLike(string $column, string $pattern): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} LIKE ?",
-            'params' => [$pattern],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereNotLike(string $column, string $pattern): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} NOT LIKE ?",
-            'params' => [$pattern],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereGreaterThan(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} > ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereGreaterThanOrEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} >= ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereLessThan(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} < ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereLessThanOrEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} <= ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function whereNotEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} != ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
 
     public function whereExists(QueryBuilder $subquery): self
     {
@@ -314,27 +315,17 @@ class QueryBuilder {
         return $this;
     }
 
-    public function whereGroup(CriteriaInterface $criteria): self
+    public function apply(CriteriaInterface $criteria): self
     {
-        $groupBuilder = $this->createSubQueryBuilder();
-        $criteria->apply($groupBuilder);
-
-        if (!empty($groupBuilder->where)) {
-            $this->where[] = [
-                'operator' => 'AND',
-                'condition' => null, // Will be computed in getSQL()
-                'params' => [],
-                'group' => $groupBuilder->where,
-            ];
-        }
+        $criteria->apply($this);
 
         return $this;
     }
 
-    public function whereNotGroup(CriteriaInterface $criteria): self
+    public function whereNot(callable $callback): self
     {
         $groupBuilder = $this->createSubQueryBuilder();
-        $criteria->apply($groupBuilder);
+        $callback($groupBuilder);
 
         if (!empty($groupBuilder->where)) {
             $groupClause = $groupBuilder->sqlCompiler->buildWhereClause($groupBuilder->where);
@@ -349,124 +340,7 @@ class QueryBuilder {
         return $this;
     }
 
-    public function orWhereGroup(CriteriaInterface $criteria): self
-    {
-        $groupBuilder = $this->createSubQueryBuilder();
-        $criteria->apply($groupBuilder);
 
-        if (!empty($groupBuilder->where)) {
-            $this->where[] = [
-                'operator' => 'OR',
-                'condition' => null, // Will be computed in getSQL()
-                'params' => [],
-                'group' => $groupBuilder->where,
-            ];
-        }
-
-        return $this;
-    }
-
-    public function orWhereNotGroup(CriteriaInterface $criteria): self
-    {
-        $groupBuilder = $this->createSubQueryBuilder();
-        $criteria->apply($groupBuilder);
-
-        if (!empty($groupBuilder->where)) {
-            $groupClause = $groupBuilder->sqlCompiler->buildWhereClause($groupBuilder->where);
-            $this->where[] = [
-                'operator' => 'OR',
-                'condition' => "NOT ({$groupClause})",
-                'params' => $groupBuilder->sqlCompiler->collectWhereParametersPublic($groupBuilder->where),
-                'group' => null,
-            ];
-        }
-
-        return $this;
-    }
-
-    public function orWhereLike(string $column, string $pattern): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} LIKE ?",
-            'params' => [$pattern],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereNotLike(string $column, string $pattern): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} NOT LIKE ?",
-            'params' => [$pattern],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereGreaterThan(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} > ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereGreaterThanOrEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} >= ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereLessThan(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} < ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereLessThanOrEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} <= ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    public function orWhereNotEqual(string $column, mixed $value): self
-    {
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "{$column} != ?",
-            'params' => [$value],
-            'group' => null,
-        ];
-
-        return $this;
-    }
 
     public function orWhereExists(QueryBuilder $subquery): self
     {
@@ -479,6 +353,156 @@ class QueryBuilder {
             'params' => $subqueryParams,
             'group' => null,
         ];
+
+        return $this;
+    }
+
+    public function insert(object|array|string $entitiesOrTable): self
+    {
+        $this->dmlCommand = 'insert';
+        $this->insertColumns = [];
+        $this->insertValues = [];
+
+        if (is_string($entitiesOrTable)) {
+            if (empty($this->from)) {
+                $this->from($entitiesOrTable);
+            }
+            return $this;
+        }
+
+        $entitiesArray = is_array($entitiesOrTable) ? $entitiesOrTable : [$entitiesOrTable];
+
+        if (empty($entitiesArray)) {
+            throw new InvalidArgumentException('INSERT requires at least one entity');
+        }
+
+        $firstEntity = $entitiesArray[0];
+        if (!is_object($firstEntity)) {
+            throw new InvalidArgumentException('INSERT entities must be objects');
+        }
+
+        $this->dmlEntity = $firstEntity;
+
+        if ($this->entityClass === null) {
+            $this->setEntityClass($firstEntity::class);
+        }
+
+        if (empty($this->from)) {
+            $this->from($this->resolveTableName($firstEntity::class));
+        }
+
+        foreach ($entitiesArray as $entity) {
+            $data = $this->extractEntityInsertData($entity);
+            if (empty($this->insertColumns)) {
+                $this->insertColumns = $data['columns'];
+            }
+            $this->insertValues[] = $data['values'];
+        }
+
+        return $this;
+    }
+
+    public function values(array $values): self
+    {
+        if ($this->dmlCommand !== 'insert') {
+            throw new InvalidArgumentException('values() can only be used with insert()');
+        }
+
+        if (empty($this->insertColumns)) {
+            $this->insertColumns = array_keys($values);
+        }
+
+        if (count($values) !== count($this->insertColumns)) {
+            throw new InvalidArgumentException('Number of values must match number of columns');
+        }
+
+        $orderedValues = [];
+        foreach ($this->insertColumns as $column) {
+            $orderedValues[] = $values[$column];
+        }
+
+        $this->insertValues[] = $orderedValues;
+
+        return $this;
+    }
+
+    public function update(object|string $entityOrTable): self
+    {
+        $this->dmlCommand = 'update';
+        $this->updateSet = [];
+
+        if (is_object($entityOrTable)) {
+            $this->dmlEntity = $entityOrTable;
+
+            if ($this->entityClass === null) {
+                $this->setEntityClass($entityOrTable::class);
+            }
+
+            if (empty($this->from)) {
+                $this->from($this->resolveTableName($entityOrTable::class));
+            }
+
+            $whereClause = $this->buildEntityWhereClause($entityOrTable);
+            if (!empty($whereClause['clause'])) {
+                $this->where($whereClause['clause'], ...$whereClause['values']);
+            }
+        } else {
+            if (empty($this->from)) {
+                $this->from($entityOrTable);
+            }
+        }
+
+        return $this;
+    }
+
+    public function set(string|array $column, mixed $value = null): self
+    {
+        if ($this->dmlCommand !== 'update') {
+            throw new InvalidArgumentException('set() can only be used with update()');
+        }
+
+        if (is_array($column)) {
+            foreach ($column as $col => $val) {
+                $this->updateSet[$col] = $val;
+            }
+        } else {
+            $this->updateSet[$column] = $value;
+        }
+
+        return $this;
+    }
+
+    public function delete(object|string $entityOrTable): self
+    {
+        $this->dmlCommand = 'delete';
+
+        if (is_object($entityOrTable)) {
+            $this->dmlEntity = $entityOrTable;
+
+            if ($this->entityClass === null) {
+                $this->setEntityClass($entityOrTable::class);
+            }
+
+            if (empty($this->from)) {
+                $this->from($this->resolveTableName($entityOrTable::class));
+            }
+
+            $whereClause = $this->buildEntityWhereClause($entityOrTable);
+            if (!empty($whereClause['clause'])) {
+                $this->where($whereClause['clause'], ...$whereClause['values']);
+            }
+        } else {
+            if (empty($this->from)) {
+                $this->from($entityOrTable);
+            }
+        }
+
+        return $this;
+    }
+
+    public function returning(string ...$columns): self
+    {
+        $this->returning = array_merge($this->returning, $columns);
 
         return $this;
     }
@@ -537,8 +561,16 @@ class QueryBuilder {
         $this->groupBy = [];
         $this->limit = null;
         $this->offset = null;
+        $this->cursor = null;
+        $this->cursorLimit = null;
         $this->distinct = false;
         $this->lockForUpdate = false;
+        $this->dmlCommand = null;
+        $this->insertColumns = [];
+        $this->insertValues = [];
+        $this->updateSet = [];
+        $this->dmlEntity = null;
+        $this->returning = [];
 
         return $this;
     }
@@ -746,6 +778,29 @@ class QueryBuilder {
         return $this;
     }
 
+    public function cursor(string $token, CursorDirection $direction = CursorDirection::NEXT): self
+    {
+        if (empty($this->orderBy)) {
+            throw new CursorPaginationException('ORDER BY clause is required for cursor pagination');
+        }
+
+        if (count($this->orderBy) > 2) {
+            throw new CursorPaginationException('Cursor pagination supports maximum 2 ORDER BY columns');
+        }
+
+        $decodedCursor = $this->cursorCodec->decode($token);
+        $this->cursor = new Cursor($decodedCursor->getValues(), $direction);
+
+        return $this;
+    }
+
+    public function cursorLimit(int $limit): self
+    {
+        $this->cursorLimit = $limit;
+
+        return $this;
+    }
+
     public function groupBy(string ...$fields): self
     {
         $this->groupBy = array_merge($this->groupBy, $fields);
@@ -793,6 +848,7 @@ class QueryBuilder {
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
+        $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $hydrator, $this->unitOfWork);
 
         return $this;
     }
@@ -808,6 +864,7 @@ class QueryBuilder {
     public function setUnitOfWork(?UnitOfWork $unitOfWork): self
     {
         $this->unitOfWork = $unitOfWork;
+        $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $this->hydrator, $unitOfWork);
 
         return $this;
     }
@@ -846,7 +903,61 @@ class QueryBuilder {
 
     public function getSQL(): string
     {
-        $where = $this->applySoftDeleteFilter($this->where);
+        if ($this->rawSql !== null) {
+            return $this->rawSql;
+        }
+
+        if ($this->dmlCommand === 'insert') {
+            if (empty($this->from)) {
+                throw new InvalidArgumentException('INSERT requires a table name');
+            }
+
+            [$sql] = $this->sqlCompiler->compileInsert(
+                $this->from,
+                $this->insertColumns,
+                $this->insertValues,
+                $this->returning
+            );
+
+            return $sql;
+        }
+
+        if ($this->dmlCommand === 'update') {
+            if (empty($this->from)) {
+                throw new InvalidArgumentException('UPDATE requires a table name');
+            }
+
+            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+            [$sql] = $this->sqlCompiler->compileUpdate(
+                $this->from,
+                $this->updateSet,
+                $where,
+                $this->returning
+            );
+
+            return $sql;
+        }
+
+        if ($this->dmlCommand === 'delete') {
+            if (empty($this->from)) {
+                throw new InvalidArgumentException('DELETE requires a table name');
+            }
+
+            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+            [$sql] = $this->sqlCompiler->compileDelete(
+                $this->from,
+                $where,
+                $this->returning
+            );
+
+            return $sql;
+        }
+
+        $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+        $limitToUse = $this->cursor !== null ? $this->cursorLimit : $this->limit;
 
         [$sql] = $this->sqlCompiler->compile(
             $this->rawSql,
@@ -858,10 +969,11 @@ class QueryBuilder {
             $this->groupBy,
             $this->having,
             $this->orderBy,
-            $this->limit,
+            $limitToUse,
             $this->offset,
             $this->distinct,
-            $this->lockForUpdate
+            $this->lockForUpdate,
+            $this->cursor
         );
 
         return $sql;
@@ -869,7 +981,49 @@ class QueryBuilder {
 
     public function getParameters(): array
     {
-        $where = $this->applySoftDeleteFilter($this->where);
+        if ($this->rawSql !== null) {
+            return $this->rawParams;
+        }
+
+        if ($this->dmlCommand === 'insert') {
+            [, $params] = $this->sqlCompiler->compileInsert(
+                $this->from,
+                $this->insertColumns,
+                $this->insertValues,
+                $this->returning
+            );
+
+            return $params;
+        }
+
+        if ($this->dmlCommand === 'update') {
+            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+            [, $params] = $this->sqlCompiler->compileUpdate(
+                $this->from,
+                $this->updateSet,
+                $where,
+                $this->returning
+            );
+
+            return $params;
+        }
+
+        if ($this->dmlCommand === 'delete') {
+            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+            [, $params] = $this->sqlCompiler->compileDelete(
+                $this->from,
+                $where,
+                $this->returning
+            );
+
+            return $params;
+        }
+
+        $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+
+        $limitToUse = $this->cursor !== null ? $this->cursorLimit : $this->limit;
 
         [, $params] = $this->sqlCompiler->compile(
             $this->rawSql,
@@ -881,10 +1035,11 @@ class QueryBuilder {
             $this->groupBy,
             $this->having,
             $this->orderBy,
-            $this->limit,
+            $limitToUse,
             $this->offset,
             $this->distinct,
-            $this->lockForUpdate
+            $this->lockForUpdate,
+            $this->cursor
         );
 
         return $params;
@@ -892,97 +1047,22 @@ class QueryBuilder {
 
     public function getResult(?string $entityClass = null): mixed
     {
-        if ($this->lockForUpdate && !$this->connection->inTransaction()) {
-            throw new TransactionRequiredException('lock() requires an active transaction');
-        }
-
         $targetClass = $entityClass ?? $this->entityClass;
         $sql = $this->getSQL();
         $params = $this->getParameters();
 
-        // Check cache if enabled (but not for locked queries - they must always hit the database)
-        if (!$this->lockForUpdate && $this->resultCache->isEnabled()) {
-            $cacheKey = $this->resultCache->getCacheId() ?? $this->resultCache->generateCacheKey(
-                $targetClass,
-                $sql,
-                $params,
-                $this->distinct,
-                $this->limit,
-                $this->offset,
-                $this->orderBy,
-                $this->groupBy,
-                $this->having
-            );
-
-            $rawResults = $this->resultCache->get($cacheKey);
-            if ($rawResults !== null) {
-                if (empty($rawResults)) {
-                    return [];
-                }
-
-                // Hydrate if entity class is available
-                if ($targetClass && $this->hydrator) {
-                    $entities = array_map(
-                        fn ($row) => $this->hydrator->hydrate($targetClass, $row),
-                        $rawResults
-                    );
-
-                    if ($this->unitOfWork) {
-                        foreach ($entities as $entity) {
-                            $this->unitOfWork->registerManaged($entity, []);
-                        }
-                    }
-
-                    return $entities;
-                }
-
-                return $rawResults;
-            }
-        }
-
-        $statement = $this->connection->executeQuery($sql, $params);
-        $rawResults = $statement->fetchAll();
-
-        // Store in cache if enabled (but not for locked queries)
-        if (!$this->lockForUpdate && $this->resultCache->isEnabled()) {
-            $cacheKey = $this->resultCache->getCacheId() ?? $this->resultCache->generateCacheKey(
-                $targetClass,
-                $sql,
-                $params,
-                $this->distinct,
-                $this->limit,
-                $this->offset,
-                $this->orderBy,
-                $this->groupBy,
-                $this->having
-            );
-
-            $this->resultCache->set($cacheKey, $rawResults);
-        }
-
-        if (empty($rawResults)) {
-            return [];
-        }
-
-        // If entity class available and hydrator available, return hydrated objects
-        if ($targetClass && $this->hydrator) {
-            $entities = array_map(
-                fn ($row) => $this->hydrator->hydrate($targetClass, $row),
-                $rawResults
-            );
-
-            // Register entities with UnitOfWork if one is set
-            if ($this->unitOfWork) {
-                foreach ($entities as $entity) {
-                    $this->unitOfWork->registerManaged($entity, []);
-                }
-            }
-
-            return $entities;
-        }
-
-        // Otherwise return raw arrays
-        return $rawResults;
+        return $this->resultExecutor->execute(
+            $sql,
+            $params,
+            $targetClass,
+            $this->lockForUpdate,
+            $this->distinct,
+            $this->limit,
+            $this->offset,
+            $this->orderBy,
+            $this->groupBy,
+            $this->having
+        );
     }
 
     public function getSingleResult(?string $entityClass = null): mixed
@@ -995,7 +1075,23 @@ class QueryBuilder {
         return is_array($results) ? ($results[0] ?? null) : $results;
     }
 
-    public function execute(): int
+    public function getCursorPaginatedResult(?string $entityClass = null): CursorPaginator
+    {
+        $this->cursorPaginationHandler->validateCursorPagination($this->orderBy, $this->cursorLimit);
+
+        $results = $this->getResult($entityClass);
+        $items = is_array($results) ? $results : [];
+
+        return $this->cursorPaginationHandler->createPaginatorWithEntityClass(
+            $items,
+            $this->orderBy,
+            $this->cursor,
+            $this->cursorLimit,
+            $entityClass ?? $this->entityClass
+        );
+    }
+
+    public function execute(): mixed
     {
         if ($this->lockForUpdate && !$this->connection->inTransaction()) {
             throw new TransactionRequiredException('lock() requires an active transaction');
@@ -1005,6 +1101,32 @@ class QueryBuilder {
         $params = $this->getParameters();
 
         $statement = $this->connection->executeQuery($sql, $params);
+
+        if ($this->dmlCommand === 'insert' && !empty($this->returning)) {
+            return $statement->fetchAll();
+        }
+
+        if ($this->dmlCommand === 'insert' && count($this->insertValues) === 1) {
+            $driverName = $this->connection->getDriverName();
+            if ($driverName === Connection::PGSQL) {
+                if (!empty($this->returning)) {
+                    return $statement->fetchAll();
+                }
+            }
+
+            $lastInsertId = $this->connection->lastInsertId();
+            if ($lastInsertId !== false) {
+                return $lastInsertId;
+            }
+        }
+
+        if ($this->dmlCommand === 'update' && !empty($this->returning)) {
+            return $statement->fetchAll();
+        }
+
+        if ($this->dmlCommand === 'delete' && !empty($this->returning)) {
+            return $statement->fetchAll();
+        }
 
         return $statement->rowCount();
     }
@@ -1021,70 +1143,156 @@ class QueryBuilder {
         return strtolower($className) . 's';
     }
 
-    private function applySoftDeleteFilter(array $where): array
+
+    private function extractEntityInsertData(object $entity): array
     {
-        // Don't apply filter if:
-        // - Raw SQL is used
-        // - Soft-delete is disabled globally
-        // - withDeleted() was called
-        // - No entity class is set
-        // - No metadata registry available
-        if ($this->rawSql !== null || !$this->softDeleteEnabled || $this->includeDeleted || $this->entityClass === null || $this->metadataRegistry === null) {
-            return $where;
+        $reflectionEntity = new ReflectionEntity($entity::class);
+
+        $properties = array_filter(
+            iterator_to_array($reflectionEntity->getEntityProperties()),
+            fn ($property) => $property instanceof ReflectionProperty
+        );
+
+        $columns = [];
+        $values = [];
+
+        foreach ($properties as $property) {
+            $columnName = $property->getColumnName();
+
+            $value = $property->getValue($entity);
+
+            if ($property->isPrimaryKey() && $value === null) {
+                continue;
+            }
+
+            if ($value === null && !$property->isNullable() && $property->getDefaultValue() === null) {
+                continue;
+            }
+
+            $columns[] = $columnName;
+            $values[] = $value;
         }
 
-        try {
-            $metadata = $this->metadataRegistry->getMetadata($this->entityClass);
-            if (!$metadata->isSoftDeleteable()) {
-                return $where;
-            }
+        $this->addMorphToColumns($entity, $columns, $columns, $values);
 
-            $softDeleteColumn = $metadata->getSoftDeleteColumn();
-            if ($softDeleteColumn === null) {
-                return $where;
-            }
+        return ['columns' => $columns, 'values' => $values];
+    }
 
-            // Check if soft-delete filter is already present in where conditions
-            $hasSoftDeleteFilter = false;
-            foreach ($where as $condition) {
-                if ($condition['group'] !== null) {
-                    $hasSoftDeleteFilter = $this->hasSoftDeleteFilterInGroup($condition['group'], $softDeleteColumn);
-                    if ($hasSoftDeleteFilter) {
+    private function buildEntityWhereClause(object $entity): array
+    {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        $whereParts = [];
+        $whereValues = [];
+
+        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
+        if (!empty($primaryKeyColumns)) {
+            foreach ($primaryKeyColumns as $pkColumn) {
+                $pkProperty = null;
+                foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+                    if ($property->getColumnName() === $pkColumn && $property instanceof ReflectionProperty) {
+                        $pkProperty = $property;
                         break;
                     }
-                } elseif (isset($condition['condition']) && str_contains($condition['condition'], $softDeleteColumn) && str_contains($condition['condition'], 'IS NULL')) {
-                    $hasSoftDeleteFilter = true;
+                }
+
+                if ($pkProperty === null) {
+                    $reflectionEntity = new ReflectionEntity($entity::class);
+                    foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+                        if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
+                            $idValue = $property->getValue($entity);
+                            if ($idValue !== null) {
+                                $whereParts[] = 'id = ?';
+                                $whereValues[] = $idValue;
+                            }
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
+                $pkValue = $pkProperty->getValue($entity);
+
+                $whereParts[] = "{$pkColumn} = ?";
+                $whereValues[] = $pkValue;
+            }
+        } else {
+            $reflectionEntity = new ReflectionEntity($entity::class);
+            foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+                if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
+                    $idValue = $property->getValue($entity);
+                    if ($idValue !== null) {
+                        $whereParts[] = 'id = ?';
+                        $whereValues[] = $idValue;
+                    }
                     break;
                 }
             }
-
-            if (!$hasSoftDeleteFilter) {
-                $where[] = [
-                    'operator' => 'AND',
-                    'condition' => "{$softDeleteColumn} IS NULL",
-                    'params' => [],
-                    'group' => null,
-                ];
-            }
-        } catch (\InvalidArgumentException $e) {
-            // Entity not found in metadata registry, skip filtering
         }
 
-        return $where;
+        return ['clause' => implode(' AND ', $whereParts), 'values' => $whereValues];
     }
 
-    private function hasSoftDeleteFilterInGroup(array $group, string $softDeleteColumn): bool
+    private function addMorphToColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
     {
-        foreach ($group as $condition) {
-            if ($condition['group'] !== null) {
-                if ($this->hasSoftDeleteFilterInGroup($condition['group'], $softDeleteColumn)) {
-                    return true;
+        if ($this->metadataRegistry === null) {
+            return;
+        }
+
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+            $relations = $metadata->getRelations();
+
+            foreach ($relations as $relation) {
+                if ($relation->isMorphTo()) {
+                    $propertyName = $relation->getPropertyName();
+                    $reflectionEntity = new ReflectionEntity($entity::class);
+                    $relatedProperty = null;
+                    foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+                        if ($property instanceof ReflectionProperty && $property->getFieldName() === $propertyName) {
+                            $relatedProperty = $property;
+                            break;
+                        }
+                    }
+                    if ($relatedProperty === null) {
+                        continue;
+                    }
+                    $relatedEntity = $relatedProperty->getValue($entity);
+
+                    if ($relatedEntity !== null) {
+                        $morphType = $relatedEntity::class;
+                        $relatedId = $this->extractEntityId($relatedEntity);
+
+                        $columns[] = $relation->getMorphTypeColumnName();
+                        $placeholders[] = '?';
+                        $values[] = $morphType;
+
+                        $columns[] = $relation->getMorphIdColumnName();
+                        $placeholders[] = '?';
+                        $values[] = $relatedId;
+                    }
                 }
-            } elseif (isset($condition['condition']) && str_contains($condition['condition'], $softDeleteColumn) && str_contains($condition['condition'], 'IS NULL')) {
-                return true;
+            }
+        } catch (\InvalidArgumentException $e) {
+        }
+    }
+
+    private function extractEntityId(object $entity): mixed
+    {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+
+        foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
+            if ($property->isPrimaryKey() && $property instanceof ReflectionProperty) {
+                return $property->getValue($entity);
             }
         }
 
-        return false;
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
+            if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
+                return $property->getValue($entity);
+            }
+        }
+
+        return null;
     }
 }

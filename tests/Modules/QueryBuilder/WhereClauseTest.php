@@ -229,7 +229,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('id', 'name')
             ->from('users')
-            ->whereBetween('age', 18, 65);
+            ->where('age', 'between', [18, 65]);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -249,7 +249,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('products')
-            ->whereBetween('price', 100, 100);
+            ->where('price', 'between', [100, 100]);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
@@ -272,7 +272,7 @@ class WhereClauseTest extends DatabaseTestCase {
             ->where('u.active = ?', true)
             ->whereIn('u.role', ['admin', 'moderator'])
             ->whereNotNull('u.email_verified_at')
-            ->whereBetween('u.created_at', '2023-01-01', '2023-12-31');
+            ->where('u.created_at', 'between', ['2023-01-01', '2023-12-31']);
 
         $sql = $qb->getSQL();
         $params = $qb->getParameters();

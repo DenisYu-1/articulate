@@ -15,6 +15,8 @@ class NotCriteria implements CriteriaInterface {
 
     public function apply(QueryBuilder $qb): void
     {
-        $qb->whereNotGroup($this->criteria);
+        $qb->whereNot(function($q) {
+            $q->apply($this->criteria);
+        });
     }
 }
