@@ -147,7 +147,7 @@ class WhereGroupTest extends TestCase {
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
 
-        $expected = 'SELECT * FROM complex_table WHERE (a = ? AND (b = ? OR b = ? AND (c = ? OR c = ?)))';
+        $expected = 'SELECT * FROM complex_table WHERE (a = ? AND ((b = ? OR b = ?) AND (c = ? OR c = ?)))';
         $this->assertEquals($expected, $sql);
         $this->assertEquals([1, 2, 3, 4, 5], $params);
     }

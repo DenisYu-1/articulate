@@ -171,7 +171,7 @@ class HavingClauseTest extends TestCase {
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
 
-        $expected = 'SELECT category, COUNT(*) as total_products, SUM(price) as total_value FROM products GROUP BY category HAVING total_products > ? AND total_value > ? OR category = ?';
+        $expected = 'SELECT category, COUNT(*) as total_products, SUM(price) as total_value FROM products GROUP BY category HAVING ((total_products > ? AND total_value > ?) OR category = ?)';
         $this->assertEquals($expected, $sql);
         $this->assertEquals([5, 100, 'premium'], $params);
     }

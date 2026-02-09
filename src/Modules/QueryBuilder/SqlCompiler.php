@@ -235,40 +235,81 @@ class SqlCompiler {
 
     public function buildWhereClause(array $conditions): string
     {
-        $result = '';
+        $hasMixedOperators = false;
+        $firstOperator = null;
         foreach ($conditions as $index => $condition) {
             if ($index === 0) {
-                if ($condition['group'] !== null) {
-                    $groupClause = $this->buildWhereClause($condition['group']);
-                    $result .= "({$groupClause})";
-                } else {
-                    $result .= $condition['condition'];
-                }
-            } else {
-                $operator = $condition['operator'];
-                if ($condition['group'] !== null) {
-                    $groupClause = $this->buildWhereClause($condition['group']);
-                    $result .= " {$operator} ({$groupClause})";
-                } else {
-                    $result .= " {$operator} {$condition['condition']}";
-                }
+                continue;
             }
+
+            if ($firstOperator === null) {
+                $firstOperator = $condition['operator'];
+                continue;
+            }
+
+            if ($condition['operator'] !== $firstOperator) {
+                $hasMixedOperators = true;
+                break;
+            }
+        }
+
+        $result = $this->buildWhereConditionClause($conditions[0]);
+        for ($index = 1; $index < count($conditions); $index++) {
+            $operator = $conditions[$index]['operator'];
+            $clause = $this->buildWhereConditionClause($conditions[$index]);
+
+            if ($hasMixedOperators) {
+                $result = "({$result} {$operator} {$clause})";
+                continue;
+            }
+
+            $result .= " {$operator} {$clause}";
         }
 
         return $result;
     }
 
+    private function buildWhereConditionClause(array $condition): string
+    {
+        if ($condition['group'] !== null) {
+            $groupClause = $this->buildWhereClause($condition['group']);
+            return "({$groupClause})";
+        }
+
+        return $condition['condition'];
+    }
+
     private function buildHavingClause(array $conditions): string
     {
-        $result = '';
-
+        $hasMixedOperators = false;
+        $firstOperator = null;
         foreach ($conditions as $index => $condition) {
             if ($index === 0) {
-                $result .= $condition['condition'];
-            } else {
-                $operator = $condition['operator'];
-                $result .= " {$operator} {$condition['condition']}";
+                continue;
             }
+
+            if ($firstOperator === null) {
+                $firstOperator = $condition['operator'];
+                continue;
+            }
+
+            if ($condition['operator'] !== $firstOperator) {
+                $hasMixedOperators = true;
+                break;
+            }
+        }
+
+        $result = $conditions[0]['condition'];
+        for ($index = 1; $index < count($conditions); $index++) {
+            $operator = $conditions[$index]['operator'];
+            $clause = $conditions[$index]['condition'];
+
+            if ($hasMixedOperators) {
+                $result = "({$result} {$operator} {$clause})";
+                continue;
+            }
+
+            $result .= " {$operator} {$clause}";
         }
 
         return $result;

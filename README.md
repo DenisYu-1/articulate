@@ -431,3 +431,7 @@ The next major development phase focuses on expanding the Query Builder capabili
 - **ID Generation Strategies**: UUID, sequences, and custom generators
 - **Performance Optimizations**: Statement caching and connection pooling
 
+## License
+
+Licensed under the Apache License 2.0. See `LICENSE`.
+
