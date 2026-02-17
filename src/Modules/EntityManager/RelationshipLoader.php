@@ -110,7 +110,7 @@ class RelationshipLoader {
 
         // Query for related entities
         $qb = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("$foreignKeyColumn = ?", $primaryKeyValue);
+            ->where($foreignKeyColumn, $primaryKeyValue);
 
         return $qb->getResult($targetEntity);
     }
@@ -145,7 +145,7 @@ class RelationshipLoader {
         $pivotQb = $this->entityManager->createQueryBuilder()
             ->select($relatedKey)
             ->from($pivotTable)
-            ->where("$foreignKey = ?", $primaryKeyValue);
+            ->where($foreignKey, $primaryKeyValue);
 
         $pivotResults = $pivotQb->getResult();
         $relatedIds = array_column($pivotResults, $relatedKey);
@@ -204,8 +204,8 @@ class RelationshipLoader {
 
         // Query the target table where morph_type matches our entity class and morph_id matches our ID
         $qb = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("{$relation->getMorphTypeColumnName()} = ?", $morphType)
-            ->where("{$relation->getMorphIdColumnName()} = ?", $primaryKeyValue)
+            ->where($relation->getMorphTypeColumnName(), $morphType)
+            ->where($relation->getMorphIdColumnName(), $primaryKeyValue)
             ->limit(1);
 
         $results = $qb->getResult($targetEntity);
@@ -228,8 +228,8 @@ class RelationshipLoader {
 
         // Query the target table where morph_type matches our entity class and morph_id matches our ID
         $qb = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("{$relation->getMorphTypeColumnName()} = ?", $morphType)
-            ->where("{$relation->getMorphIdColumnName()} = ?", $primaryKeyValue);
+            ->where($relation->getMorphTypeColumnName(), $morphType)
+            ->where($relation->getMorphIdColumnName(), $primaryKeyValue);
 
         return $qb->getResult($targetEntity);
     }

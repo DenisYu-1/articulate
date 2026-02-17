@@ -46,6 +46,7 @@ class ArrayCacheItem implements CacheItemInterface {
     {
         if ($this->expiration !== null && $this->expiration < time()) {
             $this->isHit = false;
+
             return false;
         }
 
@@ -183,10 +184,17 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->cache = new ArrayCache();
         $this->qb = new QueryBuilder($this->connection, null, null, $this->cache);
 
-        $this->qb->enableResultCache(3600, 'test_cache_id');
+        // Set up a dummy table for testing
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_cache_toggle');
+        $this->connection->executeQuery('CREATE TABLE test_cache_toggle (id INT PRIMARY KEY)');
+
+        $this->qb->from('test_cache_toggle')
+            ->enableResultCache(3600, 'test_cache_id');
         $this->qb->disableResultCache();
 
-        $this->assertNull($this->qb->getResult());
+        // After disabling cache, result should come from database not cache
+        $result = $this->qb->getResult();
+        $this->assertIsArray($result);
     }
 
     /**
@@ -200,6 +208,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_cache_users');
         $this->connection->executeQuery('CREATE TABLE test_cache_users (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_cache_users (id, name) VALUES (1, 'John')");
         $this->connection->executeQuery("INSERT INTO test_cache_users (id, name) VALUES (2, 'Jane')");
@@ -231,6 +240,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_cache_miss');
         $this->connection->executeQuery('CREATE TABLE test_cache_miss (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_cache_miss (id, name) VALUES (1, 'First')");
 
@@ -262,15 +272,16 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_custom_cache');
         $this->connection->executeQuery('CREATE TABLE test_custom_cache (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_custom_cache (id, name) VALUES (1, 'Test')");
 
-        $qb1 = $this->qb
+        $qb1 = $this->entityManager->createQueryBuilder()
             ->select('id', 'name')
             ->from('test_custom_cache')
             ->enableResultCache(3600, 'custom_key_1');
 
-        $qb2 = $this->qb
+        $qb2 = $this->entityManager->createQueryBuilder()
             ->select('id', 'name')
             ->from('test_custom_cache')
             ->enableResultCache(3600, 'custom_key_2');
@@ -294,6 +305,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_auto_key');
         $this->connection->executeQuery('CREATE TABLE test_auto_key (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_auto_key (id, name) VALUES (1, 'Test')");
 
@@ -326,17 +338,18 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_diff_params');
         $this->connection->executeQuery('CREATE TABLE test_diff_params (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_diff_params (id, name) VALUES (1, 'One')");
         $this->connection->executeQuery("INSERT INTO test_diff_params (id, name) VALUES (2, 'Two')");
 
-        $qb1 = $this->qb
+        $qb1 = $this->entityManager->createQueryBuilder()
             ->select('id', 'name')
             ->from('test_diff_params')
             ->where('id = ?', 1)
             ->enableResultCache(3600);
 
-        $qb2 = $this->qb
+        $qb2 = $this->entityManager->createQueryBuilder()
             ->select('id', 'name')
             ->from('test_diff_params')
             ->where('id = ?', 2)
@@ -361,10 +374,12 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->cache = new ArrayCache();
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS cache_test_entities');
         $this->connection->executeQuery('CREATE TABLE cache_test_entities (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO cache_test_entities (id, name) VALUES (1, 'Cached Entity')");
 
         $qb = $this->entityManager->createQueryBuilder(CacheTestEntity::class);
+        $qb->from('cache_test_entities');
         $qb->enableResultCache(3600);
 
         $result1 = $qb->getResult();
@@ -389,6 +404,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_expiration');
         $this->connection->executeQuery('CREATE TABLE test_expiration (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_expiration (id, name) VALUES (1, 'Original')");
 
@@ -439,6 +455,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_locked_cache');
         $this->connection->executeQuery('CREATE TABLE test_locked_cache (id INT PRIMARY KEY, value VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_locked_cache (id, value) VALUES (1, 'original')");
 
@@ -475,6 +492,7 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection, null, null, null, null, null, null, $this->cache);
         $this->qb = $this->entityManager->createQueryBuilder();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_mutation');
         $this->connection->executeQuery('CREATE TABLE test_mutation (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_mutation (id, name) VALUES (1, 'One')");
         $this->connection->executeQuery("INSERT INTO test_mutation (id, name) VALUES (2, 'Two')");

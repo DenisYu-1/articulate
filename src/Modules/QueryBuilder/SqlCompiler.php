@@ -3,8 +3,6 @@
 namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
-use Articulate\Modules\QueryBuilder\Cursor;
-use Articulate\Modules\QueryBuilder\CursorDirection;
 use InvalidArgumentException;
 
 class SqlCompiler {
@@ -174,6 +172,7 @@ class SqlCompiler {
                 ];
             }
         }
+
         return $parsed;
     }
 
@@ -200,6 +199,7 @@ class SqlCompiler {
                 $reversed[] = trim($orderItem) . ' DESC';
             }
         }
+
         return $reversed;
     }
 
@@ -244,11 +244,13 @@ class SqlCompiler {
 
             if ($firstOperator === null) {
                 $firstOperator = $condition['operator'];
+
                 continue;
             }
 
             if ($condition['operator'] !== $firstOperator) {
                 $hasMixedOperators = true;
+
                 break;
             }
         }
@@ -260,6 +262,7 @@ class SqlCompiler {
 
             if ($hasMixedOperators) {
                 $result = "({$result} {$operator} {$clause})";
+
                 continue;
             }
 
@@ -273,6 +276,12 @@ class SqlCompiler {
     {
         if ($condition['group'] !== null) {
             $groupClause = $this->buildWhereClause($condition['group']);
+
+            // Special case: if group has single NOT condition, don't add extra parens
+            if (count($condition['group']) === 1 && str_starts_with($condition['group'][0]['condition'] ?? '', 'NOT (')) {
+                return $groupClause;
+            }
+
             return "({$groupClause})";
         }
 
@@ -290,11 +299,13 @@ class SqlCompiler {
 
             if ($firstOperator === null) {
                 $firstOperator = $condition['operator'];
+
                 continue;
             }
 
             if ($condition['operator'] !== $firstOperator) {
                 $hasMixedOperators = true;
+
                 break;
             }
         }
@@ -306,6 +317,7 @@ class SqlCompiler {
 
             if ($hasMixedOperators) {
                 $result = "({$result} {$operator} {$clause})";
+
                 continue;
             }
 

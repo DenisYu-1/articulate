@@ -2,11 +2,9 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
-use Articulate\Modules\EntityManager\EntityMetadata;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 
-class SoftDeleteFilter
-{
+class SoftDeleteFilter {
     public function __construct(
         private readonly ?EntityMetadataRegistry $metadataRegistry
     ) {

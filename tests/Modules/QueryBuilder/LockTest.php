@@ -42,7 +42,7 @@ class LockTest extends DatabaseTestCase {
         $dsn = $databaseName === 'mysql'
             ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv($databaseNameEnv) . ';charset=utf8mb4'
             : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv($databaseNameEnv);
-        
+
         $pdo = new \PDO($dsn, getenv('DATABASE_USER') ?? ($databaseName === 'mysql' ? 'root' : 'postgres'), getenv('DATABASE_PASSWORD'), [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
@@ -96,7 +96,7 @@ class LockTest extends DatabaseTestCase {
         $dsn = $databaseName === 'mysql'
             ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv($databaseNameEnv) . ';charset=utf8mb4'
             : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv($databaseNameEnv);
-        
+
         $pdo = new \PDO($dsn, getenv('DATABASE_USER') ?? ($databaseName === 'mysql' ? 'root' : 'postgres'), getenv('DATABASE_PASSWORD'), [
             \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,

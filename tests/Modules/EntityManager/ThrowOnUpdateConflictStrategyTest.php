@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Exceptions\UpdateConflictException;
@@ -13,6 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Entity]
 class ConflictEntityAlpha {
     #[Property]
+    #[PrimaryKey]
     public ?int $id = null;
 
     #[Property]

@@ -9,7 +9,6 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
 
 #[Entity]
@@ -84,8 +83,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Active User 1', null, 'Active User 2', null, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Active User 1', null, 'Active User 2', null, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
@@ -111,8 +110,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Active User 1', null, 'Active User 2', null, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Active User 1', null, 'Active User 2', null, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
@@ -139,8 +138,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)",
-            [1, 'Active User', null, 2, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)',
+            [1, 'Active User', null, 2, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $activeUser = $this->entityManager->find(SoftDeleteableUser::class, 1);
@@ -160,14 +159,14 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Active User 1', null, 'Active User 2', null, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Active User 1', null, 'Active User 2', null, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $allUsers = $this->entityManager->findAll(SoftDeleteableUser::class);
 
         $this->assertCount(2, $allUsers);
-        $names = array_map(fn($user) => $user->name, $allUsers);
+        $names = array_map(fn ($user) => $user->name, $allUsers);
         $this->assertContains('Active User 1', $names);
         $this->assertContains('Active User 2', $names);
         $this->assertNotContains('Deleted User', $names);
@@ -184,8 +183,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager->setSoftDeleteEnabled(false);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Active User 1', null, 'Active User 2', null, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Active User 1', null, 'Active User 2', null, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $allUsers = $this->entityManager->findAll(SoftDeleteableUser::class);
@@ -203,8 +202,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['John', null, 'Jane', null, 'John', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['John', null, 'Jane', null, 'John', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
@@ -228,8 +227,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)",
-            [1, 'User 1', null, 2, 'User 2', null, 3, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)',
+            [1, 'User 1', null, 2, 'User 2', null, 3, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $subQuery = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
@@ -256,17 +255,24 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['User 1', null, 'User 2', null, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['User 1', null, 'User 2', null, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
             ->count('*')
             ->from('soft_deleteable_user');
 
-        $result = $qb->getSingleResult();
+        $result = $qb->getSingleResult(null);
 
-        $this->assertEquals(2, $result);
+        // Debug: see what keys are available
+        if ($result && is_array($result)) {
+            $keys = array_keys($result);
+            $firstKey = $keys[0] ?? null;
+            $this->assertEquals(2, $result[$firstKey] ?? null);
+        } else {
+            $this->assertEquals(2, $result['COUNT(*)'] ?? $result['count(*)'] ?? null);
+        }
     }
 
     /**
@@ -277,6 +283,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS posts');
         $this->connection->executeQuery('CREATE TABLE IF NOT EXISTS posts (
             id INT PRIMARY KEY,
             user_id INT,
@@ -284,12 +291,12 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         )');
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)",
-            [1, 'Active User', null, 2, 'Deleted User', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)',
+            [1, 'Active User', null, 2, 'Deleted User', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $this->connection->executeQuery(
-            "INSERT INTO posts (id, user_id, title) VALUES (?, ?, ?), (?, ?, ?)",
+            'INSERT INTO posts (id, user_id, title) VALUES (?, ?, ?), (?, ?, ?)',
             [1, 1, 'Post 1', 2, 2, 'Post 2']
         );
 
@@ -318,8 +325,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->entityManager = new EntityManager($this->connection);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?), (?, ?)",
-            ['John', null, 'John', null, 'Jane', null, 'John', new \DateTime()]
+            'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?), (?, ?)',
+            ['John', null, 'John', null, 'Jane', null, 'John', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)

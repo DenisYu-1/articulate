@@ -90,8 +90,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)",
-            [1, 'Active Product', null, 2, 'Deleted Product', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)',
+            [1, 'Active Product', null, 2, 'Deleted Product', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $activeProduct = $this->repository->find(1);
@@ -112,14 +112,14 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Product 1', null, 'Product 2', null, 'Deleted Product', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Product 1', null, 'Product 2', null, 'Deleted Product', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $allProducts = $this->repository->findAll();
 
         $this->assertCount(2, $allProducts);
-        $names = array_map(fn($product) => $product->name, $allProducts);
+        $names = array_map(fn ($product) => $product->name, $allProducts);
         $this->assertContains('Product 1', $names);
         $this->assertContains('Product 2', $names);
         $this->assertNotContains('Deleted Product', $names);
@@ -136,8 +136,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Widget', null, 'Widget', null, 'Widget', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Widget', null, 'Widget', null, 'Widget', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $products = $this->repository->findBy(['name' => 'Widget']);
@@ -156,8 +156,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Product 1', null, 'Product 2', null, 'Deleted Product', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Product 1', null, 'Product 2', null, 'Deleted Product', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $count = $this->repository->count();
@@ -176,8 +176,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)",
-            [1, 'Active Product', null, 2, 'Deleted Product', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)',
+            [1, 'Active Product', null, 2, 'Deleted Product', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $this->assertTrue($this->repository->exists(1));
@@ -196,8 +196,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
-            "INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)",
-            ['Product 1', null, 'Product 2', null, 'Deleted Product', new \DateTime()]
+            'INSERT INTO soft_deleteable_product (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
+            ['Product 1', null, 'Product 2', null, 'Deleted Product', (new \DateTime())->format('Y-m-d H:i:s')]
         );
 
         $allProducts = $this->repository->findAll();

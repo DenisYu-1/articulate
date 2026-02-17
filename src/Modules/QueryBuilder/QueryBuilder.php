@@ -5,15 +5,11 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
+use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\EntityMetadata;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Exceptions\CursorPaginationException;
-use Articulate\Modules\QueryBuilder\Cursor;
-use Articulate\Modules\QueryBuilder\CursorCodec;
-use Articulate\Modules\QueryBuilder\CursorDirection;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -111,6 +107,7 @@ class QueryBuilder {
         $subBuilder->sqlCompiler->setEntityClass($this->entityClass);
         $subBuilder->setSoftDeleteEnabled($this->softDeleteEnabled);
         $subBuilder->includeDeleted = $this->includeDeleted;
+
         return $subBuilder;
     }
 
@@ -132,6 +129,55 @@ class QueryBuilder {
     {
         if (is_callable($columnOrCallback)) {
             return $this->whereGroupCallback($columnOrCallback, 'AND');
+        }
+
+        // Check if first argument is a raw SQL condition
+        // Raw SQL contains: ?, =, >, <, >=, <=, !=, <>, IS, IN, LIKE, BETWEEN, etc.
+        $isRawSql = $value === null && (
+            str_contains($columnOrCallback, '?') ||
+            str_contains($columnOrCallback, ' = ') ||
+            str_contains($columnOrCallback, ' > ') ||
+            str_contains($columnOrCallback, ' < ') ||
+            str_contains($columnOrCallback, '>=') ||
+            str_contains($columnOrCallback, '<=') ||
+            str_contains($columnOrCallback, '!=') ||
+            str_contains($columnOrCallback, '<>') ||
+            stripos($columnOrCallback, ' IS ') !== false ||
+            stripos($columnOrCallback, ' IN ') !== false ||
+            stripos($columnOrCallback, ' LIKE ') !== false ||
+            stripos($columnOrCallback, ' BETWEEN ') !== false
+        );
+
+        if ($isRawSql) {
+            // Raw SQL condition: where("status = ?", $value) or where("deleted_at IS NULL")
+            // Handle array parameters
+            // For BETWEEN: where("col BETWEEN ? AND ?", [min, max]) -> unpack to [min, max]
+            // For IN: where("col IN (?)", [val1, val2]) -> keep as [[val1, val2]]
+            // For single value: where("col = ?", val) -> wrap as [val]
+            $params = [];
+            if ($operatorOrValue !== null) {
+                if (is_array($operatorOrValue)) {
+                    // Check if this is a BETWEEN clause with AND
+                    if (stripos($columnOrCallback, 'BETWEEN') !== false && stripos($columnOrCallback, 'AND') !== false) {
+                        // BETWEEN ? AND ? - unpack array
+                        $params = $operatorOrValue;
+                    } else {
+                        // IN (?) or other - keep array wrapped
+                        $params = [$operatorOrValue];
+                    }
+                } else {
+                    $params = [$operatorOrValue];
+                }
+            }
+
+            $this->where[] = [
+                'operator' => 'AND',
+                'condition' => $columnOrCallback,
+                'params' => $params,
+                'group' => null,
+            ];
+
+            return $this;
         }
 
         if ($value === null) {
@@ -178,6 +224,7 @@ class QueryBuilder {
         }
 
         $operator = $not ? 'NOT BETWEEN' : 'BETWEEN';
+
         return [
             'condition' => "{$column} {$operator} ? AND ?",
             'params' => [$value[0], $value[1]],
@@ -205,6 +252,55 @@ class QueryBuilder {
     {
         if (is_callable($columnOrCallback)) {
             return $this->whereGroupCallback($columnOrCallback, 'OR');
+        }
+
+        // Check if first argument is a raw SQL condition
+        // Raw SQL contains: ?, =, >, <, >=, <=, !=, <>, IS, IN, LIKE, BETWEEN, etc.
+        $isRawSql = $value === null && (
+            str_contains($columnOrCallback, '?') ||
+            str_contains($columnOrCallback, ' = ') ||
+            str_contains($columnOrCallback, ' > ') ||
+            str_contains($columnOrCallback, ' < ') ||
+            str_contains($columnOrCallback, '>=') ||
+            str_contains($columnOrCallback, '<=') ||
+            str_contains($columnOrCallback, '!=') ||
+            str_contains($columnOrCallback, '<>') ||
+            stripos($columnOrCallback, ' IS ') !== false ||
+            stripos($columnOrCallback, ' IN ') !== false ||
+            stripos($columnOrCallback, ' LIKE ') !== false ||
+            stripos($columnOrCallback, ' BETWEEN ') !== false
+        );
+
+        if ($isRawSql) {
+            // Raw SQL condition: orWhere("status = ?", $value) or orWhere("deleted_at IS NULL")
+            // Handle array parameters
+            // For BETWEEN: orWhere("col BETWEEN ? AND ?", [min, max]) -> unpack to [min, max]
+            // For IN: orWhere("col IN (?)", [val1, val2]) -> keep as [[val1, val2]]
+            // For single value: orWhere("col = ?", val) -> wrap as [val]
+            $params = [];
+            if ($operatorOrValue !== null) {
+                if (is_array($operatorOrValue)) {
+                    // Check if this is a BETWEEN clause with AND
+                    if (stripos($columnOrCallback, 'BETWEEN') !== false && stripos($columnOrCallback, 'AND') !== false) {
+                        // BETWEEN ? AND ? - unpack array
+                        $params = $operatorOrValue;
+                    } else {
+                        // IN (?) or other - keep array wrapped
+                        $params = [$operatorOrValue];
+                    }
+                } else {
+                    $params = [$operatorOrValue];
+                }
+            }
+
+            $this->where[] = [
+                'operator' => 'OR',
+                'condition' => $columnOrCallback,
+                'params' => $params,
+                'group' => null,
+            ];
+
+            return $this;
         }
 
         if ($value === null) {
@@ -299,7 +395,6 @@ class QueryBuilder {
         return $this;
     }
 
-
     public function whereExists(QueryBuilder $subquery): self
     {
         $subquerySql = $subquery->getSQL();
@@ -340,8 +435,6 @@ class QueryBuilder {
         return $this;
     }
 
-
-
     public function orWhereExists(QueryBuilder $subquery): self
     {
         $subquerySql = $subquery->getSQL();
@@ -367,6 +460,7 @@ class QueryBuilder {
             if (empty($this->from)) {
                 $this->from($entitiesOrTable);
             }
+
             return $this;
         }
 
@@ -957,7 +1051,7 @@ class QueryBuilder {
 
         $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
-        $limitToUse = $this->cursor !== null ? $this->cursorLimit : $this->limit;
+        $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
 
         [$sql] = $this->sqlCompiler->compile(
             $this->rawSql,
@@ -1048,6 +1142,17 @@ class QueryBuilder {
     public function getResult(?string $entityClass = null): mixed
     {
         $targetClass = $entityClass ?? $this->entityClass;
+
+        // Don't hydrate when using aggregate functions
+        if ($this->hasAggregateFunction()) {
+            $targetClass = null;
+        }
+
+        // Don't hydrate when selecting specific columns (not SELECT *)
+        if ($this->hasSpecificColumnSelection()) {
+            $targetClass = null;
+        }
+
         $sql = $this->getSQL();
         $params = $this->getParameters();
 
@@ -1100,6 +1205,11 @@ class QueryBuilder {
         $sql = $this->getSQL();
         $params = $this->getParameters();
 
+        // Expand IN (?) placeholders for array parameters (skip for INSERT which handles params differently)
+        if ($this->dmlCommand !== 'insert') {
+            [$sql, $params] = $this->expandInPlaceholders($sql, $params);
+        }
+
         $statement = $this->connection->executeQuery($sql, $params);
 
         if ($this->dmlCommand === 'insert' && !empty($this->returning)) {
@@ -1116,7 +1226,7 @@ class QueryBuilder {
 
             $lastInsertId = $this->connection->lastInsertId();
             if ($lastInsertId !== false) {
-                return $lastInsertId;
+                return (int) $lastInsertId;
             }
         }
 
@@ -1142,7 +1252,6 @@ class QueryBuilder {
 
         return strtolower($className) . 's';
     }
-
 
     private function extractEntityInsertData(object $entity): array
     {
@@ -1191,6 +1300,7 @@ class QueryBuilder {
                 foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                     if ($property->getColumnName() === $pkColumn && $property instanceof ReflectionProperty) {
                         $pkProperty = $property;
+
                         break;
                     }
                 }
@@ -1204,9 +1314,11 @@ class QueryBuilder {
                                 $whereParts[] = 'id = ?';
                                 $whereValues[] = $idValue;
                             }
+
                             break;
                         }
                     }
+
                     continue;
                 }
 
@@ -1224,6 +1336,7 @@ class QueryBuilder {
                         $whereParts[] = 'id = ?';
                         $whereValues[] = $idValue;
                     }
+
                     break;
                 }
             }
@@ -1250,6 +1363,7 @@ class QueryBuilder {
                     foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                         if ($property instanceof ReflectionProperty && $property->getFieldName() === $propertyName) {
                             $relatedProperty = $property;
+
                             break;
                         }
                     }
@@ -1272,7 +1386,7 @@ class QueryBuilder {
                     }
                 }
             }
-        } catch (\InvalidArgumentException $e) {
+        } catch (InvalidArgumentException $e) {
         }
     }
 
@@ -1294,5 +1408,78 @@ class QueryBuilder {
         }
 
         return null;
+    }
+
+    /**
+     * Expand IN (?) placeholders for array parameters.
+     * Converts "col IN (?)" with [[1,2,3]] to "col IN (?,?,?)" with [1,2,3].
+     */
+    private function expandInPlaceholders(string $sql, array $params): array
+    {
+        $expandedParams = [];
+        $paramIndex = 0;
+
+        // Process each parameter and expand if it's an array for IN clause
+        $newSql = preg_replace_callback('/\?/', function ($match) use ($params, &$paramIndex, &$expandedParams) {
+            if (!isset($params[$paramIndex])) {
+                return '?';
+            }
+
+            $param = $params[$paramIndex];
+            $paramIndex++;
+
+            // If parameter is an array, expand the placeholder
+            if (is_array($param)) {
+                $count = count($param);
+                if ($count === 0) {
+                    // Empty array - should not happen in normal usage
+                    $expandedParams[] = null;
+
+                    return '?';
+                }
+
+                // Add each array element as a separate parameter
+                foreach ($param as $value) {
+                    $expandedParams[] = $value;
+                }
+
+                // Create multiple placeholders
+                return implode(',', array_fill(0, $count, '?'));
+            }
+
+            // Non-array parameter, keep as-is
+            $expandedParams[] = $param;
+
+            return '?';
+        }, $sql);
+
+        return [$newSql, $expandedParams];
+    }
+
+    private function hasAggregateFunction(): bool
+    {
+        foreach ($this->select as $selectItem) {
+            if (preg_match('/\b(COUNT|SUM|AVG|MIN|MAX|GROUP_CONCAT)\s*\(/i', $selectItem)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function hasSpecificColumnSelection(): bool
+    {
+        // If select is empty, SQL compiler will use SELECT *
+        if (empty($this->select)) {
+            return false;
+        }
+
+        // If select contains only '*', it's not specific
+        if (count($this->select) === 1 && $this->select[0] === '*') {
+            return false;
+        }
+
+        // Otherwise, we have specific column selection
+        return true;
     }
 }

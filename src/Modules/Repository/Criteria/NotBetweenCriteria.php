@@ -17,6 +17,6 @@ class NotBetweenCriteria implements CriteriaInterface {
 
     public function apply(QueryBuilder $qb): void
     {
-        $qb->whereNotBetween($this->field, $this->min, $this->max);
+        $qb->where("{$this->field} NOT BETWEEN ? AND ?", [$this->min, $this->max]);
     }
 }

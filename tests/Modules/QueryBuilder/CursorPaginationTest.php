@@ -10,9 +10,9 @@ use Articulate\Modules\QueryBuilder\CursorDirection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
 
-class CursorPaginationTest extends DatabaseTestCase
-{
+class CursorPaginationTest extends DatabaseTestCase {
     private QueryBuilder $qb;
+
     private Connection $connection;
 
     /**
@@ -24,7 +24,9 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))');
 
         $this->qb->from('test_items')
             ->cursorLimit(10);
@@ -44,7 +46,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP)");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255), created_at TIMESTAMP)');
 
         $this->qb->from('test_items')
             ->orderBy('id', 'ASC')
@@ -67,7 +70,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_items (id, name) VALUES (1, 'Item 1'), (2, 'Item 2'), (3, 'Item 3'), (4, 'Item 4'), (5, 'Item 5')");
 
         $this->qb->from('test_items')
@@ -86,12 +90,13 @@ class CursorPaginationTest extends DatabaseTestCase
         $nextCursor = $paginator->getNextCursor();
         $this->assertNotNull($nextCursor);
 
-        $this->qb->from('test_items')
+        $qb2 = new QueryBuilder($this->connection);
+        $qb2->from('test_items')
             ->orderBy('id', 'ASC')
             ->cursor($nextCursor, CursorDirection::NEXT)
             ->cursorLimit(2);
 
-        $paginator2 = $this->qb->getCursorPaginatedResult();
+        $paginator2 = $qb2->getCursorPaginatedResult();
         $items2 = $paginator2->getItems();
         $this->assertCount(2, $items2);
         $this->assertEquals(3, $items2[0]['id']);
@@ -107,7 +112,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_items (id, name) VALUES (1, 'Item 1'), (2, 'Item 2'), (3, 'Item 3'), (4, 'Item 4'), (5, 'Item 5')");
 
         $this->qb->from('test_items')
@@ -125,12 +131,13 @@ class CursorPaginationTest extends DatabaseTestCase
         $nextCursor = $paginator->getNextCursor();
         $this->assertNotNull($nextCursor);
 
-        $this->qb->from('test_items')
+        $qb2 = new QueryBuilder($this->connection);
+        $qb2->from('test_items')
             ->orderBy('id', 'DESC')
             ->cursor($nextCursor, CursorDirection::NEXT)
             ->cursorLimit(2);
 
-        $paginator2 = $this->qb->getCursorPaginatedResult();
+        $paginator2 = $qb2->getCursorPaginatedResult();
         $items2 = $paginator2->getItems();
         $this->assertCount(2, $items2);
         $this->assertEquals(3, $items2[0]['id']);
@@ -146,7 +153,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, category VARCHAR(255), name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, category VARCHAR(255), name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_items (id, category, name) VALUES 
             (1, 'A', 'Item 1'), 
             (2, 'A', 'Item 2'), 
@@ -172,13 +180,14 @@ class CursorPaginationTest extends DatabaseTestCase
         $nextCursor = $paginator->getNextCursor();
         $this->assertNotNull($nextCursor);
 
-        $this->qb->from('test_items')
+        $qb2 = new QueryBuilder($this->connection);
+        $qb2->from('test_items')
             ->orderBy('category', 'ASC')
             ->orderBy('id', 'ASC')
             ->cursor($nextCursor, CursorDirection::NEXT)
             ->cursorLimit(2);
 
-        $paginator2 = $this->qb->getCursorPaginatedResult();
+        $paginator2 = $qb2->getCursorPaginatedResult();
         $items2 = $paginator2->getItems();
         $this->assertCount(2, $items2);
         $this->assertEquals('B', $items2[0]['category']);
@@ -196,7 +205,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, status VARCHAR(255), name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, status VARCHAR(255), name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_items (id, status, name) VALUES 
             (1, 'active', 'Item 1'), 
             (2, 'active', 'Item 2'), 
@@ -228,7 +238,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))');
         $this->connection->executeQuery("INSERT INTO test_items (id, name) VALUES (1, 'Item 1'), (2, 'Item 2'), (3, 'Item 3')");
 
         $this->qb->from('test_items')
@@ -241,12 +252,13 @@ class CursorPaginationTest extends DatabaseTestCase
         $nextCursor = $paginator->getNextCursor();
         $this->assertNotNull($nextCursor);
 
-        $this->qb->from('test_items')
+        $qb2 = new QueryBuilder($this->connection);
+        $qb2->from('test_items')
             ->orderBy('id', 'ASC')
             ->cursor($nextCursor, CursorDirection::NEXT)
             ->cursorLimit(2);
 
-        $paginator2 = $this->qb->getCursorPaginatedResult();
+        $paginator2 = $qb2->getCursorPaginatedResult();
         $items2 = $paginator2->getItems();
         $this->assertCount(1, $items2);
         $this->assertEquals(3, $items2[0]['id']);
@@ -280,7 +292,8 @@ class CursorPaginationTest extends DatabaseTestCase
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $this->connection->executeQuery("CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))");
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_items');
+        $this->connection->executeQuery('CREATE TABLE test_items (id INT PRIMARY KEY, name VARCHAR(255))');
 
         $this->qb->from('test_items')
             ->orderBy('id', 'ASC');

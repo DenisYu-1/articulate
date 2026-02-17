@@ -129,6 +129,7 @@ class QueryResultCache {
             if (is_array($value)) {
                 return $this->normalizeParamsForCacheKey($value);
             }
+
             return $value;
         }, $params);
     }

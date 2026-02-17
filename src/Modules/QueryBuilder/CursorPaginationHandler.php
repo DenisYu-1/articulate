@@ -2,12 +2,12 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 
-class CursorPaginationHandler
-{
+class CursorPaginationHandler {
     public function __construct(
         private readonly CursorCodec $cursorCodec,
         private readonly ?EntityMetadataRegistry $metadataRegistry
@@ -45,6 +45,7 @@ class CursorPaginationHandler
                 ];
             }
         }
+
         return $parsed;
     }
 
@@ -62,6 +63,7 @@ class CursorPaginationHandler
                         foreach ($metadata->getProperties() as $property) {
                             if ($property->getColumnName() === $column && $property instanceof ReflectionProperty) {
                                 $values[] = $property->getValue($item);
+
                                 continue 2;
                             }
                         }
@@ -74,6 +76,7 @@ class CursorPaginationHandler
                     foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                         if ($property instanceof ReflectionProperty && ($property->getColumnName() === $column || $property->getFieldName() === $column)) {
                             $values[] = $property->getValue($item);
+
                             continue 2;
                         }
                     }
@@ -83,6 +86,7 @@ class CursorPaginationHandler
 
             if (is_array($item) && isset($item[$column])) {
                 $values[] = $item[$column];
+
                 continue;
             }
 
@@ -109,10 +113,13 @@ class CursorPaginationHandler
                 $nextCursor = $this->cursorCodec->encode(new Cursor($lastValues, CursorDirection::NEXT));
             }
 
-            $firstItem = reset($items);
-            $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, null);
-            if ($firstValues !== null) {
-                $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
+            // Only create prevCursor if we're not on the first page
+            if ($currentCursor !== null) {
+                $firstItem = reset($items);
+                $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, null);
+                if ($firstValues !== null) {
+                    $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
+                }
             }
         }
 
@@ -146,10 +153,13 @@ class CursorPaginationHandler
                 $nextCursor = $this->cursorCodec->encode(new Cursor($lastValues, CursorDirection::NEXT));
             }
 
-            $firstItem = reset($items);
-            $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, $entityClass);
-            if ($firstValues !== null) {
-                $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
+            // Only create prevCursor if we're not on the first page
+            if ($currentCursor !== null) {
+                $firstItem = reset($items);
+                $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, $entityClass);
+                if ($firstValues !== null) {
+                    $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
+                }
             }
         }
 

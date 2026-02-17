@@ -3,7 +3,6 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Exceptions\UpdateConflictException;
-use Articulate\Modules\EntityManager\EntityMetadata;
 
 class ThrowOnUpdateConflictStrategy implements UpdateConflictResolutionStrategy {
     public function resolve(array $updates, EntityMetadataRegistry $metadataRegistry): array

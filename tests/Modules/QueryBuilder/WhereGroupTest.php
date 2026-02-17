@@ -36,7 +36,7 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('status = ?', 'active')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('role', 'admin'),
                     (new LikeCriteria('permissions', '%superuser%'))->or(),
@@ -56,7 +56,7 @@ class WhereGroupTest extends TestCase {
             ->select('id', 'name')
             ->from('users')
             ->where('active = ?', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new GreaterThanOrEqualCriteria('age', 18),
                     new LessThanOrEqualCriteria('age', 65),
@@ -75,13 +75,13 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('products')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('category', 'electronics'),
                     (new EqualsCriteria('category', 'books'))->or(),
                 ]));
             })
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new GreaterThanCriteria('price', 10),
                     new LessThanCriteria('price', 100),
@@ -101,7 +101,7 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'name', 'email')
             ->from('users')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('status', 'active'),
                     new GroupCriteria(
@@ -126,7 +126,7 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('complex_table')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('a', 1),
                     new GroupCriteria(
@@ -147,7 +147,7 @@ class WhereGroupTest extends TestCase {
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
 
-        $expected = 'SELECT * FROM complex_table WHERE (a = ? AND ((b = ? OR b = ?) AND (c = ? OR c = ?)))';
+        $expected = 'SELECT * FROM complex_table WHERE (a = ? AND (((b = ? OR b = ?) AND (c = ? OR c = ?))))';
         $this->assertEquals($expected, $sql);
         $this->assertEquals([1, 2, 3, 4, 5], $params);
     }
@@ -158,7 +158,7 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('deleted_at IS NULL')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('role', 'admin'),
                     (new EqualsCriteria('role', 'moderator'))->or(),
@@ -177,7 +177,7 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'name')
             ->from('users')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new InCriteria('role', ['admin', 'moderator']),
                     new NotInCriteria('status', ['banned', 'suspended']),
@@ -197,7 +197,7 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('*')
             ->from('posts')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new IsNotNullCriteria('published_at'),
                     new IsNullCriteria('deleted_at'),
@@ -216,7 +216,7 @@ class WhereGroupTest extends TestCase {
         $qb = $this->qb
             ->select('id', 'title', 'price')
             ->from('products')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new BetweenCriteria(field: 'price', min: 10, max: 100),
                     new BetweenCriteria(field: 'created_at', min: '2023-01-01', max: '2023-12-31'),
@@ -237,7 +237,7 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new GreaterThanOrEqualCriteria('age', 18),
                     (new EqualsCriteria('parental_consent', true))->or(),
@@ -260,7 +260,7 @@ class WhereGroupTest extends TestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([]));
             });
 
@@ -278,7 +278,7 @@ class WhereGroupTest extends TestCase {
             ->select('id', 'name')
             ->from('users')
             ->where('active = ?', true)
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new GreaterThanCriteria('age', 21),
                     new GroupCriteria(

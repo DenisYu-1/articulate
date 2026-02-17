@@ -152,7 +152,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $qb = $this->qb
             ->select('*')
             ->from('users')
-            ->whereNot(function($q) {
+            ->whereNot(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('status', 'active'),
                     new GreaterThanCriteria('age', 18),
@@ -179,8 +179,8 @@ class QueryBuilderTest extends DatabaseTestCase {
             ->select('*')
             ->from('users')
             ->where('active = ?', true)
-            ->orWhere(function($q) {
-                $q->whereNot(function($q2) {
+            ->orWhere(function ($q) {
+                $q->whereNot(function ($q2) {
                     $q2->apply(new AndCriteria([
                         new EqualsCriteria('status', 'blocked'),
                         new LessThanCriteria('age', 21),

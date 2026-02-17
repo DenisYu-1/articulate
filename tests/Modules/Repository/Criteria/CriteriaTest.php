@@ -4,12 +4,10 @@ namespace Articulate\Tests\Modules\Repository\Criteria;
 
 use Articulate\Attributes\Entity;
 use Articulate\Connection;
-use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\AbstractRepository;
 use Articulate\Modules\Repository\Criteria\AndCriteria;
 use Articulate\Modules\Repository\Criteria\BetweenCriteria;
-use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use Articulate\Modules\Repository\Criteria\EqualsCriteria;
 use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
 use Articulate\Modules\Repository\Criteria\GreaterThanOrEqualCriteria;
@@ -30,9 +28,13 @@ use PHPUnit\Framework\TestCase;
 #[Entity]
 class TestEntity {
     public int $id;
+
     public string $name;
+
     public int $age;
+
     public ?string $email;
+
     public bool $active;
 }
 
@@ -222,7 +224,7 @@ class CriteriaTest extends TestCase {
         $criteria = new AndCriteria([
             new EqualsCriteria('active', true),
             new GreaterThanCriteria('age', 18),
-            new LikeCriteria('name', 'John%')
+            new LikeCriteria('name', 'John%'),
         ]);
 
         $criteria->apply($qb);

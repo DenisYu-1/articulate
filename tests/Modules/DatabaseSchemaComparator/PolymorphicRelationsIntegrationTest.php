@@ -298,7 +298,7 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
 
             try {
                 $testFunction($connection, $databaseName);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 throw $e;
             }
         }

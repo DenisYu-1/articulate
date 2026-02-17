@@ -2,8 +2,7 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
-class CursorPaginator
-{
+class CursorPaginator {
     public function __construct(
         private readonly array $items,
         private readonly ?string $nextCursor = null,

@@ -230,22 +230,22 @@ class TypeRegistry {
         $this->registerType('mixed', 'TEXT');
 
         // DateTime types (basic mapping for now)
-        $this->registerType('DateTime', 'DATETIME');
-        $this->registerType('DateTimeImmutable', 'DATETIME');
+        $this->registerType('DateTime', 'DATETIME', new DateTimeTypeConverter());
+        $this->registerType('DateTimeImmutable', 'DATETIME', new DateTimeTypeConverter());
 
         // Example custom spatial type (requires spatial extensions)
         $this->registerType(Point::class, 'POINT', new PointTypeConverter());
 
         // Class/Interface mappings
-        $this->registerClassMapping(\DateTimeInterface::class, 'DATETIME', null, 10); // High priority for DateTime
+        $this->registerClassMapping(\DateTimeInterface::class, 'DATETIME', new DateTimeTypeConverter(), 10); // High priority for DateTime
 
         // Nullable versions (these override the db->php mapping for reverse lookups)
         $this->registerType('?int', 'INT');
         $this->registerType('?float', 'FLOAT');
         $this->registerType('?string', 'VARCHAR(255)');
         $this->registerType('?bool', 'TINYINT(1)', new BoolTypeConverter());
-        $this->registerType('?DateTime', 'DATETIME');
-        $this->registerType('?DateTimeImmutable', 'DATETIME');
+        $this->registerType('?DateTime', 'DATETIME', new DateTimeTypeConverter());
+        $this->registerType('?DateTimeImmutable', 'DATETIME', new DateTimeTypeConverter());
         $this->registerType('?' . Point::class, 'POINT', new PointTypeConverter());
     }
 }

@@ -4,8 +4,7 @@ namespace Articulate\Modules\QueryBuilder;
 
 use InvalidArgumentException;
 
-class CursorCodec
-{
+class CursorCodec {
     public function encode(Cursor $cursor): string
     {
         $data = [
@@ -14,6 +13,7 @@ class CursorCodec
         ];
 
         $json = json_encode($data, JSON_THROW_ON_ERROR);
+
         return rtrim(strtr(base64_encode($json), '+/', '-_'), '=');
     }
 

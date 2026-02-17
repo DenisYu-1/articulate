@@ -97,7 +97,17 @@ abstract class AbstractRepository implements RepositoryInterface {
 
         $qb->count();
 
-        return $qb->getSingleResult() ?? 0;
+        $result = $qb->getSingleResult(null);
+
+        // Extract count value from result (key may vary by database)
+        if ($result && is_array($result)) {
+            $keys = array_keys($result);
+            $firstKey = $keys[0] ?? null;
+
+            return (int) ($result[$firstKey] ?? 0);
+        }
+
+        return 0;
     }
 
     public function exists(mixed $id): bool

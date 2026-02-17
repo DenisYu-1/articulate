@@ -17,6 +17,6 @@ class BetweenCriteria implements CriteriaInterface {
 
     public function apply(QueryBuilder $qb): void
     {
-        $qb->whereBetween($this->field, $this->min, $this->max);
+        $qb->where("{$this->field} BETWEEN ? AND ?", [$this->min, $this->max]);
     }
 }

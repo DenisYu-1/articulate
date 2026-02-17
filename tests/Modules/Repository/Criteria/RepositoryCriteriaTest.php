@@ -5,6 +5,7 @@ namespace Articulate\Tests\Modules\Repository\Criteria;
 use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\Repository\AbstractRepository;
 use Articulate\Modules\Repository\Criteria\EqualsCriteria;
 use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
 use Articulate\Modules\Repository\Criteria\IsNotNullCriteria;
@@ -13,18 +14,23 @@ use PHPUnit\Framework\TestCase;
 #[Entity]
 class TestUser {
     public int $id;
+
     public string $name;
+
     public int $age;
+
     public bool $active;
+
     public ?string $email;
 }
 
-class UserRepository extends \Articulate\Modules\Repository\AbstractRepository {
+class UserRepository extends AbstractRepository {
     // Test repository extending AbstractRepository
 }
 
 class RepositoryCriteriaTest extends TestCase {
     private EntityManager $entityManager;
+
     private UserRepository $repository;
 
     protected function setUp(): void

@@ -25,14 +25,15 @@ class OrCriteria implements CriteriaInterface {
         $first = true;
         foreach ($this->criteria as $criterion) {
             if ($first) {
-                $qb->where(function($q) use ($criterion) {
+                $qb->where(function ($q) use ($criterion) {
                     $q->apply($criterion);
                 });
                 $first = false;
+
                 continue;
             }
 
-            $qb->orWhere(function($q) use ($criterion) {
+            $qb->orWhere(function ($q) use ($criterion) {
                 $q->apply($criterion);
             });
         }

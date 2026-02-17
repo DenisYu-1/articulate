@@ -79,7 +79,6 @@ class EntityManager {
         $proxyGenerator = new Proxy\ProxyGenerator($this->metadataRegistry);
         $this->proxyManager = new Proxy\ProxyManager(
             $this,
-            $this->metadataRegistry,
             $proxyGenerator
         );
 
@@ -119,9 +118,9 @@ class EntityManager {
         // Execute the changes in proper order (respecting foreign key constraints)
         $this->executeChanges($aggregatedChanges);
 
-        // Execute post-operation callbacks
+        // Execute post-operation callbacks - each UnitOfWork processes its own changes
         foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->executePostCallbacks($aggregatedChanges);
+            $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
         }
 
         // Clear changes from all UnitOfWorks
@@ -356,7 +355,7 @@ class EntityManager {
         $qb = $this->createQueryBuilder($class)
             ->select(...$columnNames)
             ->from($tableName)
-            ->where("$primaryKeyColumn = ?", $id)
+            ->where($primaryKeyColumn, $id)
             ->limit(1);
 
         $sql = $qb->getSQL();
@@ -472,7 +471,7 @@ class EntityManager {
         $qb = $this->createQueryBuilder($entityClass)
             ->select(...$metadata->getColumnNames())
             ->from($tableName)
-            ->where("$primaryKeyColumn = ?", $id)
+            ->where($primaryKeyColumn, $id)
             ->limit(1);
 
         $sql = $qb->getSQL();
