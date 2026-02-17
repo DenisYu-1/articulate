@@ -2,8 +2,6 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
-use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
@@ -27,7 +25,7 @@ class QueryBuilder {
 
     private array $select = [];
 
-    private array $where = []; // [['operator' => 'AND|OR', 'condition' => '...', 'params' => [...], 'group' => null|array], ...]
+    private WhereClauseBuilder $whereBuilder;
 
     private array $having = []; // [['operator' => 'AND|OR', 'condition' => '...', 'params' => [...]], ...]
 
@@ -71,17 +69,7 @@ class QueryBuilder {
 
     private bool $includeDeleted = false;
 
-    private ?string $dmlCommand = null;
-
-    private array $insertColumns = [];
-
-    private array $insertValues = [];
-
-    private array $updateSet = [];
-
-    private ?object $dmlEntity = null;
-
-    private array $returning = [];
+    private DmlOperationHandler $dmlHandler;
 
     public function __construct(
         Connection $connection,
@@ -99,6 +87,11 @@ class QueryBuilder {
         $this->softDeleteFilter = new SoftDeleteFilter($metadataRegistry);
         $this->cursorPaginationHandler = new CursorPaginationHandler($this->cursorCodec, $metadataRegistry);
         $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null);
+        $this->dmlHandler = new DmlOperationHandler($metadataRegistry);
+        $this->whereBuilder = new WhereClauseBuilder(
+            fn () => $this->createSubQueryBuilder(),
+            $this->sqlCompiler
+        );
     }
 
     public function createSubQueryBuilder(): QueryBuilder
@@ -127,285 +120,49 @@ class QueryBuilder {
 
     public function where(string|callable $columnOrCallback, mixed $operatorOrValue = null, mixed $value = null): self
     {
-        if (is_callable($columnOrCallback)) {
-            return $this->whereGroupCallback($columnOrCallback, 'AND');
-        }
-
-        // Check if first argument is a raw SQL condition
-        // Raw SQL contains: ?, =, >, <, >=, <=, !=, <>, IS, IN, LIKE, BETWEEN, etc.
-        $isRawSql = $value === null && (
-            str_contains($columnOrCallback, '?') ||
-            str_contains($columnOrCallback, ' = ') ||
-            str_contains($columnOrCallback, ' > ') ||
-            str_contains($columnOrCallback, ' < ') ||
-            str_contains($columnOrCallback, '>=') ||
-            str_contains($columnOrCallback, '<=') ||
-            str_contains($columnOrCallback, '!=') ||
-            str_contains($columnOrCallback, '<>') ||
-            stripos($columnOrCallback, ' IS ') !== false ||
-            stripos($columnOrCallback, ' IN ') !== false ||
-            stripos($columnOrCallback, ' LIKE ') !== false ||
-            stripos($columnOrCallback, ' BETWEEN ') !== false
-        );
-
-        if ($isRawSql) {
-            // Raw SQL condition: where("status = ?", $value) or where("deleted_at IS NULL")
-            // Handle array parameters
-            // For BETWEEN: where("col BETWEEN ? AND ?", [min, max]) -> unpack to [min, max]
-            // For IN: where("col IN (?)", [val1, val2]) -> keep as [[val1, val2]]
-            // For single value: where("col = ?", val) -> wrap as [val]
-            $params = [];
-            if ($operatorOrValue !== null) {
-                if (is_array($operatorOrValue)) {
-                    // Check if this is a BETWEEN clause with AND
-                    if (stripos($columnOrCallback, 'BETWEEN') !== false && stripos($columnOrCallback, 'AND') !== false) {
-                        // BETWEEN ? AND ? - unpack array
-                        $params = $operatorOrValue;
-                    } else {
-                        // IN (?) or other - keep array wrapped
-                        $params = [$operatorOrValue];
-                    }
-                } else {
-                    $params = [$operatorOrValue];
-                }
-            }
-
-            $this->where[] = [
-                'operator' => 'AND',
-                'condition' => $columnOrCallback,
-                'params' => $params,
-                'group' => null,
-            ];
-
-            return $this;
-        }
-
-        if ($value === null) {
-            $value = $operatorOrValue;
-            $operator = '=';
-        } else {
-            $operator = $operatorOrValue;
-        }
-
-        $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => $condition['condition'],
-            'params' => $condition['params'],
-            'group' => null,
-        ];
-
-        return $this;
-    }
-
-    private function buildConditionFromOperator(string $column, string $operator, mixed $value): array
-    {
-        $operator = strtolower(trim($operator));
-
-        return match ($operator) {
-            '=', 'eq' => ['condition' => "{$column} = ?", 'params' => [$value]],
-            '!=', '<>', 'ne' => ['condition' => "{$column} != ?", 'params' => [$value]],
-            '>', 'gt' => ['condition' => "{$column} > ?", 'params' => [$value]],
-            '<', 'lt' => ['condition' => "{$column} < ?", 'params' => [$value]],
-            '>=', 'gte' => ['condition' => "{$column} >= ?", 'params' => [$value]],
-            '<=', 'lte' => ['condition' => "{$column} <= ?", 'params' => [$value]],
-            'like' => ['condition' => "{$column} LIKE ?", 'params' => [$value]],
-            'not like' => ['condition' => "{$column} NOT LIKE ?", 'params' => [$value]],
-            'between' => $this->buildBetweenCondition($column, $value, false),
-            'not between' => $this->buildBetweenCondition($column, $value, true),
-            default => throw new InvalidArgumentException("Unsupported operator: {$operator}"),
-        };
-    }
-
-    private function buildBetweenCondition(string $column, mixed $value, bool $not): array
-    {
-        if (!is_array($value) || count($value) !== 2) {
-            throw new InvalidArgumentException('BETWEEN operator requires an array with exactly 2 values');
-        }
-
-        $operator = $not ? 'NOT BETWEEN' : 'BETWEEN';
-
-        return [
-            'condition' => "{$column} {$operator} ? AND ?",
-            'params' => [$value[0], $value[1]],
-        ];
-    }
-
-    private function whereGroupCallback(callable $callback, string $operator): self
-    {
-        $groupBuilder = $this->createSubQueryBuilder();
-        $callback($groupBuilder);
-
-        if (!empty($groupBuilder->where)) {
-            $this->where[] = [
-                'operator' => $operator,
-                'condition' => null,
-                'params' => [],
-                'group' => $groupBuilder->where,
-            ];
-        }
+        $this->whereBuilder->where($columnOrCallback, $operatorOrValue, $value);
 
         return $this;
     }
 
     public function orWhere(string|callable $columnOrCallback, mixed $operatorOrValue = null, mixed $value = null): self
     {
-        if (is_callable($columnOrCallback)) {
-            return $this->whereGroupCallback($columnOrCallback, 'OR');
-        }
-
-        // Check if first argument is a raw SQL condition
-        // Raw SQL contains: ?, =, >, <, >=, <=, !=, <>, IS, IN, LIKE, BETWEEN, etc.
-        $isRawSql = $value === null && (
-            str_contains($columnOrCallback, '?') ||
-            str_contains($columnOrCallback, ' = ') ||
-            str_contains($columnOrCallback, ' > ') ||
-            str_contains($columnOrCallback, ' < ') ||
-            str_contains($columnOrCallback, '>=') ||
-            str_contains($columnOrCallback, '<=') ||
-            str_contains($columnOrCallback, '!=') ||
-            str_contains($columnOrCallback, '<>') ||
-            stripos($columnOrCallback, ' IS ') !== false ||
-            stripos($columnOrCallback, ' IN ') !== false ||
-            stripos($columnOrCallback, ' LIKE ') !== false ||
-            stripos($columnOrCallback, ' BETWEEN ') !== false
-        );
-
-        if ($isRawSql) {
-            // Raw SQL condition: orWhere("status = ?", $value) or orWhere("deleted_at IS NULL")
-            // Handle array parameters
-            // For BETWEEN: orWhere("col BETWEEN ? AND ?", [min, max]) -> unpack to [min, max]
-            // For IN: orWhere("col IN (?)", [val1, val2]) -> keep as [[val1, val2]]
-            // For single value: orWhere("col = ?", val) -> wrap as [val]
-            $params = [];
-            if ($operatorOrValue !== null) {
-                if (is_array($operatorOrValue)) {
-                    // Check if this is a BETWEEN clause with AND
-                    if (stripos($columnOrCallback, 'BETWEEN') !== false && stripos($columnOrCallback, 'AND') !== false) {
-                        // BETWEEN ? AND ? - unpack array
-                        $params = $operatorOrValue;
-                    } else {
-                        // IN (?) or other - keep array wrapped
-                        $params = [$operatorOrValue];
-                    }
-                } else {
-                    $params = [$operatorOrValue];
-                }
-            }
-
-            $this->where[] = [
-                'operator' => 'OR',
-                'condition' => $columnOrCallback,
-                'params' => $params,
-                'group' => null,
-            ];
-
-            return $this;
-        }
-
-        if ($value === null) {
-            $value = $operatorOrValue;
-            $operator = '=';
-        } else {
-            $operator = $operatorOrValue;
-        }
-
-        $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => $condition['condition'],
-            'params' => $condition['params'],
-            'group' => null,
-        ];
+        $this->whereBuilder->orWhere($columnOrCallback, $operatorOrValue, $value);
 
         return $this;
     }
 
     public function whereIn(string $column, array|QueryBuilder $values): self
     {
-        if ($values instanceof QueryBuilder) {
-            $subquerySql = $values->getSQL();
-            $subqueryParams = $values->getParameters();
+        $this->whereBuilder->whereIn($column, $values);
 
-            $this->where[] = [
-                'operator' => 'AND',
-                'condition' => "{$column} IN ({$subquerySql})",
-                'params' => $subqueryParams,
-                'group' => null,
-            ];
-
-            return $this;
-        }
-
-        // Handle array values (original logic)
-        if (empty($values)) {
-            // Empty IN clause - generate a condition that never matches
-            return $this->where('1 = 0');
-        } else {
-            return $this->where("{$column} IN (?)", $values);
-        }
+        return $this;
     }
 
     public function whereNotIn(string $column, array|QueryBuilder $values): self
     {
-        if ($values instanceof QueryBuilder) {
-            $subquerySql = $values->getSQL();
-            $subqueryParams = $values->getParameters();
+        $this->whereBuilder->whereNotIn($column, $values);
 
-            $this->where[] = [
-                'operator' => 'AND',
-                'condition' => "{$column} NOT IN ({$subquerySql})",
-                'params' => $subqueryParams,
-                'group' => null,
-            ];
-
-            return $this;
-        }
-
-        // Handle array values (original logic)
-        if (empty($values)) {
-            // Empty NOT IN clause - generate a condition that always matches
-            return $this->where('1 = 1');
-        } else {
-            return $this->where("{$column} NOT IN (?)", $values);
-        }
+        return $this;
     }
 
     public function whereNull(string $column): self
     {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} IS NULL",
-            'params' => [],
-            'group' => null,
-        ];
+        $this->whereBuilder->whereNull($column);
 
         return $this;
     }
 
     public function whereNotNull(string $column): self
     {
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "{$column} IS NOT NULL",
-            'params' => [],
-            'group' => null,
-        ];
+        $this->whereBuilder->whereNotNull($column);
 
         return $this;
     }
 
     public function whereExists(QueryBuilder $subquery): self
     {
-        $subquerySql = $subquery->getSQL();
-        $subqueryParams = $subquery->getParameters();
-
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => "EXISTS ({$subquerySql})",
-            'params' => $subqueryParams,
-            'group' => null,
-        ];
+        $this->whereBuilder->whereExists($subquery);
 
         return $this;
     }
@@ -419,192 +176,103 @@ class QueryBuilder {
 
     public function whereNot(callable $callback): self
     {
-        $groupBuilder = $this->createSubQueryBuilder();
-        $callback($groupBuilder);
-
-        if (!empty($groupBuilder->where)) {
-            $groupClause = $groupBuilder->sqlCompiler->buildWhereClause($groupBuilder->where);
-            $this->where[] = [
-                'operator' => 'AND',
-                'condition' => "NOT ({$groupClause})",
-                'params' => $groupBuilder->sqlCompiler->collectWhereParametersPublic($groupBuilder->where),
-                'group' => null,
-            ];
-        }
+        $this->whereBuilder->whereNot($callback);
 
         return $this;
     }
 
     public function orWhereExists(QueryBuilder $subquery): self
     {
-        $subquerySql = $subquery->getSQL();
-        $subqueryParams = $subquery->getParameters();
-
-        $this->where[] = [
-            'operator' => 'OR',
-            'condition' => "EXISTS ({$subquerySql})",
-            'params' => $subqueryParams,
-            'group' => null,
-        ];
+        $this->whereBuilder->orWhereExists($subquery);
 
         return $this;
     }
 
+    public function getWhereConditions(): array
+    {
+        return $this->whereBuilder->getConditions();
+    }
+
     public function insert(object|array|string $entitiesOrTable): self
     {
-        $this->dmlCommand = 'insert';
-        $this->insertColumns = [];
-        $this->insertValues = [];
-
-        if (is_string($entitiesOrTable)) {
-            if (empty($this->from)) {
-                $this->from($entitiesOrTable);
-            }
-
-            return $this;
-        }
-
-        $entitiesArray = is_array($entitiesOrTable) ? $entitiesOrTable : [$entitiesOrTable];
-
-        if (empty($entitiesArray)) {
-            throw new InvalidArgumentException('INSERT requires at least one entity');
-        }
-
-        $firstEntity = $entitiesArray[0];
-        if (!is_object($firstEntity)) {
-            throw new InvalidArgumentException('INSERT entities must be objects');
-        }
-
-        $this->dmlEntity = $firstEntity;
-
-        if ($this->entityClass === null) {
-            $this->setEntityClass($firstEntity::class);
-        }
-
-        if (empty($this->from)) {
-            $this->from($this->resolveTableName($firstEntity::class));
-        }
-
-        foreach ($entitiesArray as $entity) {
-            $data = $this->extractEntityInsertData($entity);
-            if (empty($this->insertColumns)) {
-                $this->insertColumns = $data['columns'];
-            }
-            $this->insertValues[] = $data['values'];
-        }
+        $this->dmlHandler->insert($entitiesOrTable, $this->createDmlContext());
 
         return $this;
     }
 
     public function values(array $values): self
     {
-        if ($this->dmlCommand !== 'insert') {
-            throw new InvalidArgumentException('values() can only be used with insert()');
-        }
-
-        if (empty($this->insertColumns)) {
-            $this->insertColumns = array_keys($values);
-        }
-
-        if (count($values) !== count($this->insertColumns)) {
-            throw new InvalidArgumentException('Number of values must match number of columns');
-        }
-
-        $orderedValues = [];
-        foreach ($this->insertColumns as $column) {
-            $orderedValues[] = $values[$column];
-        }
-
-        $this->insertValues[] = $orderedValues;
+        $this->dmlHandler->values($values);
 
         return $this;
     }
 
     public function update(object|string $entityOrTable): self
     {
-        $this->dmlCommand = 'update';
-        $this->updateSet = [];
-
-        if (is_object($entityOrTable)) {
-            $this->dmlEntity = $entityOrTable;
-
-            if ($this->entityClass === null) {
-                $this->setEntityClass($entityOrTable::class);
-            }
-
-            if (empty($this->from)) {
-                $this->from($this->resolveTableName($entityOrTable::class));
-            }
-
-            $whereClause = $this->buildEntityWhereClause($entityOrTable);
-            if (!empty($whereClause['clause'])) {
-                $this->where($whereClause['clause'], ...$whereClause['values']);
-            }
-        } else {
-            if (empty($this->from)) {
-                $this->from($entityOrTable);
-            }
-        }
+        $this->dmlHandler->update($entityOrTable, $this->createDmlContext());
 
         return $this;
     }
 
     public function set(string|array $column, mixed $value = null): self
     {
-        if ($this->dmlCommand !== 'update') {
-            throw new InvalidArgumentException('set() can only be used with update()');
-        }
-
-        if (is_array($column)) {
-            foreach ($column as $col => $val) {
-                $this->updateSet[$col] = $val;
-            }
-        } else {
-            $this->updateSet[$column] = $value;
-        }
+        $this->dmlHandler->set($column, $value);
 
         return $this;
     }
 
     public function delete(object|string $entityOrTable): self
     {
-        $this->dmlCommand = 'delete';
-
-        if (is_object($entityOrTable)) {
-            $this->dmlEntity = $entityOrTable;
-
-            if ($this->entityClass === null) {
-                $this->setEntityClass($entityOrTable::class);
-            }
-
-            if (empty($this->from)) {
-                $this->from($this->resolveTableName($entityOrTable::class));
-            }
-
-            $whereClause = $this->buildEntityWhereClause($entityOrTable);
-            if (!empty($whereClause['clause'])) {
-                $this->where($whereClause['clause'], ...$whereClause['values']);
-            }
-        } else {
-            if (empty($this->from)) {
-                $this->from($entityOrTable);
-            }
-        }
+        $this->dmlHandler->delete($entityOrTable, $this->createDmlContext());
 
         return $this;
     }
 
     public function returning(string ...$columns): self
     {
-        $this->returning = array_merge($this->returning, $columns);
+        $this->dmlHandler->returning(...$columns);
 
         return $this;
+    }
+
+    private function createDmlContext(): DmlContext
+    {
+        return new class($this) implements DmlContext {
+            public function __construct(private readonly QueryBuilder $qb)
+            {
+            }
+
+            public function getEntityClass(): ?string
+            {
+                return $this->qb->getEntityClass();
+            }
+
+            public function getFrom(): string
+            {
+                return $this->qb->getFrom();
+            }
+
+            public function setEntityClass(string $entityClass): void
+            {
+                $this->qb->setEntityClass($entityClass);
+            }
+
+            public function setFrom(string $from): void
+            {
+                $this->qb->setFromTable($from);
+            }
+
+            public function addWhere(string $clause, mixed ...$values): void
+            {
+                $this->qb->addWhereCondition($clause, ...$values);
+            }
+        };
     }
 
     // Reset methods
     public function resetWhere(): self
     {
-        $this->where = [];
+        $this->whereBuilder->reset();
 
         return $this;
     }
@@ -648,7 +316,7 @@ class QueryBuilder {
     {
         $this->select = [];
         $this->from = '';
-        $this->where = [];
+        $this->whereBuilder->reset();
         $this->having = [];
         $this->joins = [];
         $this->orderBy = [];
@@ -659,12 +327,7 @@ class QueryBuilder {
         $this->cursorLimit = null;
         $this->distinct = false;
         $this->lockForUpdate = false;
-        $this->dmlCommand = null;
-        $this->insertColumns = [];
-        $this->insertValues = [];
-        $this->updateSet = [];
-        $this->dmlEntity = null;
-        $this->returning = [];
+        $this->dmlHandler->reset();
 
         return $this;
     }
@@ -793,20 +456,7 @@ class QueryBuilder {
 
     public function whereRaw(string $condition, mixed ...$params): self
     {
-        // Handle both single array parameter and multiple parameters
-        if (count($params) === 1 && is_array($params[0])) {
-            $actualParams = $params[0];
-        } else {
-            $actualParams = $params;
-        }
-
-        $this->where[] = [
-            'operator' => 'AND',
-            'condition' => $condition,
-            'params' => $actualParams,
-            'group' => null,
-            'raw' => true,
-        ];
+        $this->whereBuilder->whereRaw($condition, ...$params);
 
         return $this;
     }
@@ -995,61 +645,80 @@ class QueryBuilder {
         return $this->entityClass;
     }
 
+    public function getFrom(): string
+    {
+        return $this->from;
+    }
+
+    public function setFromTable(string $table): void
+    {
+        $this->from = $table;
+    }
+
+    public function addWhereCondition(string $condition, mixed ...$params): void
+    {
+        $actualParams = count($params) === 1 && is_array($params[0]) ? $params[0] : $params;
+
+        $this->whereBuilder->addCondition($condition, $actualParams, 'AND');
+    }
+
     public function getSQL(): string
     {
         if ($this->rawSql !== null) {
             return $this->rawSql;
         }
 
-        if ($this->dmlCommand === 'insert') {
+        $dmlCommand = $this->dmlHandler->getCommand();
+
+        if ($dmlCommand === 'insert') {
             if (empty($this->from)) {
                 throw new InvalidArgumentException('INSERT requires a table name');
             }
 
             [$sql] = $this->sqlCompiler->compileInsert(
                 $this->from,
-                $this->insertColumns,
-                $this->insertValues,
-                $this->returning
+                $this->dmlHandler->getInsertColumns(),
+                $this->dmlHandler->getInsertValues(),
+                $this->dmlHandler->getReturning()
             );
 
             return $sql;
         }
 
-        if ($this->dmlCommand === 'update') {
+        if ($dmlCommand === 'update') {
             if (empty($this->from)) {
                 throw new InvalidArgumentException('UPDATE requires a table name');
             }
 
-            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
             [$sql] = $this->sqlCompiler->compileUpdate(
                 $this->from,
-                $this->updateSet,
+                $this->dmlHandler->getUpdateSet(),
                 $where,
-                $this->returning
+                $this->dmlHandler->getReturning()
             );
 
             return $sql;
         }
 
-        if ($this->dmlCommand === 'delete') {
+        if ($dmlCommand === 'delete') {
             if (empty($this->from)) {
                 throw new InvalidArgumentException('DELETE requires a table name');
             }
 
-            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
             [$sql] = $this->sqlCompiler->compileDelete(
                 $this->from,
                 $where,
-                $this->returning
+                $this->dmlHandler->getReturning()
             );
 
             return $sql;
         }
 
-        $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+        $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
         $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
 
@@ -1079,43 +748,45 @@ class QueryBuilder {
             return $this->rawParams;
         }
 
-        if ($this->dmlCommand === 'insert') {
+        $dmlCommand = $this->dmlHandler->getCommand();
+
+        if ($dmlCommand === 'insert') {
             [, $params] = $this->sqlCompiler->compileInsert(
                 $this->from,
-                $this->insertColumns,
-                $this->insertValues,
-                $this->returning
+                $this->dmlHandler->getInsertColumns(),
+                $this->dmlHandler->getInsertValues(),
+                $this->dmlHandler->getReturning()
             );
 
             return $params;
         }
 
-        if ($this->dmlCommand === 'update') {
-            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+        if ($dmlCommand === 'update') {
+            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
             [, $params] = $this->sqlCompiler->compileUpdate(
                 $this->from,
-                $this->updateSet,
+                $this->dmlHandler->getUpdateSet(),
                 $where,
-                $this->returning
+                $this->dmlHandler->getReturning()
             );
 
             return $params;
         }
 
-        if ($this->dmlCommand === 'delete') {
-            $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+        if ($dmlCommand === 'delete') {
+            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
             [, $params] = $this->sqlCompiler->compileDelete(
                 $this->from,
                 $where,
-                $this->returning
+                $this->dmlHandler->getReturning()
             );
 
             return $params;
         }
 
-        $where = $this->softDeleteFilter->apply($this->where, $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
+        $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
         $limitToUse = $this->cursor !== null ? $this->cursorLimit : $this->limit;
 
@@ -1198,47 +869,33 @@ class QueryBuilder {
 
     public function execute(): mixed
     {
+        $dmlCommand = $this->dmlHandler->getCommand();
+
+        if ($dmlCommand !== null) {
+            return $this->dmlHandler->execute(
+                $this->connection,
+                $this->sqlCompiler,
+                $this->softDeleteFilter,
+                $this->whereBuilder->getConditions(),
+                $this->entityClass,
+                $this->from,
+                $this->softDeleteEnabled,
+                $this->includeDeleted,
+                $this->rawSql,
+                $this->lockForUpdate,
+                fn (string $sql, array $params) => $this->expandInPlaceholders($sql, $params)
+            );
+        }
+
         if ($this->lockForUpdate && !$this->connection->inTransaction()) {
             throw new TransactionRequiredException('lock() requires an active transaction');
         }
 
         $sql = $this->getSQL();
         $params = $this->getParameters();
+        [$sql, $params] = $this->expandInPlaceholders($sql, $params);
 
-        // Expand IN (?) placeholders for array parameters (skip for INSERT which handles params differently)
-        if ($this->dmlCommand !== 'insert') {
-            [$sql, $params] = $this->expandInPlaceholders($sql, $params);
-        }
-
-        $statement = $this->connection->executeQuery($sql, $params);
-
-        if ($this->dmlCommand === 'insert' && !empty($this->returning)) {
-            return $statement->fetchAll();
-        }
-
-        if ($this->dmlCommand === 'insert' && count($this->insertValues) === 1) {
-            $driverName = $this->connection->getDriverName();
-            if ($driverName === Connection::PGSQL) {
-                if (!empty($this->returning)) {
-                    return $statement->fetchAll();
-                }
-            }
-
-            $lastInsertId = $this->connection->lastInsertId();
-            if ($lastInsertId !== false) {
-                return (int) $lastInsertId;
-            }
-        }
-
-        if ($this->dmlCommand === 'update' && !empty($this->returning)) {
-            return $statement->fetchAll();
-        }
-
-        if ($this->dmlCommand === 'delete' && !empty($this->returning)) {
-            return $statement->fetchAll();
-        }
-
-        return $statement->rowCount();
+        return $this->connection->executeQuery($sql, $params)->rowCount();
     }
 
     private function resolveTableName(string $entityClass): string
@@ -1247,167 +904,9 @@ class QueryBuilder {
             return $this->metadataRegistry->getTableName($entityClass);
         }
 
-        // Fallback: simple pluralization: User -> users, Post -> posts
         $className = basename(str_replace('\\', '/', $entityClass));
 
         return strtolower($className) . 's';
-    }
-
-    private function extractEntityInsertData(object $entity): array
-    {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-
-        $properties = array_filter(
-            iterator_to_array($reflectionEntity->getEntityProperties()),
-            fn ($property) => $property instanceof ReflectionProperty
-        );
-
-        $columns = [];
-        $values = [];
-
-        foreach ($properties as $property) {
-            $columnName = $property->getColumnName();
-
-            $value = $property->getValue($entity);
-
-            if ($property->isPrimaryKey() && $value === null) {
-                continue;
-            }
-
-            if ($value === null && !$property->isNullable() && $property->getDefaultValue() === null) {
-                continue;
-            }
-
-            $columns[] = $columnName;
-            $values[] = $value;
-        }
-
-        $this->addMorphToColumns($entity, $columns, $columns, $values);
-
-        return ['columns' => $columns, 'values' => $values];
-    }
-
-    private function buildEntityWhereClause(object $entity): array
-    {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        $whereParts = [];
-        $whereValues = [];
-
-        $primaryKeyColumns = $reflectionEntity->getPrimaryKeyColumns();
-        if (!empty($primaryKeyColumns)) {
-            foreach ($primaryKeyColumns as $pkColumn) {
-                $pkProperty = null;
-                foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                    if ($property->getColumnName() === $pkColumn && $property instanceof ReflectionProperty) {
-                        $pkProperty = $property;
-
-                        break;
-                    }
-                }
-
-                if ($pkProperty === null) {
-                    $reflectionEntity = new ReflectionEntity($entity::class);
-                    foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                        if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
-                            $idValue = $property->getValue($entity);
-                            if ($idValue !== null) {
-                                $whereParts[] = 'id = ?';
-                                $whereValues[] = $idValue;
-                            }
-
-                            break;
-                        }
-                    }
-
-                    continue;
-                }
-
-                $pkValue = $pkProperty->getValue($entity);
-
-                $whereParts[] = "{$pkColumn} = ?";
-                $whereValues[] = $pkValue;
-            }
-        } else {
-            $reflectionEntity = new ReflectionEntity($entity::class);
-            foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
-                    $idValue = $property->getValue($entity);
-                    if ($idValue !== null) {
-                        $whereParts[] = 'id = ?';
-                        $whereValues[] = $idValue;
-                    }
-
-                    break;
-                }
-            }
-        }
-
-        return ['clause' => implode(' AND ', $whereParts), 'values' => $whereValues];
-    }
-
-    private function addMorphToColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
-    {
-        if ($this->metadataRegistry === null) {
-            return;
-        }
-
-        try {
-            $metadata = $this->metadataRegistry->getMetadata($entity::class);
-            $relations = $metadata->getRelations();
-
-            foreach ($relations as $relation) {
-                if ($relation->isMorphTo()) {
-                    $propertyName = $relation->getPropertyName();
-                    $reflectionEntity = new ReflectionEntity($entity::class);
-                    $relatedProperty = null;
-                    foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-                        if ($property instanceof ReflectionProperty && $property->getFieldName() === $propertyName) {
-                            $relatedProperty = $property;
-
-                            break;
-                        }
-                    }
-                    if ($relatedProperty === null) {
-                        continue;
-                    }
-                    $relatedEntity = $relatedProperty->getValue($entity);
-
-                    if ($relatedEntity !== null) {
-                        $morphType = $relatedEntity::class;
-                        $relatedId = $this->extractEntityId($relatedEntity);
-
-                        $columns[] = $relation->getMorphTypeColumnName();
-                        $placeholders[] = '?';
-                        $values[] = $morphType;
-
-                        $columns[] = $relation->getMorphIdColumnName();
-                        $placeholders[] = '?';
-                        $values[] = $relatedId;
-                    }
-                }
-            }
-        } catch (InvalidArgumentException $e) {
-        }
-    }
-
-    private function extractEntityId(object $entity): mixed
-    {
-        $reflectionEntity = new ReflectionEntity($entity::class);
-
-        foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
-            if ($property->isPrimaryKey() && $property instanceof ReflectionProperty) {
-                return $property->getValue($entity);
-            }
-        }
-
-        $reflectionEntity = new ReflectionEntity($entity::class);
-        foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
-            if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
-                return $property->getValue($entity);
-            }
-        }
-
-        return null;
     }
 
     /**

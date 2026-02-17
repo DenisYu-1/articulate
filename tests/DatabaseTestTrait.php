@@ -52,8 +52,8 @@ trait DatabaseTestTrait {
     protected function getConnection(string $databaseName): Connection
     {
         $connection = match ($databaseName) {
-            'mysql' => $this->mysqlConnection,
-            'pgsql' => $this->pgsqlConnection,
+            'mysql' => $this->mysqlConnection ?? null,
+            'pgsql' => $this->pgsqlConnection ?? null,
             default => throw new \InvalidArgumentException("Unknown database: {$databaseName}")
         };
 
