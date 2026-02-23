@@ -12,6 +12,7 @@ use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
 use Articulate\Schema\SchemaNaming;
 use Exception;
+use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
@@ -80,7 +81,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
 
         // Try to infer target from property type
         $type = $this->property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $this->validateAndReturnEntity($type->getName(), false);
 
             return $type->getName();
@@ -216,8 +217,12 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         if (!$this->isPolymorphic()) {
             throw new RuntimeException('Not a polymorphic relation');
         }
+        $attr = $this->entityProperty;
+        if ($attr instanceof MorphTo || $attr instanceof MorphOne || $attr instanceof MorphMany) {
+            return $attr->getTypeColumn();
+        }
 
-        return $this->entityProperty->getTypeColumn();
+        throw new RuntimeException('Not a polymorphic relation');
     }
 
     /**
@@ -228,8 +233,12 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         if (!$this->isPolymorphic()) {
             throw new RuntimeException('Not a polymorphic relation');
         }
+        $attr = $this->entityProperty;
+        if ($attr instanceof MorphTo || $attr instanceof MorphOne || $attr instanceof MorphMany) {
+            return $attr->getIdColumn();
+        }
 
-        return $this->entityProperty->getIdColumn();
+        throw new RuntimeException('Not a polymorphic relation');
     }
 
     /**
@@ -245,7 +254,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
      */
     public function getMorphType(): string
     {
-        if ($this->isMorphOne() || $this->isMorphMany()) {
+        if ($this->entityProperty instanceof MorphOne || $this->entityProperty instanceof MorphMany) {
             return $this->entityProperty->getMorphType();
         }
 
@@ -323,6 +332,39 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         return property_exists($this->entityProperty, 'referencedBy') ? $this->entityProperty->referencedBy : null;
     }
 
+    public function getPivotTableName(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Pivot table is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getTableName();
+    }
+
+    public function getForeignPivotKey(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Foreign pivot key is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getOwnerJoinColumn();
+    }
+
+    public function getRelatedPivotKey(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Related pivot key is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getTargetJoinColumn();
+    }
+
     private function assertMappingConfigured(): void
     {
         if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
@@ -333,7 +375,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
     private function assertOneToManyCollectionType(): void
     {
         $type = $this->property->getType();
-        if ($type === null) {
+        if ($type === null || !$type instanceof ReflectionNamedType) {
             return;
         }
         if ($type->isBuiltin()) {
@@ -342,6 +384,5 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
                 throw new RuntimeException('One-to-many property must be iterable collection');
             }
         }
-        // Non-builtin types are accepted here (could be custom collection classes).
     }
 }

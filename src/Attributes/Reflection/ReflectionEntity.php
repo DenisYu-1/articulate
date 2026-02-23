@@ -99,7 +99,7 @@ class ReflectionEntity extends ReflectionClass {
         return new ReflectionProperty(
             $propertyAttribute,
             $property,
-            isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
+            isset($property->getAttributes(AutoIncrement::class)[0]),
             $isPrimaryKey,
             $generatorType,
             $sequence,
@@ -349,7 +349,7 @@ class ReflectionEntity extends ReflectionClass {
             /** @var ReflectionAttribute<MorphToMany>[] $morphToMany */
             $morphToMany = $property->getAttributes(MorphToMany::class);
             if (!empty($morphToMany)) {
-                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property, $this->schemaNaming);
+                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property);
             }
 
             /** @var ReflectionAttribute<MorphedByMany>[] $morphedByMany */

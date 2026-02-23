@@ -47,7 +47,7 @@
         "architecture:check": "vendor/bin/deptrac analyse --config-file=deptrac.yaml",
         "architecture:check:verbose": "vendor/bin/deptrac analyse --config-file=deptrac.yaml --formatter=graphviz-image --output=architecture.svg",
         "complexity:check": "php vendor/bin/phpmd src text phpmd.xml",
-        "static:check": "phpstan analyse",
+        "static:check": "phpstan analyse --memory-limit=256M",
         "qa": [
             "@cs:check",
             "@architecture:check",

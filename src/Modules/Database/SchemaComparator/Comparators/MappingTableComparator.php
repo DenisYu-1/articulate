@@ -21,7 +21,7 @@ class MappingTableComparator {
     }
 
     /**
-     * @param array<string, array{
+     * @param array{
      *     tableName: string,
      *     ownerTable: string,
      *     targetTable: string,
@@ -31,7 +31,7 @@ class MappingTableComparator {
      *     targetReferencedColumn: string,
      *     extraProperties: array,
      *     primaryColumns: string[]
-     * }> $definition
+     * } $definition
      * @param string[] $existingTables
      * @return TableCompareResult|null
      */
@@ -239,7 +239,7 @@ class MappingTableComparator {
     ): array {
         $indexCompareResults = [];
         foreach (array_keys($indexesToRemove) as $indexName) {
-            if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys ?? [])) {
+            if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndexes[$indexName] ?? [], $definition['primaryColumns'], $existingForeignKeys)) {
                 unset($indexesToRemove[$indexName]);
 
                 continue;
@@ -257,7 +257,7 @@ class MappingTableComparator {
     }
 
     /**
-     * @param array<string, array{
+     * @param array{
      *     tableName: string,
      *     morphName: string,
      *     typeColumn: string,
@@ -266,9 +266,8 @@ class MappingTableComparator {
      *     targetTable: string,
      *     targetReferencedColumn: string,
      *     extraProperties: array,
-     *     primaryColumns: string[],
-     *     relations: array
-     * }> $definition
+     *     primaryColumns: string[]
+     * } $definition
      * @param string[] $existingTables
      * @return TableCompareResult|null
      */
@@ -407,12 +406,12 @@ class MappingTableComparator {
 
         foreach ($indexesToRemove as $indexName => $_) {
             $operation = $operation ?? CompareResult::OPERATION_UPDATE;
-            $existingIndex = $existingIndexes[$indexName];
+            $existingIndex = $existingIndexes[$indexName] ?? [];
             $indexCompareResults[] = new IndexCompareResult(
                 $indexName,
                 CompareResult::OPERATION_DELETE,
-                $existingIndex->columns,
-                $existingIndex->isUnique,
+                $existingIndex['columns'] ?? [],
+                $existingIndex['unique'] ?? false,
             );
         }
 
@@ -427,7 +426,7 @@ class MappingTableComparator {
         return new TableCompareResult(
             $tableName,
             $operation ?? CompareResult::OPERATION_UPDATE,
-            array_values($columnsCompareResults),
+            $columnsCompareResults,
             $indexCompareResults,
             array_values($foreignKeysByName),
             $definition['primaryColumns'],

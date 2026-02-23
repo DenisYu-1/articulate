@@ -5,6 +5,8 @@ namespace Articulate\Modules\Migrations\Generator;
 use Articulate\Modules\Database\PostgresqlTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 

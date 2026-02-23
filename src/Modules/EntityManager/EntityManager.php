@@ -72,7 +72,7 @@ class EntityManager {
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
+        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $defaultUow;
 
         $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
@@ -150,7 +150,7 @@ class EntityManager {
     /**
      * Execute aggregated changes in proper order respecting foreign key constraints.
      *
-     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     * @param array{inserts: object[], updates: array<int, array{entity: object, changes: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[]} $changes
      */
     private function executeChanges(array $changes): void
     {
@@ -545,7 +545,7 @@ class EntityManager {
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
+        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;

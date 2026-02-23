@@ -12,7 +12,7 @@ use RuntimeException;
 class ManyToOneRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
-        if (!$relation->isManyToOne()) {
+        if (!$relation instanceof ReflectionRelation || !$relation->isManyToOne()) {
             return;
         }
 

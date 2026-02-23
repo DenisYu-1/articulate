@@ -10,7 +10,7 @@ namespace Articulate\Modules\EntityManager;
  * compatible operations.
  */
 class ChangeAggregator {
-    /** @var array<string, array{insert: object[], update: array{entity: object, changes: array}[], delete: object[]}> */
+    /** @var array<string, array{insert?: object[], update?: array{entity: object, changes: array}[], delete?: object[]}> */
     private array $aggregatedChanges = [];
 
     public function __construct(

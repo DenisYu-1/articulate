@@ -11,6 +11,9 @@ use RuntimeException;
 class OneToOneRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
+        if (!$relation instanceof ReflectionRelation) {
+            return;
+        }
         if (!$relation->isForeignKeyRequired()) {
             return;
         }

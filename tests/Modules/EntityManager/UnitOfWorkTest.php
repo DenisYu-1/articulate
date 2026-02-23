@@ -5,12 +5,10 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
 #[Entity]
@@ -27,8 +25,7 @@ class UnitOfWorkTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
-        $this->unitOfWork = new UnitOfWork($connection, null, new GeneratorRegistry());
+        $this->unitOfWork = new UnitOfWork();
     }
 
     public function testInitialEntityStateIsNew(): void
@@ -172,10 +169,9 @@ class UnitOfWorkTest extends TestCase {
 
     public function testCustomChangeTrackingStrategy(): void
     {
-        $connection = $this->createMock(Connection::class);
         $metadataRegistry = new EntityMetadataRegistry();
         $customStrategy = new DeferredImplicitStrategy($metadataRegistry);
-        $unitOfWork = new UnitOfWork($connection, $customStrategy);
+        $unitOfWork = new UnitOfWork($customStrategy, null, $metadataRegistry);
 
         $entity = new class() {
             public int $id = 1;

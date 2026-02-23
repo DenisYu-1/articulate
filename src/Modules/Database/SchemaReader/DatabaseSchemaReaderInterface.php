@@ -4,7 +4,7 @@ namespace Articulate\Modules\Database\SchemaReader;
 
 interface DatabaseSchemaReaderInterface {
     /**
-     * @return iterable<DatabaseColumn>
+     * @return DatabaseColumn[]
      */
     public function getTableColumns(string $tableName): array;
 

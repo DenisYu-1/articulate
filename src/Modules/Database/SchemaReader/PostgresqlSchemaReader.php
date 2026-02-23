@@ -14,7 +14,7 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
     }
 
     /**
-     * @return iterable<DatabaseColumn>
+     * @return DatabaseColumn[]
      * @throws DatabaseSchemaException
      */
     public function getTableColumns(string $tableName): array

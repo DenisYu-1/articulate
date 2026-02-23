@@ -11,7 +11,7 @@ use RuntimeException;
 class OneToManyRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
-        if (!$relation->isOneToMany()) {
+        if (!$relation instanceof ReflectionRelation || !$relation->isOneToMany()) {
             return;
         }
 

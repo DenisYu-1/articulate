@@ -18,8 +18,6 @@ class DmlOperationHandler {
 
     private array $updateSet = [];
 
-    private ?object $dmlEntity = null;
-
     private array $returning = [];
 
     public function __construct(
@@ -53,8 +51,6 @@ class DmlOperationHandler {
         if (!is_object($firstEntity)) {
             throw new InvalidArgumentException('INSERT entities must be objects');
         }
-
-        $this->dmlEntity = $firstEntity;
 
         if ($context->getEntityClass() === null) {
             $context->setEntityClass($firstEntity::class);
@@ -101,8 +97,6 @@ class DmlOperationHandler {
         $this->updateSet = [];
 
         if (is_object($entityOrTable)) {
-            $this->dmlEntity = $entityOrTable;
-
             if ($context->getEntityClass() === null) {
                 $context->setEntityClass($entityOrTable::class);
             }
@@ -142,8 +136,6 @@ class DmlOperationHandler {
         $this->dmlCommand = 'delete';
 
         if (is_object($entityOrTable)) {
-            $this->dmlEntity = $entityOrTable;
-
             if ($context->getEntityClass() === null) {
                 $context->setEntityClass($entityOrTable::class);
             }
@@ -199,7 +191,6 @@ class DmlOperationHandler {
         $this->insertColumns = [];
         $this->insertValues = [];
         $this->updateSet = [];
-        $this->dmlEntity = null;
         $this->returning = [];
     }
 

@@ -5,14 +5,13 @@ namespace Articulate\Attributes\Reflection;
 use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Collection\MappingCollection;
-use Articulate\Schema\SchemaNaming;
+use ReflectionNamedType;
 use RuntimeException;
 
 class ReflectionMorphToMany implements RelationInterface {
     public function __construct(
         private readonly MorphToMany $attribute,
         private readonly \ReflectionProperty $property,
-        private readonly SchemaNaming $schemaNaming = new SchemaNaming(),
     ) {
         // Resolve column names based on property and target entity
         $targetEntity = new ReflectionEntity($this->getTargetEntity());
@@ -32,7 +31,7 @@ class ReflectionMorphToMany implements RelationInterface {
         }
         $this->assertCollectionType();
         $type = $this->property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
             if (!$reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
@@ -139,6 +138,9 @@ class ReflectionMorphToMany implements RelationInterface {
     {
         $type = $this->property->getType();
         if ($type === null) {
+            return;
+        }
+        if (!$type instanceof ReflectionNamedType) {
             return;
         }
         if ($type->isBuiltin()) {

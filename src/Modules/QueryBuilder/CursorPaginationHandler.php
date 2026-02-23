@@ -61,7 +61,7 @@ class CursorPaginationHandler {
                     try {
                         $metadata = $this->metadataRegistry->getMetadata($entityClass);
                         foreach ($metadata->getProperties() as $property) {
-                            if ($property->getColumnName() === $column && $property instanceof ReflectionProperty) {
+                            if ($property->getColumnName() === $column) {
                                 $values[] = $property->getValue($item);
 
                                 continue 2;

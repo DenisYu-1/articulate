@@ -7,6 +7,7 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use Exception;
+use ReflectionNamedType;
 use RuntimeException;
 
 class ReflectionManyToMany implements RelationInterface {
@@ -30,7 +31,7 @@ class ReflectionManyToMany implements RelationInterface {
         }
         $this->assertCollectionType();
         $type = $this->property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
             if (!$reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
@@ -133,6 +134,9 @@ class ReflectionManyToMany implements RelationInterface {
     {
         $type = $this->property->getType();
         if ($type === null) {
+            return;
+        }
+        if (!$type instanceof ReflectionNamedType) {
             return;
         }
         if ($type->isBuiltin()) {

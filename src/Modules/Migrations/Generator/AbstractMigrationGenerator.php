@@ -150,4 +150,6 @@ abstract class AbstractMigrationGenerator {
     abstract protected function getPrimaryKeyGenerationSql(string $generatorType, ?string $sequence = null): string;
 
     abstract protected function getAutoIncrementSql(): string;
+
+    abstract protected function getIdentifierQuote(): string;
 }

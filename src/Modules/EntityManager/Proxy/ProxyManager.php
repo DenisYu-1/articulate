@@ -37,7 +37,7 @@ class ProxyManager {
 
         // Load the actual entity data
         $entityClass = $proxy->getProxyEntityClass();
-        $entity = $this->entityManager->find($entityClass, $proxy->_getIdentifier());
+        $entity = $this->entityManager->find($entityClass, $proxy->getProxyIdentifier());
 
         if ($entity) {
             // Copy data from real entity to proxy

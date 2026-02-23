@@ -3,6 +3,7 @@
 namespace Articulate\Attributes\Reflection;
 
 use Articulate\Attributes\Property;
+use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 
 class ReflectionProperty implements PropertyInterface {
@@ -34,7 +35,9 @@ class ReflectionProperty implements PropertyInterface {
 
     public function getType(): string
     {
-        return $this->entityProperty->type ?? $this->property->getType()?->getName() ?? 'mixed';
+        $type = $this->property->getType();
+
+        return $this->entityProperty->type ?? ($type instanceof ReflectionNamedType ? $type->getName() : null) ?? 'mixed';
     }
 
     public function getDefaultValue(): ?string

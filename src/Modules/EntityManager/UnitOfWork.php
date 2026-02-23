@@ -4,17 +4,12 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
-use Articulate\Connection;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
-use Articulate\Modules\Generators\GeneratorRegistry;
-use ReflectionProperty;
 
 class UnitOfWork {
     private IdentityMap $identityMap;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
-
-    private GeneratorRegistry $generatorRegistry;
 
     private EntityMetadataRegistry $metadataRegistry;
 
@@ -35,20 +30,14 @@ class UnitOfWork {
 
     private LifecycleCallbackManager $callbackManager;
 
-    private Connection $connection;
-
     public function __construct(
-        Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
-        ?GeneratorRegistry $generatorRegistry = null,
         ?LifecycleCallbackManager $callbackManager = null,
         ?EntityMetadataRegistry $metadataRegistry = null
     ) {
-        $this->connection = $connection;
         $this->identityMap = new IdentityMap();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
-        $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
     }
 

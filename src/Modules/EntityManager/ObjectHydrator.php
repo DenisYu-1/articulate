@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Utils\TypeRegistry;
 use ReflectionClass;
+use ReflectionNamedType;
 use ReflectionProperty;
 
 class ObjectHydrator implements HydratorInterface {
@@ -129,9 +130,8 @@ class ObjectHydrator implements HydratorInterface {
      */
     private function getPHPTypeFromReflection(\ReflectionType $type): string
     {
-        $typeName = $type->getName();
+        $typeName = $type instanceof ReflectionNamedType ? $type->getName() : (string) $type;
 
-        // Handle nullable types
         if ($type->allowsNull() && !str_starts_with($typeName, '?')) {
             $typeName = '?' . $typeName;
         }
