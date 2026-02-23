@@ -5,6 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
+use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\RepositoryFactory;
 use Articulate\Modules\Repository\RepositoryInterface;
@@ -21,7 +22,7 @@ class EntityManager {
 
     private HydratorInterface $hydrator;
 
-    private QueryBuilder $queryBuilder;
+    private FilterCollection $filters;
 
     private GeneratorRegistry $generatorRegistry;
 
@@ -41,7 +42,9 @@ class EntityManager {
 
     private ?CacheItemPoolInterface $resultCache = null;
 
-    private bool $softDeleteEnabled = true;
+    private TypeRegistry $typeRegistry;
+
+    private RelationshipLoader $relationshipLoader;
 
     public function __construct(
         Connection $connection,
@@ -72,8 +75,7 @@ class EntityManager {
         $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $defaultUow;
 
-        // Create relationship loader
-        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
+        $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
 
         // Initialize proxy system
         $proxyGenerator = new Proxy\ProxyGenerator($this->metadataRegistry);
@@ -82,18 +84,14 @@ class EntityManager {
             $proxyGenerator
         );
 
-        // Initialize type registry for type conversion
-        $typeRegistry = new TypeRegistry();
+        $this->typeRegistry = new TypeRegistry();
 
-        // Initialize hydrator
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager, $typeRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
         // Store result cache
         $this->resultCache = $resultCache;
 
-        // Initialize QueryBuilder
-        $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache);
-        $this->queryBuilder->setSoftDeleteEnabled($this->softDeleteEnabled);
+        $this->filters = new FilterCollection();
 
         // Initialize RepositoryFactory
         $this->repositoryFactory = new RepositoryFactory($this);
@@ -133,6 +131,13 @@ class EntityManager {
     {
         foreach ($this->unitOfWorks as $unitOfWork) {
             $unitOfWork->clear();
+        }
+    }
+
+    public function detach(object $entity): void
+    {
+        foreach ($this->unitOfWorks as $unitOfWork) {
+            $unitOfWork->detach($entity);
         }
     }
 
@@ -557,28 +562,21 @@ class EntityManager {
         return $this->updateConflictResolutionStrategy;
     }
 
-    // Query builder
+    public function getFilters(): FilterCollection
+    {
+        return $this->filters;
+    }
+
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache);
-
-        // Set the default UnitOfWork for entity management
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
         $qb->setUnitOfWork($this->getDefaultUnitOfWork());
-
-        // Set soft-delete enabled state
-        $qb->setSoftDeleteEnabled($this->softDeleteEnabled);
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
         }
 
         return $qb;
-    }
-
-    // Get the main query builder instance
-    public function getQueryBuilder(): QueryBuilder
-    {
-        return $this->queryBuilder;
     }
 
     private function getDefaultUnitOfWork(): UnitOfWork
@@ -609,9 +607,7 @@ class EntityManager {
             throw new \InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
         }
 
-        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
-
-        return $relationshipLoader->load($entity, $relation, true);
+        return $this->relationshipLoader->load($entity, $relation, [], true);
     }
 
     /**
@@ -628,23 +624,6 @@ class EntityManager {
     public function getMetadataRegistry(): EntityMetadataRegistry
     {
         return $this->metadataRegistry;
-    }
-
-    /**
-     * Enable or disable soft-delete filtering globally.
-     */
-    public function setSoftDeleteEnabled(bool $enabled): void
-    {
-        $this->softDeleteEnabled = $enabled;
-        $this->queryBuilder->setSoftDeleteEnabled($enabled);
-    }
-
-    /**
-     * Check if soft-delete filtering is enabled globally.
-     */
-    public function isSoftDeleteEnabled(): bool
-    {
-        return $this->softDeleteEnabled;
     }
 
     /**
@@ -671,14 +650,11 @@ class EntityManager {
      */
     private function updateEntityProperties(object $entity, array $data, EntityMetadata $metadata): void
     {
-        $typeRegistry = new TypeRegistry();
-
         foreach ($metadata->getProperties() as $propertyName => $property) {
             $columnName = $property->getColumnName();
             if (array_key_exists($columnName, $data)) {
                 $value = $data[$columnName];
-                // Convert database value back to PHP type
-                $converter = $typeRegistry->getConverter($property->getType());
+                $converter = $this->typeRegistry->getConverter($property->getType());
                 if ($converter) {
                     $phpValue = $converter->convertToPHP($value);
                 } else {

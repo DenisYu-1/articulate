@@ -262,9 +262,12 @@ Articulate currently supports:
 - **Change Tracking**: Metadata-driven property extraction and comparison
 
 ### ✅ Query Builder
-- **Basic SQL Generation**: SELECT, FROM, WHERE, JOIN, ORDER BY, LIMIT/OFFSET support
+- **SQL Generation**: SELECT, FROM, WHERE, JOIN (INNER, LEFT, RIGHT, CROSS), ORDER BY, GROUP BY, HAVING, LIMIT/OFFSET
+- **Advanced Features**: Subqueries (`whereExists`, `selectSub`), aggregations (COUNT, SUM, AVG, MIN, MAX), criteria API, cursor pagination
+- **DML**: INSERT, UPDATE, DELETE with `returning()` for PostgreSQL
 - **Entity Integration**: Automatic table name resolution and result hydration
-- **Parameter Binding**: Safe query execution with prepared statements
+- **Query Result Cache**: PSR-6 integration via `enableResultCache()`
+- **Locking**: Pessimistic lock via `lock()` (requires transaction)
 
 ### ✅ Repository Pattern
 - **RepositoryInterface**: Standardized contract for entity-specific operations
@@ -309,20 +312,18 @@ composer qa  # Runs: CS check → Architecture check → Tests → Mutation test
 
 ## Current Gaps & Known Issues
 
-### 🚧 High Priority
-- **QueryBuilder Enhancement**: Basic SQL generation exists but missing advanced features (subqueries, aggregations, complex WHERE conditions, JOIN optimizations)
-- **Context-Bounded Entities Runtime**: Schema merging and conflict detection work, but runtime behavior needs comprehensive integration tests
+### Implemented (previously listed as gaps)
+- **Repository Pattern**: Full implementation with `RepositoryInterface`, `AbstractRepository`, custom repositories via `#[Entity(repositoryClass: ...)]`
+- **Criteria API**: Object-oriented query building with `CriteriaInterface`, `AndCriteria`, `OrCriteria`, `InCriteria`, `LikeCriteria`, etc.
+- **Query Result Cache**: `QueryResultCache` with PSR-6 integration, `enableResultCache()` on QueryBuilder
+- **Lock Modes**: Pessimistic locking via `lock()` on QueryBuilder (requires active transaction)
+- **ID Generation Strategies**: Auto-increment, UUID, UUIDv7, ULID, serial (PostgreSQL), prefixed IDs, custom generators
 
-### 📋 Medium Priority
-- **Repository Pattern**: No abstraction layer for entity-specific queries and operations
-- **Advanced Query Features**: Criteria API, native SQL queries, bulk operations
-- **Caching Layer**: Query result cache and second-level entity cache
-- **Lock Modes**: Pessimistic and optimistic locking support
-- **Event System**: Limited to lifecycle callbacks; broader event architecture would be beneficial
-
-### 🔄 Low Priority
-- **ID Generation Strategies**: Currently supports auto-increment; could add UUID, sequences, custom generators
-- **Performance Optimizations**: Statement caching, connection pooling strategies
+### Remaining Gaps
+- **Context-Bounded Entities Runtime**: Schema merging and conflict detection work; runtime behavior could use more integration tests
+- **Second-Level Entity Cache**: Only query result cache exists; no entity-level cache
+- **Event System**: Lifecycle callbacks (PrePersist, PostLoad, etc.) exist; broader event architecture would be beneficial
+- **Performance Optimizations**: Statement caching, connection pooling
 
 ## Development Environment
 
@@ -413,23 +414,14 @@ docker compose exec php composer test -- --group=pgsql
 
 ## Roadmap
 
-### Next Phase: Query Builder Enhancement
-
-The next major development phase focuses on expanding the Query Builder capabilities:
-
-- **Advanced SQL Features**: Subqueries, aggregations (COUNT, SUM, AVG), complex WHERE conditions
-- **JOIN Optimizations**: Efficient multi-table queries with relation-aware joins
-- **Criteria API**: Object-oriented query building for complex conditions
-- **Native SQL Queries**: Direct SQL execution with result mapping
-- **Bulk Operations**: Efficient batch inserts, updates, and deletes
+### Production Readiness
+- **Documentation**: Keep README and docs aligned with implementation
+- **Filter System**: Pluggable query filters (see `docs/filter-system.md`) to replace hard-coded soft-delete logic
 
 ### Future Enhancements
-
-- **Caching Layer**: Query result cache and second-level entity cache
-- **Lock Modes**: Pessimistic and optimistic locking support
+- **Second-Level Entity Cache**: Entity-level caching alongside existing query result cache
 - **Event System**: Broader event architecture beyond lifecycle callbacks
-- **ID Generation Strategies**: UUID, sequences, and custom generators
-- **Performance Optimizations**: Statement caching and connection pooling
+- **Performance Optimizations**: Statement caching, connection pooling
 
 ## License
 

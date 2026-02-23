@@ -217,6 +217,11 @@ class TestProxy extends ProxyManagerTestEntity implements ProxyInterface {
         return $this->proxyEntityClass;
     }
 
+    public function getProxyIdentifier(): mixed
+    {
+        return $this->proxyIdentifier;
+    }
+
     public function _getIdentifier(): mixed
     {
         return $this->proxyIdentifier;

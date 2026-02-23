@@ -8,6 +8,7 @@ use Articulate\Exceptions\TransactionRequiredException;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -63,11 +64,10 @@ class QueryBuilder {
 
     private SqlCompiler $sqlCompiler;
 
-    private SoftDeleteFilter $softDeleteFilter;
+    private FilterCollection $filters;
 
-    private bool $softDeleteEnabled = true;
-
-    private bool $includeDeleted = false;
+    /** @var string[] */
+    private array $disabledFilters = [];
 
     private DmlOperationHandler $dmlHandler;
 
@@ -75,7 +75,8 @@ class QueryBuilder {
         Connection $connection,
         ?HydratorInterface $hydrator = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
-        ?CacheItemPoolInterface $resultCache = null
+        ?CacheItemPoolInterface $resultCache = null,
+        ?FilterCollection $filters = null
     ) {
         $this->connection = $connection;
         $this->hydrator = $hydrator;
@@ -84,7 +85,7 @@ class QueryBuilder {
         $this->resultCache = new QueryResultCache($resultCache);
         $this->sqlCompiler = new SqlCompiler($metadataRegistry);
         $this->cursorCodec = new CursorCodec();
-        $this->softDeleteFilter = new SoftDeleteFilter($metadataRegistry);
+        $this->filters = $filters ?? new FilterCollection();
         $this->cursorPaginationHandler = new CursorPaginationHandler($this->cursorCodec, $metadataRegistry);
         $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null);
         $this->dmlHandler = new DmlOperationHandler($metadataRegistry);
@@ -96,12 +97,20 @@ class QueryBuilder {
 
     public function createSubQueryBuilder(): QueryBuilder
     {
-        $subBuilder = new self($this->connection, $this->hydrator, $this->metadataRegistry, null);
+        $subBuilder = new self($this->connection, $this->hydrator, $this->metadataRegistry, null, $this->filters);
         $subBuilder->sqlCompiler->setEntityClass($this->entityClass);
-        $subBuilder->setSoftDeleteEnabled($this->softDeleteEnabled);
-        $subBuilder->includeDeleted = $this->includeDeleted;
+        $subBuilder->disabledFilters = $this->disabledFilters;
 
         return $subBuilder;
+    }
+
+    public function withoutFilter(string $name): self
+    {
+        if (!in_array($name, $this->disabledFilters, true)) {
+            $this->disabledFilters[] = $name;
+        }
+
+        return $this;
     }
 
     public function select(string ...$fields): self
@@ -626,20 +635,6 @@ class QueryBuilder {
         return $this;
     }
 
-    public function setSoftDeleteEnabled(bool $enabled): self
-    {
-        $this->softDeleteEnabled = $enabled;
-
-        return $this;
-    }
-
-    public function withDeleted(): self
-    {
-        $this->includeDeleted = true;
-
-        return $this;
-    }
-
     public function getEntityClass(): ?string
     {
         return $this->entityClass;
@@ -662,10 +657,30 @@ class QueryBuilder {
         $this->whereBuilder->addCondition($condition, $actualParams, 'AND');
     }
 
-    public function getSQL(): string
+    private function getFilteredWhere(): array
+    {
+        $where = $this->whereBuilder->getConditions();
+
+        if ($this->entityClass !== null && $this->rawSql === null && $this->metadataRegistry !== null) {
+            try {
+                $metadata = $this->metadataRegistry->getMetadata($this->entityClass);
+                foreach ($this->filters->getActiveConditions($metadata) as $name => $condition) {
+                    if (!in_array($name, $this->disabledFilters, true)) {
+                        $where[] = ['operator' => 'AND', 'condition' => $condition, 'params' => [], 'group' => null];
+                    }
+                }
+            } catch (InvalidArgumentException $e) {
+            }
+        }
+
+        return $where;
+    }
+
+    /** @return array{0: string, 1: array} */
+    private function build(): array
     {
         if ($this->rawSql !== null) {
-            return $this->rawSql;
+            return [$this->rawSql, $this->rawParams];
         }
 
         $dmlCommand = $this->dmlHandler->getCommand();
@@ -675,31 +690,27 @@ class QueryBuilder {
                 throw new InvalidArgumentException('INSERT requires a table name');
             }
 
-            [$sql] = $this->sqlCompiler->compileInsert(
+            return $this->sqlCompiler->compileInsert(
                 $this->from,
                 $this->dmlHandler->getInsertColumns(),
                 $this->dmlHandler->getInsertValues(),
                 $this->dmlHandler->getReturning()
             );
-
-            return $sql;
         }
+
+        $where = $this->getFilteredWhere();
 
         if ($dmlCommand === 'update') {
             if (empty($this->from)) {
                 throw new InvalidArgumentException('UPDATE requires a table name');
             }
 
-            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
-
-            [$sql] = $this->sqlCompiler->compileUpdate(
+            return $this->sqlCompiler->compileUpdate(
                 $this->from,
                 $this->dmlHandler->getUpdateSet(),
                 $where,
                 $this->dmlHandler->getReturning()
             );
-
-            return $sql;
         }
 
         if ($dmlCommand === 'delete') {
@@ -707,22 +718,16 @@ class QueryBuilder {
                 throw new InvalidArgumentException('DELETE requires a table name');
             }
 
-            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
-
-            [$sql] = $this->sqlCompiler->compileDelete(
+            return $this->sqlCompiler->compileDelete(
                 $this->from,
                 $where,
                 $this->dmlHandler->getReturning()
             );
-
-            return $sql;
         }
-
-        $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
 
         $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
 
-        [$sql] = $this->sqlCompiler->compile(
+        return $this->sqlCompiler->compile(
             $this->rawSql,
             $this->rawParams,
             $this->from,
@@ -738,76 +743,16 @@ class QueryBuilder {
             $this->lockForUpdate,
             $this->cursor
         );
+    }
 
-        return $sql;
+    public function getSQL(): string
+    {
+        return $this->build()[0];
     }
 
     public function getParameters(): array
     {
-        if ($this->rawSql !== null) {
-            return $this->rawParams;
-        }
-
-        $dmlCommand = $this->dmlHandler->getCommand();
-
-        if ($dmlCommand === 'insert') {
-            [, $params] = $this->sqlCompiler->compileInsert(
-                $this->from,
-                $this->dmlHandler->getInsertColumns(),
-                $this->dmlHandler->getInsertValues(),
-                $this->dmlHandler->getReturning()
-            );
-
-            return $params;
-        }
-
-        if ($dmlCommand === 'update') {
-            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
-
-            [, $params] = $this->sqlCompiler->compileUpdate(
-                $this->from,
-                $this->dmlHandler->getUpdateSet(),
-                $where,
-                $this->dmlHandler->getReturning()
-            );
-
-            return $params;
-        }
-
-        if ($dmlCommand === 'delete') {
-            $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
-
-            [, $params] = $this->sqlCompiler->compileDelete(
-                $this->from,
-                $where,
-                $this->dmlHandler->getReturning()
-            );
-
-            return $params;
-        }
-
-        $where = $this->softDeleteFilter->apply($this->whereBuilder->getConditions(), $this->entityClass, $this->softDeleteEnabled, $this->includeDeleted, $this->rawSql);
-
-        $limitToUse = $this->cursor !== null ? $this->cursorLimit : $this->limit;
-
-        [, $params] = $this->sqlCompiler->compile(
-            $this->rawSql,
-            $this->rawParams,
-            $this->from,
-            $this->select,
-            $this->joins,
-            $where,
-            $this->groupBy,
-            $this->having,
-            $this->orderBy,
-            $limitToUse,
-            $this->offset,
-            $this->distinct,
-            $this->lockForUpdate,
-            $this->cursor
-        );
-
-        return $params;
+        return $this->build()[1];
     }
 
     public function getResult(?string $entityClass = null): mixed
@@ -875,13 +820,8 @@ class QueryBuilder {
             return $this->dmlHandler->execute(
                 $this->connection,
                 $this->sqlCompiler,
-                $this->softDeleteFilter,
-                $this->whereBuilder->getConditions(),
-                $this->entityClass,
+                $this->getFilteredWhere(),
                 $this->from,
-                $this->softDeleteEnabled,
-                $this->includeDeleted,
-                $this->rawSql,
                 $this->lockForUpdate,
                 fn (string $sql, array $params) => $this->expandInPlaceholders($sql, $params)
             );

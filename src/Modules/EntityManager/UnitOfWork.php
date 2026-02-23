@@ -224,6 +224,16 @@ class UnitOfWork {
         return $this->scheduledUpdates;
     }
 
+    public function detach(object $entity): void
+    {
+        $oid = spl_object_id($entity);
+
+        $this->identityMap->remove($entity);
+        $this->changeTrackingStrategy->untrackEntity($entity);
+        unset($this->entityStates[$oid], $this->entitiesByOid[$oid]);
+        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid], $this->scheduledDeletes[$oid]);
+    }
+
     public function clear(): void
     {
         $this->identityMap->clear();

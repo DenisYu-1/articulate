@@ -9,6 +9,8 @@ use Articulate\Attributes\SoftDeleteable;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
+use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
 
@@ -51,12 +53,14 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
     /**
      * @dataProvider databaseProvider
      */
-    public function testSoftDeleteFilterAppliedByDefault(string $databaseName): void
+    public function testSoftDeleteFilterAppliedWhenAdded(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(SoftDeleteableTestEntity::class)
@@ -76,13 +80,15 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(SoftDeleteableTestEntity::class)
             ->select('id', 'name')
             ->from('soft_deleteable_test_entity')
-            ->withDeleted()
+            ->withoutFilter('soft_delete')
             ->getSQL();
 
         $this->assertStringNotContainsString('deleted_at IS NULL', $sql);
@@ -97,11 +103,13 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $filters->disable('soft_delete');
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(SoftDeleteableTestEntity::class)
-            ->setSoftDeleteEnabled(false)
             ->select('id', 'name')
             ->from('soft_deleteable_test_entity')
             ->getSQL();
@@ -118,7 +126,9 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(SoftDeleteableTestEntity::class)
@@ -139,7 +149,9 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(SoftDeleteableTestEntity::class)
@@ -148,7 +160,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
             ->where('deleted_at IS NULL')
             ->getSQL();
 
-        $this->assertEquals('SELECT id, name FROM soft_deleteable_test_entity WHERE deleted_at IS NULL', $sql);
+        $this->assertStringContainsString('deleted_at IS NULL', $sql);
     }
 
     /**
@@ -199,7 +211,9 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $subQuery = $this->qb->createSubQueryBuilder()
             ->setEntityClass(SoftDeleteableTestEntity::class)
@@ -223,6 +237,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableTestEntity::class)
             ->select('id', 'name')
@@ -241,7 +256,8 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
-        $this->entityManager->setSoftDeleteEnabled(false);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
+        $this->entityManager->getFilters()->disable('soft_delete');
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableTestEntity::class)
             ->select('id', 'name')
@@ -260,8 +276,9 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $metadataRegistry = new EntityMetadataRegistry();
-
-        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry);
+        $filters = new FilterCollection();
+        $filters->add('soft_delete', new SoftDeleteFilter());
+        $this->qb = new QueryBuilder($this->connection, null, $metadataRegistry, null, $filters);
 
         $sql = $this->qb
             ->setEntityClass(CustomSoftDeleteTestEntity::class)

@@ -25,4 +25,9 @@ interface ProxyInterface {
      * Get the class name of the real entity this proxy represents.
      */
     public function getProxyEntityClass(): string;
+
+    /**
+     * Get the entity identifier.
+     */
+    public function getProxyIdentifier(): mixed;
 }

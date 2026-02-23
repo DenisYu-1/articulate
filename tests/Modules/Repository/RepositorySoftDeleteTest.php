@@ -9,6 +9,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\Repository\AbstractRepository;
 use Articulate\Tests\DatabaseTestCase;
 
@@ -87,6 +88,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
@@ -109,6 +111,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
@@ -133,6 +136,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
@@ -153,6 +157,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
@@ -173,6 +178,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(
@@ -192,7 +198,8 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
-        $this->entityManager->setSoftDeleteEnabled(false);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
+        $this->entityManager->getFilters()->disable('soft_delete');
         $this->repository = new ProductRepository($this->entityManager, SoftDeleteableProduct::class);
 
         $this->connection->executeQuery(

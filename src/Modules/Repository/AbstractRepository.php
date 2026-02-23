@@ -95,16 +95,12 @@ abstract class AbstractRepository implements RepositoryInterface {
             }
         }
 
-        $qb->count();
+        $qb->count('*', 'total');
 
         $result = $qb->getSingleResult(null);
 
-        // Extract count value from result (key may vary by database)
-        if ($result && is_array($result)) {
-            $keys = array_keys($result);
-            $firstKey = $keys[0] ?? null;
-
-            return (int) ($result[$firstKey] ?? 0);
+        if ($result && is_array($result) && isset($result['total'])) {
+            return (int) $result['total'];
         }
 
         return 0;
@@ -112,7 +108,20 @@ abstract class AbstractRepository implements RepositoryInterface {
 
     public function exists(mixed $id): bool
     {
-        return $this->find($id) !== null;
+        $metadata = $this->entityManager->getMetadataRegistry()->getMetadata($this->entityClass);
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
+
+        if (empty($primaryKeyColumns)) {
+            return false;
+        }
+
+        $pkColumn = $primaryKeyColumns[0];
+        $qb = $this->createQueryBuilder()
+            ->select('1')
+            ->where($pkColumn, $id)
+            ->limit(1);
+
+        return $qb->getSingleResult(null) !== null;
     }
 
     /**
@@ -160,12 +169,17 @@ abstract class AbstractRepository implements RepositoryInterface {
     {
         $qb = $this->createQueryBuilder();
 
-        // Apply criteria
         $qb->apply($criteria);
 
-        $qb->count();
+        $qb->count('*', 'total');
 
-        return $qb->getSingleResult() ?? 0;
+        $result = $qb->getSingleResult(null);
+
+        if ($result && is_array($result) && isset($result['total'])) {
+            return (int) $result['total'];
+        }
+
+        return 0;
     }
 
     /**

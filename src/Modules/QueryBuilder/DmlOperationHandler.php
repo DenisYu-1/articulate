@@ -206,13 +206,8 @@ class DmlOperationHandler {
     public function execute(
         Connection $connection,
         SqlCompiler $sqlCompiler,
-        SoftDeleteFilter $softDeleteFilter,
         array $where,
-        ?string $entityClass,
         string $from,
-        bool $softDeleteEnabled,
-        bool $includeDeleted,
-        ?string $rawSql,
         bool $lockForUpdate,
         callable $expandInPlaceholders
     ): mixed {
@@ -236,12 +231,10 @@ class DmlOperationHandler {
                 throw new InvalidArgumentException('UPDATE requires a table name');
             }
 
-            $filteredWhere = $softDeleteFilter->apply($where, $entityClass, $softDeleteEnabled, $includeDeleted, $rawSql);
-
             [$sql, $params] = $sqlCompiler->compileUpdate(
                 $from,
                 $this->updateSet,
-                $filteredWhere,
+                $where,
                 $this->returning
             );
         } elseif ($this->dmlCommand === 'delete') {
@@ -249,11 +242,9 @@ class DmlOperationHandler {
                 throw new InvalidArgumentException('DELETE requires a table name');
             }
 
-            $filteredWhere = $softDeleteFilter->apply($where, $entityClass, $softDeleteEnabled, $includeDeleted, $rawSql);
-
             [$sql, $params] = $sqlCompiler->compileDelete(
                 $from,
-                $filteredWhere,
+                $where,
                 $this->returning
             );
         } else {

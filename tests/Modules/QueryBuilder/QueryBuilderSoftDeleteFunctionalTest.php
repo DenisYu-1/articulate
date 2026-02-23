@@ -9,6 +9,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Tests\DatabaseTestCase;
 
 #[Entity]
@@ -81,6 +82,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -108,6 +110,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -117,7 +120,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
             ->select('id', 'name')
             ->from('soft_deleteable_user')
-            ->withDeleted();
+            ->withoutFilter('soft_delete');
 
         $results = $qb->getResult();
 
@@ -136,6 +139,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?)',
@@ -157,6 +161,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -180,7 +185,8 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
-        $this->entityManager->setSoftDeleteEnabled(false);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
+        $this->entityManager->getFilters()->disable('soft_delete');
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -200,6 +206,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -225,6 +232,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (id, name, deleted_at) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)',
@@ -253,6 +261,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?)',
@@ -301,6 +310,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         );
 
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $qb = $this->entityManager->createQueryBuilder(SoftDeleteableUser::class)
             ->select('u.id', 'u.name', 'p.title')
@@ -323,6 +333,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
         $this->entityManager = new EntityManager($this->connection);
+        $this->entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
 
         $this->connection->executeQuery(
             'INSERT INTO soft_deleteable_user (name, deleted_at) VALUES (?, ?), (?, ?), (?, ?), (?, ?)',
