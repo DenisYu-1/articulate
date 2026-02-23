@@ -41,12 +41,4 @@ abstract class ComparisonCriteria implements CriteriaInterface {
             $qb->where("{$this->field} {$this->getOperator()} {$this->getPlaceholder()}", $this->value);
         }
     }
-
-    /**
-     * Create an OR version of this criteria.
-     */
-    public function or(): static
-    {
-        return new static($this->field, $this->value, 'OR');
-    }
 }

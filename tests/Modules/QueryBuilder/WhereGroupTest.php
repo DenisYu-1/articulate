@@ -39,7 +39,7 @@ class WhereGroupTest extends TestCase {
             ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('role', 'admin'),
-                    (new LikeCriteria('permissions', '%superuser%'))->or(),
+                    new LikeCriteria('permissions', '%superuser%', 'OR'),
                 ]));
             });
 
@@ -78,7 +78,7 @@ class WhereGroupTest extends TestCase {
             ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('category', 'electronics'),
-                    (new EqualsCriteria('category', 'books'))->or(),
+                    new EqualsCriteria('category', 'books', 'OR'),
                 ]));
             })
             ->where(function ($q) {
@@ -107,7 +107,7 @@ class WhereGroupTest extends TestCase {
                     new GroupCriteria(
                         new AndCriteria([
                             new EqualsCriteria('role', 'admin'),
-                            (new EqualsCriteria('role', 'moderator'))->or(),
+                            new EqualsCriteria('role', 'moderator', 'OR'),
                         ])
                     ),
                 ]));
@@ -132,11 +132,11 @@ class WhereGroupTest extends TestCase {
                     new GroupCriteria(
                         new AndCriteria([
                             new EqualsCriteria('b', 2),
-                            (new EqualsCriteria('b', 3))->or(),
+                            new EqualsCriteria('b', 3, 'OR'),
                             new GroupCriteria(
                                 new AndCriteria([
                                     new EqualsCriteria('c', 4),
-                                    (new EqualsCriteria('c', 5))->or(),
+                                    new EqualsCriteria('c', 5, 'OR'),
                                 ])
                             ),
                         ])
@@ -161,7 +161,7 @@ class WhereGroupTest extends TestCase {
             ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new EqualsCriteria('role', 'admin'),
-                    (new EqualsCriteria('role', 'moderator'))->or(),
+                    new EqualsCriteria('role', 'moderator', 'OR'),
                 ]));
             });
 
@@ -240,7 +240,7 @@ class WhereGroupTest extends TestCase {
             ->where(function ($q) {
                 $q->apply(new AndCriteria([
                     new GreaterThanOrEqualCriteria('age', 18),
-                    (new EqualsCriteria('parental_consent', true))->or(),
+                    new EqualsCriteria('parental_consent', true, 'OR'),
                 ]));
             })
             ->where('country = ?', 'US');
@@ -284,7 +284,7 @@ class WhereGroupTest extends TestCase {
                     new GroupCriteria(
                         new AndCriteria([
                             new EqualsCriteria('country', 'US'),
-                            (new EqualsCriteria('country', 'CA'))->or(),
+                            new EqualsCriteria('country', 'CA', 'OR'),
                         ])
                     ),
                     new EqualsCriteria('verified', true),
