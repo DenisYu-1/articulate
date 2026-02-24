@@ -2,6 +2,7 @@
 
 namespace Articulate;
 
+use Articulate\QueryLogger\QueryLoggerInterface;
 use PDO;
 use PDOStatement;
 
@@ -16,6 +17,7 @@ class Connection {
         private readonly string $dsn,
         private readonly string $user,
         private readonly string $password,
+        private readonly ?QueryLoggerInterface $queryLogger = null,
     ) {
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -33,7 +35,12 @@ class Connection {
         if ($parameters !== []) {
             $parameters = $this->normalizeParameters($parameters);
         }
+
+        $start = hrtime(true);
         $statement->execute($parameters);
+        $durationMs = (hrtime(true) - $start) / 1e6;
+
+        $this->queryLogger?->log($sql, $parameters, $durationMs);
 
         return $statement;
     }
