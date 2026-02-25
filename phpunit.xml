@@ -10,9 +10,6 @@
     <testsuite name="All Tests">
       <directory>./tests</directory>
     </testsuite>
-    <testsuite name="Edge Cases">
-      <directory>./tests/EdgeCases</directory>
-    </testsuite>
   </testsuites>
 
 </phpunit>
