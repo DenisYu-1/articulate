@@ -4,8 +4,7 @@ namespace Articulate\Modules\QueryBuilder\Filter;
 
 use Articulate\Modules\EntityManager\EntityMetadata;
 
-class FilterCollection
-{
+class FilterCollection {
     /** @var array<string, QueryFilterInterface> */
     private array $filters = [];
 

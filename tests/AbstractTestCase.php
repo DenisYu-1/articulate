@@ -3,7 +3,6 @@
 namespace Articulate\Tests;
 
 use Articulate\Connection;
-use Dotenv\Dotenv;
 use Exception;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
