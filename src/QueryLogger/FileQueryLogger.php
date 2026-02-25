@@ -2,8 +2,7 @@
 
 namespace Articulate\QueryLogger;
 
-final class FileQueryLogger implements QueryLoggerInterface
-{
+final class FileQueryLogger implements QueryLoggerInterface {
     public function __construct(
         private readonly string $filePath,
     ) {

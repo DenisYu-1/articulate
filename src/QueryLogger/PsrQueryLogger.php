@@ -4,8 +4,7 @@ namespace Articulate\QueryLogger;
 
 use Psr\Log\LoggerInterface;
 
-final class PsrQueryLogger implements QueryLoggerInterface
-{
+final class PsrQueryLogger implements QueryLoggerInterface {
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {

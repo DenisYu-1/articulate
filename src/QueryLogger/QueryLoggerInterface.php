@@ -2,7 +2,6 @@
 
 namespace Articulate\QueryLogger;
 
-interface QueryLoggerInterface
-{
+interface QueryLoggerInterface {
     public function log(string $sql, array $parameters, float $durationMs): void;
 }
