@@ -36,48 +36,23 @@ class LockTest extends DatabaseTestCase {
      */
     public function testLockThrowsExceptionWhenNoTransactionInGetResult(string $databaseName): void
     {
-        // Create a connection with autocommit=true to properly test transaction requirement
-        $databaseNameEnv = $databaseName === 'mysql' ? 'DATABASE_NAME' : 'DATABASE_NAME';
         $hostEnv = $databaseName === 'mysql' ? 'DATABASE_HOST' : 'DATABASE_HOST_PGSQL';
         $dsn = $databaseName === 'mysql'
-            ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv($databaseNameEnv) . ';charset=utf8mb4'
-            : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv($databaseNameEnv);
+            ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv('DATABASE_NAME') . ';charset=utf8mb4'
+            : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv('DATABASE_NAME');
 
-        $pdo = new \PDO($dsn, getenv('DATABASE_USER') ?? ($databaseName === 'mysql' ? 'root' : 'postgres'), getenv('DATABASE_PASSWORD'), [
-            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            \PDO::ATTR_EMULATE_PREPARES => false,
-            \PDO::ATTR_AUTOCOMMIT => true, // Enable autocommit to test transaction requirement
-        ]);
+        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'), autocommit: true);
 
-        // Create connection wrapper that uses this PDO
-        $reflection = new \ReflectionClass(Connection::class);
-        $connection = $reflection->newInstanceWithoutConstructor();
-        $pdoProperty = $reflection->getProperty('pdo');
-        $pdoProperty->setAccessible(true);
-        $pdoProperty->setValue($connection, $pdo);
+        $connection->executeQuery('DROP TABLE IF EXISTS test_users_lock');
+        $connection->executeQuery('CREATE TABLE test_users_lock (id INT, name VARCHAR(255))');
+        $connection->executeQuery('INSERT INTO test_users_lock (id, name) VALUES (1, \'John\')');
 
-        $this->connection = $connection;
-        $this->qb = new QueryBuilder($this->connection);
-
-        // Clean up any existing table
-        try {
-            $this->connection->executeQuery('DROP TABLE IF EXISTS test_users_lock');
-        } catch (\Exception $e) {
-            // Ignore
-        }
-
-        // DDL operations cause implicit commits
-        $this->connection->executeQuery('CREATE TABLE test_users_lock (id INT, name VARCHAR(255))');
-        $this->connection->executeQuery('INSERT INTO test_users_lock (id, name) VALUES (1, \'John\')');
-
-        // Verify we're not in a transaction
-        $this->assertFalse($this->connection->inTransaction(), 'Connection should not be in a transaction with autocommit=true');
+        $this->assertFalse($connection->inTransaction(), 'Connection should not be in a transaction without beginTransaction()');
 
         $this->expectException(TransactionRequiredException::class);
         $this->expectExceptionMessage('lock() requires an active transaction');
 
-        $this->qb
+        (new QueryBuilder($connection))
             ->select('*')
             ->from('test_users_lock')
             ->where('id = ?', 1)
@@ -90,48 +65,23 @@ class LockTest extends DatabaseTestCase {
      */
     public function testLockThrowsExceptionWhenNoTransactionInExecute(string $databaseName): void
     {
-        // Create a connection with autocommit=true to properly test transaction requirement
-        $databaseNameEnv = $databaseName === 'mysql' ? 'DATABASE_NAME' : 'DATABASE_NAME';
         $hostEnv = $databaseName === 'mysql' ? 'DATABASE_HOST' : 'DATABASE_HOST_PGSQL';
         $dsn = $databaseName === 'mysql'
-            ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv($databaseNameEnv) . ';charset=utf8mb4'
-            : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv($databaseNameEnv);
+            ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv('DATABASE_NAME') . ';charset=utf8mb4'
+            : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv('DATABASE_NAME');
 
-        $pdo = new \PDO($dsn, getenv('DATABASE_USER') ?? ($databaseName === 'mysql' ? 'root' : 'postgres'), getenv('DATABASE_PASSWORD'), [
-            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
-            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            \PDO::ATTR_EMULATE_PREPARES => false,
-            \PDO::ATTR_AUTOCOMMIT => true, // Enable autocommit to test transaction requirement
-        ]);
+        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'), autocommit: true);
 
-        // Create connection wrapper that uses this PDO
-        $reflection = new \ReflectionClass(Connection::class);
-        $connection = $reflection->newInstanceWithoutConstructor();
-        $pdoProperty = $reflection->getProperty('pdo');
-        $pdoProperty->setAccessible(true);
-        $pdoProperty->setValue($connection, $pdo);
+        $connection->executeQuery('DROP TABLE IF EXISTS test_users_lock_exec');
+        $connection->executeQuery('CREATE TABLE test_users_lock_exec (id INT, name VARCHAR(255))');
+        $connection->executeQuery('INSERT INTO test_users_lock_exec (id, name) VALUES (1, \'John\')');
 
-        $this->connection = $connection;
-        $this->qb = new QueryBuilder($this->connection);
-
-        // Clean up any existing table
-        try {
-            $this->connection->executeQuery('DROP TABLE IF EXISTS test_users_lock_exec');
-        } catch (\Exception $e) {
-            // Ignore
-        }
-
-        // DDL operations cause implicit commits
-        $this->connection->executeQuery('CREATE TABLE test_users_lock_exec (id INT, name VARCHAR(255))');
-        $this->connection->executeQuery('INSERT INTO test_users_lock_exec (id, name) VALUES (1, \'John\')');
-
-        // Verify we're not in a transaction
-        $this->assertFalse($this->connection->inTransaction(), 'Connection should not be in a transaction with autocommit=true');
+        $this->assertFalse($connection->inTransaction(), 'Connection should not be in a transaction without beginTransaction()');
 
         $this->expectException(TransactionRequiredException::class);
         $this->expectExceptionMessage('lock() requires an active transaction');
 
-        $this->qb
+        (new QueryBuilder($connection))
             ->from('test_users_lock_exec')
             ->where('id = ?', 1)
             ->lock()
