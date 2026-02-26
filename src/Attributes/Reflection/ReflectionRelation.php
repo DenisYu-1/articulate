@@ -2,6 +2,7 @@
 
 namespace Articulate\Attributes\Reflection;
 
+use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MorphMany;
 use Articulate\Attributes\Relations\MorphOne;
@@ -11,6 +12,7 @@ use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
 use Articulate\Schema\SchemaNaming;
 use Exception;
+use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
 
@@ -28,52 +30,79 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
 
     public function getTargetEntity(): ?string
     {
-        // Handle polymorphic relations
+        if ($this->isPolymorphicRelation()) {
+            return $this->resolvePolymorphicTarget();
+        }
+
+        return $this->resolveRegularTarget();
+    }
+
+    /**
+     * Checks if this is a polymorphic relation (MorphTo, MorphOne, or MorphMany).
+     */
+    private function isPolymorphicRelation(): bool
+    {
+        return $this->isMorphTo() || $this->isMorphOne() || $this->isMorphMany();
+    }
+
+    /**
+     * Resolves target entity for polymorphic relations.
+     */
+    private function resolvePolymorphicTarget(): ?string
+    {
         if ($this->isMorphTo()) {
             // MorphTo can target any entity at runtime - no single target entity
             // We return null since the target is determined by the morph_type column at runtime
             return null;
         }
 
-        if ($this->isMorphOne() || $this->isMorphMany()) {
-            $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
-            if (!$reflectionEntity->isEntity()) {
-                throw new RuntimeException('Non-entity found in relation');
-            }
-            if ($this->isMorphMany()) {
-                $this->assertOneToManyCollectionType();
-            }
+        // For MorphOne and MorphMany, validate and return the explicit target entity
+        $this->validateAndReturnEntity($this->entityProperty->getTargetEntity(), $this->isMorphMany());
 
-            return $this->entityProperty->getTargetEntity();
-        }
+        return $this->entityProperty->getTargetEntity();
+    }
 
-        // Handle regular relations
+    /**
+     * Resolves target entity for regular relations.
+     */
+    private function resolveRegularTarget(): string
+    {
+        // Check for explicit target entity
         if ($this->entityProperty->getTargetEntity()) {
-            $reflectionEntity = new ReflectionEntity($this->entityProperty->getTargetEntity());
-            if (!$reflectionEntity->isEntity()) {
-                throw new RuntimeException('Non-entity found in relation');
-            }
-            if ($this->isOneToMany()) {
-                $this->assertOneToManyCollectionType();
-            }
+            $this->validateAndReturnEntity($this->entityProperty->getTargetEntity(), $this->isOneToMany());
 
             return $this->entityProperty->getTargetEntity();
         }
+
+        // For OneToMany without explicit target, validate collection type
         if ($this->isOneToMany()) {
             $this->assertOneToManyCollectionType();
         }
-        $type = $this->property->getType();
 
-        if ($type && !$type->isBuiltin()) {
-            $reflectionEntity = new ReflectionEntity($type->getName());
-            if (!$reflectionEntity->isEntity()) {
-                throw new RuntimeException('Non-entity found in relation');
-            }
+        // Try to infer target from property type
+        $type = $this->property->getType();
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+            $this->validateAndReturnEntity($type->getName(), false);
 
             return $type->getName();
         }
 
         throw new Exception('Target entity is misconfigured');
+    }
+
+    /**
+     * Validates and returns an entity class name.
+     */
+    private function validateAndReturnEntity(string $entityClass, bool $checkCollectionType): void
+    {
+        $reflectionEntity = new ReflectionEntity($entityClass);
+        if (!$reflectionEntity->isEntity()) {
+            throw new RuntimeException('Non-entity found in relation');
+        }
+
+        if ($checkCollectionType) {
+            $this->assertOneToManyCollectionType();
+        }
     }
 
     public function getMappedBy(): ?string
@@ -188,8 +217,12 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         if (!$this->isPolymorphic()) {
             throw new RuntimeException('Not a polymorphic relation');
         }
+        $attr = $this->entityProperty;
+        if ($attr instanceof MorphTo || $attr instanceof MorphOne || $attr instanceof MorphMany) {
+            return $attr->getTypeColumn();
+        }
 
-        return $this->entityProperty->getTypeColumn();
+        throw new RuntimeException('Not a polymorphic relation');
     }
 
     /**
@@ -200,8 +233,12 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         if (!$this->isPolymorphic()) {
             throw new RuntimeException('Not a polymorphic relation');
         }
+        $attr = $this->entityProperty;
+        if ($attr instanceof MorphTo || $attr instanceof MorphOne || $attr instanceof MorphMany) {
+            return $attr->getIdColumn();
+        }
 
-        return $this->entityProperty->getIdColumn();
+        throw new RuntimeException('Not a polymorphic relation');
     }
 
     /**
@@ -217,7 +254,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
      */
     public function getMorphType(): string
     {
-        if ($this->isMorphOne() || $this->isMorphMany()) {
+        if ($this->entityProperty instanceof MorphOne || $this->entityProperty instanceof MorphMany) {
             return $this->entityProperty->getMorphType();
         }
 
@@ -242,6 +279,11 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
     public function isOneToMany(): bool
     {
         return $this->entityProperty instanceof OneToMany;
+    }
+
+    public function isManyToMany(): bool
+    {
+        return $this->entityProperty instanceof ManyToMany;
     }
 
     public function isMorphTo(): bool
@@ -290,6 +332,39 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         return property_exists($this->entityProperty, 'referencedBy') ? $this->entityProperty->referencedBy : null;
     }
 
+    public function getPivotTableName(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Pivot table is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getTableName();
+    }
+
+    public function getForeignPivotKey(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Foreign pivot key is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getOwnerJoinColumn();
+    }
+
+    public function getRelatedPivotKey(): string
+    {
+        if (!$this->entityProperty instanceof ManyToMany) {
+            throw new RuntimeException('Related pivot key is only available for many-to-many relations');
+        }
+
+        $reflection = new ReflectionManyToMany($this->entityProperty, $this->property, $this->schemaNaming);
+
+        return $reflection->getTargetJoinColumn();
+    }
+
     private function assertMappingConfigured(): void
     {
         if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
@@ -300,7 +375,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
     private function assertOneToManyCollectionType(): void
     {
         $type = $this->property->getType();
-        if ($type === null) {
+        if ($type === null || !$type instanceof ReflectionNamedType) {
             return;
         }
         if ($type->isBuiltin()) {
@@ -309,6 +384,5 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
                 throw new RuntimeException('One-to-many property must be iterable collection');
             }
         }
-        // Non-builtin types are accepted here (could be custom collection classes).
     }
 }

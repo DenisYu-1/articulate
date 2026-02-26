@@ -3,6 +3,7 @@
 namespace Articulate\Modules\Migrations\Generator;
 
 use Articulate\Modules\Database\MySqlTypeMapper;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
@@ -125,6 +126,11 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return 'VARCHAR(' . $propertyData->length . ')';
         }
 
+        // For integer primary keys, use INT UNSIGNED
+        if ($propertyData->type === 'int' && $propertyData->isPrimaryKey) {
+            return 'INT UNSIGNED';
+        }
+
         return $dbType;
     }
 
@@ -161,49 +167,15 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
     {
         $alterParts = [];
 
-        // First, handle foreign key deletions
-        foreach ($compareResult->foreignKeys as $foreignKey) {
-            if ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = $this->getDropForeignKeySyntax($foreignKey->name);
-            }
-        }
-
-        // Then, handle index deletions
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = $this->getDropIndexSyntax($index->name);
-            }
-        }
-
-        // Then, handle column operations
-        foreach ($compareResult->columns as $column) {
-            if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = 'DROP `' . $column->name . '`';
-
-                continue;
-            }
-            $parts = [];
-            if ($column->operation === CompareResult::OPERATION_CREATE) {
-                $parts[] = 'ADD';
-            } else {
-                $parts[] = 'MODIFY';
-            }
-            $parts[] = $this->columnDefinition($column->name, $column->propertyData);
-            $alterParts[] = implode(' ', $parts);
-        }
-
-        // Finally, handle additions: indexes then foreign keys
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
-            }
-        }
-
-        foreach ($compareResult->foreignKeys as $foreignKey) {
-            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = $this->foreignKeyDefinition($foreignKey);
-            }
-        }
+        // Generate changes in correct order: deletions first, then modifications, then additions
+        $alterParts = array_merge(
+            $alterParts,
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_DELETE),
+            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_DELETE, $compareResult->name),
+            $this->generateColumnChanges($compareResult->columns, false),
+            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_CREATE, $compareResult->name),
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_CREATE)
+        );
 
         if (empty($alterParts)) {
             return '';
@@ -214,53 +186,133 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
         return 'ALTER TABLE `' . $compareResult->name . '`' . $algorithm . ' ' . implode(', ', $alterParts);
     }
 
+    /**
+     * Generates foreign key changes for the specified operation.
+     *
+     * @param ForeignKeyCompareResult[] $foreignKeys
+     * @param bool $isRollback Whether this is for rollback (reverses operations)
+     * @return string[]
+     */
+    private function generateForeignKeyChanges(array $foreignKeys, string $operation, bool $isRollback = false): array
+    {
+        $changes = [];
+        foreach ($foreignKeys as $foreignKey) {
+            $targetOperation = $isRollback ? $this->reverseOperation($foreignKey->operation) : $foreignKey->operation;
+            if ($targetOperation === $operation) {
+                if ($operation === CompareResult::OPERATION_DELETE) {
+                    $changes[] = $this->getDropForeignKeySyntax($foreignKey->name);
+                } else {
+                    $changes[] = $this->foreignKeyDefinition($foreignKey);
+                }
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Generates index changes for the specified operation.
+     *
+     * @param IndexCompareResult[] $indexes
+     * @param bool $isRollback Whether this is for rollback (reverses operations)
+     * @return string[]
+     */
+    private function generateIndexChanges(array $indexes, string $operation, string $tableName, bool $isRollback = false): array
+    {
+        $changes = [];
+        foreach ($indexes as $index) {
+            $targetOperation = $isRollback ? $this->reverseOperation($index->operation) : $index->operation;
+            if ($targetOperation === $operation) {
+                if ($operation === CompareResult::OPERATION_DELETE) {
+                    $changes[] = $this->getDropIndexSyntax($index->name);
+                } else {
+                    $changes[] = $this->generateIndexSql($index, $tableName);
+                }
+            }
+        }
+
+        return $changes;
+    }
+
+    /**
+     * Generates column changes.
+     *
+     * @param ColumnCompareResult[] $columns
+     * @param bool $isRollback Whether this is for rollback (affects data source and operation reversal)
+     * @return string[]
+     */
+    private function generateColumnChanges(array $columns, bool $isRollback = false): array
+    {
+        $changes = [];
+        foreach ($columns as $column) {
+            if ($isRollback) {
+                $changes[] = $this->generateRollbackColumnChange($column);
+            } else {
+                $changes[] = $this->generateForwardColumnChange($column);
+            }
+        }
+
+        return array_filter($changes); // Remove empty strings
+    }
+
+    /**
+     * Generates a forward column change (for migration up).
+     */
+    private function generateForwardColumnChange(ColumnCompareResult $column): string
+    {
+        if ($column->operation === CompareResult::OPERATION_DELETE) {
+            return 'DROP `' . $column->name . '`';
+        }
+
+        $parts = [];
+        if ($column->operation === CompareResult::OPERATION_CREATE) {
+            $parts[] = 'ADD';
+        } else {
+            $parts[] = 'MODIFY';
+        }
+
+        $parts[] = $this->columnDefinition($column->name, $column->propertyData);
+
+        return implode(' ', $parts);
+    }
+
+    /**
+     * Generates a rollback column change (for migration down).
+     */
+    private function generateRollbackColumnChange(ColumnCompareResult $column): string
+    {
+        if ($column->operation === CompareResult::OPERATION_CREATE) {
+            // Undo ADD column -> DROP column
+            return 'DROP `' . $column->name . '`';
+        }
+
+        $columnParts = [];
+        if ($column->operation === CompareResult::OPERATION_DELETE) {
+            // Undo DROP column -> ADD column
+            $columnParts[] = 'ADD';
+        } else {
+            // Undo MODIFY column -> MODIFY with original data
+            $columnParts[] = 'MODIFY';
+        }
+
+        $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
+
+        return implode(' ', $columnParts);
+    }
+
     protected function generateAlterTableRollback(TableCompareResult $compareResult): string
     {
         $alterParts = [];
 
-        // First, handle foreign key deletions (for rollback of ADD FK operations)
-        foreach ($compareResult->foreignKeys as $foreignKey) {
-            if ($foreignKey->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = $this->getDropForeignKeySyntax($foreignKey->name);
-            }
-        }
-
-        // Then, handle index deletions (for rollback of ADD INDEX operations)
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = $this->getDropIndexSyntax($index->name);
-            }
-        }
-
-        // Then, handle column operations
-        foreach ($compareResult->columns as $column) {
-            if ($column->operation === CompareResult::OPERATION_CREATE) {
-                $alterParts[] = 'DROP `' . $column->name . '`';
-
-                continue;
-            }
-            $columnParts = [];
-            if ($column->operation === CompareResult::OPERATION_DELETE) {
-                $columnParts[] = 'ADD';
-            } else {
-                $columnParts[] = 'MODIFY';
-            }
-            $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
-            $alterParts[] = implode(' ', $columnParts);
-        }
-
-        // Finally, handle additions: indexes then foreign keys (for rollback of DROP operations)
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = $this->generateIndexSql($index, $compareResult->name);
-            }
-        }
-
-        foreach ($compareResult->foreignKeys as $foreignKey) {
-            if ($foreignKey->operation === CompareResult::OPERATION_DELETE) {
-                $alterParts[] = $this->foreignKeyDefinition($foreignKey);
-            }
-        }
+        // For rollback, reverse the operations: undo creations first, then undo deletions
+        $alterParts = array_merge(
+            $alterParts,
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_DELETE, true), // undo ADD FK -> DROP FK
+            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_DELETE, $compareResult->name, true), // undo ADD INDEX -> DROP INDEX
+            $this->generateColumnChanges($compareResult->columns, true), // rollback column ops
+            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_CREATE, $compareResult->name, true), // undo DROP INDEX -> ADD INDEX
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_CREATE, true) // undo DROP FK -> ADD FK
+        );
 
         if (empty($alterParts)) {
             return '';
@@ -349,5 +401,17 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
     protected function getModifyColumnSyntax(string $columnName, PropertiesData $column): string
     {
         return 'MODIFY `' . $columnName . '` ' . $this->columnDefinition($columnName, $column);
+    }
+
+    /**
+     * Reverses an operation for rollback purposes.
+     */
+    private function reverseOperation(string $operation): string
+    {
+        return match ($operation) {
+            CompareResult::OPERATION_CREATE => CompareResult::OPERATION_DELETE,
+            CompareResult::OPERATION_DELETE => CompareResult::OPERATION_CREATE,
+            default => $operation,
+        };
     }
 }

@@ -314,28 +314,23 @@ class EntityManagerTest extends TestCase {
         $this->assertStringContainsString('FROM test_entity', $sql);
     }
 
-    public function testGetQueryBuilder(): void
+    public function testCreateQueryBuilderReturnsFreshInstances(): void
     {
-        $qb = $this->entityManager->getQueryBuilder();
+        $qb = $this->entityManager->createQueryBuilder();
+        $qb2 = $this->entityManager->createQueryBuilder();
 
         $this->assertInstanceOf(QueryBuilder::class, $qb);
-
-        // Should return the same instance
-        $qb2 = $this->entityManager->getQueryBuilder();
-        $this->assertSame($qb, $qb2);
+        $this->assertInstanceOf(QueryBuilder::class, $qb2);
+        $this->assertNotSame($qb, $qb2);
     }
 
     public function testQueryBuilderWithHydrator(): void
     {
         $qb = $this->entityManager->createQueryBuilder();
+        $qb2 = $this->entityManager->createQueryBuilder();
 
-        // QueryBuilder should have hydrator set
-        $hydrator = $qb->getHydrator();
-        $this->assertInstanceOf(HydratorInterface::class, $hydrator);
-
-        // Main query builder should also have hydrator
-        $mainQb = $this->entityManager->getQueryBuilder();
-        $this->assertSame($hydrator, $mainQb->getHydrator());
+        $this->assertInstanceOf(HydratorInterface::class, $qb->getHydrator());
+        $this->assertSame($qb->getHydrator(), $qb2->getHydrator());
     }
 
     public function testFindSelectsOnlyEntityColumns(): void

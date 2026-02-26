@@ -5,8 +5,12 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
+use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Modules\Repository\RepositoryFactory;
+use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
+use Psr\Cache\CacheItemPoolInterface;
 
 class EntityManager {
     private Connection $connection;
@@ -18,7 +22,7 @@ class EntityManager {
 
     private HydratorInterface $hydrator;
 
-    private QueryBuilder $queryBuilder;
+    private FilterCollection $filters;
 
     private GeneratorRegistry $generatorRegistry;
 
@@ -32,13 +36,25 @@ class EntityManager {
 
     private ?Proxy\ProxyManager $proxyManager = null;
 
+    private RepositoryFactory $repositoryFactory;
+
+    private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
+
+    private ?CacheItemPoolInterface $resultCache = null;
+
+    private TypeRegistry $typeRegistry;
+
+    private RelationshipLoader $relationshipLoader;
+
     public function __construct(
         Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?HydratorInterface $hydrator = null,
         ?GeneratorRegistry $generatorRegistry = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
-        ?QueryExecutor $queryExecutor = null
+        ?QueryExecutor $queryExecutor = null,
+        ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
+        ?CacheItemPoolInterface $resultCache = null
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -51,29 +67,34 @@ class EntityManager {
         $this->callbackManager = new LifecycleCallbackManager();
 
         // Initialize change aggregator and query executor
-        $this->changeAggregator = new ChangeAggregator();
+        $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy ?? new MergeUpdateConflictResolutionStrategy();
+        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
         // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
+        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $defaultUow;
 
-        // Create relationship loader
-        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
+        $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
 
         // Initialize proxy system
         $proxyGenerator = new Proxy\ProxyGenerator($this->metadataRegistry);
         $this->proxyManager = new Proxy\ProxyManager(
             $this,
-            $this->metadataRegistry,
             $proxyGenerator
         );
 
-        // Initialize hydrator
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $relationshipLoader, $this->callbackManager);
+        $this->typeRegistry = new TypeRegistry();
 
-        // Initialize QueryBuilder
-        $this->queryBuilder = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
+
+        // Store result cache
+        $this->resultCache = $resultCache;
+
+        $this->filters = new FilterCollection();
+
+        // Initialize RepositoryFactory
+        $this->repositoryFactory = new RepositoryFactory($this);
     }
 
     // Persistence operations
@@ -95,9 +116,9 @@ class EntityManager {
         // Execute the changes in proper order (respecting foreign key constraints)
         $this->executeChanges($aggregatedChanges);
 
-        // Execute post-operation callbacks
+        // Execute post-operation callbacks - each UnitOfWork processes its own changes
         foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->executePostCallbacks($aggregatedChanges);
+            $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
         }
 
         // Clear changes from all UnitOfWorks
@@ -113,10 +134,23 @@ class EntityManager {
         }
     }
 
+    public function detach(object $entity): void
+    {
+        foreach ($this->unitOfWorks as $unitOfWork) {
+            $unitOfWork->detach($entity);
+        }
+    }
+
+    public function flushAndClear(): void
+    {
+        $this->flush();
+        $this->clear();
+    }
+
     /**
      * Execute aggregated changes in proper order respecting foreign key constraints.
      *
-     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     * @param array{inserts: object[], updates: array<int, array{entity: object, changes: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[]} $changes
      */
     private function executeChanges(array $changes): void
     {
@@ -128,6 +162,17 @@ class EntityManager {
 
         // Execute updates (order doesn't matter for foreign key constraints)
         foreach ($changes['updates'] as $update) {
+            if (isset($update['table'])) {
+                $this->queryExecutor->executeUpdateByTable(
+                    tableName: $update['table'],
+                    columnChanges: $update['set'],
+                    whereClause: $update['where'],
+                    whereValues: $update['whereValues'],
+                );
+
+                continue;
+            }
+
             $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
         }
 
@@ -302,10 +347,20 @@ class EntityManager {
         $primaryKeyColumn = $primaryKeyColumns[0];
 
         // Build and execute query directly to get raw data
-        $qb = $this->createQueryBuilder()
-            ->select(...$metadata->getColumnNames())
+        $columnNames = $metadata->getColumnNames();
+
+        // Add morph columns from relations
+        foreach ($metadata->getRelations() as $relation) {
+            if ($relation->isMorphTo()) {
+                $columnNames[] = $relation->getMorphTypeColumnName();
+                $columnNames[] = $relation->getMorphIdColumnName();
+            }
+        }
+
+        $qb = $this->createQueryBuilder($class)
+            ->select(...$columnNames)
             ->from($tableName)
-            ->where("$primaryKeyColumn = ?", $id)
+            ->where($primaryKeyColumn, $id)
             ->limit(1);
 
         $sql = $qb->getSQL();
@@ -335,7 +390,7 @@ class EntityManager {
         $tableName = $metadata->getTableName();
 
         // Build and execute query to get all records
-        $qb = $this->createQueryBuilder()
+        $qb = $this->createQueryBuilder($class)
             ->select(...$metadata->getColumnNames())
             ->from($tableName);
 
@@ -418,10 +473,10 @@ class EntityManager {
 
         // Query database for fresh data
         $tableName = $metadata->getTableName();
-        $qb = $this->createQueryBuilder()
+        $qb = $this->createQueryBuilder($entityClass)
             ->select(...$metadata->getColumnNames())
             ->from($tableName)
-            ->where("$primaryKeyColumn = ?", $id)
+            ->where($primaryKeyColumn, $id)
             ->limit(1);
 
         $sql = $qb->getSQL();
@@ -490,18 +545,31 @@ class EntityManager {
     // Create new unit of work, mostly for scopes
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->connection, $this->changeTrackingStrategy, $this->generatorRegistry, $this->callbackManager, $this->metadataRegistry);
+        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
     }
 
-    // Query builder
+    public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
+    {
+        $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy;
+        $this->changeAggregator->setUpdateConflictResolutionStrategy($updateConflictResolutionStrategy);
+    }
+
+    public function getUpdateConflictResolutionStrategy(): UpdateConflictResolutionStrategy
+    {
+        return $this->updateConflictResolutionStrategy;
+    }
+
+    public function getFilters(): FilterCollection
+    {
+        return $this->filters;
+    }
+
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry);
-
-        // Set the default UnitOfWork for entity management
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
         $qb->setUnitOfWork($this->getDefaultUnitOfWork());
 
         if ($entityClass) {
@@ -509,12 +577,6 @@ class EntityManager {
         }
 
         return $qb;
-    }
-
-    // Get the main query builder instance
-    public function getQueryBuilder(): QueryBuilder
-    {
-        return $this->queryBuilder;
     }
 
     private function getDefaultUnitOfWork(): UnitOfWork
@@ -545,9 +607,7 @@ class EntityManager {
             throw new \InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
         }
 
-        $relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
-
-        return $relationshipLoader->load($entity, $relation, true);
+        return $this->relationshipLoader->load($entity, $relation, [], true);
     }
 
     /**
@@ -575,18 +635,26 @@ class EntityManager {
     }
 
     /**
+     * Get a repository for the given entity class.
+     *
+     * If the entity specifies a custom repository class via the Entity attribute,
+     * that class will be used. Otherwise, a generic EntityRepository will be returned.
+     */
+    public function getRepository(string $entityClass): RepositoryInterface
+    {
+        return $this->repositoryFactory->getRepository($entityClass);
+    }
+
+    /**
      * Update entity properties with fresh data from database.
      */
     private function updateEntityProperties(object $entity, array $data, EntityMetadata $metadata): void
     {
-        $typeRegistry = new TypeRegistry();
-
         foreach ($metadata->getProperties() as $propertyName => $property) {
             $columnName = $property->getColumnName();
             if (array_key_exists($columnName, $data)) {
                 $value = $data[$columnName];
-                // Convert database value back to PHP type
-                $converter = $typeRegistry->getConverter($property->getType());
+                $converter = $this->typeRegistry->getConverter($property->getType());
                 if ($converter) {
                     $phpValue = $converter->convertToPHP($value);
                 } else {

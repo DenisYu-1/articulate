@@ -58,7 +58,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 

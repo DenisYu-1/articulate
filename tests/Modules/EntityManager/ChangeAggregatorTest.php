@@ -31,9 +31,12 @@ class ChangeAggregatorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->aggregator = new ChangeAggregator();
         $this->connection = $this->createMock(Connection::class);
         $this->entityManager = new EntityManager($this->connection);
+        $this->aggregator = new ChangeAggregator(
+            $this->entityManager->getMetadataRegistry(),
+            $this->entityManager->getUpdateConflictResolutionStrategy(),
+        );
     }
 
     public function testAggregateChangesWithEmptyUnitOfWorks(): void

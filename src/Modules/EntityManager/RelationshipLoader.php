@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use ReflectionProperty;
 
 /**
  * Handles loading of entity relationships.
@@ -27,10 +28,11 @@ class RelationshipLoader {
      *
      * @param object $entity The entity to load the relationship for
      * @param ReflectionRelation $relation The relationship metadata
+     * @param array $data The raw data from the database (for morph relationships)
      * @param bool $forceLoad Whether to force loading even if already loaded
      * @return mixed The loaded relationship data
      */
-    public function load(object $entity, ReflectionRelation $relation, bool $forceLoad = false): mixed
+    public function load(object $entity, ReflectionRelation $relation, array $data = [], bool $forceLoad = false): mixed
     {
         if ($relation->isOneToOne()) {
             return $this->loadOneToOne($entity, $relation);
@@ -49,9 +51,16 @@ class RelationshipLoader {
         }
 
         // Handle polymorphic relationships if needed
-        if ($relation->isMorphOne() || $relation->isMorphMany() || $relation->isMorphTo()) {
-            // TODO: Implement polymorphic relationship loading
-            return null;
+        if ($relation->isMorphTo()) {
+            return $this->loadMorphTo($entity, $relation, $data);
+        }
+
+        if ($relation->isMorphOne()) {
+            return $this->loadMorphOne($entity, $relation, $data);
+        }
+
+        if ($relation->isMorphMany()) {
+            return $this->loadMorphMany($entity, $relation, $data);
         }
 
         return null;
@@ -101,7 +110,7 @@ class RelationshipLoader {
 
         // Query for related entities
         $qb = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("$foreignKeyColumn = ?", $primaryKeyValue);
+            ->where($foreignKeyColumn, $primaryKeyValue);
 
         return $qb->getResult($targetEntity);
     }
@@ -136,7 +145,7 @@ class RelationshipLoader {
         $pivotQb = $this->entityManager->createQueryBuilder()
             ->select($relatedKey)
             ->from($pivotTable)
-            ->where("$foreignKey = ?", $primaryKeyValue);
+            ->where($foreignKey, $primaryKeyValue);
 
         $pivotResults = $pivotQb->getResult();
         $relatedIds = array_column($pivotResults, $relatedKey);
@@ -152,6 +161,75 @@ class RelationshipLoader {
 
         $qb = $this->entityManager->createQueryBuilder($targetEntity)
             ->where("$targetPrimaryKey IN (" . str_repeat('?,', count($relatedIds) - 1) . '?)', $relatedIds);
+
+        return $qb->getResult($targetEntity);
+    }
+
+    /**
+     * Load a MorphTo relationship.
+     *
+     * MorphTo is the inverse side of a polymorphic relationship. The owning entity
+     * contains morph_type and morph_id columns that point to any target entity.
+     */
+    private function loadMorphTo(object $entity, ReflectionRelation $relation, array $data = []): ?object
+    {
+        // Get the morph type and ID values from the raw data
+        $morphTypeColumn = $relation->getMorphTypeColumnName();
+        $morphIdColumn = $relation->getMorphIdColumnName();
+
+        $morphTypeValue = $data[$morphTypeColumn] ?? null;
+        $morphIdValue = $data[$morphIdColumn] ?? null;
+
+        // If either value is null, there's no relationship
+        if ($morphTypeValue === null || $morphIdValue === null) {
+            return null;
+        }
+
+        // Find the entity using the resolved type and ID
+        return $this->entityManager->find($morphTypeValue, $morphIdValue);
+    }
+
+    /**
+     * Load a MorphOne relationship.
+     *
+     * MorphOne is the owning side of a polymorphic relationship. The target entities
+     * contain morph_type and morph_id columns that reference back to this entity.
+     */
+    private function loadMorphOne(object $entity, ReflectionRelation $relation, array $data = []): ?object
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $primaryKeyValue = $this->getPrimaryKeyValue($entity, $entityMetadata);
+        $targetEntity = $relation->getTargetEntity();
+        $morphType = $relation->getMorphType();
+
+        // Query the target table where morph_type matches our entity class and morph_id matches our ID
+        $qb = $this->entityManager->createQueryBuilder($targetEntity)
+            ->where($relation->getMorphTypeColumnName(), $morphType)
+            ->where($relation->getMorphIdColumnName(), $primaryKeyValue)
+            ->limit(1);
+
+        $results = $qb->getResult($targetEntity);
+
+        return $results[0] ?? null;
+    }
+
+    /**
+     * Load a MorphMany relationship.
+     *
+     * MorphMany is the owning side of a polymorphic relationship. Similar to MorphOne
+     * but returns a collection of related entities instead of a single entity.
+     */
+    private function loadMorphMany(object $entity, ReflectionRelation $relation, array $data = []): array
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $primaryKeyValue = $this->getPrimaryKeyValue($entity, $entityMetadata);
+        $targetEntity = $relation->getTargetEntity();
+        $morphType = $relation->getMorphType();
+
+        // Query the target table where morph_type matches our entity class and morph_id matches our ID
+        $qb = $this->entityManager->createQueryBuilder($targetEntity)
+            ->where($relation->getMorphTypeColumnName(), $morphType)
+            ->where($relation->getMorphIdColumnName(), $primaryKeyValue);
 
         return $qb->getResult($targetEntity);
     }
@@ -175,7 +253,7 @@ class RelationshipLoader {
         }
 
         // Get the value from the entity
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty = new ReflectionProperty($entity, $propertyName);
         $reflectionProperty->setAccessible(true);
 
         return $reflectionProperty->getValue($entity);
@@ -199,7 +277,7 @@ class RelationshipLoader {
             return null;
         }
 
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty = new ReflectionProperty($entity, $propertyName);
         $reflectionProperty->setAccessible(true);
 
         return $reflectionProperty->getValue($entity);

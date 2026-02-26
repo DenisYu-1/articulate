@@ -52,7 +52,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
         $result = $generator->generate($tableCompareResult);
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 

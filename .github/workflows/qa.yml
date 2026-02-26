@@ -104,6 +104,9 @@ jobs:
       - name: Run mutation tests
         run: composer test:mutation
 
+      - name: Run architecture boundary checks
+        run: composer architecture:check
+
       - name: Generate and commit mutation badge
         if: github.ref == 'refs/heads/main'
         run: |

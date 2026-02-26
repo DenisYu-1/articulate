@@ -97,8 +97,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $this->entitiesPath,
             $this->migrationsPath,
+            $this->entitiesPath,
             'Test\Migrations'
         );
 
@@ -129,8 +129,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $this->entitiesPath,
-            $this->migrationsPath
+            $this->migrationsPath,
+            $this->entitiesPath
         );
 
         $commandTester = new CommandTester($command);
@@ -193,8 +193,8 @@ class DiffCommandTest extends DatabaseTestCase {
             $command = new DiffCommand(
                 $this->schemaComparator,
                 $this->commandGenerator,
-                null, // No custom path - should use default
-                $this->migrationsPath
+                $this->migrationsPath,
+                null // No custom path - should use default
             );
 
             $commandTester = new CommandTester($command);
@@ -219,8 +219,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $this->entitiesPath,
-            $this->migrationsPath
+            $this->migrationsPath,
+            $this->entitiesPath
         );
 
         $commandTester = new CommandTester($command);
@@ -254,8 +254,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            '/nonexistent/path',
-            $this->migrationsPath
+            $this->migrationsPath,
+            '/nonexistent/path'
         );
 
         $commandTester = new CommandTester($command);
@@ -277,8 +277,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $this->entitiesPath,
-            $this->migrationsPath
+            $this->migrationsPath,
+            $this->entitiesPath
         );
 
         $commandTester = new CommandTester($command);
@@ -299,8 +299,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $this->entitiesPath,
-            $this->migrationsPath
+            $this->migrationsPath,
+            $this->entitiesPath
         );
 
         $this->assertEquals('articulate:diff', $command->getName());
@@ -319,8 +319,8 @@ class DiffCommandTest extends DatabaseTestCase {
             $command = new DiffCommand(
                 $this->schemaComparator,
                 $this->commandGenerator,
-                null,
-                $this->migrationsPath
+                $this->migrationsPath,
+                null
             );
 
             $commandTester = new CommandTester($command);

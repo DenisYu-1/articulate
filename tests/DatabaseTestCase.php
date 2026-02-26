@@ -151,7 +151,7 @@ abstract class DatabaseTestCase extends AbstractTestCase {
                 $this->currentConnection->beginTransaction();
 
                 try {
-                    $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test']);
+                    $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test', 'test_users']);
                     $this->currentConnection->commit();
                 } catch (\Exception $e) {
                     // If cleanup fails, rollback
@@ -190,20 +190,10 @@ abstract class DatabaseTestCase extends AbstractTestCase {
                     // Transaction might not be active, that's fine
                 }
 
-                // Start a fresh transaction for cleanup
-                $connection->beginTransaction();
-
-                try {
-                    $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test']);
-                    $connection->commit();
-                } catch (\Exception $e) {
-                    // If cleanup fails, rollback and continue
-                    try {
-                        $connection->rollbackTransaction();
-                    } catch (\Exception $rollbackException) {
-                        // Ignore rollback errors
-                    }
-                }
+                // DDL operations (like DROP TABLE) cannot be executed within transactions
+                // in MySQL/PostgreSQL - they cause implicit commits. So we execute
+                // cleanup outside of any transaction.
+                $this->cleanUpTables(['migrations', 'test_basic', 'test_table', 'users', 'products', 'test_entity', 'test', 'test_users']);
 
                 // Reset current database state
                 $this->currentConnection = null;

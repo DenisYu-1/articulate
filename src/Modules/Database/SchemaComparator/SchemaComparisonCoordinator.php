@@ -65,7 +65,7 @@ class SchemaComparisonCoordinator {
     }
 
     /**
-     * @return ReflectionEntity[]
+     * @return array<string, ReflectionEntity[]>
      */
     private function indexByTableName(array $entities): array
     {

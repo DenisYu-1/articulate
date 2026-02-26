@@ -15,6 +15,7 @@ use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
+use Articulate\Attributes\SoftDeleteable;
 use Articulate\Schema\SchemaNaming;
 use ReflectionAttribute;
 use ReflectionClass;
@@ -39,118 +40,227 @@ class ReflectionEntity extends ReflectionClass {
 
             return;
         }
+
         foreach ($this->getProperties() as $property) {
-            /** @var ReflectionAttribute<Property>[] $entityProperty */
-            $entityProperty = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
-            /** @var ReflectionAttribute<PrimaryKey>[] $primaryKeyProperty */
-            $primaryKeyProperty = $property->getAttributes(PrimaryKey::class);
-
-            // A property is considered an entity property if it has either Property or PrimaryKey attribute
-            if (!empty($entityProperty) || !empty($primaryKeyProperty)) {
-                // Find the explicit Property attribute (not PrimaryKey)
-                $explicitProperty = null;
-                foreach ($entityProperty as $attr) {
-                    $instance = $attr->newInstance();
-                    if (!$instance instanceof PrimaryKey) {
-                        $explicitProperty = $instance;
-
-                        break;
-                    }
-                }
-
-                // Use explicit Property if available, otherwise use PrimaryKey
-                if ($explicitProperty !== null) {
-                    $propertyAttribute = $explicitProperty;
-                } elseif (!empty($primaryKeyProperty)) {
-                    $propertyAttribute = $primaryKeyProperty[0]->newInstance();
-                } else {
-                    // Fallback to first Property attribute
-                    $propertyAttribute = $entityProperty[0]->newInstance();
-                }
-
-                // Check if this property is a primary key
-                $isPrimaryKey = !empty($primaryKeyProperty) || $propertyAttribute instanceof PrimaryKey;
-                $generatorType = null;
-                $sequence = null;
-                $generatorOptions = null;
-                if ($isPrimaryKey) {
-                    // Get generator info from PrimaryKey attribute
-                    $primaryKeyInstance = !empty($primaryKeyProperty)
-                        ? $primaryKeyProperty[0]->newInstance()
-                        : ($propertyAttribute instanceof PrimaryKey ? $propertyAttribute : null);
-
-                    if ($primaryKeyInstance) {
-                        $generatorType = $primaryKeyInstance->generator;
-                        $sequence = $primaryKeyInstance->sequence;
-                        $generatorOptions = $primaryKeyInstance->options;
-                    }
-                }
-
-                yield new ReflectionProperty(
-                    $propertyAttribute,
-                    $property,
-                    isset($property->getAttributes(AutoIncrement::class)[0]) ?? false,
-                    $isPrimaryKey,
-                    $generatorType,
-                    $sequence,
-                    $generatorOptions,
-                );
+            if ($result = $this->processPropertyAttribute($property)) {
+                yield $result;
 
                 continue;
             }
-            /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
-            $entityProperty = $property->getAttributes(OneToOne::class);
-            if (!empty($entityProperty)) {
-                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-                if (!$relation->isOwningSide()) {
-                    continue;
-                }
-                yield $relation;
+            if ($result = $this->processOneToOneAttribute($property)) {
+                yield $result;
 
                 continue;
             }
-            /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
-            $entityProperty = $property->getAttributes(ManyToOne::class);
-            if (!empty($entityProperty)) {
-                $propertyInstance = $entityProperty[0]->newInstance();
-                yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+            if ($result = $this->processManyToOneAttribute($property)) {
+                yield $result;
 
                 continue;
             }
-
-            /** @var ReflectionAttribute<MorphTo>[] $entityProperty */
-            $entityProperty = $property->getAttributes(MorphTo::class);
-            if (!empty($entityProperty)) {
-                $propertyInstance = $entityProperty[0]->newInstance();
-                yield new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+            if ($result = $this->processMorphToAttribute($property)) {
+                yield $result;
 
                 continue;
             }
-
-            /** @var ReflectionAttribute<MorphOne>[] $entityProperty */
-            $entityProperty = $property->getAttributes(MorphOne::class);
-            if (!empty($entityProperty)) {
-                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-                if (!$relation->isOwningSide()) {
-                    continue;
-                }
-                yield $relation;
+            if ($result = $this->processMorphOneAttribute($property)) {
+                yield $result;
 
                 continue;
             }
-
-            /** @var ReflectionAttribute<MorphMany>[] $entityProperty */
-            $entityProperty = $property->getAttributes(MorphMany::class);
-            if (!empty($entityProperty)) {
-                $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-                if (!$relation->isOwningSide()) {
-                    continue;
-                }
-                yield $relation;
+            if ($result = $this->processMorphManyAttribute($property)) {
+                yield $result;
 
                 continue;
             }
         }
+    }
+
+    /**
+     * Processes Property and PrimaryKey attributes for a given property.
+     * Returns the ReflectionProperty if found, null otherwise.
+     */
+    private function processPropertyAttribute(\ReflectionProperty $property): ?ReflectionProperty
+    {
+        /** @var ReflectionAttribute<Property>[] $entityProperty */
+        $entityProperty = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
+        /** @var ReflectionAttribute<PrimaryKey>[] $primaryKeyProperty */
+        $primaryKeyProperty = $property->getAttributes(PrimaryKey::class);
+
+        // A property is considered an entity property if it has either Property or PrimaryKey attribute
+        if (empty($entityProperty) && empty($primaryKeyProperty)) {
+            return null;
+        }
+
+        $propertyAttribute = $this->resolvePropertyAttribute($entityProperty, $primaryKeyProperty);
+        $isPrimaryKey = $this->determineIsPrimaryKey($primaryKeyProperty, $propertyAttribute);
+
+        [$generatorType, $sequence, $generatorOptions] = $this->extractGeneratorInfo($primaryKeyProperty, $propertyAttribute, $isPrimaryKey);
+
+        return new ReflectionProperty(
+            $propertyAttribute,
+            $property,
+            isset($property->getAttributes(AutoIncrement::class)[0]),
+            $isPrimaryKey,
+            $generatorType,
+            $sequence,
+            $generatorOptions,
+        );
+    }
+
+    /**
+     * Resolves which property attribute to use based on available attributes.
+     */
+    private function resolvePropertyAttribute(array $entityProperty, array $primaryKeyProperty): Property
+    {
+        // Find the explicit Property attribute (not PrimaryKey)
+        $explicitProperty = null;
+        foreach ($entityProperty as $attr) {
+            $instance = $attr->newInstance();
+            if (!$instance instanceof PrimaryKey) {
+                $explicitProperty = $instance;
+
+                break;
+            }
+        }
+
+        // Use explicit Property if available, otherwise use PrimaryKey
+        if ($explicitProperty !== null) {
+            return $explicitProperty;
+        }
+
+        if (!empty($primaryKeyProperty)) {
+            return $primaryKeyProperty[0]->newInstance();
+        }
+
+        // Fallback to first Property attribute
+        return $entityProperty[0]->newInstance();
+    }
+
+    /**
+     * Determines if a property is a primary key.
+     */
+    private function determineIsPrimaryKey(array $primaryKeyProperty, Property $propertyAttribute): bool
+    {
+        return !empty($primaryKeyProperty) || $propertyAttribute instanceof PrimaryKey;
+    }
+
+    /**
+     * Extracts generator information from primary key attributes.
+     */
+    private function extractGeneratorInfo(array $primaryKeyProperty, Property $propertyAttribute, bool $isPrimaryKey): array
+    {
+        if (!$isPrimaryKey) {
+            return [null, null, null];
+        }
+
+        // Get generator info from PrimaryKey attribute
+        $primaryKeyInstance = !empty($primaryKeyProperty)
+            ? $primaryKeyProperty[0]->newInstance()
+            : ($propertyAttribute instanceof PrimaryKey ? $propertyAttribute : null);
+
+        if (!$primaryKeyInstance) {
+            return [null, null, null];
+        }
+
+        return [
+            $primaryKeyInstance->generator,
+            $primaryKeyInstance->sequence,
+            $primaryKeyInstance->options,
+        ];
+    }
+
+    /**
+     * Processes OneToOne attributes for a given property.
+     * Returns the ReflectionRelation if found, null otherwise.
+     */
+    private function processOneToOneAttribute(\ReflectionProperty $property): ?ReflectionRelation
+    {
+        /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
+        $entityProperty = $property->getAttributes(OneToOne::class);
+        if (empty($entityProperty)) {
+            return null;
+        }
+
+        $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+        if (!$relation->isOwningSide()) {
+            return null;
+        }
+
+        return $relation;
+    }
+
+    /**
+     * Processes ManyToOne attributes for a given property.
+     * Returns the ReflectionRelation if found, null otherwise.
+     */
+    private function processManyToOneAttribute(\ReflectionProperty $property): ?ReflectionRelation
+    {
+        /** @var ReflectionAttribute<ManyToOne>[] $entityProperty */
+        $entityProperty = $property->getAttributes(ManyToOne::class);
+        if (empty($entityProperty)) {
+            return null;
+        }
+
+        $propertyInstance = $entityProperty[0]->newInstance();
+
+        return new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+    }
+
+    /**
+     * Processes MorphTo attributes for a given property.
+     * Returns the ReflectionRelation if found, null otherwise.
+     */
+    private function processMorphToAttribute(\ReflectionProperty $property): ?ReflectionRelation
+    {
+        /** @var ReflectionAttribute<MorphTo>[] $entityProperty */
+        $entityProperty = $property->getAttributes(MorphTo::class);
+        if (empty($entityProperty)) {
+            return null;
+        }
+
+        $propertyInstance = $entityProperty[0]->newInstance();
+
+        return new ReflectionRelation($propertyInstance, $property, $this->schemaNaming);
+    }
+
+    /**
+     * Processes MorphOne attributes for a given property.
+     * Returns the ReflectionRelation if found, null otherwise.
+     */
+    private function processMorphOneAttribute(\ReflectionProperty $property): ?ReflectionRelation
+    {
+        /** @var ReflectionAttribute<MorphOne>[] $entityProperty */
+        $entityProperty = $property->getAttributes(MorphOne::class);
+        if (empty($entityProperty)) {
+            return null;
+        }
+
+        $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+        if (!$relation->isOwningSide()) {
+            return null;
+        }
+
+        return $relation;
+    }
+
+    /**
+     * Processes MorphMany attributes for a given property.
+     * Returns the ReflectionRelation if found, null otherwise.
+     */
+    private function processMorphManyAttribute(\ReflectionProperty $property): ?ReflectionRelation
+    {
+        /** @var ReflectionAttribute<MorphMany>[] $entityProperty */
+        $entityProperty = $property->getAttributes(MorphMany::class);
+        if (empty($entityProperty)) {
+            return null;
+        }
+
+        $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
+        if (!$relation->isOwningSide()) {
+            return null;
+        }
+
+        return $relation;
     }
 
     public function getEntityFieldsProperties(): iterable
@@ -239,7 +349,7 @@ class ReflectionEntity extends ReflectionClass {
             /** @var ReflectionAttribute<MorphToMany>[] $morphToMany */
             $morphToMany = $property->getAttributes(MorphToMany::class);
             if (!empty($morphToMany)) {
-                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property, $this->schemaNaming);
+                yield new ReflectionMorphToMany($morphToMany[0]->newInstance(), $property);
             }
 
             /** @var ReflectionAttribute<MorphedByMany>[] $morphedByMany */
@@ -296,10 +406,33 @@ class ReflectionEntity extends ReflectionClass {
         return $this->getAttributes(Entity::class)[0]->newInstance()->tableName ?? $this->parseTableName();
     }
 
+    public function getRepositoryClass(): ?string
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        return $this->getAttributes(Entity::class)[0]->newInstance()->repositoryClass;
+    }
+
     private function parseTableName(): string
     {
         $className = explode('\\', $this->getName());
 
         return strtolower(preg_replace('/\B([A-Z])/', '_$1', end($className)));
+    }
+
+    public function getSoftDeleteableAttribute(): ?SoftDeleteable
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        $attributes = $this->getAttributes(SoftDeleteable::class);
+        if (empty($attributes)) {
+            return null;
+        }
+
+        return $attributes[0]->newInstance();
     }
 }

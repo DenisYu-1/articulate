@@ -8,6 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\SoftDeleteable;
 
 /**
  * Entity metadata containing all information about an entity class
@@ -18,11 +19,15 @@ class EntityMetadata {
 
     private ?string $tableName = null;
 
+    private ?string $repositoryClass = null;
+
     private array $properties = [];
 
     private array $relations = [];
 
     private array $primaryKeyColumns = [];
+
+    private ?SoftDeleteable $softDeleteable = null;
 
     public function __construct(string $entityClass)
     {
@@ -40,6 +45,7 @@ class EntityMetadata {
         }
 
         $this->tableName = $this->reflectionEntity->getTableName();
+        $this->repositoryClass = $this->reflectionEntity->getRepositoryClass();
         $this->primaryKeyColumns = $this->reflectionEntity->getPrimaryKeyColumns();
 
         // Load properties from getEntityProperties (includes Property attributes)
@@ -86,6 +92,9 @@ class EntityMetadata {
         foreach ($this->reflectionEntity->getEntityRelationProperties() as $relation) {
             $this->relations[$relation->getPropertyName()] = $relation;
         }
+
+        // Load soft-delete configuration
+        $this->softDeleteable = $this->reflectionEntity->getSoftDeleteableAttribute();
     }
 
     /**
@@ -94,6 +103,14 @@ class EntityMetadata {
     public function getTableName(): string
     {
         return $this->tableName;
+    }
+
+    /**
+     * Get the repository class for this entity.
+     */
+    public function getRepositoryClass(): ?string
+    {
+        return $this->repositoryClass;
     }
 
     /**
@@ -197,5 +214,29 @@ class EntityMetadata {
         }
 
         return $columns;
+    }
+
+    /**
+     * Check if this entity is soft-deleteable.
+     */
+    public function isSoftDeleteable(): bool
+    {
+        return $this->softDeleteable !== null;
+    }
+
+    /**
+     * Get the soft-delete column name.
+     */
+    public function getSoftDeleteColumn(): ?string
+    {
+        return $this->softDeleteable?->columnName;
+    }
+
+    /**
+     * Get the soft-delete field name.
+     */
+    public function getSoftDeleteField(): ?string
+    {
+        return $this->softDeleteable?->fieldName;
     }
 }

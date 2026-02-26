@@ -11,6 +11,9 @@ use RuntimeException;
 class PolymorphicRelationValidator implements RelationValidatorInterface {
     public function validate(RelationInterface $relation): void
     {
+        if (!$relation instanceof ReflectionRelation) {
+            return;
+        }
         if ($relation->isMorphTo()) {
             $this->validateMorphTo($relation);
         } elseif ($relation->isMorphOne()) {
@@ -26,7 +29,7 @@ class PolymorphicRelationValidator implements RelationValidatorInterface {
                ($relation->isMorphTo() || $relation->isMorphOne() || $relation->isMorphMany());
     }
 
-    private function validateMorphTo(RelationInterface $relation): void
+    private function validateMorphTo(ReflectionRelation $relation): void
     {
         // MorphTo relations are open-ended and don't specify target entities upfront
         // They validate that the morph columns exist and are properly configured
@@ -45,7 +48,7 @@ class PolymorphicRelationValidator implements RelationValidatorInterface {
         }
     }
 
-    private function validateMorphOne(RelationInterface $relation): void
+    private function validateMorphOne(ReflectionRelation $relation): void
     {
         // Validate that the target entity exists
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
@@ -63,7 +66,7 @@ class PolymorphicRelationValidator implements RelationValidatorInterface {
         $this->validateInverseMorphRelation($relation, $referencedBy, MorphTo::class);
     }
 
-    private function validateMorphMany(RelationInterface $relation): void
+    private function validateMorphMany(ReflectionRelation $relation): void
     {
         // Validate that the target entity exists
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
@@ -81,7 +84,7 @@ class PolymorphicRelationValidator implements RelationValidatorInterface {
         $this->validateInverseMorphRelation($relation, $referencedBy, MorphTo::class);
     }
 
-    private function validateInverseMorphRelation(RelationInterface $relation, string $inversePropertyName, string $expectedAttributeClass): void
+    private function validateInverseMorphRelation(ReflectionRelation $relation, string $inversePropertyName, string $expectedAttributeClass): void
     {
         $targetEntity = new ReflectionEntity($relation->getTargetEntity());
         if (!$targetEntity->hasProperty($inversePropertyName)) {

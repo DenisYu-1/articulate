@@ -4,17 +4,12 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
-use Articulate\Connection;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
-use Articulate\Modules\Generators\GeneratorRegistry;
-use ReflectionProperty;
 
 class UnitOfWork {
     private IdentityMap $identityMap;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
-
-    private GeneratorRegistry $generatorRegistry;
 
     private EntityMetadataRegistry $metadataRegistry;
 
@@ -35,20 +30,14 @@ class UnitOfWork {
 
     private LifecycleCallbackManager $callbackManager;
 
-    private Connection $connection;
-
     public function __construct(
-        Connection $connection,
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
-        ?GeneratorRegistry $generatorRegistry = null,
         ?LifecycleCallbackManager $callbackManager = null,
         ?EntityMetadataRegistry $metadataRegistry = null
     ) {
-        $this->connection = $connection;
         $this->identityMap = new IdentityMap();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
-        $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
     }
 
@@ -184,7 +173,6 @@ class UnitOfWork {
 
     public function registerManaged(object $entity, array $data): void
     {
-        // TODO: Extract ID from entity based on metadata
         $id = $this->extractEntityId($entity);
         $oid = spl_object_id($entity);
 
@@ -208,9 +196,12 @@ class UnitOfWork {
 
     public function isInIdentityMap(object $entity): bool
     {
-        // TODO: Check if entity is in identity map
-        // This requires extracting the ID from the entity
-        return false;
+        $id = $this->extractEntityId($entity);
+        if ($id === null) {
+            return false;
+        }
+
+        return $this->identityMap->has($entity::class, $id);
     }
 
     /**
@@ -220,6 +211,16 @@ class UnitOfWork {
     public function getScheduledUpdates(): array
     {
         return $this->scheduledUpdates;
+    }
+
+    public function detach(object $entity): void
+    {
+        $oid = spl_object_id($entity);
+
+        $this->identityMap->remove($entity);
+        $this->changeTrackingStrategy->untrackEntity($entity);
+        unset($this->entityStates[$oid], $this->entitiesByOid[$oid]);
+        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid], $this->scheduledDeletes[$oid]);
     }
 
     public function clear(): void

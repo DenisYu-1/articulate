@@ -6,6 +6,7 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
+use ReflectionNamedType;
 use RuntimeException;
 
 class ReflectionMorphedByMany implements RelationInterface {
@@ -29,7 +30,7 @@ class ReflectionMorphedByMany implements RelationInterface {
         }
         $this->assertCollectionType();
         $type = $this->property->getType();
-        if ($type && !$type->isBuiltin()) {
+        if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
             $reflectionEntity = new ReflectionEntity($type->getName());
             if (!$reflectionEntity->isEntity()) {
                 throw new RuntimeException('Non-entity found in relation');
@@ -138,6 +139,9 @@ class ReflectionMorphedByMany implements RelationInterface {
     {
         $type = $this->property->getType();
         if ($type === null) {
+            return;
+        }
+        if (!$type instanceof ReflectionNamedType) {
             return;
         }
         if ($type->isBuiltin()) {

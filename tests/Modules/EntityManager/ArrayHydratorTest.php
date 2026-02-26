@@ -5,12 +5,14 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Modules\EntityManager\ArrayHydrator;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use PHPUnit\Framework\TestCase;
+use stdClass;
 
 class ArrayHydratorTest extends TestCase {
     private ArrayHydrator $hydrator;
 
     protected function setUp(): void
     {
+        parent::setUp();
         $this->hydrator = new ArrayHydrator();
     }
 
@@ -36,7 +38,7 @@ class ArrayHydratorTest extends TestCase {
     public function testHydrateWithExistingEntityReturnsArray(): void
     {
         $data = ['id' => 1, 'name' => 'Test'];
-        $existingEntity = new \stdClass();
+        $existingEntity = new stdClass();
 
         $result = $this->hydrator->hydrate('SomeClass', $data, $existingEntity);
 
@@ -55,7 +57,7 @@ class ArrayHydratorTest extends TestCase {
 
     public function testExtractNonArrayThrowsException(): void
     {
-        $entity = new \stdClass();
+        $entity = new stdClass();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('ArrayHydrator is for read-only operations');
@@ -65,7 +67,7 @@ class ArrayHydratorTest extends TestCase {
 
     public function testHydratePartialThrowsException(): void
     {
-        $entity = new \stdClass();
+        $entity = new stdClass();
         $data = ['name' => 'Test'];
 
         $this->expectException(\RuntimeException::class);

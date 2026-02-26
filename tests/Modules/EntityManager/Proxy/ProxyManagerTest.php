@@ -23,12 +23,10 @@ class ProxyManagerTest extends AbstractTestCase {
         parent::setUp();
 
         $this->entityManager = $this->createMock(EntityManager::class);
-        $this->metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
         $this->proxyGenerator = $this->createMock(ProxyGenerator::class);
 
         $this->proxyManager = new ProxyManager(
             $this->entityManager,
-            $this->metadataRegistry,
             $this->proxyGenerator
         );
     }
@@ -217,6 +215,11 @@ class TestProxy extends ProxyManagerTestEntity implements ProxyInterface {
     public function getProxyEntityClass(): string
     {
         return $this->proxyEntityClass;
+    }
+
+    public function getProxyIdentifier(): mixed
+    {
+        return $this->proxyIdentifier;
     }
 
     public function _getIdentifier(): mixed

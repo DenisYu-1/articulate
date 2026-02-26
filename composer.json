@@ -25,12 +25,15 @@
         "squizlabs/php_codesniffer": "^3.10",
         "infection/infection": "dev-master",
         "deptrac/deptrac": "^2.0",
-        "phpmd/phpmd": "^2.15"
+        "phpmd/phpmd": "^2.15",
+        "phpstan/phpstan": "^2.0"
     },
     "require": {
         "symfony/console": "^8.0",
         "ramsey/uuid": "^4.7",
-        "symfony/uid": "^7.0"
+        "symfony/uid": "^7.0",
+        "psr/cache": "^3.0",
+        "psr/log": "^3.0"
     },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",
@@ -39,12 +42,13 @@
         "test:coverage": "phpunit --configuration=phpunit.coverage.xml",
         "test:mutation": [
             "@test:mutation:clean",
-            "php -d memory_limit=256M vendor/bin/infection --threads=max"
+            "php -d memory_limit=512M vendor/bin/infection --threads=max"
         ],
         "test:mutation:clean": "find build/infection -mindepth 1 -delete 2>/dev/null || true",
         "architecture:check": "vendor/bin/deptrac analyse --config-file=deptrac.yaml",
         "architecture:check:verbose": "vendor/bin/deptrac analyse --config-file=deptrac.yaml --formatter=graphviz-image --output=architecture.svg",
         "complexity:check": "php vendor/bin/phpmd src text phpmd.xml",
+        "static:check": "phpstan analyse --memory-limit=256M",
         "qa": [
             "@cs:check",
             "@architecture:check",

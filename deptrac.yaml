@@ -110,6 +110,9 @@ parameters:
     QueryBuilder:
       - Connection
       - EntityManager
+      - Exceptions
+      - Attributes
+      - Utils
 
     Commands:
       - Connection

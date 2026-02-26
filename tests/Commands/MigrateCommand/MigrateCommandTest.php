@@ -189,9 +189,9 @@ PHP;
     }
 
     /**
-     * Test migrate command uses default migrations path when none provided.
+     * Test migrate command executes with specified migrations path.
      */
-    public function testUsesDefaultMigrationsPathWhenNoneProvided(): void
+    public function testExecutesWithSpecifiedMigrationsPath(): void
     {
         $connection = $this->createMock(Connection::class);
 
@@ -199,11 +199,14 @@ PHP;
             ->expects($this->once())
             ->method('ensureMigrationsTableExists');
 
-        // Default path is /app/migrations
+        $connection->expects($this->atLeastOnce())
+            ->method('executeQuery');
+
+        // Use temp directory for migrations
         $command = new MigrateCommand(
             $connection,
             $this->initCommand,
-            null // No custom path
+            $this->migrationsPath
         );
 
         $commandTester = new CommandTester($command);
@@ -212,7 +215,8 @@ PHP;
         $this->assertSame(0, $statusCode);
 
         $output = $commandTester->getDisplay();
-        $this->assertStringContainsString('Migrations directory does not exist: /app/migrations', $output);
+        // Should check for migrations since directory exists but is empty
+        $this->assertStringContainsString('No new migrations to execute', $output);
     }
 
     /**
@@ -224,7 +228,8 @@ PHP;
 
         $command = new MigrateCommand(
             $connection,
-            $this->initCommand
+            $this->initCommand,
+            '/tmp/test'
         );
 
         $this->assertSame('articulate:migrate', $command->getName());

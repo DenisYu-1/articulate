@@ -106,6 +106,10 @@ class ColumnComparator {
      *     relation: ?ReflectionRelation,
      *     foreignKeyRequired: bool,
      *     referencedColumn: ?string,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     isPrimaryKey: bool,
+     *     isAutoIncrement: bool
      * }> $propertiesIndexed
      * @return array<string, array{
      *     type: string|null,
@@ -115,11 +119,38 @@ class ColumnComparator {
      *     relation: ?ReflectionRelation,
      *     foreignKeyRequired: bool,
      *     referencedColumn: ?string,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     isPrimaryKey: bool,
+     *     isAutoIncrement: bool
      * }>
      */
     public function mergeColumnDefinition(array $propertiesIndexed, string $columnName, ReflectionProperty|ReflectionRelation $property, string $tableName): array
     {
-        $incoming = [
+        $incoming = $this->buildColumnProperties($property);
+
+        if (!isset($propertiesIndexed[$columnName])) {
+            $propertiesIndexed[$columnName] = $incoming;
+
+            return $propertiesIndexed;
+        }
+
+        $existing = $propertiesIndexed[$columnName];
+
+        $this->validateColumnConflicts($incoming, $existing, $columnName, $tableName);
+        $this->validateRelationConflicts($incoming, $existing, $columnName, $tableName);
+
+        $propertiesIndexed[$columnName] = $this->mergeColumnProperties($incoming, $existing);
+
+        return $propertiesIndexed;
+    }
+
+    /**
+     * Builds column properties array from a property or relation.
+     */
+    private function buildColumnProperties(ReflectionProperty|ReflectionRelation $property): array
+    {
+        return [
             'type' => $this->normalizeTypeName($property->getType()),
             'nullable' => $property->isNullable(),
             'default' => $property->getDefaultValue(),
@@ -132,15 +163,13 @@ class ColumnComparator {
             'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
             'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
         ];
+    }
 
-        if (!isset($propertiesIndexed[$columnName])) {
-            $propertiesIndexed[$columnName] = $incoming;
-
-            return $propertiesIndexed;
-        }
-
-        $existing = $propertiesIndexed[$columnName];
-
+    /**
+     * Validates column conflicts (type, length, default value mismatches).
+     */
+    private function validateColumnConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
+    {
         if ($incoming['type'] !== $existing['type'] || $incoming['length'] !== $existing['length'] || $incoming['default'] !== $existing['default']) {
             throw new RuntimeException(
                 sprintf(
@@ -150,7 +179,13 @@ class ColumnComparator {
                 ),
             );
         }
+    }
 
+    /**
+     * Validates relation-specific conflicts.
+     */
+    private function validateRelationConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
+    {
         if (($incoming['relation'] !== null) !== ($existing['relation'] !== null)) {
             throw new RuntimeException(
                 sprintf(
@@ -180,8 +215,14 @@ class ColumnComparator {
                 }
             }
         }
+    }
 
-        $propertiesIndexed[$columnName] = [
+    /**
+     * Merges column properties from incoming and existing definitions.
+     */
+    private function mergeColumnProperties(array $incoming, array $existing): array
+    {
+        return [
             'type' => $existing['type'],
             'nullable' => $existing['nullable'] || $incoming['nullable'],
             'default' => $existing['default'],
@@ -194,8 +235,6 @@ class ColumnComparator {
             'isPrimaryKey' => $existing['isPrimaryKey'] ?? $incoming['isPrimaryKey'],
             'isAutoIncrement' => $existing['isAutoIncrement'] ?? $incoming['isAutoIncrement'],
         ];
-
-        return $propertiesIndexed;
     }
 
     /**
@@ -207,6 +246,10 @@ class ColumnComparator {
      *     relation: ?ReflectionRelation,
      *     foreignKeyRequired: bool,
      *     referencedColumn: ?string,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     isPrimaryKey: bool,
+     *     isAutoIncrement: bool
      * }> $propertiesIndexed
      * @return array<string, array{
      *     type: string|null,
@@ -216,6 +259,10 @@ class ColumnComparator {
      *     relation: ?ReflectionRelation,
      *     foreignKeyRequired: bool,
      *     referencedColumn: ?string,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     isPrimaryKey: bool,
+     *     isAutoIncrement: bool
      * }>
      */
     public function addMorphToColumns(array $propertiesIndexed, ReflectionRelation $relation, string $tableName): array
@@ -265,7 +312,6 @@ class ColumnComparator {
         ];
 
         if (isset($propertiesIndexed[$idColumnName])) {
-            // Merge with existing definition
             $existing = $propertiesIndexed[$idColumnName];
             if ($idColumnData['type'] !== $existing['type']) {
                 throw new RuntimeException(
@@ -275,15 +321,15 @@ class ColumnComparator {
             $propertiesIndexed[$idColumnName] = [
                 'type' => $idColumnData['type'],
                 'nullable' => $existing['nullable'] && $idColumnData['nullable'],
-                'default' => $idColumnData['default'] ?? $existing['default'],
-                'length' => $idColumnData['length'] ?? $existing['length'],
-                'relation' => $idColumnData['relation'] ?? $existing['relation'],
+                'default' => $existing['default'],
+                'length' => $existing['length'],
+                'relation' => $idColumnData['relation'],
                 'foreignKeyRequired' => $idColumnData['foreignKeyRequired'] || $existing['foreignKeyRequired'],
-                'referencedColumn' => $idColumnData['referencedColumn'] ?? $existing['referencedColumn'],
-                'generatorType' => $existing['generatorType'] ?? $idColumnData['generatorType'],
-                'sequence' => $existing['sequence'] ?? $idColumnData['sequence'],
-                'isPrimaryKey' => $existing['isPrimaryKey'] ?? $idColumnData['isPrimaryKey'],
-                'isAutoIncrement' => $existing['isAutoIncrement'] ?? $idColumnData['isAutoIncrement'],
+                'referencedColumn' => $idColumnData['referencedColumn'],
+                'generatorType' => $existing['generatorType'],
+                'sequence' => $existing['sequence'],
+                'isPrimaryKey' => $existing['isPrimaryKey'],
+                'isAutoIncrement' => $existing['isAutoIncrement'],
             ];
         } else {
             $propertiesIndexed[$idColumnName] = $idColumnData;

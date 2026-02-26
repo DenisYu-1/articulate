@@ -75,6 +75,19 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
         $this->assertEquals('`id` INT AUTO_INCREMENT NOT NULL', $result);
     }
 
+    public function testColumnDefinitionHandlesIntegerPrimaryKeyAsUnsigned(): void
+    {
+        $column = new PropertiesData(
+            type: 'int',
+            isNullable: false,
+            isPrimaryKey: true
+        );
+
+        $result = $this->callProtectedMethod('columnDefinition', ['id', $column]);
+
+        $this->assertEquals('`id` INT UNSIGNED NOT NULL', $result);
+    }
+
     public function testGetForeignKeyKeywordReturnsConstraint(): void
     {
         $result = $this->callProtectedMethod('getForeignKeyKeyword', []);
@@ -156,6 +169,11 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
         $column = new PropertiesData(type: 'string', length: 100);
         $result = $this->callProtectedMethod('mapTypeLength', [$column]);
         $this->assertEquals('VARCHAR(100)', $result);
+
+        // Test integer primary key returns INT UNSIGNED
+        $column = new PropertiesData(type: 'int', isPrimaryKey: true);
+        $result = $this->callProtectedMethod('mapTypeLength', [$column]);
+        $this->assertEquals('INT UNSIGNED', $result);
     }
 
     public function testColumnDefinitionHandlesDefaults(): void

@@ -20,7 +20,7 @@ class MigrateCommand extends Command {
     public function __construct(
         private readonly Connection $connection,
         private readonly InitCommand $initCommand,
-        private readonly ?string $migrationsPath = null,
+        private readonly string $migrationsPath,
     ) {
         parent::__construct();
     }
@@ -43,7 +43,7 @@ class MigrateCommand extends Command {
 
         $this->initCommand->ensureMigrationsTableExists();
 
-        $directory = $this->migrationsPath ?: '/app/migrations';
+        $directory = $this->migrationsPath;
 
         if (!is_dir($directory)) {
             $io->warning("Migrations directory does not exist: $directory");

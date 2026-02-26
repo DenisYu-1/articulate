@@ -3,7 +3,6 @@
 namespace Articulate\Modules\EntityManager\Proxy;
 
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 
 /**
  * Manages proxy creation and lazy loading of relationships.
@@ -11,7 +10,6 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 class ProxyManager {
     public function __construct(
         private EntityManager $entityManager,
-        private EntityMetadataRegistry $metadataRegistry,
         private ProxyGenerator $proxyGenerator
     ) {
     }
@@ -39,7 +37,7 @@ class ProxyManager {
 
         // Load the actual entity data
         $entityClass = $proxy->getProxyEntityClass();
-        $entity = $this->entityManager->find($entityClass, $proxy->_getIdentifier());
+        $entity = $this->entityManager->find($entityClass, $proxy->getProxyIdentifier());
 
         if ($entity) {
             // Copy data from real entity to proxy

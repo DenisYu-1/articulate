@@ -59,7 +59,9 @@ class EntityMetadataRegistry {
     public function isEntity(string $entityClass): bool
     {
         try {
-            return $this->getMetadata($entityClass) !== null;
+            $this->getMetadata($entityClass);
+
+            return true;
         } catch (\InvalidArgumentException $e) {
             return false;
         }
