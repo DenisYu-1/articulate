@@ -42,7 +42,7 @@
         "test:coverage": "phpunit --configuration=phpunit.coverage.xml",
         "test:mutation": [
             "@test:mutation:clean",
-            "php -d memory_limit=256M vendor/bin/infection --threads=max"
+            "php -d memory_limit=512M vendor/bin/infection --threads=max"
         ],
         "test:mutation:clean": "find build/infection -mindepth 1 -delete 2>/dev/null || true",
         "architecture:check": "vendor/bin/deptrac analyse --config-file=deptrac.yaml",
