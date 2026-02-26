@@ -11,6 +11,7 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity]
 #[SoftDeleteable(fieldName: 'deletedAt', columnName: 'deleted_at')]
@@ -74,9 +75,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $connection->executeQuery($sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -102,9 +101,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertNotContains('Deleted User', $names);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWithDeletedIncludesAllEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -131,9 +128,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertContains('Deleted User', $names);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityManagerFindExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -153,9 +148,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertNull($deletedUser);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityManagerFindAllExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -177,9 +170,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertNotContains('Deleted User', $names);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityManagerFindAllWithDeletedWhenDisabled(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -198,9 +189,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertCount(3, $allUsers);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterWithWhereConditions(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -224,9 +213,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertEquals('John', $results[0]['name']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterInSubQuery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -253,9 +240,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->assertCount(2, $results);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterWithCount(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -284,9 +269,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         }
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterWithJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -325,9 +308,7 @@ class QueryBuilderSoftDeleteFunctionalTest extends DatabaseTestCase {
         $this->connection->executeQuery('DROP TABLE IF EXISTS posts');
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterWithGroupBy(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

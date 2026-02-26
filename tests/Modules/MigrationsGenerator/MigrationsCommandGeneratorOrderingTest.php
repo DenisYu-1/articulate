@@ -9,13 +9,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorOrderingTest extends DatabaseTestCase {
     /**
      * Test that drop operations order foreign keys before columns for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testDropOperationsOrderForeignKeysBeforeColumns(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -72,9 +72,8 @@ class MigrationsCommandGeneratorOrderingTest extends DatabaseTestCase {
 
     /**
      * Test that add operations order columns before indexes before foreign keys for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testAddOperationsOrderColumnsBeforeIndexesBeforeForeignKeys(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -126,9 +125,8 @@ class MigrationsCommandGeneratorOrderingTest extends DatabaseTestCase {
 
     /**
      * Test that rollback ordering matches forward migration for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testRollbackOrderingMatchesForwardMigration(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -194,9 +192,8 @@ class MigrationsCommandGeneratorOrderingTest extends DatabaseTestCase {
 
     /**
      * Test complex mixed operations ordering for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testComplexMixedOperationsOrdering(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

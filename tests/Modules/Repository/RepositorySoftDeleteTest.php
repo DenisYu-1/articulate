@@ -12,6 +12,7 @@ use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\Repository\AbstractRepository;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity]
 #[SoftDeleteable(fieldName: 'deletedAt', columnName: 'deleted_at')]
@@ -80,9 +81,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $connection->executeQuery($sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryFindExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -103,9 +102,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->assertNull($deletedProduct);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryFindAllExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -128,9 +125,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->assertNotContains('Deleted Product', $names);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryFindByExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -149,9 +144,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->assertCount(2, $products);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryCountExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -170,9 +163,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals(2, $count);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryExistsExcludesDeletedEntities(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -190,9 +181,7 @@ class RepositorySoftDeleteTest extends DatabaseTestCase {
         $this->assertFalse($this->repository->exists(2));
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRepositoryFindAllWithDeletedWhenDisabled(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

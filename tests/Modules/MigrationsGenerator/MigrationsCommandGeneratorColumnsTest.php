@@ -7,13 +7,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
     /**
      * Test field migration operations for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testFieldMigration(string $databaseName): void
     {
         $cases = $this->getFieldMigrationCases($databaseName);
@@ -120,9 +120,8 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
 
     /**
      * Test column quoting in generated SQL for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testColumnQuotingInSql(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

@@ -13,6 +13,7 @@ use Articulate\Modules\EntityManager\EntityMetadata;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\Group;
 
 #[Entity(tableName: 'test_authors')]
 class TestAuthor {
@@ -110,9 +111,8 @@ class RelationshipLoaderTest extends DatabaseTestCase {
 
     /**
      * Test OneToMany relationship loading.
-     *
-     * @group database
      */
+    #[Group('database')]
     public function testLoadOneToManyRelationship(): void
     {
         $databaseName = 'mysql';
@@ -166,9 +166,8 @@ class RelationshipLoaderTest extends DatabaseTestCase {
 
     /**
      * Test ManyToOne relationship loading.
-     *
-     * @group database
      */
+    #[Group('database')]
     public function testLoadManyToOneRelationship(): void
     {
         $databaseName = 'mysql';

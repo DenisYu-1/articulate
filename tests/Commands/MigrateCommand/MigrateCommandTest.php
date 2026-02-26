@@ -8,6 +8,8 @@ use Articulate\Connection;
 use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
 use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Component\Console\Tester\CommandTester;
 
@@ -63,10 +65,9 @@ class MigrateCommandTest extends DatabaseTestCase {
 
     /**
      * Test migrate command executes successfully with migrations.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testExecutesMigrationsSuccessfully(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -265,10 +266,9 @@ PHP;
 
     /**
      * Test migrate command queries executed migrations from database.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testQueriesExecutedMigrationsFromDatabase(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);

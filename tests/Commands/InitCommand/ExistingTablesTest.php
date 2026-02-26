@@ -5,15 +5,16 @@ namespace Articulate\Tests\Commands\InitCommand;
 use Articulate\Commands\InitCommand;
 use Articulate\Connection;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class ExistingTablesTest extends DatabaseTestCase {
     /**
      * Test init command execution with existing migrations table.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testExecuteWithExistingMigrationsTable(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);

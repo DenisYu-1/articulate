@@ -8,13 +8,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
     /**
      * Test auto_increment primary key generation.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testAutoIncrementPrimaryKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -155,9 +155,8 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
 
     /**
      * Test UUID primary key generation (both databases).
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testUuidPrimaryKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -210,9 +209,8 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
 
     /**
      * Test ULID primary key generation (both databases).
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testUlidPrimaryKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

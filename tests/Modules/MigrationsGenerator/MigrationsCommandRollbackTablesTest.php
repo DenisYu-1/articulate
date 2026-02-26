@@ -7,13 +7,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandRollbackTablesTest extends DatabaseTestCase {
     /**
      * Test rollback operations for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testCreateTable(string $databaseName): void
     {
         $cases = $this->getRollbackTestCases($databaseName);

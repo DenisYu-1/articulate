@@ -49,6 +49,8 @@ namespace Articulate\Tests\MyModule;
 
 use Articulate\Connection;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 
 class MyDatabaseTest extends DatabaseTestCase
 {
@@ -58,14 +60,11 @@ class MyDatabaseTest extends DatabaseTestCase
 
 ### 2. Use Data Providers
 
-Add data provider annotations to your test methods:
+Add data provider attributes to your test methods:
 
 ```php
-/**
- * Test that runs on all available databases
- * @dataProvider databaseProvider
- * @group database
- */
+#[DataProvider('databaseProvider')]
+#[Group('database')]
 public function testMyFeature(Connection $connection, string $databaseName): void
 {
     $this->setCurrentDatabase($connection, $databaseName);
@@ -108,22 +107,16 @@ Return connections for specific databases only.
 ### Example Usage
 
 ```php
-/**
- * Test all databases
- * @dataProvider databaseProvider
- * @group database
- */
+#[DataProvider('databaseProvider')]
+#[Group('database')]
 public function testAllDatabases(Connection $connection, string $databaseName): void
 {
     $this->setCurrentDatabase($connection, $databaseName);
     // Test logic
 }
 
-/**
- * Test MySQL only
- * @dataProvider mysqlProvider
- * @group mysql
- */
+#[DataProvider('mysqlProvider')]
+#[Group('mysql')]
 public function testMySqlOnly(Connection $connection, string $databaseName): void
 {
     $this->setCurrentDatabase($connection, $databaseName);

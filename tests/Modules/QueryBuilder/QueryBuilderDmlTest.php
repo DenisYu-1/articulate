@@ -9,6 +9,7 @@ use Articulate\Attributes\Table;
 use Articulate\Connection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity]
 #[Table('testusers')]
@@ -42,9 +43,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
 
     private Connection $connection;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testInsertSingleEntity(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -73,9 +72,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('john@example.com', $result[0]['email']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testInsertMultiRow(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -108,9 +105,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('Jane Smith', $results[1]['name']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testInsertWithNullValues(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -138,9 +133,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertNull($result[0]['email']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testUpdateByEntity(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -170,9 +163,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('john.updated@example.com', $result[0]['email']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testUpdateWithCustomWhere(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -197,9 +188,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         }
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testUpdateWithSetArray(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -224,9 +213,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('updated@example.com', $result[0]['email']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testDeleteByEntity(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -253,9 +240,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals(2, $results[0]['id']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testDeleteWithCustomWhere(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -279,9 +264,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals(2, $results[0]['id']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testInsertReturningPostgreSQL(string $databaseName): void
     {
         if ($databaseName !== 'pgsql') {
@@ -308,9 +291,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('John Doe', $result[0]['name']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testUpdateReturningPostgreSQL(string $databaseName): void
     {
         if ($databaseName !== 'pgsql') {
@@ -332,9 +313,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('John Updated', $result[0]['name']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testDeleteReturningPostgreSQL(string $databaseName): void
     {
         if ($databaseName !== 'pgsql') {
@@ -356,9 +335,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals('John', $result[0]['name']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testInsertWithTableName(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -378,9 +355,7 @@ class QueryBuilderDmlTest extends DatabaseTestCase {
         $this->assertEquals(1, $id);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testResetClearsDmlState(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

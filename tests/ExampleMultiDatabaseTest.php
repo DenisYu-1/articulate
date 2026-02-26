@@ -3,6 +3,8 @@
 namespace Articulate\Tests;
 
 use Articulate\Connection;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 
 /**
  * Example test demonstrating how to use the multi-database testing setup.
@@ -18,10 +20,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
      *
      * This test will be executed once for each available database.
      * The test method receives the database name as parameter and gets the connection itself.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testBasicTableCreation(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -62,10 +63,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
     /**
      * Test that runs against all databases with data insertion and retrieval.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testDataInsertionAndRetrieval(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -106,10 +106,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
     /**
      * Test that runs only on MySQL.
-     *
-     * @dataProvider mysqlProvider
-     * @group mysql
      */
+    #[DataProvider('mysqlProvider')]
+    #[Group('mysql')]
     public function testMySqlSpecificFeatures(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -131,10 +130,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
     /**
      * Test that runs only on PostgreSQL.
-     *
-     * @dataProvider pgsqlProvider
-     * @group pgsql
      */
+    #[DataProvider('pgsqlProvider')]
+    #[Group('pgsql')]
     public function testPostgresqlSpecificFeatures(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -188,10 +186,9 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
     /**
      * Test foreign key constraints across databases.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testForeignKeyConstraints(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);

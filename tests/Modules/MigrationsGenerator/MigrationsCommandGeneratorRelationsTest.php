@@ -8,13 +8,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
     /**
      * Test field migration operations for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testFieldMigration(string $databaseName): void
     {
         $cases = $this->getFieldMigrationCases($databaseName);
@@ -105,9 +105,8 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
 
     /**
      * Test one-to-one foreign key creation for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testOneToOneForeignKeyCreation(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -158,9 +157,8 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
 
     /**
      * Test one-to-one foreign key skipped for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testOneToOneForeignKeySkipped(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -204,9 +202,8 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
 
     /**
      * Test one-to-one foreign key drop for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testOneToOneForeignKeyDrop(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -250,9 +247,8 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
 
     /**
      * Test foreign key and column drop combined for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testForeignKeyAndColumnDropCombined(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -303,9 +299,8 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
 
     /**
      * Test rollback recreates foreign key on table restore for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testRollbackRecreatesForeignKeyOnTableRestore(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

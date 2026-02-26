@@ -1,6 +1,6 @@
 {
-    "name": "denis/articulate",
-    "description": "A business-oriented PHP ORM library",
+    "name": "denisyu-1/articulate",
+    "description": "Context-bounded PHP ORM for domain-driven applications",
     "type": "library",
     "autoload": {
         "psr-4": {
@@ -14,12 +14,14 @@
     },
     "authors": [
         {
-            "name": "denis",
-            "email": "denisalitb@rambler.ru"
+            "name": "Denis Yuryev",
+            "email": "denis.yuryev.de@gmail.com"
         }
     ],
+    "homepage": "https://github.com/DenisYu-1/articulate",
+    "keywords": ["orm", "php", "database", "ddd", "bounded-context", "entity-manager"],
     "require-dev": {
-        "phpunit/phpunit": "^10.0",
+        "phpunit/phpunit": "^12.0",
         "vlucas/phpdotenv": "^5.6",
         "friendsofphp/php-cs-fixer": "^3.62",
         "squizlabs/php_codesniffer": "^3.10",
@@ -29,6 +31,7 @@
         "phpstan/phpstan": "^2.0"
     },
     "require": {
+        "php": ">=8.4",
         "symfony/console": "^8.0",
         "ramsey/uuid": "^4.7",
         "symfony/uid": "^7.0",

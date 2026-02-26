@@ -9,13 +9,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
     /**
      * Test that polymorphic relation creates correct migration for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testPolymorphicRelationCreatesCorrectMigration(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -99,9 +99,8 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
 
     /**
      * Test polymorphic relation alter table migration for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testPolymorphicRelationAlterTableMigration(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -159,9 +158,8 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
 
     /**
      * Test polymorphic relation migration rollback for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testPolymorphicRelationMigrationRollback(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
