@@ -1,4 +1,13 @@
-# Multi-Database Testing Setup
+# Testing
+
+## Strategy
+
+- Parallel tests across MySQL and PostgreSQL
+- Real database connections, no mocks
+- Mutation testing via Infection
+- `composer qa` — CS check → Architecture check → Tests → Mutation testing
+
+## Multi-Database Testing Setup
 
 This document explains how to use the multi-database testing setup that allows you to run the same tests across MySQL and PostgreSQL databases automatically.
 

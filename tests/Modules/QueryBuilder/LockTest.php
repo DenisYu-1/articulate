@@ -6,15 +6,14 @@ use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class LockTest extends DatabaseTestCase {
     private QueryBuilder $qb;
 
     private Connection $connection;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockAddsForUpdateToSql(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -31,9 +30,7 @@ class LockTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM users WHERE id = ? FOR UPDATE', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockThrowsExceptionWhenNoTransactionInGetResult(string $databaseName): void
     {
         $hostEnv = $databaseName === 'mysql' ? 'DATABASE_HOST' : 'DATABASE_HOST_PGSQL';
@@ -60,9 +57,7 @@ class LockTest extends DatabaseTestCase {
             ->getResult();
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockThrowsExceptionWhenNoTransactionInExecute(string $databaseName): void
     {
         $hostEnv = $databaseName === 'mysql' ? 'DATABASE_HOST' : 'DATABASE_HOST_PGSQL';
@@ -88,9 +83,7 @@ class LockTest extends DatabaseTestCase {
             ->execute();
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockWorksWithTransactionInGetResult(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -116,9 +109,7 @@ class LockTest extends DatabaseTestCase {
         }
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockWorksWithTransactionInExecute(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -143,9 +134,7 @@ class LockTest extends DatabaseTestCase {
         }
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockWithComplexQuery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -166,9 +155,7 @@ class LockTest extends DatabaseTestCase {
         $this->assertEquals($expected, $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLockIsResetByResetMethod(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

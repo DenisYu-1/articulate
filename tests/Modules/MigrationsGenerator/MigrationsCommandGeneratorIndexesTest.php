@@ -9,13 +9,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
     /**
      * Test dropping indexes for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testDropsIndex(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -57,9 +57,8 @@ class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
 
     /**
      * Test dropping indexes with column updates for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testDropsIndexOnUpdate(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -110,9 +109,8 @@ class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
 
     /**
      * Test restoring deleted indexes on rollback for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testRestoresDeletedIndexOnRollback(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -158,9 +156,8 @@ class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
 
     /**
      * Test creating concurrent indexes for both databases.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testCreatesConcurrentIndex(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

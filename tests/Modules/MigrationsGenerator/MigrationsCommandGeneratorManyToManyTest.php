@@ -10,13 +10,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
     /**
      * Test creating a basic many-to-many mapping table.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testCreateBasicManyToManyMappingTable(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -85,9 +85,8 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
 
     /**
      * Test creating a many-to-many mapping table with extra columns.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testCreateManyToManyMappingTableWithExtras(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -168,9 +167,8 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
 
     /**
      * Test dropping a many-to-many mapping table.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testDropManyToManyMappingTable(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

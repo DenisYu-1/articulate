@@ -13,6 +13,7 @@ use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity]
 #[SoftDeleteable(fieldName: 'deletedAt', columnName: 'deleted_at')]
@@ -50,9 +51,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
 
     private EntityManager $entityManager;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterAppliedWhenAdded(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -72,9 +71,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM soft_deleteable_test_entity WHERE deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterNotAppliedWhenWithDeleted(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -95,9 +92,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM soft_deleteable_test_entity', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterNotAppliedWhenDisabled(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -118,9 +113,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM soft_deleteable_test_entity', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterWithExistingWhereClause(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -141,9 +134,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM soft_deleteable_test_entity WHERE name = ? AND deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterNotDuplicated(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -163,9 +154,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertStringContainsString('deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterNotAppliedForNonSoftDeleteableEntity(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -184,9 +173,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id FROM non_soft_deleteable_test_entity', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterNotAppliedForRawSql(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -203,9 +190,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertEquals('SELECT * FROM soft_deleteable_test_entity WHERE id = ?', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSoftDeleteFilterInSubQuery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -229,9 +214,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertStringContainsString('deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityManagerSoftDeleteFilterApplied(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -248,9 +231,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertStringContainsString('deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityManagerSoftDeleteCanBeDisabled(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -268,9 +249,7 @@ class QueryBuilderSoftDeleteTest extends DatabaseTestCase {
         $this->assertStringNotContainsString('deleted_at IS NULL', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCustomSoftDeleteColumnName(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

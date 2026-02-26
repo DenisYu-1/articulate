@@ -5,15 +5,14 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class WhereClauseTest extends DatabaseTestCase {
     private QueryBuilder $qb;
 
     private Connection $connection;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereAlwaysAddsConditions(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -33,9 +32,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals(['active'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithMultipleCallsCreatesAndConditions(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -55,9 +52,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([true, 18, ['admin', 'moderator']], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testOrWhereCreatesOrConditions(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -76,9 +71,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals(['active', 'pending'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereInWithSingleValue(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -96,9 +89,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([[5]], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereInWithMultipleValues(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -116,9 +107,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([['admin', 'moderator', 'user']], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereInWithEmptyArray(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -137,9 +126,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotIn(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -157,9 +144,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([['banned', 'suspended']], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotInWithEmptyArray(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -178,9 +163,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNull(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -198,9 +181,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotNull(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -218,9 +199,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereBetween(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -238,9 +217,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([18, 65], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereBetweenWithEqualMinMax(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -258,9 +235,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([100, 100], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testComplexWhereConditions(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -282,9 +257,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([true, ['admin', 'moderator'], '2023-01-01', '2023-12-31'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithSpecialCharacters(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -302,9 +275,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals(['john_doe'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithReservedKeywords(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -322,9 +293,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals(['asc'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithUnicodeCharacters(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -342,9 +311,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals(['José María'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithZeroValues(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -363,9 +330,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([0, 0], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithBooleanValues(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -384,9 +349,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([true, false], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereWithDateTimeObjects(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -406,9 +369,7 @@ class WhereClauseTest extends DatabaseTestCase {
         $this->assertEquals([$date], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSqlInjectionPrevention(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

@@ -9,14 +9,15 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 
 class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
     /**
      * Test table creation with foreign keys across all databases.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testCreateTableWithForeignKeyAppliedToDatabase(string $databaseName): void
     {
 

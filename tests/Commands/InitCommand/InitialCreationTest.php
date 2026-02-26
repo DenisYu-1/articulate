@@ -5,15 +5,16 @@ namespace Articulate\Tests\Commands\InitCommand;
 use Articulate\Commands\InitCommand;
 use Articulate\Connection;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class InitialCreationTest extends DatabaseTestCase {
     /**
      * Test that init command creates migrations table.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testCreatesMigrationsTable(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -62,10 +63,9 @@ class InitialCreationTest extends DatabaseTestCase {
 
     /**
      * Test that init command does nothing when migrations table already exists.
-     *
-     * @dataProvider databaseProvider
-     * @group database
      */
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
     public function testDoesNothingWhenTableExists(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);

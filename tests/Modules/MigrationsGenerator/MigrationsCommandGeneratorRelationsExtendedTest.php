@@ -10,13 +10,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
     /**
      * Test ManyToOne relation creates foreign key.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testManyToOneRelation(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -65,9 +65,8 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
     /**
      * Test OneToMany relation inverse (no SQL generated, just logical).
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testOneToManyRelationInverse(string $databaseName): void
     {
         // OneToMany relations don't generate SQL - they're just the inverse side
@@ -93,9 +92,8 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
     /**
      * Test OneToOne relation with foreign key on owning side.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testOneToOneRelationOwningSide(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -144,9 +142,8 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
     /**
      * Test dropping foreign key from relation.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testDropRelationForeignKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -188,9 +185,8 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
     /**
      * Test cascading foreign key constraints.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testCascadingForeignKey(string $databaseName): void
     {
         // Note: The current implementation doesn't handle cascade options yet

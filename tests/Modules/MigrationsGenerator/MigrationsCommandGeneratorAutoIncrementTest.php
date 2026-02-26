@@ -8,13 +8,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Tests\DatabaseTestCase;
 use Articulate\Tests\MigrationsGeneratorTestHelper;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
     /**
      * Test AutoIncrement attribute on primary key column.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testAutoIncrementPrimaryKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -73,9 +73,8 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
 
     /**
      * Test AutoIncrement attribute on non-primary key column.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testAutoIncrementNonPrimaryKey(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -146,9 +145,8 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
 
     /**
      * Test altering table to add AutoIncrement column.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testAddAutoIncrementColumn(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(
@@ -195,9 +193,8 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
 
     /**
      * Test rollback of AutoIncrement column addition.
-     *
-     * @dataProvider databaseProvider
      */
+    #[DataProvider('databaseProvider')]
     public function testRollbackAutoIncrementColumn(string $databaseName): void
     {
         $tableCompareResult = new TableCompareResult(

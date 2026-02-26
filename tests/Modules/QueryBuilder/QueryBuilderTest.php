@@ -14,6 +14,7 @@ use Articulate\Modules\Repository\Criteria\EqualsCriteria;
 use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
 use Articulate\Modules\Repository\Criteria\LessThanCriteria;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Entity]
 class EntityManagerTestEntity {
@@ -29,9 +30,7 @@ class QueryBuilderTest extends DatabaseTestCase {
 
     private EntityManager $entityManager;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testBasicSelect(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -46,9 +45,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM users', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSelectAll(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -62,9 +59,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT * FROM users', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereClause(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -83,9 +78,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([1], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testQueryBuilderExecutesQueriesAgainstDatabase(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -118,9 +111,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         );
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testMultipleWhereClauses(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -140,9 +131,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotGroup(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -166,9 +155,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['active', 18], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testOrWhereNotGroup(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -195,9 +182,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true, 'blocked', 21], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -213,9 +198,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT u.id, u.name, p.title FROM users u JOIN posts ON p.user_id = u.id', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLeftJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -231,9 +214,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT u.id, u.name, COUNT(p.id) as post_count FROM users u LEFT JOIN posts p ON p.user_id = u.id', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testLimitAndOffset(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -250,9 +231,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM users LIMIT 10 OFFSET 20', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testOrderBy(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -269,9 +248,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT id, name FROM users ORDER BY name ASC, id DESC', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testComplexQuery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -299,9 +276,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true, true, '2023-01-01'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGetResultReturnsEmptyArrayForNoResults(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -316,9 +291,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([], $result);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGetResultReturnsRawData(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -339,9 +312,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals($expected, $result);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testExecuteReturnsRowCount(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -362,9 +333,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(1, $result);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSetAndGetHydrator(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -381,9 +350,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertNull($this->qb->getHydrator());
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testConstructorWithHydrator(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -395,9 +362,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertSame($hydrator, $qb->getHydrator());
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSetEntityClass(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -412,9 +377,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertStringContainsString('users', $qb->getSQL());
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testResolveTableName(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -432,9 +395,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('comments', $method->invoke($qb, 'MyNamespace\\Comment'));
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testEntityClassAutoTableResolution(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -448,9 +409,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertStringContainsString('FROM users', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGetSingleResult(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -466,9 +425,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['id' => 1, 'name' => 'John'], $result);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGetSingleResultReturnsNullForNoResults(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -483,9 +440,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertNull($result);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSetUnitOfWork(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -499,9 +454,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertSame($qb, $result); // Should return self for chaining
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGetResultWithHydrationAndUnitOfWork(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -542,9 +495,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('Jane', $result[1]->name);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testGroupBy(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -561,9 +512,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT category, COUNT(*) as count FROM products GROUP BY category, status', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testConstructorWithMetadataRegistry(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -576,9 +525,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertInstanceOf(QueryBuilder::class, $qb);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testRightJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -594,12 +541,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT u.id, u.name, p.title FROM users u RIGHT JOIN posts p ON p.user_id = u.id', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCrossJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -615,9 +557,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals('SELECT u.name, c.name FROM users u CROSS JOIN categories', $sql);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereLike(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -636,9 +576,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['%john%'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotLike(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -657,12 +595,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['%.test.%'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereGreaterThan(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -681,9 +614,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([18], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereGreaterThanOrEqual(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -702,9 +633,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([100], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereLessThan(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -723,9 +652,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([65], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereLessThanOrEqual(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -744,9 +671,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([10], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotEqual(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -765,9 +690,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['banned'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereExists(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -793,9 +716,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testOrWhereLike(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -815,9 +736,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true, '%admin%'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereInWithSubquery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -844,9 +763,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals(['2024-01-01'], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testWhereNotInWithSubquery(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -872,9 +789,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSelectSub(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -901,9 +816,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testSelectSubWithoutAlias(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -929,9 +842,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testParameterOrderWithSelectRawAndJoin(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -957,9 +868,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true, 'public', true, 5], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testParameterOrderWithSelectSubAndWhereIn(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -998,9 +907,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->assertEquals([true, true, true], $params);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testComplexQueryWithNewFeatures(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);

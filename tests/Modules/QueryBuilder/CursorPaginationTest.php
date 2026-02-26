@@ -9,15 +9,14 @@ use Articulate\Modules\QueryBuilder\CursorCodec;
 use Articulate\Modules\QueryBuilder\CursorDirection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class CursorPaginationTest extends DatabaseTestCase {
     private QueryBuilder $qb;
 
     private Connection $connection;
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationRequiresOrderBy(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -37,9 +36,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->qb->getCursorPaginatedResult();
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationMaxTwoOrderByColumns(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -61,9 +58,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->qb->getCursorPaginatedResult();
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationSingleColumnAsc(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -103,9 +98,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertEquals(4, $items2[1]['id']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationSingleColumnDesc(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -144,9 +137,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertEquals(2, $items2[1]['id']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationTwoColumns(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -196,9 +187,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertEquals(4, $items2[1]['id']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationWithWhereClause(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -229,9 +218,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertEquals('active', $items[1]['status']);
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationLastPage(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -266,9 +253,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertNull($paginator2->getNextCursor());
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorCodecEncodeDecode(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
@@ -283,9 +268,7 @@ class CursorPaginationTest extends DatabaseTestCase {
         $this->assertEquals(CursorDirection::NEXT, $decoded->getDirection());
     }
 
-    /**
-     * @dataProvider databaseProvider
-     */
+    #[DataProvider('databaseProvider')]
     public function testCursorPaginationRequiresCursorLimit(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
