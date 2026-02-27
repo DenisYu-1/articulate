@@ -34,10 +34,9 @@
     "require": {
         "php": ">=8.4",
         "symfony/console": "^8.0",
-        "ramsey/uuid": "^4.7",
-        "symfony/uid": "^7.0",
         "psr/cache": "^3.0",
-        "psr/log": "^3.0"
+        "psr/log": "^3.0",
+        "symfony/uid": "^8.0"
     },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",

@@ -2,11 +2,8 @@
 
 namespace Articulate\Modules\Generators;
 
-use Ramsey\Uuid\Uuid;
+use Symfony\Component\Uid\UuidV4;
 
-/**
- * UUID v4 generator for primary keys.
- */
 class UuidGenerator extends AbstractGenerator {
     public function __construct()
     {
@@ -15,6 +12,6 @@ class UuidGenerator extends AbstractGenerator {
 
     protected function generateInternal(string $entityClass, array $options = []): mixed
     {
-        return Uuid::uuid4()->toString();
+        return UuidV4::generate();
     }
 }
