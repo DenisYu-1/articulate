@@ -69,6 +69,7 @@ abstract class BaseMigration {
         }
 
         $this->connection->beginTransaction();
+
         try {
             $work();
             $this->connection->commit();
