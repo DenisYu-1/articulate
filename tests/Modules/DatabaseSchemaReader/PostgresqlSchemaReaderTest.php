@@ -7,9 +7,9 @@ use Articulate\Exceptions\DatabaseSchemaException;
 use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
 use Articulate\Modules\Database\SchemaReader\PostgresqlSchemaReader;
 use Articulate\Tests\AbstractTestCase;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PDOException;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 class PostgresqlSchemaReaderTest extends AbstractTestCase {
     private PostgresqlSchemaReader $reader;
