@@ -73,6 +73,9 @@ class QueryExecutor {
         // Handle MorphTo relationships
         $this->addMorphToColumns($entity, $columns, $placeholders, $values);
 
+        // Handle ManyToOne and owning OneToOne relationships
+        $this->addManyToOneColumns($entity, $columns, $placeholders, $values);
+
         // Generate INSERT SQL
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
@@ -155,6 +158,9 @@ class QueryExecutor {
 
         // Handle MorphTo relationships - add any morph columns that changed
         $this->addMorphToChanges($entity, $setParts, $values);
+
+        // Handle ManyToOne and owning OneToOne relationships
+        $this->addManyToOneChanges($entity, $setParts, $values);
 
         // Prepare WHERE clause - try primary key first, then fall back to 'id' property
         [$whereClause, $whereValues] = $this->buildWhereClause($entity);
@@ -533,6 +539,51 @@ class QueryExecutor {
                     $values[] = $relatedId;
                 }
             }
+        }
+    }
+
+    private function addManyToOneColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        foreach ($entityMetadata->getRelations() as $relation) {
+            if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
+                continue;
+            }
+
+            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty->setAccessible(true);
+            $relatedEntity = $reflectionProperty->getValue($entity);
+
+            if ($relatedEntity === null) {
+                continue;
+            }
+
+            $columns[] = $relation->getColumnName();
+            $placeholders[] = '?';
+            $values[] = $this->extractEntityId($relatedEntity);
+        }
+    }
+
+    private function addManyToOneChanges(object $entity, array &$setParts, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        foreach ($entityMetadata->getRelations() as $relation) {
+            if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
+                continue;
+            }
+
+            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty->setAccessible(true);
+            $relatedEntity = $reflectionProperty->getValue($entity);
+
+            if ($relatedEntity === null) {
+                continue;
+            }
+
+            $setParts[] = $relation->getColumnName() . ' = ?';
+            $values[] = $this->extractEntityId($relatedEntity);
         }
     }
 

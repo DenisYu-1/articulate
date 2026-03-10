@@ -23,6 +23,11 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
         unset($this->originalData[spl_object_id($entity)]);
     }
 
+    public function refreshSnapshot(object $entity): void
+    {
+        $this->originalData[spl_object_id($entity)] = $this->extractEntityData($entity);
+    }
+
     public function computeChangeSet(object $entity): array
     {
         $oid = spl_object_id($entity);
