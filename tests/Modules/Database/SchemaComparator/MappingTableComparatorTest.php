@@ -22,7 +22,7 @@ class MappingTableComparatorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $this->databaseSchemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
         $this->schemaNaming = new SchemaNaming();
         $this->indexComparator = new IndexComparator();
 

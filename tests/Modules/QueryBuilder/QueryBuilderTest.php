@@ -340,7 +340,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
-        $hydrator = $this->createMock(HydratorInterface::class);
+        $hydrator = $this->createStub(HydratorInterface::class);
 
         $this->qb->setHydrator($hydrator);
         $this->assertSame($hydrator, $this->qb->getHydrator());
@@ -356,7 +356,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
 
-        $hydrator = $this->createMock(HydratorInterface::class);
+        $hydrator = $this->createStub(HydratorInterface::class);
         $qb = new QueryBuilder($this->connection, $hydrator);
 
         $this->assertSame($hydrator, $qb->getHydrator());
@@ -446,7 +446,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
+        $unitOfWork = $this->createStub(UnitOfWork::class);
         $qb = new QueryBuilder($this->connection);
 
         $result = $qb->setUnitOfWork($unitOfWork);
@@ -518,7 +518,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
 
-        $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
+        $metadataRegistry = $this->createStub(EntityMetadataRegistry::class);
         $qb = new QueryBuilder($this->connection, null, $metadataRegistry);
 
         // Test that the metadata registry is set (private property, so we test indirectly)

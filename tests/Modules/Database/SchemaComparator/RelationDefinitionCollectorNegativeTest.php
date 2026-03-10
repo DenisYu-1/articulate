@@ -52,7 +52,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
     public function testValidateRelationsThrowsExceptionWhenValidatorFails(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')
@@ -81,11 +81,9 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(ReflectionManyToMany::class);
-        $relation2 = $this->createMock(ReflectionManyToMany::class);
+        $relation1 = $this->createStub(ReflectionManyToMany::class);
+        $relation2 = $this->createStub(ReflectionManyToMany::class);
 
-        // Both relations claim to be for the same table but have different join columns
-        // Set up both relations with conflicting join columns
         $relation1->method('isOwningSide')->willReturn(true);
         $relation1->method('getTableName')->willReturn('conflicting_table');
         $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Connection');
@@ -118,10 +116,9 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
     {
         $entity = $this->createMock(ReflectionEntity::class);
 
-        $relation1 = $this->createMock(ReflectionMorphToMany::class);
-        $relation2 = $this->createMock(ReflectionMorphToMany::class);
+        $relation1 = $this->createStub(ReflectionMorphToMany::class);
+        $relation2 = $this->createStub(ReflectionMorphToMany::class);
 
-        // Both relations for same table but different morph names
         $relation1->method('getTableName')->willReturn('taggables');
         $relation1->method('getTargetEntity')->willReturn('Articulate\\Connection');
         $relation1->method('getMorphName')->willReturn('taggable');
@@ -259,7 +256,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
     public function testValidationErrorsArePropagated(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')

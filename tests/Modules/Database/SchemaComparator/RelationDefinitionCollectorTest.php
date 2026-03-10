@@ -20,7 +20,7 @@ class RelationDefinitionCollectorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $this->validatorFactory = $this->createStub(RelationValidatorFactory::class);
         $this->collector = new RelationDefinitionCollector($this->validatorFactory);
     }
 
@@ -32,8 +32,8 @@ class RelationDefinitionCollectorTest extends TestCase {
     public function testValidateRelationsCallsValidatorForEachRelation(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation1 = $this->createMock(ReflectionRelation::class);
-        $relation2 = $this->createMock(ReflectionRelation::class);
+        $relation1 = $this->createStub(ReflectionRelation::class);
+        $relation2 = $this->createStub(ReflectionRelation::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')
@@ -42,7 +42,8 @@ class RelationDefinitionCollectorTest extends TestCase {
         $validator1 = $this->createMock(RelationValidatorInterface::class);
         $validator2 = $this->createMock(RelationValidatorInterface::class);
 
-        $this->validatorFactory->expects($this->exactly(2))
+        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $validatorFactory->expects($this->exactly(2))
             ->method('getValidator')
             ->willReturnMap([
                 [$relation1, $validator1],
@@ -57,7 +58,8 @@ class RelationDefinitionCollectorTest extends TestCase {
             ->method('validate')
             ->with($relation2);
 
-        $this->collector->validateRelations([$entity]);
+        $collector = new RelationDefinitionCollector($validatorFactory);
+        $collector->validateRelations([$entity]);
     }
 
     public function testCollectManyToManyTablesWithEmptyEntities(): void
@@ -71,7 +73,7 @@ class RelationDefinitionCollectorTest extends TestCase {
     public function testCollectManyToManyTablesWithNonManyToManyRelations(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation = $this->createMock(RelationInterface::class);
+        $relation = $this->createStub(RelationInterface::class);
 
         $entity->expects($this->once())
             ->method('getEntityRelationProperties')
@@ -249,10 +251,9 @@ class RelationDefinitionCollectorTest extends TestCase {
     public function testCollectManyToManyTablesThrowsOnConflictingColumnNames(): void
     {
         $entity = $this->createMock(ReflectionEntity::class);
-        $relation1 = $this->createMock(ReflectionManyToMany::class);
+        $relation1 = $this->createStub(ReflectionManyToMany::class);
         $relation2 = $this->createMock(ReflectionManyToMany::class);
 
-        // Both relations for same table but different join columns
         $relation1->method('isOwningSide')->willReturn(true);
         $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Connection');
         $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\Collection');

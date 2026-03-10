@@ -13,7 +13,7 @@ class RawSqlTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->connection = $this->createMock(Connection::class);
+        $this->connection = $this->createStub(Connection::class);
         $this->qb = new QueryBuilder($this->connection);
     }
 
@@ -150,17 +150,17 @@ class RawSqlTest extends TestCase {
 
     public function testRawReturnsRawData(): void
     {
-        $statement = $this->createMock(\PDOStatement::class);
+        $connection = $this->createMock(Connection::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([
             ['id' => 1, 'name' => 'John', 'email' => 'john@example.com'],
         ]);
 
-        $this->connection->expects($this->once())
+        $connection->expects($this->once())
             ->method('executeQuery')
             ->willReturn($statement);
 
-        // Raw queries return raw data, no hydration
-        $qb = $this->qb->raw('SELECT * FROM users WHERE id = ?', [1]);
+        $qb = (new QueryBuilder($connection))->raw('SELECT * FROM users WHERE id = ?', [1]);
 
         $result = $qb->getResult();
 
@@ -169,16 +169,17 @@ class RawSqlTest extends TestCase {
 
     public function testRawReturnsArrayWhenNoHydration(): void
     {
-        $statement = $this->createMock(\PDOStatement::class);
+        $connection = $this->createMock(Connection::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([
             ['id' => 1, 'name' => 'John'],
         ]);
 
-        $this->connection->expects($this->once())
+        $connection->expects($this->once())
             ->method('executeQuery')
             ->willReturn($statement);
 
-        $qb = $this->qb->raw('SELECT id, name FROM users');
+        $qb = (new QueryBuilder($connection))->raw('SELECT id, name FROM users');
         $result = $qb->getResult();
 
         $this->assertEquals([['id' => 1, 'name' => 'John']], $result);

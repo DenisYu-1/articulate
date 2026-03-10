@@ -47,7 +47,7 @@ class CriteriaTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $this->qb = new QueryBuilder($connection);
         $this->qb->from('test_entities');
     }
@@ -218,7 +218,7 @@ class CriteriaTest extends TestCase {
 
     public function testCriteriaChaining(): void
     {
-        $qb = new QueryBuilder($this->createMock(Connection::class));
+        $qb = new QueryBuilder($this->createStub(Connection::class));
         $qb->from('users');
 
         $criteria = new AndCriteria([

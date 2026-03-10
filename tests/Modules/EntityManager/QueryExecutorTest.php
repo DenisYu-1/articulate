@@ -38,7 +38,7 @@ class QueryExecutorTest extends TestCase {
     protected function setUp(): void
     {
         $this->connection = $this->createMock(Connection::class);
-        $this->generatorRegistry = $this->createMock(GeneratorRegistry::class);
+        $this->generatorRegistry = $this->createStub(GeneratorRegistry::class);
         $this->queryExecutor = new QueryExecutor($this->connection, $this->generatorRegistry);
     }
 
@@ -135,7 +135,7 @@ class QueryExecutorTest extends TestCase {
             ['id' => 2, 'name' => 'Test2'],
         ];
 
-        $statement = $this->createMock(\PDOStatement::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn($expectedResults);
 
         $this->connection->expects($this->once())

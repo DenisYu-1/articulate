@@ -13,7 +13,7 @@ class AggregateTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->connection = $this->createMock(Connection::class);
+        $this->connection = $this->createStub(Connection::class);
         $this->qb = new QueryBuilder($this->connection);
     }
 

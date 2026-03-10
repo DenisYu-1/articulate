@@ -15,6 +15,7 @@ use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCustomPrimaryKeyEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
 #[Entity]
@@ -34,16 +35,13 @@ class EntityManagerTest extends TestCase {
 
     protected function setUp(): void
     {
-        // Create a mock connection for testing
-        $connection = $this->createMock(Connection::class);
-
-        $this->entityManager = new EntityManager($connection);
+        $this->entityManager = new EntityManager($this->createStub(Connection::class));
     }
 
     public function testEntityManagerCreation(): void
     {
         $this->assertInstanceOf(EntityManager::class, $this->entityManager);
-        $this->assertInstanceOf(UnitOfWork::class, $this->entityManager->getUnitOfWork());
+        $this->assertInstanceOf(UnitOfWork::class, $this->entityManager->getActiveUnitOfWork());
     }
 
     public function testCreateUnitOfWork(): void
@@ -51,7 +49,7 @@ class EntityManagerTest extends TestCase {
         $unitOfWork = $this->entityManager->createUnitOfWork();
 
         $this->assertInstanceOf(UnitOfWork::class, $unitOfWork);
-        $this->assertNotSame($this->entityManager->getUnitOfWork(), $unitOfWork);
+        $this->assertNotSame($this->entityManager->getActiveUnitOfWork(), $unitOfWork);
     }
 
     public function testPersistAndFlush(): void
@@ -63,7 +61,7 @@ class EntityManagerTest extends TestCase {
         $this->entityManager->persist($entity);
         $this->entityManager->flush();
 
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::MANAGED, $unitOfWork->getEntityState($entity));
     }
 
@@ -75,7 +73,7 @@ class EntityManagerTest extends TestCase {
         $this->entityManager->remove($entity);
         $this->entityManager->flush();
 
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::REMOVED, $unitOfWork->getEntityState($entity));
     }
 
@@ -87,7 +85,7 @@ class EntityManagerTest extends TestCase {
 
         $this->entityManager->persist($entity);
 
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::MANAGED, $unitOfWork->getEntityState($entity));
 
         $this->entityManager->clear();
@@ -97,11 +95,9 @@ class EntityManagerTest extends TestCase {
 
     public function testFindReturnsNull(): void
     {
-        // Create a new EntityManager with a properly mocked connection
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
-        // Mock the connection to simulate a database query that returns no results
-        $statement = $this->createMock(\PDOStatement::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([]);
 
         $connection->method('executeQuery')->willReturn($statement);
@@ -216,7 +212,7 @@ class EntityManagerTest extends TestCase {
         $this->assertEquals(EntityState::MANAGED, $uow2->getEntityState($entity2));
 
         // Check that default UnitOfWork doesn't have these entities
-        $defaultUow = $this->entityManager->getUnitOfWork();
+        $defaultUow = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::NEW, $defaultUow->getEntityState($entity1));
         $this->assertEquals(EntityState::NEW, $defaultUow->getEntityState($entity2));
     }
@@ -254,11 +250,12 @@ class EntityManagerTest extends TestCase {
         $this->entityManager->clear();
 
         // The scoped UnitOfWork should be gone, and default should be reset
-        $newDefaultUow = $this->entityManager->getUnitOfWork();
+        $newDefaultUow = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::NEW, $newDefaultUow->getEntityState($entity));
         $this->assertNotSame($scopedUow, $newDefaultUow);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCustomChangeTrackingStrategy(): void
     {
         $metadataRegistry = new EntityMetadataRegistry();
@@ -279,13 +276,13 @@ class EntityManagerTest extends TestCase {
         $this->assertTrue(true);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydratorAccess(): void
     {
         $hydrator = $this->entityManager->getHydrator();
         $this->assertInstanceOf(HydratorInterface::class, $hydrator);
 
-        // Test setting a custom hydrator
-        $customHydrator = $this->createMock(HydratorInterface::class);
+        $customHydrator = $this->createStub(HydratorInterface::class);
         $this->entityManager->setHydrator($customHydrator);
 
         $this->assertSame($customHydrator, $this->entityManager->getHydrator());
@@ -336,9 +333,7 @@ class EntityManagerTest extends TestCase {
     public function testFindSelectsOnlyEntityColumns(): void
     {
         $connection = $this->createMock(Connection::class);
-        $statement = $this->createMock(\PDOStatement::class);
-
-        // Mock empty result set
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([]);
 
         // Capture the SQL query being executed
@@ -369,9 +364,7 @@ class EntityManagerTest extends TestCase {
     public function testFindAllSelectsOnlyEntityColumns(): void
     {
         $connection = $this->createMock(Connection::class);
-        $statement = $this->createMock(\PDOStatement::class);
-
-        // Mock empty result set
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([]);
 
         // Capture the SQL query being executed
@@ -402,9 +395,7 @@ class EntityManagerTest extends TestCase {
     public function testFindWithMultipleEntityColumns(): void
     {
         $connection = $this->createMock(Connection::class);
-        $statement = $this->createMock(\PDOStatement::class);
-
-        // Mock empty result set
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetchAll')->willReturn([]);
 
         // Capture the SQL query being executed

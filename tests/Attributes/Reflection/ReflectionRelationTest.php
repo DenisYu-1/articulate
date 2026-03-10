@@ -342,7 +342,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $schemaNaming = new SchemaNaming();
         $attribute = new ManyToOne(targetEntity: TestEntity::class);
 
-        $mockProperty = $this->createMock(ReflectionProperty::class);
+        $mockProperty = $this->createStub(ReflectionProperty::class);
 
         $reflection = new ReflectionRelation($attribute, $mockProperty, $schemaNaming);
 
@@ -355,7 +355,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $schemaNaming = new SchemaNaming();
         $attribute = new OneToOne(targetEntity: TestEntity::class);
 
-        $mockProperty = $this->createMock(ReflectionProperty::class);
+        $mockProperty = $this->createStub(ReflectionProperty::class);
 
         $reflection = new ReflectionRelation($attribute, $mockProperty, $schemaNaming);
 
@@ -368,7 +368,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $schemaNaming = new SchemaNaming();
         $attribute = new OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
 
-        $mockProperty = $this->createMock(ReflectionProperty::class);
+        $mockProperty = $this->createStub(ReflectionProperty::class);
 
         $reflection = new ReflectionRelation($attribute, $mockProperty, $schemaNaming);
 
@@ -381,7 +381,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $schemaNaming = new SchemaNaming();
         $attribute = new OneToMany(targetEntity: TestEntity::class);
 
-        $mockProperty = $this->createMock(ReflectionProperty::class);
+        $mockProperty = $this->createStub(ReflectionProperty::class);
 
         $reflection = new ReflectionRelation($attribute, $mockProperty, $schemaNaming);
 
@@ -394,7 +394,7 @@ class ReflectionRelationTest extends AbstractTestCase {
         $schemaNaming = new SchemaNaming();
         $attribute = new OneToOne(targetEntity: TestEntity::class, ownedBy: 'testProperty');
 
-        $mockProperty = $this->createMock(ReflectionProperty::class);
+        $mockProperty = $this->createStub(ReflectionProperty::class);
 
         $reflection = new ReflectionRelation($attribute, $mockProperty, $schemaNaming);
 

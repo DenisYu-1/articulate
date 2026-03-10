@@ -25,6 +25,10 @@ class BaseMigrationTest extends AbstractTestCase {
         $this->connection->expects($this->once())
             ->method('beginTransaction');
 
+        $this->connection->expects($this->atLeastOnce())
+            ->method('inTransaction')
+            ->willReturn(true);
+
         $this->connection->expects($this->once())
             ->method('commit');
 
@@ -50,6 +54,10 @@ class BaseMigrationTest extends AbstractTestCase {
         $this->connection->expects($this->once())
             ->method('beginTransaction');
 
+        $this->connection->expects($this->atLeastOnce())
+            ->method('inTransaction')
+            ->willReturn(true);
+
         $this->connection->expects($this->once())
             ->method('rollbackTransaction');
 
@@ -68,6 +76,10 @@ class BaseMigrationTest extends AbstractTestCase {
     {
         $this->connection->expects($this->once())
             ->method('beginTransaction');
+
+        $this->connection->expects($this->atLeastOnce())
+            ->method('inTransaction')
+            ->willReturn(true);
 
         $this->connection->expects($this->once())
             ->method('commit');
@@ -88,6 +100,10 @@ class BaseMigrationTest extends AbstractTestCase {
     {
         $this->connection->expects($this->once())
             ->method('beginTransaction');
+
+        $this->connection->expects($this->atLeastOnce())
+            ->method('inTransaction')
+            ->willReturn(true);
 
         $this->connection->expects($this->once())
             ->method('rollbackTransaction');
@@ -116,9 +132,12 @@ class BaseMigrationTest extends AbstractTestCase {
 
     public function testDownMethodIsOptional(): void
     {
-        // Test that down() method can be empty (default implementation)
         $this->connection->expects($this->once())
             ->method('beginTransaction');
+
+        $this->connection->expects($this->atLeastOnce())
+            ->method('inTransaction')
+            ->willReturn(true);
 
         $this->connection->expects($this->once())
             ->method('commit');

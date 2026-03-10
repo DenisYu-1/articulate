@@ -35,7 +35,7 @@ class RepositoryCriteriaTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $this->entityManager = new EntityManager($connection);
         $this->repository = new UserRepository($this->entityManager, TestUser::class);
     }

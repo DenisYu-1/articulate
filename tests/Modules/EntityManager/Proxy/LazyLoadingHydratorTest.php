@@ -9,6 +9,7 @@ use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\Proxy\ProxyManager;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Tests\AbstractTestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use ReflectionClass;
 use RuntimeException;
 
@@ -36,15 +37,16 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         );
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateCreatesProxyWhenIdentifierFound(): void
     {
         $entityClass = TestEntity::class;
         $data = ['id' => 42, 'name' => 'Test Entity'];
-        $expectedProxy = $this->createMock(ProxyInterface::class);
+        $expectedProxy = $this->createStub(ProxyInterface::class);
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn(['id']);
-        $metadata->method('getPropertyNameForColumn')->with('id')->willReturn('id');
+        $metadata->method('getPropertyNameForColumn')->willReturn('id');
 
         $this->metadataRegistry->expects($this->once())
             ->method('getMetadata')
@@ -61,12 +63,13 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertSame($expectedProxy, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateCreatesRealEntityWhenNoIdentifier(): void
     {
         $entityClass = TestEntity::class;
         $data = ['name' => 'Test Entity'];
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn([]);
 
         $this->metadataRegistry->expects($this->once())
@@ -84,6 +87,7 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertEquals('Test Entity', $result->name);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateReturnsExistingEntity(): void
     {
         $entityClass = TestEntity::class;
@@ -95,9 +99,10 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertSame($existingEntity, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractThrowsExceptionForUninitializedProxy(): void
     {
-        $proxy = $this->createMock(ProxyInterface::class);
+        $proxy = $this->createStub(ProxyInterface::class);
         $proxy->method('isProxyInitialized')->willReturn(false);
 
         $this->expectException(RuntimeException::class);
@@ -106,13 +111,14 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->hydrator->extract($proxy);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractReturnsDataFromInitializedProxy(): void
     {
         $entity = new TestEntity();
         $entity->id = 42;
         $entity->name = 'Test Entity';
 
-        $proxy = $this->createMock(ProxyInterface::class);
+        $proxy = $this->createStub(ProxyInterface::class);
         $proxy->method('isProxyInitialized')->willReturn(true);
 
         // Mock reflection behavior
@@ -130,6 +136,7 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertEquals($expectedData, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractReturnsDataFromRegularEntity(): void
     {
         $entity = new TestEntity();
@@ -145,6 +152,7 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         ], $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydratePartialDoesNothing(): void
     {
         $entity = new TestEntity();
@@ -157,12 +165,13 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertNull($entity->name);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractIdentifierReturnsNullWhenNoPrimaryKeys(): void
     {
         $entityClass = TestEntity::class;
         $data = ['name' => 'Test'];
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn([]);
 
         $this->metadataRegistry->expects($this->once())
@@ -178,14 +187,15 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertNull($result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractIdentifierReturnsValueFromPropertyName(): void
     {
         $entityClass = TestEntity::class;
         $data = ['id' => 42, 'name' => 'Test'];
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn(['id']);
-        $metadata->method('getPropertyNameForColumn')->with('id')->willReturn('id');
+        $metadata->method('getPropertyNameForColumn')->willReturn('id');
 
         $this->metadataRegistry->expects($this->once())
             ->method('getMetadata')
@@ -200,14 +210,15 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertEquals(42, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractIdentifierReturnsValueFromColumnName(): void
     {
         $entityClass = TestEntity::class;
         $data = ['user_id' => 42, 'name' => 'Test'];
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn(['user_id']);
-        $metadata->method('getPropertyNameForColumn')->with('user_id')->willReturn('id');
+        $metadata->method('getPropertyNameForColumn')->willReturn('id');
 
         $this->metadataRegistry->expects($this->once())
             ->method('getMetadata')
@@ -222,14 +233,15 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertEquals(42, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractIdentifierReturnsNullWhenNoDataFound(): void
     {
         $entityClass = TestEntity::class;
         $data = ['name' => 'Test'];
 
-        $metadata = $this->createMock(EntityMetadata::class);
+        $metadata = $this->createStub(EntityMetadata::class);
         $metadata->method('getPrimaryKeyColumns')->willReturn(['id']);
-        $metadata->method('getPropertyNameForColumn')->with('id')->willReturn('id');
+        $metadata->method('getPropertyNameForColumn')->willReturn('id');
 
         $this->metadataRegistry->expects($this->once())
             ->method('getMetadata')
@@ -244,6 +256,7 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertNull($result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCreateRealEntitySetsPropertiesAndRegistersInUnitOfWork(): void
     {
         $entityClass = TestEntity::class;
@@ -264,6 +277,7 @@ class LazyLoadingHydratorTest extends AbstractTestCase {
         $this->assertEquals('Test User', $result->userName);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testSnakeToCamelConvertsCorrectly(): void
     {
         $reflection = new ReflectionClass($this->hydrator);

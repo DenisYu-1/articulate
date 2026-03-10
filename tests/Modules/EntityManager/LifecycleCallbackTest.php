@@ -78,7 +78,7 @@ class LifecycleCallbackTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $this->entityManager = new EntityManager($connection);
     }
 
@@ -112,7 +112,7 @@ class LifecycleCallbackTest extends TestCase {
         $user->name = 'Original User';
 
         // First, register as managed (simulating loading from DB)
-        $uow = $this->entityManager->getUnitOfWork();
+        $uow = $this->entityManager->getActiveUnitOfWork();
         $uow->registerManaged($user, ['id' => 1, 'name' => 'Original User', 'email' => 'test@example.com']);
 
         // Now modify and persist again - this should trigger preUpdate
@@ -129,7 +129,7 @@ class LifecycleCallbackTest extends TestCase {
         $user->name = 'Original User';
 
         // First, register as managed (simulating loading from DB)
-        $uow = $this->entityManager->getUnitOfWork();
+        $uow = $this->entityManager->getActiveUnitOfWork();
         $uow->registerManaged($user, ['id' => 1, 'name' => 'Original User', 'email' => 'test@example.com']);
 
         // Now modify and persist again - this should trigger postUpdate on flush
@@ -156,7 +156,7 @@ class LifecycleCallbackTest extends TestCase {
         $user->id = 1;
 
         // First, register as managed (simulating loading from DB)
-        $uow = $this->entityManager->getUnitOfWork();
+        $uow = $this->entityManager->getActiveUnitOfWork();
         $uow->registerManaged($user, ['id' => 1, 'name' => 'Test User', 'email' => 'test@example.com']);
 
         // Now remove - this should trigger postRemove on flush

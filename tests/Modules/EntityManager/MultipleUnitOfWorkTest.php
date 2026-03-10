@@ -180,6 +180,102 @@ class MultipleUnitOfWorkTest extends AbstractTestCase {
         }
     }
 
+    #[DataProvider('databaseProvider')]
+    public function testSetActiveUnitOfWorkRoutesPersistToIt(string $databaseName): void
+    {
+        if (!$this->isDatabaseAvailable($databaseName)) {
+            $this->markTestSkipped("{$databaseName} not available");
+        }
+
+        $connection = $this->getConnection($databaseName);
+        $entityManager = new EntityManager($connection);
+
+        $initialUow = $entityManager->getActiveUnitOfWork();
+        $secondaryUow = $entityManager->createUnitOfWork();
+
+        $entityManager->setActiveUnitOfWork($secondaryUow);
+
+        $user = new MuowUser();
+        $user->name = 'Dave';
+        $user->email = 'dave@example.com';
+
+        $entityManager->persist($user);
+
+        $secondaryChangeSets = $secondaryUow->getChangeSets();
+        $this->assertCount(1, $secondaryChangeSets['inserts']);
+        $this->assertSame($user, $secondaryChangeSets['inserts'][0]);
+
+        $initialChangeSets = $initialUow->getChangeSets();
+        $this->assertCount(0, $initialChangeSets['inserts']);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testSetActiveUnitOfWorkThrowsForForeignUnitOfWork(string $databaseName): void
+    {
+        if (!$this->isDatabaseAvailable($databaseName)) {
+            $this->markTestSkipped("{$databaseName} not available");
+        }
+
+        $connection = $this->getConnection($databaseName);
+        $entityManager1 = new EntityManager($connection);
+        $entityManager2 = new EntityManager($connection);
+
+        $foreignUow = $entityManager2->getActiveUnitOfWork();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('UnitOfWork does not belong to this EntityManager');
+
+        $entityManager1->setActiveUnitOfWork($foreignUow);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testRemoveUnitOfWorkDetachesItFromFlush(string $databaseName): void
+    {
+        if (!$this->isDatabaseAvailable($databaseName)) {
+            $this->markTestSkipped("{$databaseName} not available");
+        }
+
+        $connection = $this->getConnection($databaseName);
+        $entityManager = new EntityManager($connection);
+
+        $user = new MuowUser();
+        $user->name = 'Eve';
+        $user->email = 'eve@example.com';
+
+        $entityManager->persist($user);
+        $entityManager->flush();
+
+        $scopedUow = $entityManager->createUnitOfWork();
+        $post = new MuowPost();
+        $post->title = 'Scoped Post';
+        $post->author = $user;
+
+        $scopedUow->persist($post);
+        $entityManager->removeUnitOfWork($scopedUow);
+        $entityManager->flush();
+
+        $postCount = $this->countTableRows($connection, 'muow_posts');
+        $this->assertEquals(0, $postCount, 'Post must not be inserted — removed UoW changes are discarded');
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testRemoveActiveUnitOfWorkThrows(string $databaseName): void
+    {
+        if (!$this->isDatabaseAvailable($databaseName)) {
+            $this->markTestSkipped("{$databaseName} not available");
+        }
+
+        $connection = $this->getConnection($databaseName);
+        $entityManager = new EntityManager($connection);
+
+        $activeUow = $entityManager->getActiveUnitOfWork();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot remove the active UnitOfWork');
+
+        $entityManager->removeUnitOfWork($activeUow);
+    }
+
     private function countTableRows(Connection $connection, string $table): int
     {
         return (int) $connection->executeQuery("SELECT COUNT(*) AS cnt FROM {$table}")->fetch()['cnt'];
