@@ -110,20 +110,33 @@ class EntityManager {
 
     public function flush(): void
     {
-        // Aggregate changes from all UnitOfWorks
-        $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
+        $managingTransaction = !$this->connection->inTransaction();
 
-        // Execute the changes in proper order (respecting foreign key constraints)
-        $this->executeChanges($aggregatedChanges);
-
-        // Execute post-operation callbacks - each UnitOfWork processes its own changes
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
+        if ($managingTransaction) {
+            $this->connection->beginTransaction();
         }
 
-        // Clear changes from all UnitOfWorks
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->clearChanges();
+        try {
+            $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
+            $this->executeChanges($aggregatedChanges);
+
+            foreach ($this->unitOfWorks as $unitOfWork) {
+                $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
+            }
+
+            foreach ($this->unitOfWorks as $unitOfWork) {
+                $unitOfWork->clearChanges();
+            }
+
+            if ($managingTransaction) {
+                $this->connection->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($managingTransaction) {
+                $this->connection->rollbackTransaction();
+            }
+
+            throw $e;
         }
     }
 

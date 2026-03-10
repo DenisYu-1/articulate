@@ -72,9 +72,13 @@ abstract class BaseMigration {
 
         try {
             $work();
-            $this->connection->commit();
+            if ($this->connection->inTransaction()) {
+                $this->connection->commit();
+            }
         } catch (Throwable $e) {
-            $this->connection->rollbackTransaction();
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollbackTransaction();
+            }
 
             throw $e;
         }
