@@ -10,6 +10,7 @@ use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\RepositoryFactory;
 use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
+use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 
 class EntityManager {
@@ -17,6 +18,8 @@ class EntityManager {
 
     /** @var UnitOfWork[] */
     private array $unitOfWorks = [];
+
+    private UnitOfWork $activeUnitOfWork;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
 
@@ -71,9 +74,9 @@ class EntityManager {
         $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
-        // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
-        $this->unitOfWorks[] = $defaultUow;
+        $initialUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
+        $this->unitOfWorks[] = $initialUow;
+        $this->activeUnitOfWork = $initialUow;
 
         $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
 
@@ -86,7 +89,7 @@ class EntityManager {
 
         $this->typeRegistry = new TypeRegistry();
 
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
         // Store result cache
         $this->resultCache = $resultCache;
@@ -100,12 +103,12 @@ class EntityManager {
     // Persistence operations
     public function persist(object $entity): void
     {
-        $this->getDefaultUnitOfWork()->persist($entity);
+        $this->getActiveUnitOfWork()->persist($entity);
     }
 
     public function remove(object $entity): void
     {
-        $this->getDefaultUnitOfWork()->remove($entity);
+        $this->getActiveUnitOfWork()->remove($entity);
     }
 
     public function flush(): void
@@ -390,7 +393,7 @@ class EntityManager {
         $entity = $this->hydrator->hydrate($class, $rawData);
 
         // Register the entity as managed in the unit of work
-        $this->getUnitOfWork()->registerManaged($entity, $rawData);
+        $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
 
         return $entity;
     }
@@ -420,7 +423,7 @@ class EntityManager {
         // Hydrate each entity and register in unit of work
         foreach ($rawResults as $rawData) {
             $entity = $this->hydrator->hydrate($class, $rawData);
-            $this->getUnitOfWork()->registerManaged($entity, $rawData);
+            $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
             $entities[] = $entity;
         }
 
@@ -446,7 +449,7 @@ class EntityManager {
 
         // Register the proxy as managed in the unit of work
         // Note: We pass empty array for original data since we haven't loaded it yet
-        $this->getUnitOfWork()->registerManaged($proxy, []);
+        $this->getActiveUnitOfWork()->registerManaged($proxy, []);
 
         return $proxy;
     }
@@ -512,7 +515,7 @@ class EntityManager {
         }
 
         // Update the unit of work's original data to reflect the fresh state
-        $this->getUnitOfWork()->registerManaged($entity, $freshData);
+        $this->getActiveUnitOfWork()->registerManaged($entity, $freshData);
     }
 
     // Transaction management
@@ -549,9 +552,9 @@ class EntityManager {
     }
 
     // Unit of Work access
-    public function getUnitOfWork(): UnitOfWork
+    public function getActiveUnitOfWork(): UnitOfWork
     {
-        return $this->getDefaultUnitOfWork();
+        return $this->activeUnitOfWork;
     }
 
     // Create new unit of work, mostly for scopes
@@ -561,6 +564,31 @@ class EntityManager {
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
+    }
+
+    public function setActiveUnitOfWork(UnitOfWork $unitOfWork): void
+    {
+        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
+            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
+        }
+
+        $this->activeUnitOfWork = $unitOfWork;
+    }
+
+    public function removeUnitOfWork(UnitOfWork $unitOfWork): void
+    {
+        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
+            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
+        }
+
+        if ($unitOfWork === $this->activeUnitOfWork) {
+            throw new InvalidArgumentException('Cannot remove the active UnitOfWork. Set a different active UnitOfWork first.');
+        }
+
+        $unitOfWork->clear();
+        $this->unitOfWorks = array_values(
+            array_filter($this->unitOfWorks, fn ($uow) => $uow !== $unitOfWork)
+        );
     }
 
     public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
@@ -582,18 +610,13 @@ class EntityManager {
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
         $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
-        $qb->setUnitOfWork($this->getDefaultUnitOfWork());
+        $qb->setUnitOfWork($this->getActiveUnitOfWork());
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
         }
 
         return $qb;
-    }
-
-    private function getDefaultUnitOfWork(): UnitOfWork
-    {
-        return $this->unitOfWorks[0];
     }
 
     // Hydrator access (for advanced customization)
@@ -616,7 +639,7 @@ class EntityManager {
         $relation = $metadata->getRelation($relationName);
 
         if (!$relation) {
-            throw new \InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
+            throw new InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
         }
 
         return $this->relationshipLoader->load($entity, $relation, [], true);
