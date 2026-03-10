@@ -392,7 +392,7 @@ class QueryExecutor {
         $reflectionEntity = new ReflectionEntity($entityClass);
 
         foreach ($reflectionEntity->getEntityFieldsProperties() as $property) {
-            if ($property->isPrimaryKey()) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
                 $generatorType = $property->getGeneratorType();
 
                 if ($generatorType !== null) {
@@ -456,7 +456,7 @@ class QueryExecutor {
 
         // First try to find primary key from entity metadata
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
-            if ($property->isPrimaryKey()) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
                 return new NativeReflectionProperty($entity, $property->getFieldName());
             }
         }

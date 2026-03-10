@@ -429,7 +429,7 @@ class DmlOperationHandler {
         $reflectionEntity = new ReflectionEntity($entity::class);
 
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
-            if ($property->isPrimaryKey() && $property instanceof ReflectionProperty) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
                 return $property->getValue($entity);
             }
         }
