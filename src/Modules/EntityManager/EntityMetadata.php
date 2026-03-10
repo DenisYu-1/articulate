@@ -5,10 +5,10 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\SoftDeleteable;
 
 /**
