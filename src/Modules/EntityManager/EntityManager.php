@@ -234,8 +234,7 @@ class EntityManager {
             // Get entity metadata
             $metadata = $this->metadataRegistry->getMetadata($entityClass);
 
-            // Check relationships
-            foreach ($metadata->getRelations() as $relation) {
+            foreach ($metadata->getColumnRelations() as $relation) {
                 $targetClass = $relation->getTargetEntity();
 
                 // Only consider relationships to entities that are also being operated on
@@ -350,7 +349,7 @@ class EntityManager {
         $columnNames = $metadata->getColumnNames();
 
         // Add morph columns from relations
-        foreach ($metadata->getRelations() as $relation) {
+        foreach ($metadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 $columnNames[] = $relation->getMorphTypeColumnName();
                 $columnNames[] = $relation->getMorphIdColumnName();

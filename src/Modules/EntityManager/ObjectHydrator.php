@@ -205,19 +205,14 @@ class ObjectHydrator implements HydratorInterface {
         $entityClass = $entity::class;
         $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entityClass);
 
-        // Load relationships
-        foreach ($metadata->getRelations() as $relationName => $relation) {
-            // For now, only load relationships if they are not already set
-            // In a full implementation, you'd have eager/lazy loading configuration
+        foreach ($metadata->getColumnRelations() as $relationName => $relation) {
             $reflectionProperty = new ReflectionProperty($entity, $relationName);
             $reflectionProperty->setAccessible(true);
 
-            // Only load if the property is not already initialized or is null
             if (!$reflectionProperty->isInitialized($entity) || $reflectionProperty->getValue($entity) === null) {
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
 
-                // Wrap collections in Collection objects for OneToMany/ManyToMany
-                if (is_array($relatedData) && ($relation->isOneToMany() || $relation->isManyToMany())) {
+                if (is_array($relatedData) && $relation->isOneToMany()) {
                     $relatedData = new Collection($relatedData);
                 }
 

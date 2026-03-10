@@ -388,9 +388,8 @@ class DmlOperationHandler {
 
         try {
             $metadata = $this->metadataRegistry->getMetadata($entity::class);
-            $relations = $metadata->getRelations();
 
-            foreach ($relations as $relation) {
+            foreach ($metadata->getColumnRelations() as $relation) {
                 if ($relation->isMorphTo()) {
                     $propertyName = $relation->getPropertyName();
                     $reflectionEntity = new ReflectionEntity($entity::class);

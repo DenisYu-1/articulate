@@ -477,10 +477,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        // Get all relations
-        $relations = $entityMetadata->getRelations();
-
-        foreach ($relations as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
@@ -513,10 +510,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        // Get all relations
-        $relations = $entityMetadata->getRelations();
-
-        foreach ($relations as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
@@ -546,7 +540,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        foreach ($entityMetadata->getRelations() as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }
@@ -569,7 +563,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        foreach ($entityMetadata->getRelations() as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }

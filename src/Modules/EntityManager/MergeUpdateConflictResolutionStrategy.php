@@ -64,7 +64,7 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
 
     private function canCombineUpdate(EntityMetadata $metadata): bool
     {
-        foreach ($metadata->getRelations() as $relation) {
+        foreach ($metadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 return false;
             }
