@@ -405,28 +405,15 @@ class QueryExecutor {
 
                 // Fall back to auto-increment if AutoIncrement attribute is present
                 if ($property->isAutoIncrement()) {
-                    $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-                    return $generator->generate($entityClass, []);
+                    return (int) $this->connection->lastInsertId();
                 }
 
                 break;
             }
         }
 
-        // If no explicit primary key found, check for implicit 'id' property
-        $reflection = new \ReflectionClass($entityClass);
-        if ($reflection->hasProperty('id')) {
-            // Treat 'id' property as auto-increment primary key by default
-            $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-            return $generator->generate($entityClass, []);
-        }
-
-        // Default to auto-increment for backward compatibility
-        $generator = $this->generatorRegistry->getDefaultGenerator();
-
-        return $generator->generate($entityClass, []);
+        // If no explicit primary key found, fall back to lastInsertId
+        return (int) $this->connection->lastInsertId();
     }
 
     private function setEntityId(object $entity, mixed $id): void
