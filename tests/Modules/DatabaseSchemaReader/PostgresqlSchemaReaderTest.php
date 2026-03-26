@@ -7,9 +7,9 @@ use Articulate\Exceptions\DatabaseSchemaException;
 use Articulate\Modules\Database\SchemaReader\DatabaseColumn;
 use Articulate\Modules\Database\SchemaReader\PostgresqlSchemaReader;
 use Articulate\Tests\AbstractTestCase;
-use PDO;
 use PDOException;
 use PDOStatement;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 class PostgresqlSchemaReaderTest extends AbstractTestCase {
     private PostgresqlSchemaReader $reader;
@@ -23,7 +23,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         parent::setUp();
 
         $this->mockConnection = $this->createMock(Connection::class);
-        $this->mockStatement = $this->createMock(PDOStatement::class);
+        $this->mockStatement = $this->createStub(PDOStatement::class);
         $this->reader = new PostgresqlSchemaReader($this->mockConnection);
     }
 
@@ -32,7 +32,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $tableName = 'test_table';
 
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_ASSOC)
             ->willReturn([
                 [
                     'column_name' => 'id',
@@ -119,7 +118,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
     public function testGetTablesReturnsTableNames(): void
     {
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_COLUMN)
             ->willReturn(['users', 'products', 'orders']);
 
         $this->mockConnection->expects($this->once())
@@ -137,7 +135,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $tableName = 'test_table';
 
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_ASSOC)
             ->willReturn([
                 [
                     'index_name' => 'idx_name',
@@ -198,7 +195,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $tableName = 'test_table';
 
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_ASSOC)
             ->willReturn([
                 ['index_name' => null, 'column_name' => 'name'],
                 ['index_name' => 'idx_name', 'column_name' => null],
@@ -218,7 +214,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $tableName = 'test_table';
 
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_ASSOC)
             ->willReturn([
                 [
                     'constraint_name' => 'fk_user_id',
@@ -264,7 +259,6 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $tableName = 'test_table';
 
         $this->mockStatement->method('fetchAll')
-            ->with(PDO::FETCH_ASSOC)
             ->willReturn([
                 ['constraint_name' => null, 'column_name' => 'user_id'],
                 ['constraint_name' => 'fk_user', 'column_name' => null],
@@ -280,6 +274,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         $this->assertEmpty($foreignKeys);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testBuildPostgresqlTypeStringHandlesSpecialTypes(): void
     {
         $reflection = new \ReflectionClass(PostgresqlSchemaReader::class);
@@ -337,6 +332,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         }
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testBuildPostgresqlTypeStringHandlesLength(): void
     {
         $reflection = new \ReflectionClass(PostgresqlSchemaReader::class);
@@ -373,6 +369,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
         }
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testNormalizeDefaultValueHandlesVariousFormats(): void
     {
         $reflection = new \ReflectionClass(PostgresqlSchemaReader::class);

@@ -10,13 +10,13 @@ use PHPUnit\Framework\TestCase;
 class DatabaseSchemaReaderTest extends TestCase {
     public function testMapsIndexesFromShowIndexes(): void
     {
-        $statement = $this->createMock(PDOStatement::class);
+        $statement = $this->createStub(PDOStatement::class);
         $statement->method('fetchAll')->willReturn([
             ['Key_name' => 'PRIMARY', 'Column_name' => 'id', 'Non_unique' => 0],
             ['Key_name' => 'idx_name', 'Column_name' => 'name', 'Non_unique' => 1],
         ]);
 
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('executeQuery')->willReturn($statement);
         $connection->method('getDriverName')->willReturn(Connection::MYSQL);
 

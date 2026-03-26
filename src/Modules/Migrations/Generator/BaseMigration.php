@@ -13,36 +13,24 @@ abstract class BaseMigration {
 
     public function runMigration(): void
     {
-        $this->connection->beginTransaction();
-
-        try {
+        $this->executeWithinOptionalTransaction(function (): void {
             $begin = microtime(true);
             $this->up();
-            $end = microtime(true);
-            $this->addMigration($end - $begin);
-            $this->connection->commit();
-        } catch (Throwable $e) {
-            $this->connection->rollbackTransaction();
-
-            throw $e;
-        }
+            $this->addMigration(microtime(true) - $begin);
+        });
     }
 
     public function rollbackMigration(): void
     {
-        $this->connection->beginTransaction();
-
-        try {
-            $begin = microtime(true);
+        $this->executeWithinOptionalTransaction(function (): void {
             $this->down();
-            $end = microtime(true);
             $this->removeMigration();
-            $this->connection->commit();
-        } catch (Throwable $e) {
-            $this->connection->rollbackTransaction();
+        });
+    }
 
-            throw $e;
-        }
+    protected function isTransactional(): bool
+    {
+        return true;
     }
 
     protected function addSql($sqlCommands)
@@ -70,5 +58,29 @@ abstract class BaseMigration {
             'DELETE FROM migrations WHERE name = ?',
             [static::class]
         );
+    }
+
+    private function executeWithinOptionalTransaction(callable $work): void
+    {
+        if (!$this->isTransactional()) {
+            $work();
+
+            return;
+        }
+
+        $this->connection->beginTransaction();
+
+        try {
+            $work();
+            if ($this->connection->inTransaction()) {
+                $this->connection->commit();
+            }
+        } catch (Throwable $e) {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollbackTransaction();
+            }
+
+            throw $e;
+        }
     }
 }

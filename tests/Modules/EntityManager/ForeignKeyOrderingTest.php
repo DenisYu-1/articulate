@@ -50,7 +50,7 @@ class ForeignKeyOrderingTest extends TestCase {
     protected function setUp(): void
     {
         // Create a mock connection
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         // Create EntityManager
         $this->entityManager = new EntityManager($connection);

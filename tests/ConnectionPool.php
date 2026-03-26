@@ -15,6 +15,10 @@ class ConnectionPool {
 
     private bool $envLoaded = false;
 
+    private ?string $lastMysqlError = null;
+
+    private ?string $lastPgsqlError = null;
+
     private function __construct()
     {
     }
@@ -66,16 +70,24 @@ class ConnectionPool {
             }
         }
 
-        $databaseName = getenv('DATABASE_NAME');
+        $databaseName = getenv('DATABASE_NAME') ?: 'articulate_test';
+        $mysqlHost = getenv('DATABASE_HOST') ?: '127.0.0.1';
+        $pgHost = getenv('DATABASE_HOST_PGSQL') ?: '127.0.0.1';
+        $mysqlUser = getenv('DATABASE_USER') ?: 'root';
+        $pgsqlUser = getenv('DATABASE_USER_PGSQL') ?: $mysqlUser;
+        $databasePassword = getenv('DATABASE_PASSWORD') ?: '';
+        $pgsqlPassword = getenv('DATABASE_PASSWORD_PGSQL') ?: $databasePassword;
+        $pgsqlPort = getenv('DATABASE_PORT_PGSQL') ?: '5432';
 
         if ($this->mysqlConnection === null) {
             try {
                 $this->mysqlConnection = new Connection(
-                    'mysql:host=' . (getenv('DATABASE_HOST')) . ';dbname=' . $databaseName . ';charset=utf8mb4',
-                    getenv('DATABASE_USER') ?? 'root',
-                    getenv('DATABASE_PASSWORD')
+                    'mysql:host=' . $mysqlHost . ';dbname=' . $databaseName . ';charset=utf8mb4',
+                    $mysqlUser,
+                    $databasePassword
                 );
             } catch (Exception $e) {
+                $this->lastMysqlError = $e->getMessage();
                 $this->mysqlConnection = null;
             }
         }
@@ -83,13 +95,24 @@ class ConnectionPool {
         if ($this->pgsqlConnection === null) {
             try {
                 $this->pgsqlConnection = new Connection(
-                    'pgsql:host=' . getenv('DATABASE_HOST_PGSQL') . ';port=5432;dbname=' . $databaseName,
-                    getenv('DATABASE_USER') ?? 'postgres',
-                    getenv('DATABASE_PASSWORD')
+                    'pgsql:host=' . $pgHost . ';port=' . $pgsqlPort . ';dbname=' . $databaseName,
+                    $pgsqlUser,
+                    $pgsqlPassword
                 );
             } catch (Exception $e) {
+                $this->lastPgsqlError = $e->getMessage();
                 $this->pgsqlConnection = null;
             }
         }
+    }
+
+    public function getLastMysqlConnectionError(): ?string
+    {
+        return $this->lastMysqlError;
+    }
+
+    public function getLastPgsqlConnectionError(): ?string
+    {
+        return $this->lastPgsqlError;
     }
 }

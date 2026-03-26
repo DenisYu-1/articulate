@@ -39,13 +39,12 @@ class ProxyGeneratorTest extends TestCase {
         $this->assertStringContainsString('ProxyGeneratorTestEntity', $proxyClass);
     }
 
-    public function testGenerateProxyClassUnique(): void
+    public function testGenerateProxyClassIsIdempotent(): void
     {
         $proxyClass1 = $this->generator->generateProxyClass(ProxyGeneratorTestEntity::class);
         $proxyClass2 = $this->generator->generateProxyClass(ProxyGeneratorTestEntity::class);
 
-        // Since caching is disabled for tests, each call generates a new class
-        $this->assertNotEquals($proxyClass1, $proxyClass2);
+        $this->assertEquals($proxyClass1, $proxyClass2);
     }
 
     public function testCreateProxy(): void

@@ -8,6 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\SoftDeleteable;
 
 /**
@@ -132,11 +133,24 @@ class EntityMetadata {
 
     /**
      * Get all relation metadata.
-     * @return ReflectionRelation[]
+     * @return array<string, RelationInterface>
      */
     public function getRelations(): array
     {
         return $this->relations;
+    }
+
+    /**
+     * @return ReflectionRelation[]
+     */
+    public function getColumnRelations(): array
+    {
+        $result = [];
+        foreach ($this->reflectionEntity->getColumnRelationProperties() as $relation) {
+            $result[$relation->getPropertyName()] = $relation;
+        }
+
+        return $result;
     }
 
     /**

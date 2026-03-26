@@ -20,7 +20,7 @@ class DatabaseSchemaComparatorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $this->schemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
         $this->schemaNaming = new SchemaNaming();
         $this->comparator = new DatabaseSchemaComparator(
             $this->schemaReader,
@@ -42,13 +42,13 @@ class DatabaseSchemaComparatorTest extends TestCase {
     public function testCompareAllDelegatesToCoordinator(): void
     {
         $entities = [
-            $this->createMock(ReflectionEntity::class),
-            $this->createMock(ReflectionEntity::class),
+            $this->createStub(ReflectionEntity::class),
+            $this->createStub(ReflectionEntity::class),
         ];
 
         $expectedResults = [
-            $this->createMock(TableCompareResult::class),
-            $this->createMock(TableCompareResult::class),
+            $this->createStub(TableCompareResult::class),
+            $this->createStub(TableCompareResult::class),
         ];
 
         // Mock the coordinator
@@ -80,7 +80,7 @@ class DatabaseSchemaComparatorTest extends TestCase {
 
     public function testConstructorWithCustomRelationValidatorFactory(): void
     {
-        $validatorFactory = $this->createMock(RelationValidatorFactory::class);
+        $validatorFactory = $this->createStub(RelationValidatorFactory::class);
 
         $comparator = new DatabaseSchemaComparator(
             $this->schemaReader,

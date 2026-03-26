@@ -2,8 +2,6 @@
 
 namespace Articulate\Modules\Repository;
 
-use Articulate\Modules\EntityManager\EntityManager;
-
 /**
  * Generic repository implementation for entities.
  *
@@ -11,8 +9,4 @@ use Articulate\Modules\EntityManager\EntityManager;
  * when no custom repository class is specified in the Entity attribute.
  */
 class EntityRepository extends AbstractRepository {
-    public function __construct(EntityManager $entityManager, string $entityClass)
-    {
-        parent::__construct($entityManager, $entityClass);
-    }
 }

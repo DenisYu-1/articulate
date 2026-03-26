@@ -6,6 +6,7 @@ use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\PartialHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
 class PartialHydratorTest extends TestCase {
@@ -22,6 +23,7 @@ class PartialHydratorTest extends TestCase {
         $this->hydrator = new PartialHydrator($this->objectHydrator);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testImplementsHydratorInterface(): void
     {
         $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
@@ -45,6 +47,7 @@ class PartialHydratorTest extends TestCase {
         $this->assertNull($entity->id); // Not in partial data
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateIntoExistingEntity(): void
     {
         $existingEntity = new TestPartialEntity();
@@ -64,6 +67,7 @@ class PartialHydratorTest extends TestCase {
         $this->assertEquals('updated@example.com', $entity->email);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractDelegatesToObjectHydrator(): void
     {
         $entity = new TestPartialEntity();
@@ -80,6 +84,7 @@ class PartialHydratorTest extends TestCase {
         $this->assertEquals($expected, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydratePartialDelegatesToObjectHydrator(): void
     {
         $entity = new TestPartialEntity();

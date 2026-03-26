@@ -174,7 +174,7 @@ class SchemaComparatorEndToEndTest extends DatabaseTestCase {
         $this->comparator = new DatabaseSchemaComparator($this->schemaReader, new SchemaNaming());
 
         // Simulate database has extra tables that should be deleted
-        $this->schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $this->schemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
         $this->schemaReader->method('getTables')->willReturn(['old_table', 'another_old_table']);
         $this->schemaReader->method('getTableColumns')->willReturn([]);
         $this->schemaReader->method('getTableIndexes')->willReturn([]);
@@ -197,7 +197,7 @@ class SchemaComparatorEndToEndTest extends DatabaseTestCase {
     private function createSchemaReader(): DatabaseSchemaReaderInterface
     {
         // Create a mock schema reader that behaves like an empty database
-        $mock = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $mock = $this->createStub(DatabaseSchemaReaderInterface::class);
         $mock->method('getTables')->willReturn([]);
         $mock->method('getTableColumns')->willReturn([]);
         $mock->method('getTableIndexes')->willReturn([]);

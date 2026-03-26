@@ -8,6 +8,7 @@ use Articulate\Modules\EntityManager\Proxy\ProxyGenerator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\Proxy\ProxyManager;
 use Articulate\Tests\AbstractTestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 class ProxyManagerTest extends AbstractTestCase {
     private ProxyManager $proxyManager;
@@ -31,11 +32,12 @@ class ProxyManagerTest extends AbstractTestCase {
         );
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCreateProxyDelegatesToProxyGenerator(): void
     {
         $entityClass = ProxyManagerTestEntity::class;
         $identifier = 42;
-        $expectedProxy = $this->createMock(ProxyInterface::class);
+        $expectedProxy = $this->createStub(ProxyInterface::class);
 
         $this->proxyGenerator->expects($this->once())
             ->method('createProxy')
@@ -52,6 +54,7 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->assertSame($expectedProxy, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testInitializeProxySkipsIfAlreadyInitialized(): void
     {
         $proxy = $this->createMock(ProxyInterface::class);
@@ -66,6 +69,7 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->proxyManager->initializeProxy($proxy);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testInitializeProxyLoadsEntityAndCopiesData(): void
     {
         $entityClass = ProxyManagerTestEntity::class;
@@ -96,6 +100,7 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->assertEquals('Loaded Entity', $proxy->name);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testInitializeProxyHandlesEntityNotFound(): void
     {
         $entityClass = ProxyManagerTestEntity::class;
@@ -122,9 +127,10 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->assertNull($proxy->name);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testLoadRelationDelegatesToEntityManager(): void
     {
-        $proxy = $this->createMock(ProxyInterface::class);
+        $proxy = $this->createStub(ProxyInterface::class);
         $relationName = 'relatedEntities';
         $expectedResult = ['relation data'];
 
@@ -138,6 +144,7 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->assertEquals($expectedResult, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCopyEntityDataCopiesPublicProperties(): void
     {
         $source = new ProxyManagerTestEntity();
@@ -158,6 +165,7 @@ class ProxyManagerTest extends AbstractTestCase {
         $this->assertEquals('public value', $target->publicField);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCopyEntityDataIgnoresPrivateAndProtectedProperties(): void
     {
         $source = new ProxyManagerTestEntity();

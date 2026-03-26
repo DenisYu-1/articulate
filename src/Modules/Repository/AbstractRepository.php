@@ -40,14 +40,7 @@ abstract class AbstractRepository implements RepositoryInterface {
     {
         $qb = $this->createQueryBuilder();
 
-        // Apply criteria
-        foreach ($criteria as $field => $value) {
-            if (is_array($value)) {
-                $qb->where("{$field} IN (?)", $value);
-            } else {
-                $qb->where("{$field} = ?", $value);
-            }
-        }
+        $this->applyCriteria($qb, $criteria);
 
         // Apply ordering
         if ($orderBy !== null) {
@@ -86,14 +79,7 @@ abstract class AbstractRepository implements RepositoryInterface {
     {
         $qb = $this->createQueryBuilder();
 
-        // Apply criteria
-        foreach ($criteria as $field => $value) {
-            if (is_array($value)) {
-                $qb->where("{$field} IN (?)", $value);
-            } else {
-                $qb->where("{$field} = ?", $value);
-            }
-        }
+        $this->applyCriteria($qb, $criteria);
 
         $qb->count('*', 'total');
 
@@ -104,6 +90,22 @@ abstract class AbstractRepository implements RepositoryInterface {
         }
 
         return 0;
+    }
+
+    /**
+     * @param array<string, mixed> $criteria
+     */
+    private function applyCriteria(QueryBuilder $qb, array $criteria): void
+    {
+        // Field names are raw identifiers and must come from trusted metadata.
+        // Callers should never pass user input directly as field names.
+        foreach ($criteria as $field => $value) {
+            if (is_array($value)) {
+                $qb->whereIn($field, $value);
+            } else {
+                $qb->where("{$field} = ?", $value);
+            }
+        }
     }
 
     public function exists(mixed $id): bool

@@ -8,6 +8,7 @@ use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparat
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
 class SchemaComparisonCoordinatorTest extends TestCase {
@@ -36,11 +37,13 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         );
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testSchemaComparisonCoordinatorCanBeInstantiated(): void
     {
         $this->assertInstanceOf(SchemaComparisonCoordinator::class, $this->coordinator);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllWithEmptyEntitiesReturnsEmptyIterable(): void
     {
         $this->schemaReader->expects($this->once())
@@ -68,9 +71,10 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertEmpty($results);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllWithEntitiesThatCreateTables(): void
     {
-        $entity = $this->createMock(ReflectionEntity::class);
+        $entity = $this->createStub(ReflectionEntity::class);
         $entity->method('isEntity')->willReturn(true);
         $entity->method('getTableName')->willReturn('users');
 
@@ -106,6 +110,7 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertSame($createResult, $results[0]);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllWithExistingTablesToDelete(): void
     {
         $this->schemaReader->expects($this->once())
@@ -142,7 +147,7 @@ class SchemaComparisonCoordinatorTest extends TestCase {
 
     public function testCompareAllWithManyToManyRelations(): void
     {
-        $entity = $this->createMock(ReflectionEntity::class);
+        $entity = $this->createStub(ReflectionEntity::class);
         $entity->method('isEntity')->willReturn(true);
         $entity->method('getTableName')->willReturn('users');
 
@@ -197,7 +202,7 @@ class SchemaComparisonCoordinatorTest extends TestCase {
 
     public function testCompareAllWithMorphToManyRelations(): void
     {
-        $entity = $this->createMock(ReflectionEntity::class);
+        $entity = $this->createStub(ReflectionEntity::class);
         $entity->method('isEntity')->willReturn(true);
         $entity->method('getTableName')->willReturn('posts');
 
@@ -211,7 +216,7 @@ class SchemaComparisonCoordinatorTest extends TestCase {
             'targetReferencedColumn' => 'id',
             'extraProperties' => [],
             'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
-            'relations' => [$this->createMock(ReflectionMorphToMany::class)],
+            'relations' => [$this->createStub(ReflectionMorphToMany::class)],
         ];
 
         $mappingResult = new TableCompareResult('taggables', TableCompareResult::OPERATION_CREATE);
@@ -251,13 +256,14 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertSame($mappingResult, $results[0]);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllGroupsEntitiesByTableName(): void
     {
-        $entity1 = $this->createMock(ReflectionEntity::class);
+        $entity1 = $this->createStub(ReflectionEntity::class);
         $entity1->method('isEntity')->willReturn(true);
         $entity1->method('getTableName')->willReturn('users');
 
-        $entity2 = $this->createMock(ReflectionEntity::class);
+        $entity2 = $this->createStub(ReflectionEntity::class);
         $entity2->method('isEntity')->willReturn(true);
         $entity2->method('getTableName')->willReturn('users');
 
@@ -293,9 +299,10 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertSame($createResult, $results[0]);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllFiltersOutNonEntityClasses(): void
     {
-        $entity = $this->createMock(ReflectionEntity::class);
+        $entity = $this->createStub(ReflectionEntity::class);
         $entity->method('isEntity')->willReturn(false); // Not an entity
 
         $this->schemaReader->expects($this->once())
@@ -327,7 +334,7 @@ class SchemaComparisonCoordinatorTest extends TestCase {
 
     public function testCompareAllHandlesMixedOperations(): void
     {
-        $entity = $this->createMock(ReflectionEntity::class);
+        $entity = $this->createStub(ReflectionEntity::class);
         $entity->method('isEntity')->willReturn(true);
         $entity->method('getTableName')->willReturn('users');
 

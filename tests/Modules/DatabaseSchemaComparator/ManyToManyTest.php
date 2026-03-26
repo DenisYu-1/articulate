@@ -126,7 +126,7 @@ class ManyToManyTest extends AbstractTestCase {
         $validator = new ManyToManyRelationValidator();
 
         // Create a mock ReflectionManyToMany with both mappedBy and inversedBy set
-        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation = $this->createStub(ReflectionManyToMany::class);
         $mockRelation->method('getMappedBy')->willReturn('mappedProperty');
         $mockRelation->method('getInversedBy')->willReturn('inverseProperty');
 
@@ -140,7 +140,7 @@ class ManyToManyTest extends AbstractTestCase {
         $validator = new ManyToManyRelationValidator();
 
         // Create a mock ReflectionManyToMany for inverse side with extra properties
-        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation = $this->createStub(ReflectionManyToMany::class);
         $mockRelation->method('getMappedBy')->willReturn(null);
         $mockRelation->method('getInversedBy')->willReturn(null);
         $mockRelation->method('isOwningSide')->willReturn(false);
@@ -156,7 +156,7 @@ class ManyToManyTest extends AbstractTestCase {
         $validator = new ManyToManyRelationValidator();
 
         // Create mocks for owning side validation
-        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation = $this->createStub(ReflectionManyToMany::class);
         $mockRelation->method('getMappedBy')->willReturn(null);
         $mockRelation->method('getInversedBy')->willReturn(null);
         $mockRelation->method('isOwningSide')->willReturn(true);
@@ -190,7 +190,7 @@ class ManyToManyTest extends AbstractTestCase {
     {
         $validator = new ManyToManyRelationValidator();
 
-        $mockRelation = $this->createMock(ReflectionManyToMany::class);
+        $mockRelation = $this->createStub(ReflectionManyToMany::class);
         $mockRelation->method('getMappedBy')->willReturn(null);
         $mockRelation->method('getInversedBy')->willReturn(null);
         $mockRelation->method('isOwningSide')->willReturn(false);
@@ -206,8 +206,8 @@ class ManyToManyTest extends AbstractTestCase {
     {
         $validator = new ManyToManyRelationValidator();
 
-        $mockManyToMany = $this->createMock(ReflectionManyToMany::class);
-        $mockOtherRelation = $this->createMock(RelationInterface::class);
+        $mockManyToMany = $this->createStub(ReflectionManyToMany::class);
+        $mockOtherRelation = $this->createStub(RelationInterface::class);
 
         $this->assertTrue($validator->supports($mockManyToMany));
         $this->assertFalse($validator->supports($mockOtherRelation));
@@ -217,7 +217,7 @@ class ManyToManyTest extends AbstractTestCase {
     {
         $validator = new ManyToManyRelationValidator();
 
-        $mockRelation = $this->createMock(RelationInterface::class);
+        $mockRelation = $this->createStub(RelationInterface::class);
 
         // Should return early without validation for non-ManyToMany relations
         $validator->validate($mockRelation);
@@ -244,14 +244,14 @@ class ManyToManyTest extends AbstractTestCase {
         $validator = new MorphToManyRelationValidator();
 
         // Create mock relations to test supports method
-        $morphToManyRelation = $this->createMock(ReflectionMorphToMany::class);
+        $morphToManyRelation = $this->createStub(ReflectionMorphToMany::class);
         $this->assertTrue($validator->supports($morphToManyRelation));
 
-        $morphedByManyRelation = $this->createMock(ReflectionMorphedByMany::class);
+        $morphedByManyRelation = $this->createStub(ReflectionMorphedByMany::class);
         $this->assertTrue($validator->supports($morphedByManyRelation));
 
         // Should not support other relation types
-        $manyToManyRelation = $this->createMock(ReflectionManyToMany::class);
+        $manyToManyRelation = $this->createStub(ReflectionManyToMany::class);
         $this->assertFalse($validator->supports($manyToManyRelation));
     }
 }

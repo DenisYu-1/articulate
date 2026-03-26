@@ -22,10 +22,10 @@ class EntityTableComparatorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
-        $this->columnComparator = $this->createMock(ColumnComparator::class);
-        $this->indexComparator = $this->createMock(IndexComparator::class);
-        $this->foreignKeyComparator = $this->createMock(ForeignKeyComparator::class);
+        $this->schemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
+        $this->columnComparator = $this->createStub(ColumnComparator::class);
+        $this->indexComparator = $this->createStub(IndexComparator::class);
+        $this->foreignKeyComparator = $this->createStub(ForeignKeyComparator::class);
 
         $this->comparator = new EntityTableComparator(
             $this->schemaReader,
@@ -44,10 +44,10 @@ class EntityTableComparatorTest extends TestCase {
     {
         // Test that constructor accepts all required dependencies
         $comparator = new EntityTableComparator(
-            $this->createMock(DatabaseSchemaReaderInterface::class),
-            $this->createMock(ColumnComparator::class),
-            $this->createMock(IndexComparator::class),
-            $this->createMock(ForeignKeyComparator::class)
+            $this->createStub(DatabaseSchemaReaderInterface::class),
+            $this->createStub(ColumnComparator::class),
+            $this->createStub(IndexComparator::class),
+            $this->createStub(ForeignKeyComparator::class)
         );
 
         $this->assertInstanceOf(EntityTableComparator::class, $comparator);

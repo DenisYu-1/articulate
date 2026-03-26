@@ -37,7 +37,7 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
     public function testPolymorphicRelationsEndToEnd()
     {
         // Create mock schema reader that returns empty database
-        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $schemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn([]);
         $schemaReader->method('getTableColumns')->willReturn([]);
         $schemaReader->method('getTableIndexes')->willReturn([]);
@@ -94,7 +94,7 @@ class PolymorphicRelationsIntegrationTest extends AbstractTestCase {
             'title' => (object) ['name' => 'title', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
         ];
 
-        $schemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
+        $schemaReader = $this->createStub(DatabaseSchemaReaderInterface::class);
         $schemaReader->method('getTables')->willReturn(['test_morph_to_entity']);
         $schemaReader->method('getTableColumns')->willReturnCallback(function ($table) use ($existingColumns) {
             return $table === 'test_morph_to_entity' ? array_values($existingColumns) : [];

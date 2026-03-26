@@ -8,6 +8,12 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
  * Generates proxy classes for lazy loading entities.
  */
 class ProxyGenerator {
+    /** @var array<string, class-string> */
+    private array $generatedProxies = [];
+
+    /** @var bool */
+    private bool $enableCaching = true;
+
     public function __construct(
         private EntityMetadataRegistry $metadataRegistry
     ) {
@@ -20,12 +26,6 @@ class ProxyGenerator {
     {
         $this->enableCaching = false;
     }
-
-    /** @var array<string, class-string> */
-    private array $generatedProxies = [];
-
-    /** @var bool */
-    private bool $enableCaching = true;
 
     /**
      * Generate a proxy class for the given entity class.
@@ -40,9 +40,10 @@ class ProxyGenerator {
         // Generate unique proxy class name
         $proxyClassName = $this->generateProxyClassName($entityClass);
 
-        // Generate and evaluate proxy class code
-        $proxyCode = $this->generateProxyClassCode($entityClass, $proxyClassName);
-        eval($proxyCode);
+        if (!class_exists($proxyClassName, false)) {
+            $proxyCode = $this->generateProxyClassCode($entityClass, $proxyClassName);
+            eval($proxyCode);
+        }
 
         if ($this->enableCaching) {
             $this->generatedProxies[$entityClass] = $proxyClassName;
@@ -68,7 +69,7 @@ class ProxyGenerator {
      */
     private function generateProxyClassName(string $entityClass): string
     {
-        $hash = substr(md5($entityClass . microtime(true) . rand()), 0, 8);
+        $hash = substr(sha1($entityClass), 0, 12);
         $className = basename(str_replace('\\', '_', $entityClass));
 
         return sprintf('Proxy_%s_%s', $className, $hash);

@@ -7,6 +7,7 @@ use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\Repository\AbstractRepository;
 use Articulate\Modules\Repository\EntityRepository;
+use Articulate\Modules\Repository\RepositoryFactory;
 use Articulate\Modules\Repository\RepositoryInterface;
 use PHPUnit\Framework\TestCase;
 
@@ -37,9 +38,10 @@ class EntityManagerRepositoryIntegrationTest extends TestCase {
     protected function setUp(): void
     {
         // Create a mock connection for testing
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         $this->entityManager = new EntityManager($connection);
+        $this->entityManager->setRepositoryFactory(new RepositoryFactory($this->entityManager));
     }
 
     public function testGetRepositoryReturnsRepositoryInterface(): void

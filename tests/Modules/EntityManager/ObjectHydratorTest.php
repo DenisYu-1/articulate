@@ -6,6 +6,7 @@ use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
 class ObjectHydratorTest extends TestCase {
@@ -19,6 +20,7 @@ class ObjectHydratorTest extends TestCase {
         $this->hydrator = new ObjectHydrator($this->unitOfWork);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testImplementsHydratorInterface(): void
     {
         $this->assertInstanceOf(HydratorInterface::class, $this->hydrator);
@@ -67,6 +69,7 @@ class ObjectHydratorTest extends TestCase {
         $this->assertEquals('should remain', $result->existingField);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testExtractEntityData(): void
     {
         $entity = new TestEntity();
@@ -87,6 +90,7 @@ class ObjectHydratorTest extends TestCase {
         ], $data);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydratePartial(): void
     {
         $entity = new TestEntity();

@@ -31,7 +31,7 @@ class ChangeAggregatorTest extends TestCase {
 
     protected function setUp(): void
     {
-        $this->connection = $this->createMock(Connection::class);
+        $this->connection = $this->createStub(Connection::class);
         $this->entityManager = new EntityManager($this->connection);
         $this->aggregator = new ChangeAggregator(
             $this->entityManager->getMetadataRegistry(),
@@ -53,7 +53,7 @@ class ChangeAggregatorTest extends TestCase {
     public function testAggregateChangesWithSingleUnitOfWork(): void
     {
         // Use the real UnitOfWork from EntityManager
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
 
         // Create and persist entities
         $entity1 = new TestEntityForChangeAggregation();
@@ -75,7 +75,7 @@ class ChangeAggregatorTest extends TestCase {
     public function testAggregateChangesWithMultipleUnitOfWorks(): void
     {
         // Use multiple UnitOfWorks
-        $unitOfWork1 = $this->entityManager->getUnitOfWork();
+        $unitOfWork1 = $this->entityManager->getActiveUnitOfWork();
         $unitOfWork2 = $this->entityManager->createUnitOfWork();
 
         $entity1 = new TestEntityForChangeAggregation();
@@ -98,7 +98,7 @@ class ChangeAggregatorTest extends TestCase {
 
     public function testAggregateChangesWithNoChanges(): void
     {
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
 
         $result = $this->aggregator->aggregateChanges([$unitOfWork]);
 
@@ -111,7 +111,7 @@ class ChangeAggregatorTest extends TestCase {
 
     public function testAggregateChangesWithPersistedEntities(): void
     {
-        $unitOfWork = $this->entityManager->getUnitOfWork();
+        $unitOfWork = $this->entityManager->getActiveUnitOfWork();
 
         $entity = new TestEntityForChangeAggregation();
         $entity->id = 1;

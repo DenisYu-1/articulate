@@ -28,7 +28,7 @@ class ThrowOnUpdateConflictStrategyTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $this->entityManager = new EntityManager($connection);
         $this->strategy = new ThrowOnUpdateConflictStrategy();
     }

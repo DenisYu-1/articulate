@@ -8,12 +8,11 @@ use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\DatabaseTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Tester\CommandTester;
 
 class DiffCommandTest extends DatabaseTestCase {
-    private MockObject&DatabaseSchemaComparator $schemaComparator;
+    private DatabaseSchemaComparator $schemaComparator;
 
     private MigrationsCommandGenerator $commandGenerator;
 
@@ -33,10 +32,10 @@ class DiffCommandTest extends DatabaseTestCase {
 
         mkdir($this->migrationsPath, 0777, true);
 
-        $this->schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $this->schemaComparator = $this->createStub(DatabaseSchemaComparator::class);
 
         // Create a real MigrationsCommandGenerator with a mock connection
-        $mockConnection = $this->createMock(Connection::class);
+        $mockConnection = $this->createStub(Connection::class);
         $mockConnection->method('getDriverName')->willReturn(Connection::MYSQL);
         $this->commandGenerator = new MigrationsCommandGenerator($mockConnection);
     }

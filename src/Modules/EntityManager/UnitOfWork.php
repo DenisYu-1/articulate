@@ -142,6 +142,9 @@ class UnitOfWork {
      */
     public function clearChanges(): void
     {
+        foreach ($this->scheduledInserts as $entity) {
+            $this->changeTrackingStrategy->refreshSnapshot($entity);
+        }
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];

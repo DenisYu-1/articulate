@@ -47,7 +47,7 @@ class CriteriaTest extends TestCase {
 
     protected function setUp(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $this->qb = new QueryBuilder($connection);
         $this->qb->from('test_entities');
     }
@@ -162,6 +162,15 @@ class CriteriaTest extends TestCase {
 
     public function testInCriteria(): void
     {
+        $criteria = new InCriteria('status', ['active']);
+        $criteria->apply($this->qb);
+
+        $this->assertStringContainsString('status = ?', $this->qb->getSQL());
+        $this->assertEquals(['active'], $this->qb->getParameters());
+    }
+
+    public function testInCriteriaWithMultipleValues(): void
+    {
         $criteria = new InCriteria('status', ['active', 'pending']);
         $criteria->apply($this->qb);
 
@@ -218,7 +227,7 @@ class CriteriaTest extends TestCase {
 
     public function testCriteriaChaining(): void
     {
-        $qb = new QueryBuilder($this->createMock(Connection::class));
+        $qb = new QueryBuilder($this->createStub(Connection::class));
         $qb->from('users');
 
         $criteria = new AndCriteria([

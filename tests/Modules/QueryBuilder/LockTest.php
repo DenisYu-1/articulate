@@ -38,7 +38,7 @@ class LockTest extends DatabaseTestCase {
             ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv('DATABASE_NAME') . ';charset=utf8mb4'
             : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv('DATABASE_NAME');
 
-        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'), autocommit: true);
+        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'));
 
         $connection->executeQuery('DROP TABLE IF EXISTS test_users_lock');
         $connection->executeQuery('CREATE TABLE test_users_lock (id INT, name VARCHAR(255))');
@@ -65,7 +65,7 @@ class LockTest extends DatabaseTestCase {
             ? 'mysql:host=' . getenv($hostEnv) . ';dbname=' . getenv('DATABASE_NAME') . ';charset=utf8mb4'
             : 'pgsql:host=' . getenv($hostEnv) . ';port=5432;dbname=' . getenv('DATABASE_NAME');
 
-        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'), autocommit: true);
+        $connection = new Connection($dsn, getenv('DATABASE_USER'), getenv('DATABASE_PASSWORD'));
 
         $connection->executeQuery('DROP TABLE IF EXISTS test_users_lock_exec');
         $connection->executeQuery('CREATE TABLE test_users_lock_exec (id INT, name VARCHAR(255))');

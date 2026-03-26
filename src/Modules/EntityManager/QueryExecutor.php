@@ -73,6 +73,9 @@ class QueryExecutor {
         // Handle MorphTo relationships
         $this->addMorphToColumns($entity, $columns, $placeholders, $values);
 
+        // Handle ManyToOne and owning OneToOne relationships
+        $this->addManyToOneColumns($entity, $columns, $placeholders, $values);
+
         // Generate INSERT SQL
         $sql = sprintf(
             'INSERT INTO %s (%s) VALUES (%s)',
@@ -155,6 +158,9 @@ class QueryExecutor {
 
         // Handle MorphTo relationships - add any morph columns that changed
         $this->addMorphToChanges($entity, $setParts, $values);
+
+        // Handle ManyToOne and owning OneToOne relationships
+        $this->addManyToOneChanges($entity, $setParts, $values);
 
         // Prepare WHERE clause - try primary key first, then fall back to 'id' property
         [$whereClause, $whereValues] = $this->buildWhereClause($entity);
@@ -386,7 +392,7 @@ class QueryExecutor {
         $reflectionEntity = new ReflectionEntity($entityClass);
 
         foreach ($reflectionEntity->getEntityFieldsProperties() as $property) {
-            if ($property->isPrimaryKey()) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
                 $generatorType = $property->getGeneratorType();
 
                 if ($generatorType !== null) {
@@ -399,28 +405,15 @@ class QueryExecutor {
 
                 // Fall back to auto-increment if AutoIncrement attribute is present
                 if ($property->isAutoIncrement()) {
-                    $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-                    return $generator->generate($entityClass, []);
+                    return (int) $this->connection->lastInsertId();
                 }
 
                 break;
             }
         }
 
-        // If no explicit primary key found, check for implicit 'id' property
-        $reflection = new \ReflectionClass($entityClass);
-        if ($reflection->hasProperty('id')) {
-            // Treat 'id' property as auto-increment primary key by default
-            $generator = $this->generatorRegistry->getGenerator('auto_increment');
-
-            return $generator->generate($entityClass, []);
-        }
-
-        // Default to auto-increment for backward compatibility
-        $generator = $this->generatorRegistry->getDefaultGenerator();
-
-        return $generator->generate($entityClass, []);
+        // If no explicit primary key found, fall back to lastInsertId
+        return (int) $this->connection->lastInsertId();
     }
 
     private function setEntityId(object $entity, mixed $id): void
@@ -450,7 +443,7 @@ class QueryExecutor {
 
         // First try to find primary key from entity metadata
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
-            if ($property->isPrimaryKey()) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
                 return new NativeReflectionProperty($entity, $property->getFieldName());
             }
         }
@@ -471,10 +464,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        // Get all relations
-        $relations = $entityMetadata->getRelations();
-
-        foreach ($relations as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
@@ -507,10 +497,7 @@ class QueryExecutor {
     {
         $entityMetadata = new EntityMetadata($entity::class);
 
-        // Get all relations
-        $relations = $entityMetadata->getRelations();
-
-        foreach ($relations as $relation) {
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
@@ -533,6 +520,51 @@ class QueryExecutor {
                     $values[] = $relatedId;
                 }
             }
+        }
+    }
+
+    private function addManyToOneColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
+            if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
+                continue;
+            }
+
+            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty->setAccessible(true);
+            $relatedEntity = $reflectionProperty->getValue($entity);
+
+            if ($relatedEntity === null) {
+                continue;
+            }
+
+            $columns[] = $relation->getColumnName();
+            $placeholders[] = '?';
+            $values[] = $this->extractEntityId($relatedEntity);
+        }
+    }
+
+    private function addManyToOneChanges(object $entity, array &$setParts, array &$values): void
+    {
+        $entityMetadata = new EntityMetadata($entity::class);
+
+        foreach ($entityMetadata->getColumnRelations() as $relation) {
+            if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
+                continue;
+            }
+
+            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty->setAccessible(true);
+            $relatedEntity = $reflectionProperty->getValue($entity);
+
+            if ($relatedEntity === null) {
+                continue;
+            }
+
+            $setParts[] = $relation->getColumnName() . ' = ?';
+            $values[] = $this->extractEntityId($relatedEntity);
         }
     }
 

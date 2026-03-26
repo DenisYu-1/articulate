@@ -38,7 +38,7 @@ class InitCommandTest extends TestCase {
 
     public function testInitCommandFactoryCreatesMySqlCommand(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn(Connection::MYSQL);
 
         $command = InitCommandFactory::create($connection);
@@ -48,7 +48,7 @@ class InitCommandTest extends TestCase {
 
     public function testInitCommandFactoryCreatesPostgresqlCommand(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn(Connection::PGSQL);
 
         $command = InitCommandFactory::create($connection);
@@ -58,7 +58,7 @@ class InitCommandTest extends TestCase {
 
     public function testInitCommandFactoryThrowsExceptionForUnsupportedDriver(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn('sqlite');
 
         $this->expectException(InvalidArgumentException::class);
@@ -69,7 +69,7 @@ class InitCommandTest extends TestCase {
 
     public function testInitCommandFactoryThrowsExceptionForUnknownDriver(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn('unknown');
 
         $this->expectException(InvalidArgumentException::class);

@@ -7,9 +7,8 @@ use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
-use Articulate\Modules\Repository\RepositoryFactory;
-use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
+use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 
 class EntityManager {
@@ -17,6 +16,8 @@ class EntityManager {
 
     /** @var UnitOfWork[] */
     private array $unitOfWorks = [];
+
+    private UnitOfWork $activeUnitOfWork;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
 
@@ -36,7 +37,7 @@ class EntityManager {
 
     private ?Proxy\ProxyManager $proxyManager = null;
 
-    private RepositoryFactory $repositoryFactory;
+    private ?RepositoryFactoryInterface $repositoryFactory = null;
 
     private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
 
@@ -54,7 +55,8 @@ class EntityManager {
         ?EntityMetadataRegistry $metadataRegistry = null,
         ?QueryExecutor $queryExecutor = null,
         ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
-        ?CacheItemPoolInterface $resultCache = null
+        ?CacheItemPoolInterface $resultCache = null,
+        ?RepositoryFactoryInterface $repositoryFactory = null
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -71,9 +73,9 @@ class EntityManager {
         $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
-        // Create default UnitOfWork
-        $defaultUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
-        $this->unitOfWorks[] = $defaultUow;
+        $initialUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
+        $this->unitOfWorks[] = $initialUow;
+        $this->activeUnitOfWork = $initialUow;
 
         $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
 
@@ -86,44 +88,54 @@ class EntityManager {
 
         $this->typeRegistry = new TypeRegistry();
 
-        $this->hydrator = $hydrator ?? new ObjectHydrator($defaultUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
-        // Store result cache
         $this->resultCache = $resultCache;
+        $this->repositoryFactory = $repositoryFactory;
 
         $this->filters = new FilterCollection();
-
-        // Initialize RepositoryFactory
-        $this->repositoryFactory = new RepositoryFactory($this);
     }
 
     // Persistence operations
     public function persist(object $entity): void
     {
-        $this->getDefaultUnitOfWork()->persist($entity);
+        $this->getActiveUnitOfWork()->persist($entity);
     }
 
     public function remove(object $entity): void
     {
-        $this->getDefaultUnitOfWork()->remove($entity);
+        $this->getActiveUnitOfWork()->remove($entity);
     }
 
     public function flush(): void
     {
-        // Aggregate changes from all UnitOfWorks
-        $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
+        $managingTransaction = !$this->connection->inTransaction();
 
-        // Execute the changes in proper order (respecting foreign key constraints)
-        $this->executeChanges($aggregatedChanges);
-
-        // Execute post-operation callbacks - each UnitOfWork processes its own changes
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
+        if ($managingTransaction) {
+            $this->connection->beginTransaction();
         }
 
-        // Clear changes from all UnitOfWorks
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->clearChanges();
+        try {
+            $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
+            $this->executeChanges($aggregatedChanges);
+
+            foreach ($this->unitOfWorks as $unitOfWork) {
+                $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
+            }
+
+            foreach ($this->unitOfWorks as $unitOfWork) {
+                $unitOfWork->clearChanges();
+            }
+
+            if ($managingTransaction) {
+                $this->connection->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($managingTransaction) {
+                $this->connection->rollbackTransaction();
+            }
+
+            throw $e;
         }
     }
 
@@ -234,8 +246,7 @@ class EntityManager {
             // Get entity metadata
             $metadata = $this->metadataRegistry->getMetadata($entityClass);
 
-            // Check relationships
-            foreach ($metadata->getRelations() as $relation) {
+            foreach ($metadata->getColumnRelations() as $relation) {
                 $targetClass = $relation->getTargetEntity();
 
                 // Only consider relationships to entities that are also being operated on
@@ -293,8 +304,7 @@ class EntityManager {
             }
 
             if (isset($visiting[$class])) {
-                // Cycle detected - for now, just continue (could be improved)
-                return;
+                throw new \RuntimeException(sprintf('Circular dependency detected for entity class %s', $class));
             }
 
             $visiting[$class] = true;
@@ -323,6 +333,26 @@ class EntityManager {
         return $result;
     }
 
+    /**
+     * Resolve all columns needed for entity hydration, including morph columns.
+     *
+     * @param EntityMetadata $metadata
+     * @return string[]
+     */
+    private function getSelectColumnsForEntity(EntityMetadata $metadata): array
+    {
+        $columnNames = $metadata->getColumnNames();
+
+        foreach ($metadata->getColumnRelations() as $relation) {
+            if ($relation->isMorphTo()) {
+                $columnNames[] = $relation->getMorphTypeColumnName();
+                $columnNames[] = $relation->getMorphIdColumnName();
+            }
+        }
+
+        return $columnNames;
+    }
+
     // Retrieval operations
     public function find(string $class, mixed $id): ?object
     {
@@ -347,15 +377,7 @@ class EntityManager {
         $primaryKeyColumn = $primaryKeyColumns[0];
 
         // Build and execute query directly to get raw data
-        $columnNames = $metadata->getColumnNames();
-
-        // Add morph columns from relations
-        foreach ($metadata->getRelations() as $relation) {
-            if ($relation->isMorphTo()) {
-                $columnNames[] = $relation->getMorphTypeColumnName();
-                $columnNames[] = $relation->getMorphIdColumnName();
-            }
-        }
+        $columnNames = $this->getSelectColumnsForEntity($metadata);
 
         $qb = $this->createQueryBuilder($class)
             ->select(...$columnNames)
@@ -378,7 +400,7 @@ class EntityManager {
         $entity = $this->hydrator->hydrate($class, $rawData);
 
         // Register the entity as managed in the unit of work
-        $this->getUnitOfWork()->registerManaged($entity, $rawData);
+        $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
 
         return $entity;
     }
@@ -391,7 +413,7 @@ class EntityManager {
 
         // Build and execute query to get all records
         $qb = $this->createQueryBuilder($class)
-            ->select(...$metadata->getColumnNames())
+            ->select(...$this->getSelectColumnsForEntity($metadata))
             ->from($tableName);
 
         $sql = $qb->getSQL();
@@ -408,7 +430,7 @@ class EntityManager {
         // Hydrate each entity and register in unit of work
         foreach ($rawResults as $rawData) {
             $entity = $this->hydrator->hydrate($class, $rawData);
-            $this->getUnitOfWork()->registerManaged($entity, $rawData);
+            $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
             $entities[] = $entity;
         }
 
@@ -434,7 +456,7 @@ class EntityManager {
 
         // Register the proxy as managed in the unit of work
         // Note: We pass empty array for original data since we haven't loaded it yet
-        $this->getUnitOfWork()->registerManaged($proxy, []);
+        $this->getActiveUnitOfWork()->registerManaged($proxy, []);
 
         return $proxy;
     }
@@ -500,7 +522,7 @@ class EntityManager {
         }
 
         // Update the unit of work's original data to reflect the fresh state
-        $this->getUnitOfWork()->registerManaged($entity, $freshData);
+        $this->getActiveUnitOfWork()->registerManaged($entity, $freshData);
     }
 
     // Transaction management
@@ -511,7 +533,6 @@ class EntityManager {
 
     public function commit(): void
     {
-        $this->flush();
         $this->connection->commit();
     }
 
@@ -537,9 +558,9 @@ class EntityManager {
     }
 
     // Unit of Work access
-    public function getUnitOfWork(): UnitOfWork
+    public function getActiveUnitOfWork(): UnitOfWork
     {
-        return $this->getDefaultUnitOfWork();
+        return $this->activeUnitOfWork;
     }
 
     // Create new unit of work, mostly for scopes
@@ -549,6 +570,31 @@ class EntityManager {
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
+    }
+
+    public function setActiveUnitOfWork(UnitOfWork $unitOfWork): void
+    {
+        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
+            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
+        }
+
+        $this->activeUnitOfWork = $unitOfWork;
+    }
+
+    public function removeUnitOfWork(UnitOfWork $unitOfWork): void
+    {
+        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
+            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
+        }
+
+        if ($unitOfWork === $this->activeUnitOfWork) {
+            throw new InvalidArgumentException('Cannot remove the active UnitOfWork. Set a different active UnitOfWork first.');
+        }
+
+        $unitOfWork->clear();
+        $this->unitOfWorks = array_values(
+            array_filter($this->unitOfWorks, fn ($uow) => $uow !== $unitOfWork)
+        );
     }
 
     public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
@@ -570,18 +616,13 @@ class EntityManager {
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
         $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
-        $qb->setUnitOfWork($this->getDefaultUnitOfWork());
+        $qb->setUnitOfWork($this->getActiveUnitOfWork());
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
         }
 
         return $qb;
-    }
-
-    private function getDefaultUnitOfWork(): UnitOfWork
-    {
-        return $this->unitOfWorks[0];
     }
 
     // Hydrator access (for advanced customization)
@@ -604,7 +645,7 @@ class EntityManager {
         $relation = $metadata->getRelation($relationName);
 
         if (!$relation) {
-            throw new \InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
+            throw new InvalidArgumentException("Relation '$relationName' not found on entity " . $entity::class);
         }
 
         return $this->relationshipLoader->load($entity, $relation, [], true);
@@ -634,14 +675,17 @@ class EntityManager {
         return $this->proxyManager->createProxy($entityClass, $identifier);
     }
 
-    /**
-     * Get a repository for the given entity class.
-     *
-     * If the entity specifies a custom repository class via the Entity attribute,
-     * that class will be used. Otherwise, a generic EntityRepository will be returned.
-     */
-    public function getRepository(string $entityClass): RepositoryInterface
+    public function setRepositoryFactory(RepositoryFactoryInterface $repositoryFactory): void
     {
+        $this->repositoryFactory = $repositoryFactory;
+    }
+
+    public function getRepository(string $entityClass): object
+    {
+        if ($this->repositoryFactory === null) {
+            throw new \RuntimeException('No RepositoryFactory configured. Call setRepositoryFactory() first.');
+        }
+
         return $this->repositoryFactory->getRepository($entityClass);
     }
 

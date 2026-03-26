@@ -36,7 +36,7 @@ class TypeRegistryTest extends TestCase {
 
     public function testRegisterTypeWithConverter(): void
     {
-        $converter = $this->createMock(TypeConverterInterface::class);
+        $converter = $this->createStub(TypeConverterInterface::class);
 
         $this->registry->registerType('custom', 'CUSTOM_TYPE', $converter);
 
@@ -72,7 +72,7 @@ class TypeRegistryTest extends TestCase {
 
     public function testRegisterClassMappingWithConverter(): void
     {
-        $converter = $this->createMock(TypeConverterInterface::class);
+        $converter = $this->createStub(TypeConverterInterface::class);
 
         $this->registry->registerClassMapping(\stdClass::class, 'OBJECT_TYPE', $converter);
 

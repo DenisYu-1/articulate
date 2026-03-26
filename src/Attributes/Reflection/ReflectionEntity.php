@@ -378,6 +378,18 @@ class ReflectionEntity extends ReflectionClass {
         }
     }
 
+    /**
+     * @return iterable<ReflectionRelation>
+     */
+    public function getColumnRelationProperties(): iterable
+    {
+        foreach ($this->getEntityRelationProperties() as $relation) {
+            if ($relation instanceof ReflectionRelation) {
+                yield $relation;
+            }
+        }
+    }
+
     public function getPrimaryKeyColumns(): array
     {
         if (!$this->isEntity()) {

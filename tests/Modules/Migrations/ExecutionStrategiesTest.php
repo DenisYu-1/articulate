@@ -6,6 +6,7 @@ use Articulate\Connection;
 use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
 use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use Articulate\Modules\Migrations\Generator\BaseMigration;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -20,12 +21,14 @@ class ExecutionStrategiesTest extends TestCase {
         $this->io = $this->createMock(SymfonyStyle::class);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testMigrationExecutionStrategyConstruction(): void
     {
         $strategy = new MigrationExecutionStrategy($this->connection);
         $this->assertInstanceOf(MigrationExecutionStrategy::class, $strategy);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testMigrationExecutionStrategyWithNoMigrations(): void
     {
         $strategy = new MigrationExecutionStrategy($this->connection);
@@ -42,19 +45,18 @@ class ExecutionStrategiesTest extends TestCase {
         $this->assertEquals(0, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testMigrationExecutionStrategySkipsExecutedMigrations(): void
     {
         $strategy = new MigrationExecutionStrategy($this->connection);
 
-        // Create a mock file
-        $file = $this->createMock(\SplFileInfo::class);
+        $file = $this->createStub(\SplFileInfo::class);
         $file->method('isFile')->willReturn(true);
         $file->method('getExtension')->willReturn('php');
         $file->method('getPathname')->willReturn('/tmp/TestMigration.php');
 
         $iterator = new \RecursiveIteratorIterator(new \RecursiveArrayIterator([$file]));
 
-        // Mock executed migrations
         $executedMigrations = ['TestNamespace\TestMigration' => true];
 
         $this->io->expects($this->never())->method('writeln');
@@ -65,6 +67,7 @@ class ExecutionStrategiesTest extends TestCase {
         $this->assertEquals(0, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testRollbackExecutionStrategyConstruction(): void
     {
         $strategy = new RollbackExecutionStrategy($this->connection);
@@ -75,8 +78,7 @@ class ExecutionStrategiesTest extends TestCase {
     {
         $strategy = new RollbackExecutionStrategy($this->connection);
 
-        // Mock empty result
-        $statement = $this->createMock(\PDOStatement::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetch')->willReturn(false);
 
         $this->connection->expects($this->once())
@@ -94,12 +96,12 @@ class ExecutionStrategiesTest extends TestCase {
         $this->assertEquals(0, $result);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testRollbackExecutionStrategySuccess(): void
     {
         $strategy = new RollbackExecutionStrategy($this->connection);
 
-        // Mock migration found in database
-        $statement = $this->createMock(\PDOStatement::class);
+        $statement = $this->createStub(\PDOStatement::class);
         $statement->method('fetch')->willReturn(['name' => 'TestNamespace\TestMigration']);
 
         $this->connection->expects($this->once())
@@ -107,8 +109,7 @@ class ExecutionStrategiesTest extends TestCase {
                         ->with('SELECT name FROM migrations ORDER BY id DESC LIMIT 1')
                         ->willReturn($statement);
 
-        // Create a mock file
-        $file = $this->createMock(\SplFileInfo::class);
+        $file = $this->createStub(\SplFileInfo::class);
         $file->method('isFile')->willReturn(true);
         $file->method('getExtension')->willReturn('php');
         $file->method('getPathname')->willReturn('/tmp/TestMigration.php');

@@ -5,9 +5,8 @@ namespace Articulate\Tests\Commands\MigrateCommand;
 use Articulate\Commands\InitCommand;
 use Articulate\Commands\MigrateCommand;
 use Articulate\Connection;
-use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
-use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -20,10 +19,6 @@ class MigrateCommandTest extends DatabaseTestCase {
 
     private MockObject&InitCommand $initCommand;
 
-    private MockObject&MigrationExecutionStrategy $migrationStrategy;
-
-    private MockObject&RollbackExecutionStrategy $rollbackStrategy;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -33,8 +28,6 @@ class MigrateCommandTest extends DatabaseTestCase {
         mkdir($this->migrationsPath, 0777, true);
 
         $this->initCommand = $this->createMock(InitCommand::class);
-        $this->migrationStrategy = $this->createMock(MigrationExecutionStrategy::class);
-        $this->rollbackStrategy = $this->createMock(RollbackExecutionStrategy::class);
     }
 
     protected function tearDown(): void
@@ -66,6 +59,7 @@ class MigrateCommandTest extends DatabaseTestCase {
     /**
      * Test migrate command executes successfully with migrations.
      */
+    #[AllowMockObjectsWithoutExpectations]
     #[DataProvider('databaseProvider')]
     #[Group('database')]
     public function testExecutesMigrationsSuccessfully(string $databaseName): void
@@ -128,12 +122,11 @@ PHP;
             ->expects($this->once())
             ->method('ensureMigrationsTableExists');
 
-        // Mock connection to return empty migrations
-        $resultMock = $this->createMock(\PDOStatement::class);
+        $resultMock = $this->createStub(\PDOStatement::class);
         $resultMock->method('fetchAll')->willReturn([]);
 
-        $latestResultMock = $this->createMock(\PDOStatement::class);
-        $latestResultMock->method('fetch')->willReturn(false); // No latest migration
+        $latestResultMock = $this->createStub(\PDOStatement::class);
+        $latestResultMock->method('fetch')->willReturn(false);
 
         $connection
             ->expects($this->exactly(2))
@@ -165,7 +158,7 @@ PHP;
      */
     public function testShowsWarningWhenMigrationsDirectoryDoesNotExist(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         $this->initCommand
             ->expects($this->once())
@@ -223,9 +216,10 @@ PHP;
     /**
      * Test migrate command configuration.
      */
+    #[AllowMockObjectsWithoutExpectations]
     public function testCommandConfiguration(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         $command = new MigrateCommand(
             $connection,
@@ -246,7 +240,7 @@ PHP;
      */
     public function testEnsuresMigrationsTableExists(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         $this->initCommand
             ->expects($this->once())
@@ -317,8 +311,7 @@ PHP;
             ->expects($this->once())
             ->method('ensureMigrationsTableExists');
 
-        // Mock connection to return empty result set
-        $resultMock = $this->createMock(\PDOStatement::class);
+        $resultMock = $this->createStub(\PDOStatement::class);
         $resultMock->method('fetchAll')->willReturn([]);
 
         $connection

@@ -16,7 +16,7 @@ class RepositoryFactoryTest extends TestCase {
     protected function setUp(): void
     {
         // Create a mock connection for testing
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
 
         $this->entityManager = new EntityManager($connection);
         $this->factory = new RepositoryFactory($this->entityManager);

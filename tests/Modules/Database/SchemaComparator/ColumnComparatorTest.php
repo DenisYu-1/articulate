@@ -494,7 +494,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithNewColumn(): void
     {
-        $property = $this->createMock(ReflectionProperty::class);
+        $property = $this->createStub(ReflectionProperty::class);
         $property->method('getType')->willReturn('string');
         $property->method('isNullable')->willReturn(false);
         $property->method('getDefaultValue')->willReturn(null);
@@ -519,7 +519,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithRelationProperty(): void
     {
-        $property = $this->createMock(ReflectionRelation::class);
+        $property = $this->createStub(ReflectionRelation::class);
         $property->method('getType')->willReturn('int');
         $property->method('isNullable')->willReturn(false);
         $property->method('getDefaultValue')->willReturn(null);
@@ -539,7 +539,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithExistingColumnCompatible(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('string');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn(null);
@@ -552,7 +552,7 @@ class ColumnComparatorTest extends TestCase {
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
 
         // Second property with compatible definition
-        $newProperty = $this->createMock(ReflectionProperty::class);
+        $newProperty = $this->createStub(ReflectionProperty::class);
         $newProperty->method('getType')->willReturn('string');
         $newProperty->method('isNullable')->willReturn(true); // Different nullable - should be merged
         $newProperty->method('getDefaultValue')->willReturn(null);
@@ -572,7 +572,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsOnTypeConflict(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('string');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn(null);
@@ -580,7 +580,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
 
-        $conflictingProperty = $this->createMock(ReflectionProperty::class);
+        $conflictingProperty = $this->createStub(ReflectionProperty::class);
         $conflictingProperty->method('getType')->willReturn('int'); // Different type
         $conflictingProperty->method('isNullable')->willReturn(false);
         $conflictingProperty->method('getDefaultValue')->willReturn(null);
@@ -594,7 +594,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsOnLengthConflict(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('string');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn(null);
@@ -602,7 +602,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
 
-        $conflictingProperty = $this->createMock(ReflectionProperty::class);
+        $conflictingProperty = $this->createStub(ReflectionProperty::class);
         $conflictingProperty->method('getType')->willReturn('string');
         $conflictingProperty->method('isNullable')->willReturn(false);
         $conflictingProperty->method('getDefaultValue')->willReturn(null);
@@ -616,7 +616,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsOnDefaultValueConflict(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('string');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn('default1');
@@ -624,7 +624,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'status', $existingProperty, 'users');
 
-        $conflictingProperty = $this->createMock(ReflectionProperty::class);
+        $conflictingProperty = $this->createStub(ReflectionProperty::class);
         $conflictingProperty->method('getType')->willReturn('string');
         $conflictingProperty->method('isNullable')->willReturn(false);
         $conflictingProperty->method('getDefaultValue')->willReturn('default2'); // Different default
@@ -638,7 +638,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsOnRelationVsScalarConflict(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('int');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn(null);
@@ -646,7 +646,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingProperty, 'posts');
 
-        $relationProperty = $this->createMock(ReflectionRelation::class);
+        $relationProperty = $this->createStub(ReflectionRelation::class);
         $relationProperty->method('getType')->willReturn('int');
         $relationProperty->method('isNullable')->willReturn(false);
         $relationProperty->method('getDefaultValue')->willReturn(null);
@@ -661,7 +661,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsOnRelationTargetConflict(): void
     {
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -672,7 +672,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
 
-        $conflictingRelation = $this->createMock(ReflectionRelation::class);
+        $conflictingRelation = $this->createStub(ReflectionRelation::class);
         $conflictingRelation->method('getType')->willReturn('int');
         $conflictingRelation->method('isNullable')->willReturn(false);
         $conflictingRelation->method('getDefaultValue')->willReturn(null);
@@ -689,7 +689,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithCompatibleRelationsSameTarget(): void
     {
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -700,7 +700,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
 
-        $compatibleRelation = $this->createMock(ReflectionRelation::class);
+        $compatibleRelation = $this->createStub(ReflectionRelation::class);
         $compatibleRelation->method('getType')->willReturn('int');
         $compatibleRelation->method('isNullable')->willReturn(false);
         $compatibleRelation->method('getDefaultValue')->willReturn(null);
@@ -722,7 +722,7 @@ class ColumnComparatorTest extends TestCase {
     {
         // Test the case where relations have null targets (MorphTo case)
         // This should skip the target comparison entirely
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -733,7 +733,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existingRelation, 'comments');
 
-        $incomingRelation = $this->createMock(ReflectionRelation::class);
+        $incomingRelation = $this->createStub(ReflectionRelation::class);
         $incomingRelation->method('getType')->willReturn('int');
         $incomingRelation->method('isNullable')->willReturn(false);
         $incomingRelation->method('getDefaultValue')->willReturn(null);
@@ -751,7 +751,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithMorphToRelationsNullTargets(): void
     {
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -762,7 +762,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existingRelation, 'comments');
 
-        $anotherMorphToRelation = $this->createMock(ReflectionRelation::class);
+        $anotherMorphToRelation = $this->createStub(ReflectionRelation::class);
         $anotherMorphToRelation->method('getType')->willReturn('int');
         $anotherMorphToRelation->method('isNullable')->willReturn(false);
         $anotherMorphToRelation->method('getDefaultValue')->willReturn(null);
@@ -781,7 +781,7 @@ class ColumnComparatorTest extends TestCase {
     public function testMergeColumnDefinitionMergesAllPropertiesWithNullCoalescing(): void
     {
         // First property with some values
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('string');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn('default_value');
@@ -794,7 +794,7 @@ class ColumnComparatorTest extends TestCase {
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'test_column', $existingProperty, 'test_table');
 
         // Second property with default values (false/null) that should be overridden by existing
-        $incomingProperty = $this->createMock(ReflectionProperty::class);
+        $incomingProperty = $this->createStub(ReflectionProperty::class);
         $incomingProperty->method('getType')->willReturn('string');
         $incomingProperty->method('isNullable')->willReturn(false);
         $incomingProperty->method('getDefaultValue')->willReturn('default_value');
@@ -816,7 +816,7 @@ class ColumnComparatorTest extends TestCase {
     public function testMergeColumnDefinitionMergesRelationProperties(): void
     {
         // First relation with some properties
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -827,7 +827,7 @@ class ColumnComparatorTest extends TestCase {
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
 
         // Second relation with different FK requirement
-        $incomingRelation = $this->createMock(ReflectionRelation::class);
+        $incomingRelation = $this->createStub(ReflectionRelation::class);
         $incomingRelation->method('getType')->willReturn('int');
         $incomingRelation->method('isNullable')->willReturn(false);
         $incomingRelation->method('getDefaultValue')->willReturn(null);
@@ -847,7 +847,7 @@ class ColumnComparatorTest extends TestCase {
     public function testAddMorphToColumnsCreatesBothColumns(): void
     {
         $propertiesIndexed = [];
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
         $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -880,7 +880,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesWithExistingCompatibleTypeColumn(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
         $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -916,7 +916,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsThrowsOnTypeColumnConflict(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
         $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
 
@@ -945,7 +945,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsThrowsOnIdColumnConflict(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
         $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
 
@@ -974,7 +974,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesNullableIdColumn(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
         $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -1007,7 +1007,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesIdColumnWithAllExistingProperties(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
         $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -1047,7 +1047,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesIdColumnWithNullExistingProperties(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
         $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -1119,7 +1119,7 @@ class ColumnComparatorTest extends TestCase {
         $method = $reflection->getMethod('normalizeTypeName');
         $method->setAccessible(true);
 
-        $namedType = $this->createMock(\ReflectionNamedType::class);
+        $namedType = $this->createStub(\ReflectionNamedType::class);
         $namedType->method('getName')->willReturn('DateTime');
 
         $result = $method->invoke($this->comparator, $namedType);
@@ -1132,13 +1132,13 @@ class ColumnComparatorTest extends TestCase {
         $method = $reflection->getMethod('normalizeTypeName');
         $method->setAccessible(true);
 
-        $stringType = $this->createMock(\ReflectionNamedType::class);
+        $stringType = $this->createStub(\ReflectionNamedType::class);
         $stringType->method('getName')->willReturn('string');
 
-        $nullType = $this->createMock(\ReflectionNamedType::class);
+        $nullType = $this->createStub(\ReflectionNamedType::class);
         $nullType->method('getName')->willReturn('null');
 
-        $unionType = $this->createMock(\ReflectionUnionType::class);
+        $unionType = $this->createStub(\ReflectionUnionType::class);
         $unionType->method('getTypes')->willReturn([$stringType, $nullType]);
 
         $result = $method->invoke($this->comparator, $unionType);
@@ -1151,13 +1151,13 @@ class ColumnComparatorTest extends TestCase {
         $method = $reflection->getMethod('normalizeTypeName');
         $method->setAccessible(true);
 
-        $nullType1 = $this->createMock(\ReflectionNamedType::class);
+        $nullType1 = $this->createStub(\ReflectionNamedType::class);
         $nullType1->method('getName')->willReturn('null');
 
-        $nullType2 = $this->createMock(\ReflectionNamedType::class);
+        $nullType2 = $this->createStub(\ReflectionNamedType::class);
         $nullType2->method('getName')->willReturn('null');
 
-        $unionType = $this->createMock(\ReflectionUnionType::class);
+        $unionType = $this->createStub(\ReflectionUnionType::class);
         $unionType->method('getTypes')->willReturn([$nullType1, $nullType2]);
 
         $result = $method->invoke($this->comparator, $unionType);
@@ -1178,7 +1178,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsWhenRelationConflictsWithScalar(): void
     {
-        $existingProperty = $this->createMock(ReflectionProperty::class);
+        $existingProperty = $this->createStub(ReflectionProperty::class);
         $existingProperty->method('getType')->willReturn('int');
         $existingProperty->method('isNullable')->willReturn(false);
         $existingProperty->method('getDefaultValue')->willReturn(null);
@@ -1186,7 +1186,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingProperty, 'posts');
 
-        $relationProperty = $this->createMock(ReflectionRelation::class);
+        $relationProperty = $this->createStub(ReflectionRelation::class);
         $relationProperty->method('getType')->willReturn('int');
         $relationProperty->method('isNullable')->willReturn(false);
         $relationProperty->method('getDefaultValue')->willReturn(null);
@@ -1201,7 +1201,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionThrowsWhenRelationsPointToDifferentTargets(): void
     {
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -1212,7 +1212,7 @@ class ColumnComparatorTest extends TestCase {
 
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
 
-        $conflictingRelation = $this->createMock(ReflectionRelation::class);
+        $conflictingRelation = $this->createStub(ReflectionRelation::class);
         $conflictingRelation->method('getType')->willReturn('int');
         $conflictingRelation->method('isNullable')->willReturn(false);
         $conflictingRelation->method('getDefaultValue')->willReturn(null);
@@ -1229,7 +1229,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesExistingCompatibleTypeColumn(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
         $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -1262,7 +1262,7 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesExistingCompatibleIdColumn(): void
     {
-        $relation = $this->createMock(ReflectionRelation::class);
+        $relation = $this->createStub(ReflectionRelation::class);
         $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
         $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
         $relation->method('getReferencedColumnName')->willReturn('id');
@@ -1299,7 +1299,7 @@ class ColumnComparatorTest extends TestCase {
     public function testMergeColumnDefinitionCoversAllNullCoalescing(): void
     {
         // Test case where existing has null values and incoming has non-null values
-        $existingRelation = $this->createMock(ReflectionRelation::class);
+        $existingRelation = $this->createStub(ReflectionRelation::class);
         $existingRelation->method('getType')->willReturn('int');
         $existingRelation->method('isNullable')->willReturn(false);
         $existingRelation->method('getDefaultValue')->willReturn(null);
@@ -1311,7 +1311,7 @@ class ColumnComparatorTest extends TestCase {
         $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
 
         // Second relation with null values that should be overridden by existing non-null values
-        $incomingRelation = $this->createMock(ReflectionRelation::class);
+        $incomingRelation = $this->createStub(ReflectionRelation::class);
         $incomingRelation->method('getType')->willReturn('int');
         $incomingRelation->method('isNullable')->willReturn(false);
         $incomingRelation->method('getDefaultValue')->willReturn(null);

@@ -85,8 +85,8 @@ class WhereClauseTest extends DatabaseTestCase {
         $sql = $qb->getSQL();
         $params = $qb->getParameters();
 
-        $this->assertEquals('SELECT id, name FROM users WHERE id IN (?)', $sql);
-        $this->assertEquals([[5]], $params);
+        $this->assertEquals('SELECT id, name FROM users WHERE id = ?', $sql);
+        $this->assertEquals([5], $params);
     }
 
     #[DataProvider('databaseProvider')]

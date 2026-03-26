@@ -13,7 +13,7 @@ use InvalidArgumentException;
 class SchemaReaderFactoryTest extends AbstractTestCase {
     public function testCreateReturnsMySqlSchemaReaderForMySqlConnection(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn(Connection::MYSQL);
 
         $reader = SchemaReaderFactory::create($connection);
@@ -24,7 +24,7 @@ class SchemaReaderFactoryTest extends AbstractTestCase {
 
     public function testCreateReturnsPostgresqlSchemaReaderForPostgresqlConnection(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn(Connection::PGSQL);
 
         $reader = SchemaReaderFactory::create($connection);
@@ -35,7 +35,7 @@ class SchemaReaderFactoryTest extends AbstractTestCase {
 
     public function testCreateThrowsExceptionForUnsupportedDriver(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn('unsupported_driver');
 
         $this->expectException(InvalidArgumentException::class);
@@ -46,7 +46,7 @@ class SchemaReaderFactoryTest extends AbstractTestCase {
 
     public function testCreatePassesConnectionToReader(): void
     {
-        $connection = $this->createMock(Connection::class);
+        $connection = $this->createStub(Connection::class);
         $connection->method('getDriverName')->willReturn(Connection::MYSQL);
 
         $reader = SchemaReaderFactory::create($connection);

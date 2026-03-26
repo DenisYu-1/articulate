@@ -8,4 +8,6 @@ interface ChangeTrackingStrategy {
     public function untrackEntity(object $entity): void;
 
     public function computeChangeSet(object $entity): array;
+
+    public function refreshSnapshot(object $entity): void;
 }
