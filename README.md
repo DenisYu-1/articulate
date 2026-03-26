@@ -1,5 +1,7 @@
 # Articulate
 
+Context-bounded PHP ORM for domain-driven applications
+
 ## The Problem
 
 Traditional ORMs force one entity class per table. Auth needs only `login` and `password`, but it loads `phones`, `groups`, `cart`, and every other relation. The admin panel needs different fields than the API. Adding one relation to a `User` entity affects every consumer of that class.
@@ -151,4 +153,4 @@ Custom repositories via `#[Entity(repositoryClass: UserRepository::class)]` exte
 
 ## License
 
-Licensed under the Apache License 2.0. See `LICENSE`.
+Licensed under the Apache License 2.0. See [LICENSE](./LICENSE).

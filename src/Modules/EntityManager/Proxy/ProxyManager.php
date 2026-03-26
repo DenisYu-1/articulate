@@ -61,10 +61,21 @@ class ProxyManager {
     {
         $reflection = new \ReflectionClass($source);
         foreach ($reflection->getProperties() as $property) {
-            if ($property->isPublic()) {
-                $name = $property->getName();
+            if ($property->isStatic()) {
+                continue;
+            }
+
+            $property->setAccessible(true);
+
+            try {
                 $value = $property->getValue($source);
-                $target->$name = $value;
+                $property->setValue($target, $value);
+            } catch (\Error) {
+                try {
+                    $property->setValue($target, null);
+                } catch (\Error) {
+                    // keep silent for properties that cannot be copied safely
+                }
             }
         }
     }

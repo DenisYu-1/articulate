@@ -308,8 +308,7 @@ class EntityManager {
             }
 
             if (isset($visiting[$class])) {
-                // Cycle detected - for now, just continue (could be improved)
-                return;
+                throw new \RuntimeException(sprintf('Circular dependency detected for entity class %s', $class));
             }
 
             $visiting[$class] = true;
@@ -338,6 +337,26 @@ class EntityManager {
         return $result;
     }
 
+    /**
+     * Resolve all columns needed for entity hydration, including morph columns.
+     *
+     * @param EntityMetadata $metadata
+     * @return string[]
+     */
+    private function getSelectColumnsForEntity(EntityMetadata $metadata): array
+    {
+        $columnNames = $metadata->getColumnNames();
+
+        foreach ($metadata->getColumnRelations() as $relation) {
+            if ($relation->isMorphTo()) {
+                $columnNames[] = $relation->getMorphTypeColumnName();
+                $columnNames[] = $relation->getMorphIdColumnName();
+            }
+        }
+
+        return $columnNames;
+    }
+
     // Retrieval operations
     public function find(string $class, mixed $id): ?object
     {
@@ -362,15 +381,7 @@ class EntityManager {
         $primaryKeyColumn = $primaryKeyColumns[0];
 
         // Build and execute query directly to get raw data
-        $columnNames = $metadata->getColumnNames();
-
-        // Add morph columns from relations
-        foreach ($metadata->getColumnRelations() as $relation) {
-            if ($relation->isMorphTo()) {
-                $columnNames[] = $relation->getMorphTypeColumnName();
-                $columnNames[] = $relation->getMorphIdColumnName();
-            }
-        }
+        $columnNames = $this->getSelectColumnsForEntity($metadata);
 
         $qb = $this->createQueryBuilder($class)
             ->select(...$columnNames)
@@ -406,7 +417,7 @@ class EntityManager {
 
         // Build and execute query to get all records
         $qb = $this->createQueryBuilder($class)
-            ->select(...$metadata->getColumnNames())
+            ->select(...$this->getSelectColumnsForEntity($metadata))
             ->from($tableName);
 
         $sql = $qb->getSQL();
@@ -526,7 +537,10 @@ class EntityManager {
 
     public function commit(): void
     {
-        $this->flush();
+        if (!$this->connection->inTransaction()) {
+            throw new \RuntimeException('No active transaction to commit');
+        }
+
         $this->connection->commit();
     }
 

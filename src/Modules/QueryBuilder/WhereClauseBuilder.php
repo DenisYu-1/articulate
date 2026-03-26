@@ -108,6 +108,12 @@ class WhereClauseBuilder {
             return $this->where('1 = 0');
         }
 
+        if (count($values) === 1) {
+            $singleValue = array_values($values)[0];
+
+            return $this->where("{$column} = ?", $singleValue);
+        }
+
         return $this->where("{$column} IN (?)", $values);
     }
 

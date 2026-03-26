@@ -162,6 +162,15 @@ class CriteriaTest extends TestCase {
 
     public function testInCriteria(): void
     {
+        $criteria = new InCriteria('status', ['active']);
+        $criteria->apply($this->qb);
+
+        $this->assertStringContainsString('status = ?', $this->qb->getSQL());
+        $this->assertEquals(['active'], $this->qb->getParameters());
+    }
+
+    public function testInCriteriaWithMultipleValues(): void
+    {
         $criteria = new InCriteria('status', ['active', 'pending']);
         $criteria->apply($this->qb);
 

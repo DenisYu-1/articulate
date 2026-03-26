@@ -3,6 +3,7 @@
 namespace Articulate\Modules\Repository\Criteria;
 
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use InvalidArgumentException;
 
 /**
  * Base class for comparison-based criteria.
@@ -32,13 +33,42 @@ abstract class ComparisonCriteria implements CriteriaInterface {
 
     /**
      * Apply this criteria to the query builder.
+     *
+     * @note Field names are interpolated and should come from trusted metadata mappings.
      */
     public function apply(QueryBuilder $qb): void
     {
+        if ($this->value === null) {
+            $this->applyNullComparison($qb);
+
+            return;
+        }
+
         if ($this->operator === 'OR') {
             $qb->orWhere("{$this->field} {$this->getOperator()} {$this->getPlaceholder()}", $this->value);
         } else {
             $qb->where("{$this->field} {$this->getOperator()} {$this->getPlaceholder()}", $this->value);
         }
+    }
+
+    private function applyNullComparison(QueryBuilder $qb): void
+    {
+        $operator = strtolower(trim($this->getOperator()));
+        $condition = $this->buildNullCondition($operator);
+
+        if ($this->operator === 'OR') {
+            $qb->orWhere($condition);
+        } else {
+            $qb->where($condition);
+        }
+    }
+
+    private function buildNullCondition(string $operator): string
+    {
+        return match ($operator) {
+            '=', 'eq' => "{$this->field} IS NULL",
+            '!=', '<>', 'ne' => "{$this->field} IS NOT NULL",
+            default => throw new InvalidArgumentException("Unsupported null comparison operator: {$operator}"),
+        };
     }
 }

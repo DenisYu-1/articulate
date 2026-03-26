@@ -63,6 +63,11 @@ parameters:
         - type: directory
           value: src/Modules/QueryBuilder
 
+    - name: Repository
+      collectors:
+        - type: directory
+          value: src/Modules/Repository
+
     - name: Commands
       collectors:
         - type: directory
@@ -113,6 +118,12 @@ parameters:
       - Exceptions
       - Attributes
       - Utils
+
+    Repository:
+      - EntityManager
+      - QueryBuilder
+      - Exceptions
+      - Attributes
 
     Commands:
       - Connection
