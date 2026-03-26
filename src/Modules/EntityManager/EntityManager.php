@@ -7,8 +7,6 @@ use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
-use Articulate\Modules\Repository\RepositoryFactory;
-use Articulate\Modules\Repository\RepositoryInterface;
 use Articulate\Utils\TypeRegistry;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -39,7 +37,7 @@ class EntityManager {
 
     private ?Proxy\ProxyManager $proxyManager = null;
 
-    private RepositoryFactory $repositoryFactory;
+    private ?RepositoryFactoryInterface $repositoryFactory = null;
 
     private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
 
@@ -57,7 +55,8 @@ class EntityManager {
         ?EntityMetadataRegistry $metadataRegistry = null,
         ?QueryExecutor $queryExecutor = null,
         ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
-        ?CacheItemPoolInterface $resultCache = null
+        ?CacheItemPoolInterface $resultCache = null,
+        ?RepositoryFactoryInterface $repositoryFactory = null
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -91,13 +90,10 @@ class EntityManager {
 
         $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
-        // Store result cache
         $this->resultCache = $resultCache;
+        $this->repositoryFactory = $repositoryFactory;
 
         $this->filters = new FilterCollection();
-
-        // Initialize RepositoryFactory
-        $this->repositoryFactory = new RepositoryFactory($this);
     }
 
     // Persistence operations
@@ -679,14 +675,17 @@ class EntityManager {
         return $this->proxyManager->createProxy($entityClass, $identifier);
     }
 
-    /**
-     * Get a repository for the given entity class.
-     *
-     * If the entity specifies a custom repository class via the Entity attribute,
-     * that class will be used. Otherwise, a generic EntityRepository will be returned.
-     */
-    public function getRepository(string $entityClass): RepositoryInterface
+    public function setRepositoryFactory(RepositoryFactoryInterface $repositoryFactory): void
     {
+        $this->repositoryFactory = $repositoryFactory;
+    }
+
+    public function getRepository(string $entityClass): object
+    {
+        if ($this->repositoryFactory === null) {
+            throw new \RuntimeException('No RepositoryFactory configured. Call setRepositoryFactory() first.');
+        }
+
         return $this->repositoryFactory->getRepository($entityClass);
     }
 

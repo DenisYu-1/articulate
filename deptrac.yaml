@@ -82,6 +82,7 @@ parameters:
       - Schema
       - Collection
       - Database
+      - Repository
       - EntityManager
       - Generators
       - Migrations

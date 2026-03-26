@@ -9,7 +9,6 @@ use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
-use Articulate\Modules\Repository\Criteria\CriteriaInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 

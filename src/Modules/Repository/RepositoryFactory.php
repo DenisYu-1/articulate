@@ -3,12 +3,10 @@
 namespace Articulate\Modules\Repository;
 
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\RepositoryFactoryInterface;
 use Articulate\Modules\Repository\Exceptions\RepositoryException;
 
-/**
- * Factory for creating and caching repository instances.
- */
-class RepositoryFactory {
+class RepositoryFactory implements RepositoryFactoryInterface {
     /** @var array<string, RepositoryInterface> */
     private array $repositoryCache = [];
 
