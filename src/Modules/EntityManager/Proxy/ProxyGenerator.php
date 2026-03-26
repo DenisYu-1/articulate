@@ -40,9 +40,10 @@ class ProxyGenerator {
         // Generate unique proxy class name
         $proxyClassName = $this->generateProxyClassName($entityClass);
 
-        // Generate and evaluate proxy class code
-        $proxyCode = $this->generateProxyClassCode($entityClass, $proxyClassName);
-        eval($proxyCode);
+        if (!class_exists($proxyClassName, false)) {
+            $proxyCode = $this->generateProxyClassCode($entityClass, $proxyClassName);
+            eval($proxyCode);
+        }
 
         if ($this->enableCaching) {
             $this->generatedProxies[$entityClass] = $proxyClassName;

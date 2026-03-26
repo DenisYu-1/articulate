@@ -537,10 +537,6 @@ class EntityManager {
 
     public function commit(): void
     {
-        if (!$this->connection->inTransaction()) {
-            throw new \RuntimeException('No active transaction to commit');
-        }
-
         $this->connection->commit();
     }
 
