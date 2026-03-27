@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\EntityManager;
+namespace Articulate\Schema;
 
 use Articulate\Attributes\Indexes\AutoIncrement;
 use Articulate\Attributes\Indexes\PrimaryKey;

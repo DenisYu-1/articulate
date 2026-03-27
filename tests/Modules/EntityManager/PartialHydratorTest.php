@@ -2,7 +2,7 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\PartialHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;

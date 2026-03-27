@@ -2,6 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Exceptions\UpdateConflictException;
 
 class ThrowOnUpdateConflictStrategy implements UpdateConflictResolutionStrategy {

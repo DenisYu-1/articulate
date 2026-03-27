@@ -4,15 +4,15 @@ namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\HydratorInterface;
-use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\EntityRegistrarInterface;
 
 class QueryResultExecutor {
     public function __construct(
         private readonly Connection $connection,
         private readonly QueryResultCache $resultCache,
         private readonly ?HydratorInterface $hydrator = null,
-        private readonly ?UnitOfWork $unitOfWork = null
+        private readonly ?EntityRegistrarInterface $unitOfWork = null
     ) {
     }
 

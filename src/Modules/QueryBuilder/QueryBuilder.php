@@ -5,9 +5,9 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
-use Articulate\Modules\EntityManager\HydratorInterface;
-use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -53,7 +53,7 @@ class QueryBuilder {
 
     private array $groupBy = [];
 
-    private ?UnitOfWork $unitOfWork = null;
+    private ?EntityRegistrarInterface $unitOfWork = null;
 
     private bool $lockForUpdate = false;
 
@@ -613,7 +613,7 @@ class QueryBuilder {
     /**
      * Set the UnitOfWork that will manage entities retrieved by this query.
      */
-    public function setUnitOfWork(?UnitOfWork $unitOfWork): self
+    public function setUnitOfWork(?EntityRegistrarInterface $unitOfWork): self
     {
         $this->unitOfWork = $unitOfWork;
         $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $this->hydrator, $unitOfWork);

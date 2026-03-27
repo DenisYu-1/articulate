@@ -8,7 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\QueryBuilder\QueryBuilder;

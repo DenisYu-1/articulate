@@ -2,11 +2,15 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\EntityMetadataRegistry;
+
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 
-class UnitOfWork {
+class UnitOfWork implements EntityRegistrarInterface
+{
     private IdentityMap $identityMap;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;

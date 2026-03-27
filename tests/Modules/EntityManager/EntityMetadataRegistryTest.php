@@ -3,7 +3,7 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'registry_test_users')]

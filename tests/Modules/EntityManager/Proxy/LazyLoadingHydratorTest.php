@@ -2,8 +2,8 @@
 
 namespace Articulate\Tests\Modules\EntityManager\Proxy;
 
-use Articulate\Modules\EntityManager\EntityMetadata;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\Proxy\LazyLoadingHydrator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\Proxy\ProxyManager;

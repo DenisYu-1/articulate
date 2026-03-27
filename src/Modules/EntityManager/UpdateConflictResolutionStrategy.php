@@ -2,6 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityMetadataRegistry;
+
 interface UpdateConflictResolutionStrategy {
     /**
      * @param array<int, array{entity: object, changes: array}|array{table: string, set: array<string, mixed>, where: string, whereValues: array<int, mixed>}> $updates

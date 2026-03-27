@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\EntityManager;
+namespace Articulate\Schema;
 
 /**
  * Registry for caching and accessing entity metadata.

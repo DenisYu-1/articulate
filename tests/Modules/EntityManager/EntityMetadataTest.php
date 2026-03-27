@@ -6,7 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToMany;
-use Articulate\Modules\EntityManager\EntityMetadata;
+use Articulate\Schema\EntityMetadata;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'test_users')]

@@ -2,7 +2,7 @@
 
 namespace Articulate\Modules\QueryBuilder\Filter;
 
-use Articulate\Modules\EntityManager\EntityMetadata;
+use Articulate\Schema\EntityMetadata;
 
 class FilterCollection {
     /** @var array<string, QueryFilterInterface> */

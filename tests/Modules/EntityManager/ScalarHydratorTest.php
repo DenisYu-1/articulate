@@ -2,7 +2,7 @@
 
 namespace Articulate\Tests\Modules\EntityManager;
 
-use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Modules\EntityManager\ScalarHydrator;
 use PHPUnit\Framework\TestCase;
 

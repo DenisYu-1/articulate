@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\EntityManager;
+namespace Articulate\Schema;
 
 interface HydratorInterface {
     /**

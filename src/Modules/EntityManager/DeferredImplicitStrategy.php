@@ -2,6 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityMetadataRegistry;
+
 use Articulate\Attributes\Reflection\ReflectionProperty;
 
 class DeferredImplicitStrategy implements ChangeTrackingStrategy {

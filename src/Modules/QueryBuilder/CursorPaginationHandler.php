@@ -5,7 +5,7 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Exceptions\CursorPaginationException;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 
 class CursorPaginationHandler {
     public function __construct(

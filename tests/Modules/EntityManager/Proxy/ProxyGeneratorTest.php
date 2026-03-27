@@ -5,7 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager\Proxy;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\Proxy\ProxyGenerator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use PHPUnit\Framework\TestCase;

@@ -3,7 +3,7 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Property;
-use Articulate\Modules\EntityManager\HydratorInterface;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Modules\EntityManager\ObjectHydrator;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;

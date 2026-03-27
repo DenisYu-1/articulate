@@ -2,6 +2,9 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
+
 class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionStrategy {
     public function resolve(array $updates, EntityMetadataRegistry $metadataRegistry): array
     {

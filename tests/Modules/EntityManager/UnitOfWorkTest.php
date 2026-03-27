@@ -6,7 +6,7 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use PHPUnit\Framework\TestCase;

@@ -2,7 +2,7 @@
 
 namespace Articulate\Modules\EntityManager\Proxy;
 
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 
 /**
  * Generates proxy classes for lazy loading entities.
