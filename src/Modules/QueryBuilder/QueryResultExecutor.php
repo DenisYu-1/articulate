@@ -4,8 +4,8 @@ namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Schema\HydratorInterface;
 use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\HydratorInterface;
 
 class QueryResultExecutor {
     public function __construct(

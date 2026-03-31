@@ -2,7 +2,6 @@
 
 namespace Articulate\Schema;
 
-interface EntityRegistrarInterface
-{
+interface EntityRegistrarInterface {
     public function registerManaged(object $entity, array $rawData): void;
 }

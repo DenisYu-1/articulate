@@ -5,9 +5,9 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Reflection\PropertyInterface;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
-use Articulate\Schema\EntityMetadata;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
+use Articulate\Schema\EntityMetadata;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**
