@@ -9,9 +9,9 @@ use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\HydratorInterface;
-use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\Group;
 

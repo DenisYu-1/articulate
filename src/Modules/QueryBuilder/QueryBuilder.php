@@ -5,10 +5,10 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Schema\EntityMetadataRegistry;
-use Articulate\Schema\HydratorInterface;
-use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\HydratorInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 

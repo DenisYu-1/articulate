@@ -3,10 +3,10 @@
 namespace Articulate\Tests\Modules\EntityManager\Proxy;
 
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\Proxy\ProxyGenerator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\Proxy\ProxyManager;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 

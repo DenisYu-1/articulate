@@ -4,12 +4,12 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
-use Articulate\Schema\EntityMetadata;
-use Articulate\Schema\EntityMetadataRegistry;
-use Articulate\Schema\HydratorInterface;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
