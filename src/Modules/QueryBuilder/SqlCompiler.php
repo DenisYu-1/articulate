@@ -2,7 +2,7 @@
 
 namespace Articulate\Modules\QueryBuilder;
 
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use InvalidArgumentException;
 
 class SqlCompiler {

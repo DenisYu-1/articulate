@@ -2,6 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\HydratorInterface;
+
 class PartialHydrator implements HydratorInterface {
     public function __construct(
         private readonly ObjectHydrator $objectHydrator

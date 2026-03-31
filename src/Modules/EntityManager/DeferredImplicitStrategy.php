@@ -4,6 +4,8 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionProperty;
 
+use Articulate\Schema\EntityMetadataRegistry;
+
 class DeferredImplicitStrategy implements ChangeTrackingStrategy {
     private array $originalData = [];
 

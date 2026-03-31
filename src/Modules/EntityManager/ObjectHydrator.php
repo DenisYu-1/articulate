@@ -5,6 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
 use ReflectionClass;
 use ReflectionNamedType;

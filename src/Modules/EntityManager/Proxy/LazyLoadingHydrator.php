@@ -2,9 +2,9 @@
 
 namespace Articulate\Modules\EntityManager\Proxy;
 
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
-use Articulate\Modules\EntityManager\HydratorInterface;
-use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\HydratorInterface;
 use ReflectionClass;
 use ReflectionProperty;
 use RuntimeException;
@@ -14,7 +14,7 @@ use RuntimeException;
  */
 class LazyLoadingHydrator implements HydratorInterface {
     public function __construct(
-        private UnitOfWork $unitOfWork,
+        private EntityRegistrarInterface $unitOfWork,
         private ProxyManager $proxyManager,
         private EntityMetadataRegistry $metadataRegistry
     ) {

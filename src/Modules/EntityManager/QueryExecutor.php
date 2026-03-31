@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
+use Articulate\Schema\EntityMetadata;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**

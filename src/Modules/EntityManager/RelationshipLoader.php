@@ -3,6 +3,8 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
 use ReflectionProperty;
 
 /**

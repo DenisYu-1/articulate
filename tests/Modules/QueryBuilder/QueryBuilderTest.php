@@ -5,14 +5,14 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
-use Articulate\Modules\EntityManager\HydratorInterface;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\Criteria\AndCriteria;
 use Articulate\Modules\Repository\Criteria\EqualsCriteria;
 use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
 use Articulate\Modules\Repository\Criteria\LessThanCriteria;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\HydratorInterface;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 

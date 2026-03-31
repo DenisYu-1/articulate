@@ -2,6 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\EntityMetadataRegistry;
+
 /**
  * Aggregates and optimizes changes from multiple UnitOfWorks.
  *

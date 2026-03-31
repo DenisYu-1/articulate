@@ -6,7 +6,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
+use Articulate\Schema\EntityMetadataRegistry;
 use InvalidArgumentException;
 
 class DmlOperationHandler {

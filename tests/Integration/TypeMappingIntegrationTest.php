@@ -4,9 +4,11 @@ namespace Articulate\Tests\Integration;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\MySqlTypeMapper;
+use Articulate\Modules\Database\PostgresqlTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
+use Articulate\Modules\Migrations\Generator\PostgresqlMigrationGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestBoolEntity;
@@ -59,5 +61,47 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $this->assertEquals('tinyint(1)', $columnMap['is_featured']['Type']);
         $this->assertStringStartsWith('varchar(255)', $columnMap['name']['Type']);
         $this->assertEquals('int', $columnMap['id']['Type']);
+    }
+
+    public function testBoolTypeMappingInMigrationsPostgresql(): void
+    {
+        if (!$this->isDatabaseAvailable('pgsql')) {
+            $this->markTestSkipped('PostgreSQL is not available.');
+        }
+
+        $connection = $this->getConnection('pgsql');
+        $connection->executeQuery('DROP TABLE IF EXISTS "test_bool_entity"');
+
+        $entity = new ReflectionEntity(TestBoolEntity::class);
+        $reader = SchemaReaderFactory::create($connection);
+        $comparator = new DatabaseSchemaComparator($reader, new SchemaNaming());
+        $generator = new PostgresqlMigrationGenerator(new PostgresqlTypeMapper());
+
+        $compareResults = iterator_to_array($comparator->compareAll([$entity]));
+        $compareResult = $compareResults[0];
+
+        $sql = $generator->generate($compareResult);
+
+        $this->assertStringStartsWith('CREATE TABLE', $sql);
+        $this->assertStringContainsString('"is_active" BOOLEAN NOT NULL', $sql);
+        $this->assertStringContainsString('"is_featured" BOOLEAN', $sql);
+        $this->assertStringContainsString('"id" INTEGER NOT NULL', $sql);
+        $this->assertStringContainsString('"name" VARCHAR(255) NOT NULL', $sql);
+
+        $connection->executeQuery($sql);
+
+        $columns = $connection->executeQuery(
+            "SELECT column_name, data_type FROM information_schema.columns
+             WHERE table_name = 'test_bool_entity' AND table_schema = 'public'"
+        )->fetchAll();
+
+        $columnMap = array_column($columns, 'data_type', 'column_name');
+
+        $this->assertEquals('boolean', $columnMap['is_active']);
+        $this->assertEquals('boolean', $columnMap['is_featured']);
+        $this->assertStringStartsWith('character varying', $columnMap['name']);
+        $this->assertEquals('integer', $columnMap['id']);
+
+        $connection->executeQuery('DROP TABLE IF EXISTS "test_bool_entity"');
     }
 }

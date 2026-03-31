@@ -2,12 +2,12 @@
 
 namespace Articulate\Tests\Modules\EntityManager\Proxy;
 
-use Articulate\Modules\EntityManager\EntityMetadata;
-use Articulate\Modules\EntityManager\EntityMetadataRegistry;
 use Articulate\Modules\EntityManager\Proxy\LazyLoadingHydrator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\Proxy\ProxyManager;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Tests\AbstractTestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use ReflectionClass;
