@@ -127,6 +127,9 @@ parameters:
       - Exceptions
       - Attributes
 
+    Schema:
+      - Attributes
+
     Commands:
       - Connection
       - Database
