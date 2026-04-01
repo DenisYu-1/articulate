@@ -16,8 +16,7 @@ use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use PHPUnit\Framework\TestCase;
 
-class EntityTableComparatorTest extends TestCase
-{
+class EntityTableComparatorTest extends TestCase {
     private function createComparator(DatabaseSchemaReaderInterface $schemaReader): EntityTableComparator
     {
         return new EntityTableComparator(

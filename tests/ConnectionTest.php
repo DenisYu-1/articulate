@@ -2,6 +2,8 @@
 
 namespace Articulate\Tests;
 
+use Articulate\Connection;
+
 class ConnectionTest extends AbstractTestCase {
     public function testCommitWithoutTransactionDoesNotThrow(): void
     {
@@ -86,7 +88,7 @@ class ConnectionTest extends AbstractTestCase {
         $this->assertEquals(1, $row['active']);
     }
 
-    protected function setUpTestTables(\Articulate\Connection $connection, string $databaseName): bool
+    protected function setUpTestTables(Connection $connection, string $databaseName): bool
     {
         return true;
     }

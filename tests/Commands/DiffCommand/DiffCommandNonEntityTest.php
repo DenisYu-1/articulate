@@ -9,8 +9,7 @@ use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\DatabaseTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
-class DiffCommandNonEntityTest extends DatabaseTestCase
-{
+class DiffCommandNonEntityTest extends DatabaseTestCase {
     private string $tempDir;
 
     private string $entitiesPath;

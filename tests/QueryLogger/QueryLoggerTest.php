@@ -50,7 +50,7 @@ class QueryLoggerTest extends TestCase {
 
     public function testPsrQueryLoggerDelegatesToPsrLogger(): void
     {
-        $spyLogger = new class extends AbstractLogger {
+        $spyLogger = new class() extends AbstractLogger {
             /** @var array{string, mixed[]}[] */
             public array $logs = [];
 

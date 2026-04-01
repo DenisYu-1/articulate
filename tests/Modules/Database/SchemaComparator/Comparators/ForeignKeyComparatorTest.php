@@ -11,8 +11,7 @@ use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use PHPUnit\Framework\TestCase;
 
-class ForeignKeyComparatorTest extends TestCase
-{
+class ForeignKeyComparatorTest extends TestCase {
     private ForeignKeyComparator $comparator;
 
     protected function setUp(): void
