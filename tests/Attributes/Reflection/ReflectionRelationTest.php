@@ -13,8 +13,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestRelatedMa
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-class ReflectionRelationTest extends TestCase
-{
+class ReflectionRelationTest extends TestCase {
     /**
      * @return ReflectionRelation[]
      */

@@ -9,8 +9,7 @@ use Articulate\Modules\Repository\Criteria\EqualsCriteria;
 use Articulate\Modules\Repository\Criteria\OrCriteria;
 use PHPUnit\Framework\TestCase;
 
-class OrCriteriaTest extends TestCase
-{
+class OrCriteriaTest extends TestCase {
     private function createQueryBuilder(): QueryBuilder
     {
         $connection = $this->createStub(Connection::class);

@@ -11,8 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 #[Entity]
 #[SoftDeleteable]
-class SoftDeleteableDefaultEntity
-{
+class SoftDeleteableDefaultEntity {
     #[PrimaryKey]
     public int $id;
 
@@ -22,8 +21,7 @@ class SoftDeleteableDefaultEntity
 
 #[Entity]
 #[SoftDeleteable(fieldName: 'archivedAt', columnName: 'archived_at')]
-class SoftDeleteableCustomEntity
-{
+class SoftDeleteableCustomEntity {
     #[PrimaryKey]
     public int $id;
 
@@ -32,14 +30,12 @@ class SoftDeleteableCustomEntity
 }
 
 #[Entity]
-class EntityWithoutSoftDeleteable
-{
+class EntityWithoutSoftDeleteable {
     #[PrimaryKey]
     public int $id;
 }
 
-class SoftDeleteableTest extends TestCase
-{
+class SoftDeleteableTest extends TestCase {
     public function testDefaultFieldAndColumnNames(): void
     {
         $attribute = new SoftDeleteable();

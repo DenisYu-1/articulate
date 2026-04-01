@@ -2,6 +2,7 @@
 
 namespace Articulate\Tests\Exceptions;
 
+use Articulate\Exceptions\ArticulateException;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\DatabaseSchemaException;
 use Articulate\Exceptions\EmptyPropertiesListException;
@@ -176,7 +177,7 @@ class ExceptionClassesTest extends TestCase {
         $exception = new UpdateConflictException('Conflicting updates detected');
 
         $this->assertInstanceOf(UpdateConflictException::class, $exception);
-        $this->assertInstanceOf(\Articulate\Exceptions\ArticulateException::class, $exception);
+        $this->assertInstanceOf(ArticulateException::class, $exception);
         $this->assertEquals('Conflicting updates detected', $exception->getMessage());
     }
 
