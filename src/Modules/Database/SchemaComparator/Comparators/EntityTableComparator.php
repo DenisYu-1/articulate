@@ -5,7 +5,8 @@ namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionRelation;
-use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Exceptions\DatabaseSchemaException;
+use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
@@ -69,11 +70,9 @@ class EntityTableComparator {
             $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
         }
 
-        // Try to get columns, but handle the case where table doesn't exist
         try {
             $columns = $this->databaseSchemaReader->getTableColumns($tableName);
-        } catch (\Exception $e) {
-            // Table doesn't exist or other error, treat as no columns
+        } catch (DatabaseSchemaException $e) {
             $columns = [];
         }
 
@@ -190,12 +189,8 @@ class EntityTableComparator {
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
         }
 
-        if (!empty($foreignKeys)) {
-            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
-        }
-
         if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new EmptyPropertiesList($tableName);
+            throw new EmptyPropertiesListException($tableName);
         }
 
         if (!$operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {

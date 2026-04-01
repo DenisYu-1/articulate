@@ -4,7 +4,7 @@ namespace Articulate\Tests\Exceptions;
 
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\DatabaseSchemaException;
-use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Exceptions\TransactionRequiredException;
 use Articulate\Exceptions\UpdateConflictException;
@@ -47,33 +47,33 @@ class ExceptionClassesTest extends TestCase {
         $this->assertSame($previous, $exception->getPrevious());
     }
 
-    public function testEmptyPropertiesListCanBeInstantiated(): void
+    public function testEmptyPropertiesListExceptionCanBeInstantiated(): void
     {
         $tableName = 'users';
-        $exception = new EmptyPropertiesList($tableName);
+        $exception = new EmptyPropertiesListException($tableName);
 
-        $this->assertInstanceOf(EmptyPropertiesList::class, $exception);
+        $this->assertInstanceOf(EmptyPropertiesListException::class, $exception);
         $this->assertInstanceOf(Exception::class, $exception);
         $this->assertEquals('No columns specified for users', $exception->getMessage());
         $this->assertEquals(0, $exception->getCode());
         $this->assertNull($exception->getPrevious());
     }
 
-    public function testEmptyPropertiesListWithCode(): void
+    public function testEmptyPropertiesListExceptionWithCode(): void
     {
         $tableName = 'posts';
         $code = 100;
-        $exception = new EmptyPropertiesList($tableName, $code);
+        $exception = new EmptyPropertiesListException($tableName, $code);
 
         $this->assertEquals('No columns specified for posts', $exception->getMessage());
         $this->assertEquals($code, $exception->getCode());
     }
 
-    public function testEmptyPropertiesListWithPreviousException(): void
+    public function testEmptyPropertiesListExceptionWithPreviousException(): void
     {
         $tableName = 'comments';
         $previous = new InvalidArgumentException('Invalid table');
-        $exception = new EmptyPropertiesList($tableName, 0, $previous);
+        $exception = new EmptyPropertiesListException($tableName, 0, $previous);
 
         $this->assertEquals('No columns specified for comments', $exception->getMessage());
         $this->assertSame($previous, $exception->getPrevious());
@@ -81,33 +81,44 @@ class ExceptionClassesTest extends TestCase {
 
     public function testEntityNotFoundExceptionCanBeInstantiated(): void
     {
-        $className = 'Test\\Entity\\User';
-        $exception = new EntityNotFoundException($className);
+        $exception = new EntityNotFoundException('Entity not found');
 
         $this->assertInstanceOf(EntityNotFoundException::class, $exception);
         $this->assertInstanceOf(Exception::class, $exception);
-        $this->assertEquals("Entity class 'Test\\Entity\\User' is not a valid entity", $exception->getMessage());
+        $this->assertEquals('Entity not found', $exception->getMessage());
         $this->assertEquals(0, $exception->getCode());
         $this->assertNull($exception->getPrevious());
     }
 
+    public function testEntityNotFoundExceptionInvalidClassFactory(): void
+    {
+        $exception = EntityNotFoundException::invalidClass('Test\\Entity\\User');
+
+        $this->assertEquals("Entity class 'Test\\Entity\\User' is not a valid entity", $exception->getMessage());
+    }
+
+    public function testEntityNotFoundExceptionNotFoundFactory(): void
+    {
+        $exception = EntityNotFoundException::notFound('App\\Entity\\User', 42);
+
+        $this->assertEquals('Entity App\\Entity\\User with ID 42 not found in database', $exception->getMessage());
+    }
+
     public function testEntityNotFoundExceptionWithCode(): void
     {
-        $className = 'Invalid\\Entity';
         $code = 200;
-        $exception = new EntityNotFoundException($className, $code);
+        $exception = new EntityNotFoundException('Not found', $code);
 
-        $this->assertEquals("Entity class 'Invalid\\Entity' is not a valid entity", $exception->getMessage());
+        $this->assertEquals('Not found', $exception->getMessage());
         $this->assertEquals($code, $exception->getCode());
     }
 
     public function testEntityNotFoundExceptionWithPreviousException(): void
     {
-        $className = 'Missing\\Entity';
         $previous = new ReflectionException('Class not found');
-        $exception = new EntityNotFoundException($className, 0, $previous);
+        $exception = new EntityNotFoundException('Entity missing', 0, $previous);
 
-        $this->assertEquals("Entity class 'Missing\\Entity' is not a valid entity", $exception->getMessage());
+        $this->assertEquals('Entity missing', $exception->getMessage());
         $this->assertSame($previous, $exception->getPrevious());
     }
 
@@ -160,12 +171,12 @@ class ExceptionClassesTest extends TestCase {
         $this->assertSame($previous, $exception->getPrevious());
     }
 
-    public function testUpdateConflictExceptionIsRuntimeException(): void
+    public function testUpdateConflictExceptionIsArticulateException(): void
     {
         $exception = new UpdateConflictException('Conflicting updates detected');
 
         $this->assertInstanceOf(UpdateConflictException::class, $exception);
-        $this->assertInstanceOf(RuntimeException::class, $exception);
+        $this->assertInstanceOf(\Articulate\Exceptions\ArticulateException::class, $exception);
         $this->assertEquals('Conflicting updates detected', $exception->getMessage());
     }
 

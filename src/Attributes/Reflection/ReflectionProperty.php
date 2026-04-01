@@ -3,6 +3,7 @@
 namespace Articulate\Attributes\Reflection;
 
 use Articulate\Attributes\Property;
+use Articulate\Utils\StringUtils;
 use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 
@@ -30,7 +31,13 @@ class ReflectionProperty implements PropertyInterface {
 
     public function isNullable(): bool
     {
-        return $this->entityProperty->nullable ?? $this->property->getType()->allowsNull();
+        if ($this->entityProperty->nullable !== null) {
+            return $this->entityProperty->nullable;
+        }
+
+        $type = $this->property->getType();
+
+        return $type === null || $type->allowsNull();
     }
 
     public function getType(): string
@@ -83,7 +90,11 @@ class ReflectionProperty implements PropertyInterface {
         $reflectionProperty = $this->property;
         $reflectionProperty->setAccessible(true);
 
-        return $reflectionProperty->getValue($entity);
+        try {
+            return $reflectionProperty->getValue($entity);
+        } catch (\Error) {
+            return null;
+        }
     }
 
     /**
@@ -99,6 +110,6 @@ class ReflectionProperty implements PropertyInterface {
 
     private function parseColumnName(): string
     {
-        return strtolower(preg_replace('/\B([A-Z])/', '_$1', $this->property->getName()));
+        return StringUtils::snakeCase($this->property->getName());
     }
 }

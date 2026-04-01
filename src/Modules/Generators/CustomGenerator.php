@@ -7,24 +7,16 @@ namespace Articulate\Modules\Generators;
  * Allows extensibility through the strategy pattern.
  */
 class CustomGenerator extends AbstractGenerator {
-    /**
-     * @var GeneratorStrategyInterface[]
-     */
+    /** @var GeneratorStrategyInterface[] */
     private array $strategies = [];
 
-    /**
-     * @var array<string, int>
-     */
-    private array $sequences = [];
+    private array $entityCounters = [];
 
     public function __construct()
     {
         parent::__construct('custom');
     }
 
-    /**
-     * Add a custom strategy.
-     */
     public function addStrategy(GeneratorStrategyInterface $strategy): void
     {
         $this->strategies[] = $strategy;
@@ -32,24 +24,16 @@ class CustomGenerator extends AbstractGenerator {
 
     protected function generateInternal(string $entityClass, array $options = []): mixed
     {
-        $generatorType = $options['generator'] ?? 'auto_increment';
+        $requestedType = $options['generator'] ?? null;
 
         foreach ($this->strategies as $strategy) {
-            if ($strategy->supports($generatorType)) {
+            if ($requestedType === null || $strategy->supports($requestedType)) {
                 return $strategy->generate($entityClass, $options);
             }
         }
 
-        // Fallback to auto increment if no strategy found
-        return $this->generateFallback($entityClass);
-    }
+        $this->entityCounters[$entityClass] = ($this->entityCounters[$entityClass] ?? 0) + 1;
 
-    private function generateFallback(string $entityClass): int
-    {
-        if (!isset($this->sequences[$entityClass])) {
-            $this->sequences[$entityClass] = 0;
-        }
-
-        return ++$this->sequences[$entityClass];
+        return $this->entityCounters[$entityClass];
     }
 }

@@ -57,8 +57,8 @@ class UnitOfWork implements EntityRegistrarInterface {
 
             // If entity has an ID, it's likely already persisted
             if ($id !== null && $id !== '') {
-                // Register as managed entity
-                $this->registerManaged($entity, []);
+                $snapshot = $this->extractEntitySnapshot($entity);
+                $this->registerManaged($entity, $snapshot);
                 $this->entityStates[$oid] = EntityState::MANAGED;
                 $this->entitiesByOid[$oid] = $entity;
             } else {
@@ -84,18 +84,16 @@ class UnitOfWork implements EntityRegistrarInterface {
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
-        // Call preRemove callbacks
         $this->callbackManager->invokeCallbacks($entity, 'preRemove');
 
         if ($state === EntityState::MANAGED) {
             $this->scheduledDeletes[$oid] = $entity;
             $this->entityStates[$oid] = EntityState::REMOVED;
 
-            // Remove from other schedules
             unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
             unset($this->entitiesByOid[$oid]);
+            $this->identityMap->remove($entity);
         } elseif ($state === EntityState::NEW) {
-            // Entity was never persisted, just remove from schedules
             unset($this->scheduledInserts[$oid]);
             unset($this->entityStates[$oid]);
             unset($this->entitiesByOid[$oid]);
@@ -182,7 +180,10 @@ class UnitOfWork implements EntityRegistrarInterface {
         $id = $this->extractEntityId($entity);
         $oid = spl_object_id($entity);
 
-        $this->identityMap->add($entity, $id);
+        $classForMap = $entity instanceof ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : null;
+        $this->identityMap->add($entity, $id, $classForMap);
         $this->entityStates[$oid] = EntityState::MANAGED;
         $this->entitiesByOid[$oid] = $entity;
         $this->changeTrackingStrategy->trackEntity($entity, $data);
@@ -207,7 +208,11 @@ class UnitOfWork implements EntityRegistrarInterface {
             return false;
         }
 
-        return $this->identityMap->has($entity::class, $id);
+        $class = $entity instanceof ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : $entity::class;
+
+        return $this->identityMap->has($class, $id);
     }
 
     /**
@@ -237,7 +242,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
-        $this->changeTrackingStrategy = new DeferredImplicitStrategy($this->metadataRegistry);
+        $this->changeTrackingStrategy->clear();
     }
 
     private function hasChanges(object $entity): bool
@@ -266,6 +271,18 @@ class UnitOfWork implements EntityRegistrarInterface {
         }
 
         return null;
+    }
+
+    private function extractEntitySnapshot(object $entity): array
+    {
+        $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        $snapshot = [];
+
+        foreach ($metadata->getProperties() as $propertyName => $property) {
+            $snapshot[$property->getColumnName()] = $property->getValue($entity);
+        }
+
+        return $snapshot;
     }
 
     private function findPrimaryKeyProperty(object $entity): ?ArticulateReflectionProperty

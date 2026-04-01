@@ -2,5 +2,7 @@
 
 namespace Articulate\Modules\Repository\Exceptions;
 
-class RepositoryException extends \Exception {
+use Articulate\Exceptions\ArticulateException;
+
+class RepositoryException extends ArticulateException {
 }

@@ -3,10 +3,11 @@
 namespace Articulate\Collection;
 
 use ArrayIterator;
+use Countable;
 use IteratorAggregate;
 use Traversable;
 
-class MappingCollection implements IteratorAggregate {
+class MappingCollection implements IteratorAggregate, Countable {
     /**
      * @var MappingItem[]
      */
@@ -18,7 +19,16 @@ class MappingCollection implements IteratorAggregate {
     public function __construct(iterable $items = [])
     {
         foreach ($items as $item) {
-            $this->items[] = $item instanceof MappingItem ? $item : new MappingItem($item);
+            if ($item instanceof MappingItem) {
+                $this->items[] = $item;
+            } elseif (is_object($item)) {
+                $this->items[] = new MappingItem($item);
+            } else {
+                throw new \InvalidArgumentException(sprintf(
+                    'MappingCollection items must be objects, %s given',
+                    get_debug_type($item)
+                ));
+            }
         }
     }
 
@@ -44,6 +54,11 @@ class MappingCollection implements IteratorAggregate {
         }
 
         return null;
+    }
+
+    public function count(): int
+    {
+        return count($this->items);
     }
 
     public function getIterator(): Traversable

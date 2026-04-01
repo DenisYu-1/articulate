@@ -2,15 +2,12 @@
 
 namespace Articulate\Schema;
 
-class SchemaNaming {
-    private function snakeCase(string $name): string
-    {
-        return strtolower(preg_replace('/\B([A-Z])/', '_$1', $name));
-    }
+use Articulate\Utils\StringUtils;
 
+class SchemaNaming {
     public function relationColumn(string $propertyName): string
     {
-        return $this->snakeCase($propertyName) . '_id';
+        return StringUtils::snakeCase($propertyName) . '_id';
     }
 
     public function foreignKeyName(string $table, string $referencedTable, string $column): string
@@ -23,6 +20,6 @@ class SchemaNaming {
         $parts = [$ownerTable, $targetTable];
         sort($parts, SORT_STRING);
 
-        return $this->snakeCase(implode('_', $parts));
+        return StringUtils::snakeCase(implode('_', $parts));
     }
 }

@@ -335,6 +335,11 @@ class QueryBuilder {
         $this->cursorLimit = null;
         $this->distinct = false;
         $this->lockForUpdate = false;
+        $this->rawSql = null;
+        $this->rawParams = [];
+        $this->entityClass = null;
+        $this->disabledFilters = [];
+        $this->resultCache->disable();
         $this->dmlHandler->reset();
 
         return $this;
@@ -525,7 +530,12 @@ class QueryBuilder {
 
     public function orderBy(string $field, string $direction = 'ASC'): self
     {
-        $this->orderBy[] = "{$field} {$direction}";
+        $normalized = strtoupper(trim($direction));
+        if ($normalized !== 'ASC' && $normalized !== 'DESC') {
+            throw new InvalidArgumentException("Invalid ORDER BY direction '{$direction}'. Must be ASC or DESC.");
+        }
+
+        $this->orderBy[] = "{$field} {$normalized}";
 
         return $this;
     }
@@ -668,7 +678,8 @@ class QueryBuilder {
                         $where[] = ['operator' => 'AND', 'condition' => $condition, 'params' => [], 'group' => null];
                     }
                 }
-            } catch (InvalidArgumentException $e) {
+            } catch (InvalidArgumentException) {
+                // Entity class may not have registered metadata; filters are skipped
             }
         }
 
@@ -789,10 +800,14 @@ class QueryBuilder {
     {
         $originalLimit = $this->limit;
         $this->limit = 1;
-        $results = $this->getResult($entityClass);
-        $this->limit = $originalLimit;
 
-        return is_array($results) ? ($results[0] ?? null) : $results;
+        try {
+            $results = $this->getResult($entityClass);
+
+            return is_array($results) ? ($results[0] ?? null) : $results;
+        } finally {
+            $this->limit = $originalLimit;
+        }
     }
 
     public function getCursorPaginatedResult(?string $entityClass = null): CursorPaginator
@@ -848,55 +863,17 @@ class QueryBuilder {
         return strtolower($className) . 's';
     }
 
-    /**
-     * Expand IN (?) placeholders for array parameters.
-     * Converts "col IN (?)" with [[1,2,3]] to "col IN (?,?,?)" with [1,2,3].
-     */
     private function expandInPlaceholders(string $sql, array $params): array
     {
-        $expandedParams = [];
-        $paramIndex = 0;
-
-        // Process each parameter and expand if it's an array for IN clause
-        $newSql = preg_replace_callback('/\?/', function ($match) use ($params, &$paramIndex, &$expandedParams) {
-            if (!isset($params[$paramIndex])) {
-                return '?';
-            }
-
-            $param = $params[$paramIndex];
-            $paramIndex++;
-
-            // If parameter is an array, expand the placeholder
-            if (is_array($param)) {
-                $count = count($param);
-                if ($count === 0) {
-                    // Empty array - should not happen in normal usage
-                    $expandedParams[] = null;
-
-                    return '?';
-                }
-
-                // Add each array element as a separate parameter
-                foreach ($param as $value) {
-                    $expandedParams[] = $value;
-                }
-
-                // Create multiple placeholders
-                return implode(',', array_fill(0, $count, '?'));
-            }
-
-            // Non-array parameter, keep as-is
-            $expandedParams[] = $param;
-
-            return '?';
-        }, $sql);
-
-        return [$newSql, $expandedParams];
+        return PlaceholderExpander::expand($sql, $params);
     }
 
     private function hasAggregateFunction(): bool
     {
         foreach ($this->select as $selectItem) {
+            if (!is_string($selectItem)) {
+                continue;
+            }
             if (preg_match('/\b(COUNT|SUM|AVG|MIN|MAX|GROUP_CONCAT)\s*\(/i', $selectItem)) {
                 return true;
             }

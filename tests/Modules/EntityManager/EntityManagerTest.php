@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
@@ -20,6 +21,7 @@ use PHPUnit\Framework\TestCase;
 
 #[Entity]
 class TestEntityForRemoval {
+    #[PrimaryKey]
     public int $id = 1;
 }
 

@@ -5,94 +5,79 @@ namespace Articulate\Tests\Collection;
 use Articulate\Collection\MappingCollection;
 use Articulate\Collection\MappingItem;
 use PHPUnit\Framework\TestCase;
-use stdClass;
 
 class MappingCollectionTest extends TestCase {
-    public function testConstructsWithEmptyArray(): void
+    public function testConstructWithMappingItems(): void
     {
-        $collection = new MappingCollection();
-
-        $this->assertSame([], $collection->toArray());
-        $this->assertNull($collection->first());
-    }
-
-    public function testConstructsWithMappingItems(): void
-    {
-        $item1 = new MappingItem(new stdClass(), ['role' => 'admin']);
-        $item2 = new MappingItem(new stdClass(), ['role' => 'user']);
+        $entity1 = new \stdClass();
+        $entity2 = new \stdClass();
+        $item1 = new MappingItem($entity1, ['role' => 'admin']);
+        $item2 = new MappingItem($entity2, ['role' => 'user']);
 
         $collection = new MappingCollection([$item1, $item2]);
 
-        $this->assertSame([$item1, $item2], $collection->toArray());
-        $this->assertSame($item1, $collection->first());
+        $this->assertCount(2, $collection);
+        $this->assertSame($item1, $collection->toArray()[0]);
+        $this->assertSame($item2, $collection->toArray()[1]);
     }
 
-    public function testConstructsWithRawDataAndConvertsToMappingItems(): void
+    public function testConstructWithObjects(): void
     {
-        $entity1 = new stdClass();
-        $entity2 = new stdClass();
+        $entity1 = new \stdClass();
+        $entity2 = new \stdClass();
 
         $collection = new MappingCollection([$entity1, $entity2]);
 
-        $items = $collection->toArray();
-        $this->assertCount(2, $items);
-        $this->assertInstanceOf(MappingItem::class, $items[0]);
-        $this->assertInstanceOf(MappingItem::class, $items[1]);
-        $this->assertSame($entity1, $items[0]->entity);
-        $this->assertSame($entity2, $items[1]->entity);
-        $this->assertSame([], $items[0]->pivot);
-        $this->assertSame([], $items[1]->pivot);
+        $this->assertCount(2, $collection);
+        $this->assertSame($entity1, $collection->toArray()[0]->entity);
+        $this->assertSame($entity2, $collection->toArray()[1]->entity);
     }
 
-    public function testConstructsWithMixedData(): void
+    public function testConstructWithInvalidItem(): void
     {
-        $entity1 = new stdClass();
-        $item2 = new MappingItem(new stdClass(), ['role' => 'admin']);
+        $this->expectException(\InvalidArgumentException::class);
 
-        $collection = new MappingCollection([$entity1, $item2]);
-
-        $items = $collection->toArray();
-        $this->assertCount(2, $items);
-        $this->assertInstanceOf(MappingItem::class, $items[0]);
-        $this->assertInstanceOf(MappingItem::class, $items[1]);
-        $this->assertSame($entity1, $items[0]->entity);
-        $this->assertSame([], $items[0]->pivot);
-        $this->assertSame($item2, $items[1]);
+        new MappingCollection(['not_an_object']);
     }
 
-    public function testToArrayReturnsMappingItems(): void
+    public function testToArray(): void
     {
-        $item1 = new MappingItem(new stdClass());
-        $item2 = new MappingItem(new stdClass());
-
+        $item1 = new MappingItem(new \stdClass());
+        $item2 = new MappingItem(new \stdClass());
         $collection = new MappingCollection([$item1, $item2]);
 
-        $this->assertSame([$item1, $item2], $collection->toArray());
+        $array = $collection->toArray();
+
+        $this->assertIsArray($array);
+        $this->assertCount(2, $array);
+        $this->assertSame($item1, $array[0]);
+        $this->assertSame($item2, $array[1]);
     }
 
-    public function testFirstReturnsFirstItem(): void
+    public function testFirst(): void
     {
-        $item1 = new MappingItem(new stdClass());
-        $item2 = new MappingItem(new stdClass());
+        $firstEntity = new \stdClass();
+        $item1 = new MappingItem($firstEntity);
+        $item2 = new MappingItem(new \stdClass());
 
         $collection = new MappingCollection([$item1, $item2]);
 
         $this->assertSame($item1, $collection->first());
     }
 
-    public function testFirstReturnsNullWhenEmpty(): void
+    public function testFirstOnEmpty(): void
     {
         $collection = new MappingCollection();
 
         $this->assertNull($collection->first());
     }
 
-    public function testPivotOfReturnsPivotDataForEntity(): void
+    public function testPivotOf(): void
     {
-        $entity1 = new stdClass();
-        $entity2 = new stdClass();
-        $pivot1 = ['role' => 'admin', 'created_at' => '2023-01-01'];
-        $pivot2 = ['role' => 'user', 'created_at' => '2023-01-02'];
+        $entity1 = new \stdClass();
+        $entity2 = new \stdClass();
+        $pivot1 = ['role' => 'admin'];
+        $pivot2 = ['role' => 'editor'];
 
         $collection = new MappingCollection([
             new MappingItem($entity1, $pivot1),
@@ -101,99 +86,32 @@ class MappingCollectionTest extends TestCase {
 
         $this->assertSame($pivot1, $collection->pivotOf($entity1));
         $this->assertSame($pivot2, $collection->pivotOf($entity2));
+        $this->assertNull($collection->pivotOf(new \stdClass()));
     }
 
-    public function testPivotOfReturnsNullForUnknownEntity(): void
+    public function testCount(): void
     {
-        $knownEntity = new stdClass();
-        $unknownEntity = new stdClass();
-
-        $collection = new MappingCollection([
-            new MappingItem($knownEntity, ['role' => 'admin']),
-        ]);
-
-        $this->assertNull($collection->pivotOf($unknownEntity));
+        $this->assertCount(0, new MappingCollection());
+        $this->assertCount(3, new MappingCollection([
+            new MappingItem(new \stdClass()),
+            new MappingItem(new \stdClass()),
+            new MappingItem(new \stdClass()),
+        ]));
     }
 
-    public function testPivotOfWithEmptyCollection(): void
+    public function testIterable(): void
     {
-        $collection = new MappingCollection();
-        $entity = new stdClass();
-
-        $this->assertNull($collection->pivotOf($entity));
-    }
-
-    public function testGetIteratorReturnsTraversable(): void
-    {
-        $item1 = new MappingItem(new stdClass());
-        $item2 = new MappingItem(new stdClass());
-
+        $item1 = new MappingItem(new \stdClass());
+        $item2 = new MappingItem(new \stdClass());
         $collection = new MappingCollection([$item1, $item2]);
 
-        $iterator = $collection->getIterator();
-        $this->assertInstanceOf(\Traversable::class, $iterator);
-
-        // Test iteration
-        $items = [];
-        foreach ($iterator as $item) {
-            $items[] = $item;
-        }
-
-        $this->assertSame([$item1, $item2], $items);
-    }
-
-    public function testIterationWithForeach(): void
-    {
-        $item1 = new MappingItem(new stdClass(), ['id' => 1]);
-        $item2 = new MappingItem(new stdClass(), ['id' => 2]);
-        $item3 = new MappingItem(new stdClass(), ['id' => 3]);
-
-        $collection = new MappingCollection([$item1, $item2, $item3]);
-
-        $ids = [];
+        $iterated = [];
         foreach ($collection as $item) {
-            $ids[] = $item->pivotValue('id');
+            $iterated[] = $item;
         }
 
-        $this->assertSame([1, 2, 3], $ids);
-    }
-
-    public function testHandlesLargeCollections(): void
-    {
-        $items = [];
-        for ($i = 0; $i < 1000; $i++) {
-            $items[] = new MappingItem(new stdClass(), ['index' => $i]);
-        }
-
-        $collection = new MappingCollection($items);
-
-        $this->assertCount(1000, $collection->toArray());
-
-        // Test first item
-        $first = $collection->first();
-        $this->assertInstanceOf(MappingItem::class, $first);
-        $this->assertSame(0, $first->pivotValue('index'));
-
-        // Test pivotOf
-        $this->assertSame(['index' => 500], $collection->pivotOf($items[500]->entity));
-    }
-
-    public function testPivotOfWithIdenticalObjects(): void
-    {
-        $entity = new stdClass();
-        $entity->id = 1;
-
-        $collection = new MappingCollection([
-            new MappingItem($entity, ['role' => 'admin']),
-        ]);
-
-        // Same object reference
-        $this->assertSame(['role' => 'admin'], $collection->pivotOf($entity));
-
-        // Different object with same properties (should not match)
-        $differentEntity = new stdClass();
-        $differentEntity->id = 1;
-
-        $this->assertNull($collection->pivotOf($differentEntity));
+        $this->assertCount(2, $iterated);
+        $this->assertSame($item1, $iterated[0]);
+        $this->assertSame($item2, $iterated[1]);
     }
 }

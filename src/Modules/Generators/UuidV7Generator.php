@@ -14,8 +14,8 @@ class UuidV7Generator extends AbstractGenerator {
         parent::__construct('uuid_v7');
     }
 
-    protected function generateInternal(string $entityClass, array $options = []): mixed
+    protected function generateInternal(string $entityClass, array $options = []): string
     {
-        return UuidV7::generate();
+        return (string) UuidV7::generate();
     }
 }

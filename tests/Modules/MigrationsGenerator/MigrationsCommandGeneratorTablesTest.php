@@ -89,7 +89,7 @@ class MigrationsCommandGeneratorTablesTest extends DatabaseTestCase {
                 ],
             ],
             [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT \"test\"",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

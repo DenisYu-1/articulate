@@ -159,8 +159,8 @@ class DiffCommandTest extends DatabaseTestCase {
         $command = new DiffCommand(
             $this->schemaComparator,
             $this->commandGenerator,
-            $customPath,
-            $this->migrationsPath
+            $this->migrationsPath,
+            $customPath
         );
 
         $commandTester = new CommandTester($command);

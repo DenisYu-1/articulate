@@ -35,12 +35,10 @@ class ProxyManager {
             return;
         }
 
-        // Load the actual entity data
         $entityClass = $proxy->getProxyEntityClass();
         $entity = $this->entityManager->find($entityClass, $proxy->getProxyIdentifier());
 
-        if ($entity) {
-            // Copy data from real entity to proxy
+        if ($entity !== null) {
             $this->copyEntityData($entity, $proxy);
             $proxy->markProxyInitialized();
         }

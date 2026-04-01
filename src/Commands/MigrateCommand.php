@@ -9,9 +9,9 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputDefinition;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -31,14 +31,14 @@ class MigrateCommand extends Command {
             ->setDescription('Run database migrations')
             ->setDefinition(
                 new InputDefinition([
-                    new InputArgument('rollback', InputArgument::OPTIONAL),
+                    new InputOption('rollback', null, InputOption::VALUE_NONE, 'Run rollback instead of migration'),
                 ])
             );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $isRollback = $input->getArgument('rollback') === 'rollback';
+        $isRollback = $input->getOption('rollback');
         $io = new SymfonyStyle($input, $output);
 
         $this->initCommand->ensureMigrationsTableExists();

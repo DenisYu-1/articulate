@@ -90,7 +90,8 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
                 "{$quote}question{$quote} VARCHAR(255) NOT NULL, " .
                 "{$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
                 "{$quote}pollable_id{$quote} {$intType} NOT NULL, " .
-                "PRIMARY KEY ({$quote}id{$quote})" .
+                "PRIMARY KEY ({$quote}id{$quote}), " .
+                "INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})" .
                 ')',
         };
 

@@ -2,11 +2,14 @@
 
 namespace Articulate\Exceptions;
 
-use Exception;
-
-class EntityNotFoundException extends Exception {
-    public function __construct(string $className, int $code = 0, ?Exception $previous = null)
+class EntityNotFoundException extends ArticulateException {
+    public static function invalidClass(string $className): self
     {
-        parent::__construct("Entity class '{$className}' is not a valid entity", $code, $previous);
+        return new self("Entity class '{$className}' is not a valid entity");
+    }
+
+    public static function notFound(string $entityClass, mixed $id): self
+    {
+        return new self("Entity {$entityClass} with ID {$id} not found in database");
     }
 }

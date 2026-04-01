@@ -78,7 +78,7 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
-    public function getTableIndexes(string $tableName)
+    public function getTableIndexes(string $tableName): array
     {
         $query = '
             SELECT
@@ -148,11 +148,19 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
             if ($name === null || $column === null || $referencedTable === null || $referencedColumn === null) {
                 continue;
             }
-            $foreignKeys[$name] = [
-                'column' => $column,
-                'referencedTable' => $referencedTable,
-                'referencedColumn' => $referencedColumn,
-            ];
+            if (!isset($foreignKeys[$name])) {
+                $foreignKeys[$name] = [
+                    'columns' => [],
+                    'referencedTable' => $referencedTable,
+                    'referencedColumns' => [],
+                    'column' => $column,
+                    'referencedColumn' => $referencedColumn,
+                ];
+            }
+            $foreignKeys[$name]['columns'][] = $column;
+            $foreignKeys[$name]['referencedColumns'][] = $referencedColumn;
+            $foreignKeys[$name]['column'] = $foreignKeys[$name]['columns'][0];
+            $foreignKeys[$name]['referencedColumn'] = $foreignKeys[$name]['referencedColumns'][0];
         }
 
         return $foreignKeys;

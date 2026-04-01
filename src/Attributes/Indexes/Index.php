@@ -22,7 +22,8 @@ class Index {
 
     public function resolveColumns(ReflectionEntity $entity): array
     {
-        // Iterate over entity properties to find column names
+        $this->columns = [];
+
         foreach ($this->fields as $propertyName) {
             $property = $entity->getProperty($propertyName);
 

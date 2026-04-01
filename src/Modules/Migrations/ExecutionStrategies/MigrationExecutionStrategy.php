@@ -20,36 +20,41 @@ class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface 
         string $directory
     ): int {
         $executedCount = 0;
+        $migrationFiles = [];
 
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
-                $filePath = $file->getPathname();
+                $migrationFiles[] = $file->getPathname();
+            }
+        }
 
-                include_once $filePath;
+        sort($migrationFiles);
 
-                $className = pathinfo($filePath, PATHINFO_FILENAME);
-                $namespace = MigrationFileUtils::getNamespaceFromFile($filePath);
-                $fullClassName = $namespace . '\\' . $className;
+        foreach ($migrationFiles as $filePath) {
+            include_once $filePath;
 
-                if (isset($executedMigrations[$fullClassName])) {
+            $className = pathinfo($filePath, PATHINFO_FILENAME);
+            $namespace = MigrationFileUtils::getNamespaceFromFile($filePath);
+            $fullClassName = $namespace . '\\' . $className;
+
+            if (isset($executedMigrations[$fullClassName])) {
+                continue;
+            }
+
+            if (class_exists($fullClassName)) {
+                $migrationInstance = new $fullClassName($this->connection);
+
+                if (!($migrationInstance instanceof BaseMigration)) {
+                    $io->warning("Class $fullClassName is not a valid migration");
+
                     continue;
                 }
 
-                if (class_exists($fullClassName)) {
-                    $migrationInstance = new $fullClassName($this->connection);
-
-                    if (!($migrationInstance instanceof BaseMigration)) {
-                        $io->warning("Class $fullClassName is not a valid migration");
-
-                        continue;
-                    }
-
-                    $migrationInstance->runMigration();
-                    $io->writeln("Executed migration: $fullClassName");
-                    $executedCount++;
-                } else {
-                    $io->warning("Class $className does not exist in file $filePath");
-                }
+                $migrationInstance->runMigration();
+                $io->writeln("Executed migration: $fullClassName");
+                $executedCount++;
+            } else {
+                $io->warning("Class $className does not exist in file $filePath");
             }
         }
 

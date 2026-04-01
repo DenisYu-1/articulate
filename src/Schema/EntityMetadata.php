@@ -156,7 +156,7 @@ class EntityMetadata {
     /**
      * Get a specific relation by name.
      */
-    public function getRelation(string $relationName): ?ReflectionRelation
+    public function getRelation(string $relationName): ?RelationInterface
     {
         return $this->relations[$relationName] ?? null;
     }

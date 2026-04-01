@@ -14,8 +14,8 @@ class UlidGenerator extends AbstractGenerator {
         parent::__construct('ulid');
     }
 
-    protected function generateInternal(string $entityClass, array $options = []): mixed
+    protected function generateInternal(string $entityClass, array $options = []): string
     {
-        return Ulid::generate();
+        return (string) new Ulid();
     }
 }

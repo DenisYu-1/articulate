@@ -10,6 +10,9 @@ use Articulate\Schema\EntityMetadataRegistry;
 use InvalidArgumentException;
 
 class DmlOperationHandler {
+    /** @var ReflectionEntity[] */
+    private static array $reflectionEntityCache = [];
+
     private ?string $dmlCommand = null;
 
     private array $insertColumns = [];
@@ -23,6 +26,11 @@ class DmlOperationHandler {
     public function __construct(
         private readonly ?EntityMetadataRegistry $metadataRegistry
     ) {
+    }
+
+    private function getReflectionEntity(string $entityClass): ReflectionEntity
+    {
+        return self::$reflectionEntityCache[$entityClass] ??= new ReflectionEntity($entityClass);
     }
 
     public function insert(
@@ -253,13 +261,6 @@ class DmlOperationHandler {
         }
 
         if ($this->dmlCommand === 'insert' && count($this->insertValues) === 1) {
-            $driverName = $connection->getDriverName();
-            if ($driverName === Connection::PGSQL) {
-                if (!empty($this->returning)) {
-                    return $statement->fetchAll();
-                }
-            }
-
             $lastInsertId = $connection->lastInsertId();
             if ($lastInsertId !== false) {
                 return (int) $lastInsertId;
@@ -290,7 +291,7 @@ class DmlOperationHandler {
 
     private function extractEntityInsertData(object $entity): array
     {
-        $reflectionEntity = new ReflectionEntity($entity::class);
+        $reflectionEntity = $this->getReflectionEntity($entity::class);
 
         $properties = array_filter(
             iterator_to_array($reflectionEntity->getEntityProperties()),
@@ -298,6 +299,7 @@ class DmlOperationHandler {
         );
 
         $columns = [];
+        $placeholders = [];
         $values = [];
 
         foreach ($properties as $property) {
@@ -314,17 +316,18 @@ class DmlOperationHandler {
             }
 
             $columns[] = $columnName;
+            $placeholders[] = '?';
             $values[] = $value;
         }
 
-        $this->addMorphToColumns($entity, $columns, $columns, $values);
+        $this->addMorphToColumns($entity, $columns, $placeholders, $values);
 
         return ['columns' => $columns, 'values' => $values];
     }
 
     private function buildEntityWhereClause(object $entity): array
     {
-        $reflectionEntity = new ReflectionEntity($entity::class);
+        $reflectionEntity = $this->getReflectionEntity($entity::class);
         $whereParts = [];
         $whereValues = [];
 
@@ -341,7 +344,7 @@ class DmlOperationHandler {
                 }
 
                 if ($pkProperty === null) {
-                    $reflectionEntity = new ReflectionEntity($entity::class);
+                    $reflectionEntity = $this->getReflectionEntity($entity::class);
                     foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                         if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
                             $idValue = $property->getValue($entity);
@@ -363,7 +366,7 @@ class DmlOperationHandler {
                 $whereValues[] = $pkValue;
             }
         } else {
-            $reflectionEntity = new ReflectionEntity($entity::class);
+            $reflectionEntity = $this->getReflectionEntity($entity::class);
             foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                 if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
                     $idValue = $property->getValue($entity);
@@ -392,7 +395,7 @@ class DmlOperationHandler {
             foreach ($metadata->getColumnRelations() as $relation) {
                 if ($relation->isMorphTo()) {
                     $propertyName = $relation->getPropertyName();
-                    $reflectionEntity = new ReflectionEntity($entity::class);
+                    $reflectionEntity = $this->getReflectionEntity($entity::class);
                     $relatedProperty = null;
                     foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
                         if ($property instanceof ReflectionProperty && $property->getFieldName() === $propertyName) {
@@ -426,7 +429,7 @@ class DmlOperationHandler {
 
     private function extractEntityId(object $entity): mixed
     {
-        $reflectionEntity = new ReflectionEntity($entity::class);
+        $reflectionEntity = $this->getReflectionEntity($entity::class);
 
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
             if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
@@ -434,7 +437,7 @@ class DmlOperationHandler {
             }
         }
 
-        $reflectionEntity = new ReflectionEntity($entity::class);
+        $reflectionEntity = $this->getReflectionEntity($entity::class);
         foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $property) {
             if ($property instanceof ReflectionProperty && $property->getFieldName() === 'id') {
                 return $property->getValue($entity);

@@ -2,7 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
-use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
@@ -57,7 +57,7 @@ class MappingTableComparator {
         $indexCompareResults = $this->compareIndexesForMapping($existingIndexes, $indexesToRemove, $definition, $existingForeignKeys, $operation);
 
         if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new EmptyPropertiesList($tableName);
+            throw new EmptyPropertiesListException($tableName);
         }
 
         if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {
@@ -144,7 +144,6 @@ class MappingTableComparator {
         }
 
         foreach ($columnsToUpdate as $name => $property) {
-            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
             $column = $columnsIndexed[$name];
             $result = new ColumnCompareResult(
                 $name,
@@ -153,6 +152,7 @@ class MappingTableComparator {
                 new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
             );
             if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+                $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
                 $columnsCompareResults[] = $result;
             }
         }
@@ -323,7 +323,6 @@ class MappingTableComparator {
         }
 
         foreach ($columnsToUpdate as $name => $property) {
-            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
             $column = $columnsIndexed[$name];
             $result = new ColumnCompareResult(
                 $name,
@@ -332,6 +331,7 @@ class MappingTableComparator {
                 new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
             );
             if ($result->hasChanges()) {
+                $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
                 $columnsCompareResults[] = $result;
             }
         }
@@ -416,7 +416,7 @@ class MappingTableComparator {
         }
 
         if ($operation === CompareResult::OPERATION_CREATE && empty($columnsCompareResults)) {
-            throw new EmptyPropertiesList($tableName);
+            throw new EmptyPropertiesListException($tableName);
         }
 
         if (!$operation && empty($columnsCompareResults) && empty($foreignKeysByName) && empty($indexCompareResults)) {

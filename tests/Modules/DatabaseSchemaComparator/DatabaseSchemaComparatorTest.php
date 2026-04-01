@@ -3,7 +3,7 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
-use Articulate\Exceptions\EmptyPropertiesList;
+use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
@@ -208,7 +208,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $databaseSchemaReader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $databaseSchemaReader->expects($this->once())->method('getTables')->willReturn(['test_entity']);
         $databaseSchemaComparator = new DatabaseSchemaComparator($databaseSchemaReader, new SchemaNaming());
-        $this->expectException(EmptyPropertiesList::class);
+        $this->expectException(EmptyPropertiesListException::class);
         iterator_to_array($databaseSchemaComparator->compareAll([
             new ReflectionEntity(TestEmptyEntity::class),
         ]));

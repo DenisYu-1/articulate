@@ -35,13 +35,15 @@ class ChangeAggregator {
             $this->collectChangesFromUnitOfWork($unitOfWork);
         }
 
+        $deletes = $this->optimizeDeletes();
+
         return [
             'inserts' => $this->optimizeInserts(),
             'updates' => $this->updateConflictResolutionStrategy->resolve(
                 $this->optimizeUpdates(),
                 $this->metadataRegistry,
             ),
-            'deletes' => $this->optimizeDeletes(),
+            'deletes' => $deletes,
         ];
     }
 

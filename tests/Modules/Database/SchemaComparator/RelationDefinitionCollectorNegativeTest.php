@@ -87,7 +87,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
         $relation1->method('isOwningSide')->willReturn(true);
         $relation1->method('getTableName')->willReturn('conflicting_table');
         $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Connection');
-        $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\Collection');
+        $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\MappingCollection');
         $relation1->method('getOwnerJoinColumn')->willReturn('user_id');
         $relation1->method('getTargetJoinColumn')->willReturn('post_id');
         $relation1->method('getOwnerPrimaryColumn')->willReturn('id');
@@ -97,7 +97,7 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
 
         $relation2->method('isOwningSide')->willReturn(true);
         $relation2->method('getTableName')->willReturn('conflicting_table');
-        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Collection\\Collection');
+        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Collection\\MappingCollection');
         $relation2->method('getTargetEntity')->willReturn('Articulate\\Connection');
         $relation2->method('getOwnerJoinColumn')->willReturn('different_user_id'); // Different column name
         $relation2->method('getTargetJoinColumn')->willReturn('post_id');
@@ -173,11 +173,11 @@ class RelationDefinitionCollectorNegativeTest extends TestCase {
 
         $relation1->expects($this->once())
             ->method('getTargetEntity')
-            ->willReturn('Articulate\\Collection\\Collection');
+            ->willReturn('Articulate\\Collection\\MappingCollection');
 
         $relation2->expects($this->once())
             ->method('getDeclaringClassName')
-            ->willReturn('Articulate\\Collection\\Collection');
+            ->willReturn('Articulate\\Collection\\MappingCollection');
 
         $relation2->expects($this->once())
             ->method('getTargetEntity')

@@ -10,7 +10,7 @@ interface DatabaseSchemaReaderInterface {
 
     public function getTables(): array;
 
-    public function getTableIndexes(string $tableName);
+    public function getTableIndexes(string $tableName): array;
 
     public function getTableForeignKeys(string $tableName): array;
 }

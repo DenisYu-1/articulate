@@ -97,10 +97,10 @@ abstract class AbstractRepository implements RepositoryInterface {
      */
     private function applyCriteria(QueryBuilder $qb, array $criteria): void
     {
-        // Field names are raw identifiers and must come from trusted metadata.
-        // Callers should never pass user input directly as field names.
         foreach ($criteria as $field => $value) {
-            if (is_array($value)) {
+            if ($value === null) {
+                $qb->whereNull($field);
+            } elseif (is_array($value)) {
                 $qb->whereIn($field, $value);
             } else {
                 $qb->where("{$field} = ?", $value);
@@ -117,13 +117,20 @@ abstract class AbstractRepository implements RepositoryInterface {
             return false;
         }
 
-        $pkColumn = $primaryKeyColumns[0];
-        $qb = $this->createQueryBuilder()
-            ->select('1')
-            ->where($pkColumn, $id)
-            ->limit(1);
+        $qb = $this->createQueryBuilder()->select('1');
 
-        return $qb->getSingleResult(null) !== null;
+        if (is_array($id) && count($primaryKeyColumns) > 1) {
+            foreach ($primaryKeyColumns as $pkColumn) {
+                if (!array_key_exists($pkColumn, $id)) {
+                    return false;
+                }
+                $qb->where($pkColumn, $id[$pkColumn]);
+            }
+        } else {
+            $qb->where($primaryKeyColumns[0], is_array($id) ? reset($id) : $id);
+        }
+
+        return $qb->limit(1)->getSingleResult(null) !== null;
     }
 
     /**

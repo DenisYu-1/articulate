@@ -399,11 +399,7 @@ class EntityManager {
 
         $rawData = $rawResults[0];
 
-        // Hydrate the entity
         $entity = $this->hydrator->hydrate($class, $rawData);
-
-        // Register the entity as managed in the unit of work
-        $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
 
         return $entity;
     }
@@ -510,7 +506,7 @@ class EntityManager {
         $rawResults = $statement->fetchAll();
 
         if (empty($rawResults)) {
-            throw new EntityNotFoundException("Entity {$entityClass} with ID {$id} not found in database");
+            throw EntityNotFoundException::notFound($entityClass, $id);
         }
 
         $freshData = $rawResults[0];
@@ -668,6 +664,11 @@ class EntityManager {
     public function getMetadataRegistry(): EntityMetadataRegistry
     {
         return $this->metadataRegistry;
+    }
+
+    public function getConnection(): Connection
+    {
+        return $this->connection;
     }
 
     /**

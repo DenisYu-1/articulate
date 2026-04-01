@@ -148,7 +148,7 @@ PHP;
         );
 
         $commandTester = new CommandTester($command);
-        $statusCode = $commandTester->execute(['rollback' => 'rollback']);
+        $statusCode = $commandTester->execute(['--rollback' => true]);
 
         $this->assertSame(0, $statusCode);
     }
@@ -231,8 +231,8 @@ PHP;
         $this->assertSame('Run database migrations', $command->getDescription());
 
         $definition = $command->getDefinition();
-        $this->assertTrue($definition->hasArgument('rollback'));
-        $this->assertFalse($definition->getArgument('rollback')->isRequired());
+        $this->assertTrue($definition->hasOption('rollback'));
+        $this->assertFalse($definition->getOption('rollback')->isValueRequired());
     }
 
     /**

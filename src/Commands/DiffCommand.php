@@ -41,6 +41,9 @@ class DiffCommand extends Command {
 
             if ($file->isFile() && $file->getExtension() === 'php') {
                 $contents = file_get_contents($file->getRealPath());
+                if ($contents === false) {
+                    continue;
+                }
                 if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatches) &&
                     preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
                     $namespace = $namespaceMatches[1];
@@ -50,7 +53,10 @@ class DiffCommand extends Command {
                 }
             }
         }
-        $entityClasses = array_map(fn (string $className) => new ReflectionEntity($className), $classNames);
+        $entityClasses = array_filter(
+            array_map(fn (string $className) => new ReflectionEntity($className), $classNames),
+            fn (ReflectionEntity $entity) => $entity->isEntity()
+        );
 
         $compareResults = $this->databaseSchemaComparator->compareAll($entityClasses);
         $queries = $rollbacks = [];
@@ -65,8 +71,9 @@ class DiffCommand extends Command {
 
             return Command::SUCCESS;
         }
-        $upScript = array_map(fn ($query) => '$this->addSql("' . $query . '");', $queries);
-        $downScript = array_map(fn ($query) => '$this->addSql("' . $query . '");', array_reverse($rollbacks));
+        $escapeSql = fn (string $query) => addcslashes($query, '"\\');
+        $upScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', $queries);
+        $downScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', array_reverse($rollbacks));
         $this->migrationGenerator->generate(
             $this->migrationsNamespace ?: 'App\Migrations',
             'MigrationFrom' . time(),

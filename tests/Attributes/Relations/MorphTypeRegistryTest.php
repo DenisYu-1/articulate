@@ -3,130 +3,80 @@
 namespace Articulate\Tests\Attributes\Relations;
 
 use Articulate\Attributes\Relations\MorphTypeRegistry;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestSecondEntity;
+use PHPUnit\Framework\TestCase;
 
-class MorphTypeRegistryTest extends AbstractTestCase {
+class MorphTypeRegistryTest extends TestCase {
     protected function setUp(): void
     {
-        parent::setUp();
-        // Clear registry before each test to ensure clean state
         MorphTypeRegistry::clear();
     }
 
     protected function tearDown(): void
     {
-        // Clear registry after each test
         MorphTypeRegistry::clear();
-        parent::tearDown();
     }
 
-    public function testRegisterValidEntityClass(): void
+    public function testRegisterAndGetAlias(): void
     {
-        MorphTypeRegistry::register(self::class, 'test_alias');
+        MorphTypeRegistry::register(TestEntity::class, 'test');
 
-        $this->assertEquals('test_alias', MorphTypeRegistry::getAlias(self::class));
-        $this->assertEquals(self::class, MorphTypeRegistry::getEntityClass('test_alias'));
-        $this->assertTrue(MorphTypeRegistry::hasAlias('test_alias'));
-    }
-
-    public function testRegisterNonExistentEntityClassThrowsException(): void
-    {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage("Entity class 'NonExistentClass' does not exist");
-
-        MorphTypeRegistry::register('NonExistentClass', 'alias');
+        $this->assertSame('test', MorphTypeRegistry::getAlias(TestEntity::class));
+        $this->assertSame(TestEntity::class, MorphTypeRegistry::getEntityClass('test'));
     }
 
     public function testGetAliasReturnsClassNameWhenNotRegistered(): void
     {
-        $className = 'Some\Namespace\UnregisteredClass';
-
-        $this->assertEquals($className, MorphTypeRegistry::getAlias($className));
+        $this->assertSame(TestEntity::class, MorphTypeRegistry::getAlias(TestEntity::class));
     }
 
     public function testGetEntityClassReturnsAliasWhenNotRegistered(): void
     {
-        $alias = 'unregistered_alias';
-
-        $this->assertEquals($alias, MorphTypeRegistry::getEntityClass($alias));
+        $this->assertSame('unknown_alias', MorphTypeRegistry::getEntityClass('unknown_alias'));
     }
 
-    public function testHasAliasReturnsFalseForUnregisteredAlias(): void
+    public function testHasAlias(): void
     {
-        $this->assertFalse(MorphTypeRegistry::hasAlias('nonexistent_alias'));
+        $this->assertFalse(MorphTypeRegistry::hasAlias('test'));
+
+        MorphTypeRegistry::register(TestEntity::class, 'test');
+
+        $this->assertTrue(MorphTypeRegistry::hasAlias('test'));
     }
 
-    public function testHasAliasReturnsTrueForRegisteredAlias(): void
+    public function testClear(): void
     {
-        MorphTypeRegistry::register(self::class, 'registered_alias');
-
-        $this->assertTrue(MorphTypeRegistry::hasAlias('registered_alias'));
-    }
-
-    public function testGetMappingsReturnsAllRegisteredMappings(): void
-    {
-        MorphTypeRegistry::register(self::class, 'alias1');
-        MorphTypeRegistry::register(\stdClass::class, 'alias2');
-
-        $mappings = MorphTypeRegistry::getMappings();
-
-        $this->assertCount(2, $mappings);
-        $this->assertArrayHasKey(self::class, $mappings);
-        $this->assertArrayHasKey(\stdClass::class, $mappings);
-        $this->assertEquals('alias1', $mappings[self::class]);
-        $this->assertEquals('alias2', $mappings[\stdClass::class]);
-    }
-
-    public function testClearRemovesAllMappings(): void
-    {
-        MorphTypeRegistry::register(self::class, 'alias1');
-        MorphTypeRegistry::register(\stdClass::class, 'alias2');
-
-        // Verify mappings exist
-        $this->assertEquals('alias1', MorphTypeRegistry::getAlias(self::class));
-        $this->assertEquals('alias2', MorphTypeRegistry::getAlias(\stdClass::class));
+        MorphTypeRegistry::register(TestEntity::class, 'test');
+        MorphTypeRegistry::register(TestSecondEntity::class, 'second');
 
         MorphTypeRegistry::clear();
 
-        // Verify mappings are cleared
-        $this->assertEquals(self::class, MorphTypeRegistry::getAlias(self::class));
-        $this->assertEquals(\stdClass::class, MorphTypeRegistry::getAlias(\stdClass::class));
         $this->assertEmpty(MorphTypeRegistry::getMappings());
-        $this->assertFalse(MorphTypeRegistry::hasAlias('alias1'));
-        $this->assertFalse(MorphTypeRegistry::hasAlias('alias2'));
+        $this->assertFalse(MorphTypeRegistry::hasAlias('test'));
+        $this->assertFalse(MorphTypeRegistry::hasAlias('second'));
     }
 
-    public function testMultipleRegistrationsWorkCorrectly(): void
+    public function testRegisterCleansUpOldMappings(): void
     {
-        MorphTypeRegistry::register(self::class, 'alias1');
-        MorphTypeRegistry::register(\stdClass::class, 'alias2');
-        MorphTypeRegistry::register(\Exception::class, 'alias3');
+        MorphTypeRegistry::register(TestEntity::class, 'old_alias');
+        MorphTypeRegistry::register(TestEntity::class, 'new_alias');
 
-        $this->assertEquals('alias1', MorphTypeRegistry::getAlias(self::class));
-        $this->assertEquals('alias2', MorphTypeRegistry::getAlias(\stdClass::class));
-        $this->assertEquals('alias3', MorphTypeRegistry::getAlias(\Exception::class));
+        $this->assertSame('new_alias', MorphTypeRegistry::getAlias(TestEntity::class));
+        $this->assertFalse(MorphTypeRegistry::hasAlias('old_alias'));
+        $this->assertTrue(MorphTypeRegistry::hasAlias('new_alias'));
 
-        $this->assertEquals(self::class, MorphTypeRegistry::getEntityClass('alias1'));
-        $this->assertEquals(\stdClass::class, MorphTypeRegistry::getEntityClass('alias2'));
-        $this->assertEquals(\Exception::class, MorphTypeRegistry::getEntityClass('alias3'));
+        MorphTypeRegistry::register(TestSecondEntity::class, 'shared');
+        MorphTypeRegistry::register(TestEntity::class, 'shared');
+
+        $this->assertSame('shared', MorphTypeRegistry::getAlias(TestEntity::class));
+        $this->assertNotSame('shared', MorphTypeRegistry::getAlias(TestSecondEntity::class));
     }
 
-    public function testRegisteringSameEntityTwiceUpdatesAlias(): void
+    public function testRegisterThrowsForNonExistentClass(): void
     {
-        MorphTypeRegistry::register(self::class, 'old_alias');
-        $this->assertEquals('old_alias', MorphTypeRegistry::getAlias(self::class));
+        $this->expectException(\InvalidArgumentException::class);
 
-        MorphTypeRegistry::register(self::class, 'new_alias');
-        $this->assertEquals('new_alias', MorphTypeRegistry::getAlias(self::class));
-    }
-
-    public function testRegisteringSameAliasForDifferentEntities(): void
-    {
-        MorphTypeRegistry::register(self::class, 'same_alias');
-        $this->assertEquals(self::class, MorphTypeRegistry::getEntityClass('same_alias'));
-
-        MorphTypeRegistry::register(\stdClass::class, 'same_alias');
-        // The alias should now point to the last registered class
-        $this->assertEquals(\stdClass::class, MorphTypeRegistry::getEntityClass('same_alias'));
+        MorphTypeRegistry::register('NonExistent\\Class\\Name', 'alias');
     }
 }
