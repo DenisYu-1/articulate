@@ -92,6 +92,7 @@ parameters:
     Attributes:
       - Schema
       - Collection
+      - Utils
 
     Database:
       - Schema
@@ -129,6 +130,7 @@ parameters:
 
     Schema:
       - Attributes
+      - Utils
 
     Commands:
       - Connection
