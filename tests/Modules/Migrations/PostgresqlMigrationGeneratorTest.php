@@ -69,7 +69,7 @@ class PostgresqlMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->callProtectedMethod('columnDefinition', ['status', $column]);
 
-        $this->assertEquals('"status" VARCHAR(255) NOT NULL DEFAULT "default_value"', $result);
+        $this->assertEquals('"status" VARCHAR(255) NOT NULL DEFAULT \'default_value\'', $result);
     }
 
     public function testColumnDefinitionHandlesPrimaryKeyGeneration(): void

@@ -22,9 +22,10 @@ class PrefixedIdGenerator implements GeneratorStrategyInterface {
 
         // Generate a random string of specified length
         $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $maxIndex = strlen($characters) - 1;
         $randomString = '';
         for ($i = 0; $i < $length; $i++) {
-            $randomString .= $characters[rand(0, strlen($characters) - 1)];
+            $randomString .= $characters[random_int(0, $maxIndex)];
         }
 
         return $prefix . $randomString;

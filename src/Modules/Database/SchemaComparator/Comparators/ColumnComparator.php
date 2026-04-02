@@ -232,8 +232,8 @@ class ColumnComparator {
             'referencedColumn' => $existing['referencedColumn'] ?? $incoming['referencedColumn'],
             'generatorType' => $existing['generatorType'] ?? $incoming['generatorType'],
             'sequence' => $existing['sequence'] ?? $incoming['sequence'],
-            'isPrimaryKey' => $existing['isPrimaryKey'] ?? $incoming['isPrimaryKey'],
-            'isAutoIncrement' => $existing['isAutoIncrement'] ?? $incoming['isAutoIncrement'],
+            'isPrimaryKey' => $existing['isPrimaryKey'] || $incoming['isPrimaryKey'],
+            'isAutoIncrement' => $existing['isAutoIncrement'] || $incoming['isAutoIncrement'],
         ];
     }
 

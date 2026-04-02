@@ -16,6 +16,8 @@ trait ProxyTrait {
 
     private ?object $_proxyManager = null;
 
+    private array $_dynamicProperties = [];
+
     /**
      * Initialize the proxy with entity information.
      */
@@ -77,7 +79,7 @@ trait ProxyTrait {
     {
         $this->initializeProxy();
 
-        return $this->$name ?? null;
+        return $this->_dynamicProperties[$name] ?? null;
     }
 
     /**
@@ -86,7 +88,7 @@ trait ProxyTrait {
     public function __set(string $name, mixed $value): void
     {
         $this->initializeProxy();
-        $this->$name = $value;
+        $this->_dynamicProperties[$name] = $value;
     }
 
     /**
@@ -96,7 +98,7 @@ trait ProxyTrait {
     {
         $this->initializeProxy();
 
-        return isset($this->$name);
+        return isset($this->_dynamicProperties[$name]);
     }
 
     /**
@@ -105,7 +107,7 @@ trait ProxyTrait {
     public function __unset(string $name): void
     {
         $this->initializeProxy();
-        unset($this->$name);
+        unset($this->_dynamicProperties[$name]);
     }
 
     /**
@@ -115,7 +117,11 @@ trait ProxyTrait {
     {
         $this->initializeProxy();
 
-        return $this->$name(...$arguments);
+        if (method_exists(parent::class, $name)) {
+            return parent::$name(...$arguments);
+        }
+
+        throw new \BadMethodCallException(sprintf('Method %s::%s does not exist', static::class, $name));
     }
 
     /**

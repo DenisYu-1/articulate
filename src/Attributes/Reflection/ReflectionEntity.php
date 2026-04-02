@@ -17,6 +17,7 @@ use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\StringUtils;
 use ReflectionAttribute;
 use ReflectionClass;
 
@@ -270,48 +271,18 @@ class ReflectionEntity extends ReflectionClass {
 
             return;
         }
+
         foreach ($this->getProperties() as $property) {
-            /** @var ReflectionAttribute<OneToOne>[] $entityProperty */
-            $entityProperty = $property->getAttributes(OneToOne::class);
-            if (empty($entityProperty)) {
+            if ($result = $this->processOneToOneAttribute($property)) {
+                yield $result;
+
                 continue;
             }
 
-            $relation = new ReflectionRelation($entityProperty[0]->newInstance(), $property, $this->schemaNaming);
-            if (!$relation->isOwningSide()) {
-                continue;
+            if ($result = $this->processPropertyAttribute($property)) {
+                yield $result;
             }
-
-            yield $relation;
         }
-        foreach ($this->getProperties() as $property) {
-            /** @var ReflectionAttribute<Property>[] $entityProperty */
-            $entityProperty = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
-            if (empty($entityProperty)) {
-                continue;
-            }
-
-            // Find the explicit Property attribute (not PrimaryKey) or use PrimaryKey
-            $explicitProperty = null;
-            foreach ($entityProperty as $attr) {
-                $instance = $attr->newInstance();
-                if (!$instance instanceof PrimaryKey) {
-                    $explicitProperty = $instance;
-
-                    break;
-                }
-            }
-
-            // Use explicit Property if available, otherwise use PrimaryKey
-            if ($explicitProperty !== null) {
-                $propertyAttribute = $explicitProperty;
-            } else {
-                $propertyAttribute = $entityProperty[0]->newInstance();
-            }
-
-            yield new ReflectionProperty($propertyAttribute, $property);
-        }
-
     }
 
     public function getEntityRelationProperties(): iterable
@@ -431,7 +402,7 @@ class ReflectionEntity extends ReflectionClass {
     {
         $className = explode('\\', $this->getName());
 
-        return strtolower(preg_replace('/\B([A-Z])/', '_$1', end($className)));
+        return StringUtils::snakeCase(end($className));
     }
 
     public function getSoftDeleteableAttribute(): ?SoftDeleteable

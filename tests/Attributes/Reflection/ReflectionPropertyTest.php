@@ -2,52 +2,85 @@
 
 namespace Articulate\Tests\Attributes\Reflection;
 
-use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
-use Articulate\Tests\AbstractTestCase;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestCustomPrimaryKeyEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPrimaryKeyEntity;
+use PHPUnit\Framework\TestCase;
 
-class ReflectionPropertyTest extends AbstractTestCase {
-    private $testProperty;
-
-    protected function setUp(): void
+class ReflectionPropertyTest extends TestCase {
+    /**
+     * @return ReflectionProperty[]
+     */
+    private function getPropertiesForEntity(string $entityClass): array
     {
-        parent::setUp();
-        $this->testProperty = new \ReflectionProperty($this, 'testProperty');
+        $reflectionEntity = new ReflectionEntity($entityClass);
+        $properties = [];
+        foreach ($reflectionEntity->getEntityProperties() as $property) {
+            if ($property instanceof ReflectionProperty) {
+                $properties[$property->getFieldName()] = $property;
+            }
+        }
+
+        return $properties;
     }
 
-    public function testDefaultAutoIncrementIsFalse()
+    public function testGetValue(): void
     {
-        $propertyAttr = new Property();
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
+        $entity = new TestPrimaryKeyEntity();
+        $entity->name = 'test_value';
 
-        $reflection = new ReflectionProperty($propertyAttr, $this->testProperty);
-
-        $this->assertFalse($reflection->isAutoIncrement());
+        $this->assertSame('test_value', $properties['name']->getValue($entity));
     }
 
-    public function testDefaultPrimaryKeyIsFalse()
+    public function testSetValue(): void
     {
-        $propertyAttr = new Property();
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
+        $entity = new TestPrimaryKeyEntity();
 
-        $reflection = new ReflectionProperty($propertyAttr, $this->testProperty);
+        $properties['name']->setValue($entity, 'new_value');
 
-        $this->assertFalse($reflection->isPrimaryKey());
+        $this->assertSame('new_value', $entity->name);
     }
 
-    public function testAutoIncrementCanBeSetToTrue()
+    public function testGetColumnName(): void
     {
-        $propertyAttr = new Property();
+        $properties = $this->getPropertiesForEntity(TestCustomPrimaryKeyEntity::class);
 
-        $reflection = new ReflectionProperty($propertyAttr, $this->testProperty, true, false);
-
-        $this->assertTrue($reflection->isAutoIncrement());
+        $this->assertSame('custom_id', $properties['id']->getColumnName());
+        $this->assertSame('name', $properties['name']->getColumnName());
     }
 
-    public function testPrimaryKeyCanBeSetToTrue()
+    public function testGetFieldName(): void
     {
-        $propertyAttr = new Property();
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
 
-        $reflection = new ReflectionProperty($propertyAttr, $this->testProperty, false, true);
+        $this->assertSame('id', $properties['id']->getFieldName());
+        $this->assertSame('name', $properties['name']->getFieldName());
+    }
 
-        $this->assertTrue($reflection->isPrimaryKey());
+    public function testIsPrimaryKey(): void
+    {
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
+
+        $this->assertTrue($properties['id']->isPrimaryKey());
+        $this->assertFalse($properties['name']->isPrimaryKey());
+    }
+
+    public function testIsNullable(): void
+    {
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
+
+        $this->assertFalse($properties['id']->isNullable());
+        $this->assertFalse($properties['name']->isNullable());
+    }
+
+    public function testGetGeneratorType(): void
+    {
+        $properties = $this->getPropertiesForEntity(TestPrimaryKeyEntity::class);
+
+        $this->assertNull($properties['id']->getGeneratorType());
+        $this->assertNull($properties['name']->getGeneratorType());
     }
 }

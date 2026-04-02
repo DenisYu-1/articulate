@@ -10,6 +10,7 @@ use Articulate\Attributes\Relations\MorphOne;
 use Articulate\Attributes\Relations\MorphTo;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\PolymorphicColumnResolution;
+use Articulate\Utils\StringUtils;
 use Attribute;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -628,18 +629,9 @@ class RelationAttributesTest extends TestCase {
 
     public function testPolymorphicColumnResolutionConvertToSnakeCase(): void
     {
-        $mockClass = new class() {
-            use PolymorphicColumnResolution;
-
-            public function convertToSnakeCasePublic(string $string): string
-            {
-                return $this->convertToSnakeCase($string);
-            }
-        };
-
-        $this->assertEquals('user_name', $mockClass->convertToSnakeCasePublic('userName'));
-        $this->assertEquals('post_comment', $mockClass->convertToSnakeCasePublic('postComment'));
-        $this->assertEquals('simple', $mockClass->convertToSnakeCasePublic('simple'));
-        $this->assertEquals('a_b_c', $mockClass->convertToSnakeCasePublic('ABC'));
+        $this->assertEquals('user_name', StringUtils::snakeCase('userName'));
+        $this->assertEquals('post_comment', StringUtils::snakeCase('postComment'));
+        $this->assertEquals('simple', StringUtils::snakeCase('simple'));
+        $this->assertEquals('a_b_c', StringUtils::snakeCase('ABC'));
     }
 }

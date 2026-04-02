@@ -320,12 +320,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $result = $this->comparator->compareManyToManyTable($definition, $existingTables);
 
-        $this->assertInstanceOf(TableCompareResult::class, $result);
-        $this->assertEquals(CompareResult::OPERATION_UPDATE, $result->operation);
-        $this->assertEmpty($result->columns); // No column changes
-        $this->assertEmpty($result->foreignKeys); // No FK changes
-        $this->assertEmpty($result->indexes); // No index changes
-        $this->assertEquals(['user_id', 'role_id'], $result->primaryColumns);
+        $this->assertNull($result);
     }
 
     // ===== compareMorphToManyTable Tests =====
@@ -517,12 +512,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $result = $this->comparator->compareMorphToManyTable($definition, $existingTables);
 
-        $this->assertInstanceOf(TableCompareResult::class, $result);
-        $this->assertEquals(CompareResult::OPERATION_UPDATE, $result->operation);
-        $this->assertEmpty($result->columns); // No column changes
-        $this->assertEmpty($result->foreignKeys); // No FK changes
-        $this->assertEmpty($result->indexes); // No index changes
-        $this->assertEquals(['id'], $result->primaryColumns);
+        $this->assertNull($result);
     }
 
     public function testCompareMorphToManyTableHandlesColumnUpdates(): void

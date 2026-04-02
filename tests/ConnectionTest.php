@@ -5,42 +5,91 @@ namespace Articulate\Tests;
 use Articulate\Connection;
 
 class ConnectionTest extends AbstractTestCase {
-    public function testPdoAttributesAreSetCorrectly()
+    public function testCommitWithoutTransactionDoesNotThrow(): void
     {
-        // We can't easily test the actual PDO construction without a real database
-        // But we can test that the connection can be created with proper DSN
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
 
-        try {
-            // This will fail due to invalid driver, but we can catch the exception
-            // The important thing is that the PDO options are set correctly in the constructor
-            new Connection('invalid:host=localhost;dbname=test', 'test', 'test');
-        } catch (\Exception $e) {
-            // Expected to fail due to invalid driver
-            $this->assertStringContainsString('could not find driver', $e->getMessage());
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
         }
+
+        $connection->commit();
+        $this->assertFalse($connection->inTransaction());
     }
 
-    public function testBeginTransactionIsCalled()
+    public function testBeginTransactionTwiceDoesNotNest(): void
     {
-        $connection = new Connection('sqlite::memory:', '', '');
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
 
-        // Actually test that beginTransaction works
-        // The MethodCallRemoval mutant removes the pdo->beginTransaction() call
-        $reflectionProperty = new \ReflectionProperty($connection, 'pdo');
-        $reflectionProperty->setAccessible(true);
-        $pdo = $reflectionProperty->getValue($connection);
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
+        }
 
-        $this->assertFalse($pdo->inTransaction());
         $connection->beginTransaction();
-        $this->assertTrue($pdo->inTransaction());
+        $connection->beginTransaction();
+
+        $this->assertTrue($connection->inTransaction());
+
+        $connection->commit();
+        $this->assertFalse($connection->inTransaction());
     }
 
-    public function testRollbackTransactionIsCalled()
+    public function testRollbackWithoutTransactionDoesNotThrow(): void
     {
-        $connection = new Connection('sqlite::memory:', 'test', 'test');
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
 
-        // Test that we can call rollbackTransaction
-        $this->expectNotToPerformAssertions();
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
+        }
+
         $connection->rollbackTransaction();
+        $this->assertFalse($connection->inTransaction());
+    }
+
+    public function testInTransactionReturnsCorrectState(): void
+    {
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
+
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
+        }
+
+        $this->assertFalse($connection->inTransaction());
+
+        $connection->beginTransaction();
+        $this->assertTrue($connection->inTransaction());
+
+        $connection->commit();
+        $this->assertFalse($connection->inTransaction());
+    }
+
+    public function testNormalizeBoolParameters(): void
+    {
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
+
+        $connection->executeQuery('CREATE TEMPORARY TABLE __test_bool (id INT, active TINYINT(1))');
+        $connection->executeQuery(
+            'INSERT INTO __test_bool (id, active) VALUES (:id, :active)',
+            ['id' => 1, 'active' => true],
+        );
+
+        $result = $connection->executeQuery(
+            'SELECT active FROM __test_bool WHERE id = :id AND active = :active',
+            ['id' => 1, 'active' => true],
+        );
+
+        $row = $result->fetch();
+        $this->assertNotFalse($row);
+        $this->assertEquals(1, $row['active']);
+    }
+
+    protected function setUpTestTables(Connection $connection, string $databaseName): bool
+    {
+        return true;
     }
 }

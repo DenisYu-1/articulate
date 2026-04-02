@@ -84,7 +84,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT \"test\"",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
                 'params' => [
                     'id',
                     'update',
@@ -92,7 +92,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT \"test\"",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT 'test'",
                 'params' => [
                     'id',
                     'update',

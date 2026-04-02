@@ -16,6 +16,6 @@ class MappingItem {
 
     public function pivotValue(string $name, mixed $default = null): mixed
     {
-        return $this->pivot[$name] ?? $default;
+        return array_key_exists($name, $this->pivot) ? $this->pivot[$name] : $default;
     }
 }

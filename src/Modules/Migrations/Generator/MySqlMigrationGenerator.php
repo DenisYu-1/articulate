@@ -22,95 +22,9 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
         return '`';
     }
 
-    public function generate(TableCompareResult $compareResult): string
-    {
-        if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
-            return $this->generateDropTable($compareResult->name);
-        }
-
-        if ($compareResult->operation === CompareResult::OPERATION_CREATE) {
-            return $this->generateCreateTable($compareResult);
-        }
-
-        return $this->generateAlterTable($compareResult);
-    }
-
-    public function rollback(TableCompareResult $compareResult): string
-    {
-        if ($compareResult->operation === TableCompareResult::OPERATION_CREATE) {
-            return $this->generateDropTable($compareResult->name);
-        }
-
-        if ($compareResult->operation === TableCompareResult::OPERATION_DELETE) {
-            return $this->generateCreateTableFromRollback($compareResult);
-        }
-
-        return $this->generateAlterTableRollback($compareResult);
-    }
-
     protected function generateDropTable(string $tableName): string
     {
         return 'DROP TABLE `' . $tableName . '`';
-    }
-
-    protected function columnDefinition(string $name, PropertiesData $column): string
-    {
-        $quote = $this->getIdentifierQuote();
-        $parts = [];
-        $parts[] = $quote . $name . $quote;
-        $parts[] = $this->mapTypeLength($column);
-
-        // Handle primary key generation strategies
-        if ($column->isPrimaryKey && $column->generatorType) {
-            $parts[] = $this->getPrimaryKeyGenerationSql($column->generatorType, $column->sequence);
-        } elseif ($column->isAutoIncrement) {
-            $parts[] = $this->getAutoIncrementSql();
-        }
-
-        if (!$column->isNullable) {
-            $parts[] = 'NOT NULL';
-        }
-        if ($column->defaultValue !== null) {
-            $parts[] = 'DEFAULT "' . $column->defaultValue . '"';
-        }
-
-        return implode(' ', $parts);
-    }
-
-    protected function foreignKeyDefinition(ForeignKeyCompareResult $foreignKey, bool $withAdd = true): string
-    {
-        $quote = $this->getIdentifierQuote();
-        $template = 'CONSTRAINT ' . $quote . '%s' . $quote . ' FOREIGN KEY (' . $quote . '%s' . $quote . ') REFERENCES ' . $quote . '%s' . $quote . '(' . $quote . '%s' . $quote . ')';
-        if ($withAdd) {
-            $template = 'ADD ' . $template;
-        }
-
-        return sprintf(
-            $template,
-            $foreignKey->name,
-            $foreignKey->column,
-            $foreignKey->referencedTable,
-            $foreignKey->referencedColumn,
-        );
-    }
-
-    protected function generateIndexSql(IndexCompareResult $index, string $tableName, bool $withAdd = true): string
-    {
-        $quote = $this->getIdentifierQuote();
-        $indexType = $index->isUnique ? 'UNIQUE ' : '';
-        $columns = implode(', ', array_map(fn ($col) => $quote . $col . $quote, $index->columns));
-
-        $addPrefix = $withAdd ? 'ADD ' : '';
-
-        return sprintf(
-            '%s%sINDEX %s%s%s (%s)',
-            $addPrefix,
-            $indexType,
-            $quote,
-            $index->name,
-            $quote,
-            $columns
-        );
     }
 
     protected function mapTypeLength(?PropertiesData $propertyData): string
@@ -333,6 +247,11 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             $quotedColumns = array_map(fn ($col) => '`' . $col . '`', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
+                $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
+            }
+        }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
                 continue;
@@ -340,13 +259,6 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             $parts[] = $this->foreignKeyDefinition($foreignKey, false);
         }
         $query .= implode(', ', $parts) . ')';
-
-        // Add indexes
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $query .= ', ' . $this->generateIndexSql($index, $compareResult->name);
-            }
-        }
 
         return $query;
     }

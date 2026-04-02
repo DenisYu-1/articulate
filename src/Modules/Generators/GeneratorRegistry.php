@@ -25,14 +25,15 @@ class GeneratorRegistry {
 
     public function __construct()
     {
-        // Register default generators
         $this->register(new AutoIncrementGenerator());
         $this->register(new UuidGenerator());
         $this->register(new SerialGenerator());
         $this->register(new UlidGenerator());
         $this->register(new UuidV7Generator());
+        $this->register(new BigSerialGenerator());
+        $this->register(new CustomGenerator());
+        $this->register(new PrefixedIdGeneratorAdapter());
 
-        // Set auto_increment as default for backward compatibility
         $this->defaultGenerator = $this->generators['auto_increment'];
     }
 

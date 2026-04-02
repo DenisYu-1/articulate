@@ -69,7 +69,9 @@ class Connection {
 
     public function commit(): void
     {
-        $this->pdo->commit();
+        if ($this->pdo->inTransaction()) {
+            $this->pdo->commit();
+        }
     }
 
     public function rollbackTransaction(): void

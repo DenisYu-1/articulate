@@ -26,7 +26,7 @@ class OrCriteria implements CriteriaInterface {
         foreach ($this->criteria as $criterion) {
             if ($first) {
                 $qb->where(function ($q) use ($criterion) {
-                    $q->apply($criterion);
+                    $criterion->apply($q);
                 });
                 $first = false;
 
@@ -34,7 +34,7 @@ class OrCriteria implements CriteriaInterface {
             }
 
             $qb->orWhere(function ($q) use ($criterion) {
-                $q->apply($criterion);
+                $criterion->apply($q);
             });
         }
     }

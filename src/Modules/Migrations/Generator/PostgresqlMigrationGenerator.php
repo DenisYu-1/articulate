@@ -39,6 +39,12 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
             $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation !== CompareResult::OPERATION_CREATE) {
+                continue;
+            }
+            $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
+        }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
                 continue;
@@ -218,6 +224,11 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
             $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
         }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
+                $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
+            }
+        }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {
                 continue;
@@ -225,13 +236,6 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
             $parts[] = $this->foreignKeyDefinition($foreignKey, false);
         }
         $query .= implode(', ', $parts) . ')';
-
-        // Add indexes
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation !== CompareResult::OPERATION_DELETE) {
-                $query .= ', ' . $this->generateIndexSql($index, $compareResult->name, false);
-            }
-        }
 
         return $query;
     }

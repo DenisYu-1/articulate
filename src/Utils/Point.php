@@ -20,7 +20,7 @@ class Point {
     public static function fromString(string $pointString): self
     {
         // Parse POINT(x y) format
-        if (preg_match('/POINT\(([^ ]+) ([^)]+)\)/', $pointString, $matches)) {
+        if (preg_match('/^POINT\((-?[\d.]+(?:[eE][+-]?\d+)?)\s+(-?[\d.]+(?:[eE][+-]?\d+)?)\)$/', $pointString, $matches)) {
             return new self((float) $matches[1], (float) $matches[2]);
         }
 

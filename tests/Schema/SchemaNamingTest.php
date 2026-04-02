@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Schema;
 
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\StringUtils;
 use PHPUnit\Framework\TestCase;
 
 class SchemaNamingTest extends TestCase {
@@ -110,46 +111,30 @@ class SchemaNamingTest extends TestCase {
 
     public function testSnakeCasePrivateMethod(): void
     {
-        $reflection = new \ReflectionClass(SchemaNaming::class);
-        $method = $reflection->getMethod('snakeCase');
-        $method->setAccessible(true);
-
-        $this->assertSame('simple', $method->invoke($this->schemaNaming, 'simple'));
-        $this->assertSame('camel_case', $method->invoke($this->schemaNaming, 'camelCase'));
-        $this->assertSame('pascal_case', $method->invoke($this->schemaNaming, 'PascalCase'));
-        $this->assertSame('complex_example', $method->invoke($this->schemaNaming, 'complexExample'));
-        $this->assertSame('already_snake_case', $method->invoke($this->schemaNaming, 'already_snake_case'));
-        $this->assertSame('with_numbers123', $method->invoke($this->schemaNaming, 'withNumbers123'));
+        $this->assertSame('simple', StringUtils::snakeCase('simple'));
+        $this->assertSame('camel_case', StringUtils::snakeCase('camelCase'));
+        $this->assertSame('pascal_case', StringUtils::snakeCase('PascalCase'));
+        $this->assertSame('complex_example', StringUtils::snakeCase('complexExample'));
+        $this->assertSame('already_snake_case', StringUtils::snakeCase('already_snake_case'));
+        $this->assertSame('with_numbers123', StringUtils::snakeCase('withNumbers123'));
     }
 
     public function testSnakeCaseWithConsecutiveCapitals(): void
     {
-        $reflection = new \ReflectionClass(SchemaNaming::class);
-        $method = $reflection->getMethod('snakeCase');
-        $method->setAccessible(true);
-
-        $this->assertSame('x_m_l_http_request', $method->invoke($this->schemaNaming, 'XMLHttpRequest'));
-        $this->assertSame('user_i_d', $method->invoke($this->schemaNaming, 'userID'));
-        $this->assertSame('h_t_m_l_parser', $method->invoke($this->schemaNaming, 'HTMLParser'));
+        $this->assertSame('x_m_l_http_request', StringUtils::snakeCase('XMLHttpRequest'));
+        $this->assertSame('user_i_d', StringUtils::snakeCase('userID'));
+        $this->assertSame('h_t_m_l_parser', StringUtils::snakeCase('HTMLParser'));
     }
 
     public function testSnakeCaseWithEmptyString(): void
     {
-        $reflection = new \ReflectionClass(SchemaNaming::class);
-        $method = $reflection->getMethod('snakeCase');
-        $method->setAccessible(true);
-
-        $this->assertSame('', $method->invoke($this->schemaNaming, ''));
+        $this->assertSame('', StringUtils::snakeCase(''));
     }
 
     public function testSnakeCaseWithSingleCharacter(): void
     {
-        $reflection = new \ReflectionClass(SchemaNaming::class);
-        $method = $reflection->getMethod('snakeCase');
-        $method->setAccessible(true);
-
-        $this->assertSame('a', $method->invoke($this->schemaNaming, 'a'));
-        $this->assertSame('z', $method->invoke($this->schemaNaming, 'Z'));
+        $this->assertSame('a', StringUtils::snakeCase('a'));
+        $this->assertSame('z', StringUtils::snakeCase('Z'));
     }
 
     public function testIntegrationRelationColumnAndForeignKey(): void

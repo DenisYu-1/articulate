@@ -88,6 +88,22 @@ class ProxyGenerator {
         $excludedProps = array_map(fn ($prop) => "'$prop'", $propertiesToExclude);
         $excludeList = implode(', ', $excludedProps);
 
+        $hasParentGet = method_exists($entityClass, '__get');
+        $hasParentSet = method_exists($entityClass, '__set');
+        $hasParentIsset = method_exists($entityClass, '__isset');
+
+        $getBody = $hasParentGet
+            ? 'return parent::__get($name);'
+            : 'return $this->$name ?? null;';
+
+        $setBody = $hasParentSet
+            ? 'parent::__set($name, $value);'
+            : '$this->$name = $value;';
+
+        $issetBody = $hasParentIsset
+            ? 'return parent::__isset($name);'
+            : 'return isset($this->$name);';
+
         return <<<PHP
 class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\EntityManager\\Proxy\\ProxyInterface {
     use \\Articulate\\Modules\\EntityManager\\Proxy\\ProxyTrait;
@@ -95,28 +111,24 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     private array \$_excludedProperties = [$excludeList];
 
     public function __get(string \$name): mixed {
-        // If this is an entity property, trigger lazy loading
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
-        return parent::__get(\$name) ?? \$this->\$name ?? null;
+        $getBody
     }
 
     public function __set(string \$name, mixed \$value): void {
-        // If this is an entity property, trigger lazy loading
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
-        parent::__set(\$name, \$value);
-        \$this->\$name = \$value;
+        $setBody
     }
 
     public function __isset(string \$name): bool {
-        // If this is an entity property, trigger lazy loading
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
-        return parent::__isset(\$name) || isset(\$this->\$name);
+        $issetBody
     }
 }
 PHP;

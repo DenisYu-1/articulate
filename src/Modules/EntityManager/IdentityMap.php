@@ -6,9 +6,9 @@ class IdentityMap {
     /** @var array<class-string, array<string, object>> */
     private array $entities = [];
 
-    public function add(object $entity, mixed $id): void
+    public function add(object $entity, mixed $id, ?string $classOverride = null): void
     {
-        $className = $entity::class;
+        $className = $classOverride ?? $entity::class;
         $key = $this->generateKey($id);
 
         if (!isset($this->entities[$className])) {
@@ -36,18 +36,32 @@ class IdentityMap {
     {
         $className = $entity::class;
 
-        if (!isset($this->entities[$className])) {
+        if ($this->removeFromClass($className, $entity)) {
             return;
         }
 
-        // Find and remove by reference
+        foreach (array_keys($this->entities) as $class) {
+            if ($class !== $className && $this->removeFromClass($class, $entity)) {
+                return;
+            }
+        }
+    }
+
+    private function removeFromClass(string $className, object $entity): bool
+    {
+        if (!isset($this->entities[$className])) {
+            return false;
+        }
+
         foreach ($this->entities[$className] as $key => $storedEntity) {
             if ($storedEntity === $entity) {
                 unset($this->entities[$className][$key]);
 
-                break;
+                return true;
             }
         }
+
+        return false;
     }
 
     public function clear(?string $class = null): void

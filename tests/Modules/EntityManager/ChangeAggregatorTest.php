@@ -126,6 +126,32 @@ class ChangeAggregatorTest extends TestCase {
         $this->assertCount(0, $result['deletes']);
         $this->assertSame($entity, $result['inserts'][0]);
     }
+
+    public function testDeleteWinsOverUpdate(): void
+    {
+        $metadataRegistry = $this->entityManager->getMetadataRegistry();
+
+        $unitOfWorkUpdate = new UnitOfWork(metadataRegistry: $metadataRegistry);
+        $entityToUpdate = new TestEntityForChangeAggregation();
+        $entityToUpdate->id = 10;
+        $entityToUpdate->name = 'Original';
+        $unitOfWorkUpdate->registerManaged($entityToUpdate, ['id' => 10, 'name' => 'Original', 'active' => true]);
+        $entityToUpdate->name = 'Updated';
+
+        $unitOfWorkDelete = new UnitOfWork(metadataRegistry: $metadataRegistry);
+        $entityToDelete = new TestEntityForChangeAggregation();
+        $entityToDelete->id = 10;
+        $entityToDelete->name = 'Original';
+        $unitOfWorkDelete->registerManaged($entityToDelete, ['id' => 10, 'name' => 'Original', 'active' => true]);
+        $unitOfWorkDelete->remove($entityToDelete);
+
+        $result = $this->aggregator->aggregateChanges([$unitOfWorkUpdate, $unitOfWorkDelete]);
+
+        $this->assertCount(0, $result['inserts']);
+        $this->assertCount(0, $result['updates']);
+        $this->assertCount(1, $result['deletes']);
+        $this->assertSame($entityToDelete, $result['deletes'][0]);
+    }
 }
 
 #[Entity]

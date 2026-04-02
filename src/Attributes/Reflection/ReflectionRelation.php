@@ -11,7 +11,6 @@ use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
 use Articulate\Schema\SchemaNaming;
-use Exception;
 use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
@@ -87,7 +86,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
             return $type->getName();
         }
 
-        throw new Exception('Target entity is misconfigured');
+        throw new RuntimeException('Target entity is misconfigured');
     }
 
     /**
@@ -123,7 +122,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         $this->assertMappingConfigured();
 
         if ($this->getMappedByProperty() && $this->getInversedByProperty()) {
-            throw new Exception('ownedBy and referencedBy cannot be specified at the same time');
+            throw new RuntimeException('ownedBy and referencedBy cannot be specified at the same time');
         }
         if ($this->getInversedByProperty()) {
             return $this->getInversedByProperty();
@@ -170,6 +169,24 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
 
     public function getType(): string
     {
+        $targetEntity = $this->getTargetEntity();
+        if ($targetEntity === null) {
+            return 'int';
+        }
+
+        $reflectionEntity = new ReflectionEntity($targetEntity);
+        $primaryColumns = $reflectionEntity->getPrimaryKeyColumns();
+
+        if (empty($primaryColumns)) {
+            return 'int';
+        }
+
+        foreach ($reflectionEntity->getEntityProperties() as $property) {
+            if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
+                return $property->getType();
+            }
+        }
+
         return 'int';
     }
 
@@ -185,7 +202,12 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
 
     public function getReferencedTableName(): string
     {
-        $reflectionEntity = new ReflectionEntity($this->getTargetEntity());
+        $targetEntity = $this->getTargetEntity();
+        if ($targetEntity === null) {
+            throw new RuntimeException('Cannot determine referenced table for MorphTo relation - target is resolved at runtime');
+        }
+
+        $reflectionEntity = new ReflectionEntity($targetEntity);
 
         return $reflectionEntity->getTableName();
     }
@@ -368,7 +390,7 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
     private function assertMappingConfigured(): void
     {
         if (empty($this->getMappedByProperty()) && empty($this->getInversedByProperty())) {
-            throw new Exception('Either ownedBy or referencedBy is required');
+            throw new RuntimeException('Either ownedBy or referencedBy is required');
         }
     }
 

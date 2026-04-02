@@ -121,7 +121,11 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
      */
     public function last(): mixed
     {
-        return end($this->items) ?: null;
+        if (empty($this->items)) {
+            return null;
+        }
+
+        return end($this->items);
     }
 
     /**

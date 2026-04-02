@@ -72,6 +72,11 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
         return $property->getValue($entity);
     }
 
+    public function clear(): void
+    {
+        $this->originalData = [];
+    }
+
     private function calculateDifferences(array $original, array $current): array
     {
         $changes = [];

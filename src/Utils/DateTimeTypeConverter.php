@@ -19,17 +19,29 @@ class DateTimeTypeConverter implements TypeConverterInterface {
         return $value;
     }
 
-    public function convertToPHP(mixed $value): mixed
+    public function convertToPHP(mixed $value, ?string $targetType = null): mixed
     {
         if ($value === null) {
             return null;
         }
 
-        if ($value instanceof DateTime) {
+        if ($value instanceof DateTimeImmutable || $value instanceof DateTime) {
+            if ($targetType === DateTimeImmutable::class && $value instanceof DateTime) {
+                return DateTimeImmutable::createFromMutable($value);
+            }
+
+            if ($targetType === DateTime::class && $value instanceof DateTimeImmutable) {
+                return DateTime::createFromImmutable($value);
+            }
+
             return $value;
         }
 
         if (is_string($value)) {
+            if ($targetType === DateTimeImmutable::class) {
+                return new DateTimeImmutable($value);
+            }
+
             return new DateTime($value);
         }
 

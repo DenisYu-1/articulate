@@ -184,8 +184,8 @@ class RelationDefinitionCollectorTest extends TestCase {
         // Both relations are for the same table
         $relation1->method('isOwningSide')->willReturn(true);
         $relation1->method('getTableName')->willReturn('user_posts');
-        $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Connection');
-        $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\Collection');
+        $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
+        $relation1->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestPostEntity');
         $relation1->method('getOwnerJoinColumn')->willReturn('user_id');
         $relation1->method('getTargetJoinColumn')->willReturn('post_id');
         $relation1->method('getOwnerPrimaryColumn')->willReturn('id');
@@ -194,29 +194,13 @@ class RelationDefinitionCollectorTest extends TestCase {
 
         $relation2->method('isOwningSide')->willReturn(true);
         $relation2->method('getTableName')->willReturn('user_posts');
-        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Collection\\Collection');
-        $relation2->method('getTargetEntity')->willReturn('Articulate\\Connection');
+        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestPostEntity');
+        $relation2->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
         $relation2->method('getOwnerJoinColumn')->willReturn('user_id');
         $relation2->method('getTargetJoinColumn')->willReturn('post_id');
         $relation2->method('getOwnerPrimaryColumn')->willReturn('id');
         $relation2->method('getTargetPrimaryColumn')->willReturn('id');
         $relation2->method('getPrimaryColumns')->willReturn(['user_id', 'post_id']);
-
-        $relation1->expects($this->once())
-            ->method('getDeclaringClassName')
-            ->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
-
-        $relation1->expects($this->once())
-            ->method('getTargetEntity')
-            ->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestPostEntity');
-
-        $relation2->expects($this->once())
-            ->method('getDeclaringClassName')
-            ->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestPostEntity');
-
-        $relation2->expects($this->once())
-            ->method('getTargetEntity')
-            ->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
 
         $property1 = new MappingTableProperty('created_at', 'datetime', false, null, null);
         $property2 = new MappingTableProperty('updated_at', 'datetime', false, null, null);
@@ -252,11 +236,11 @@ class RelationDefinitionCollectorTest extends TestCase {
     {
         $entity = $this->createMock(ReflectionEntity::class);
         $relation1 = $this->createStub(ReflectionManyToMany::class);
-        $relation2 = $this->createMock(ReflectionManyToMany::class);
+        $relation2 = $this->createStub(ReflectionManyToMany::class);
 
         $relation1->method('isOwningSide')->willReturn(true);
         $relation1->method('getDeclaringClassName')->willReturn('Articulate\\Connection');
-        $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\Collection');
+        $relation1->method('getTargetEntity')->willReturn('Articulate\\Collection\\MappingCollection');
         $relation1->method('getTableName')->willReturn('user_posts');
         $relation1->method('getOwnerJoinColumn')->willReturn('user_id');
         $relation1->method('getTargetJoinColumn')->willReturn('post_id');
@@ -265,20 +249,8 @@ class RelationDefinitionCollectorTest extends TestCase {
         $relation1->method('getExtraProperties')->willReturn([]);
         $relation1->method('getPrimaryColumns')->willReturn(['user_id', 'post_id']);
 
-        $relation2->expects($this->once())
-            ->method('isOwningSide')
-            ->willReturn(true);
-
-        $relation2->expects($this->once())
-            ->method('getDeclaringClassName')
-            ->willReturn('Articulate\\Collection\\Collection');
-
-        $relation2->expects($this->once())
-            ->method('getTargetEntity')
-            ->willReturn('Articulate\\Connection');
-
         $relation2->method('isOwningSide')->willReturn(true);
-        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Collection\\Collection');
+        $relation2->method('getDeclaringClassName')->willReturn('Articulate\\Collection\\MappingCollection');
         $relation2->method('getTargetEntity')->willReturn('Articulate\\Connection');
         $relation2->method('getTableName')->willReturn('user_posts');
         $relation2->method('getOwnerJoinColumn')->willReturn('different_user_id'); // Different column name

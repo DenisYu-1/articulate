@@ -2,5 +2,5 @@
 
 namespace Articulate\Exceptions;
 
-class UpdateConflictException extends \RuntimeException {
+class UpdateConflictException extends ArticulateException {
 }

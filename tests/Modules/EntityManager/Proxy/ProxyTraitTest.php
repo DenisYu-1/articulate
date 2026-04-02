@@ -9,8 +9,19 @@ class ProxyTraitTestEntity {
     use ProxyTrait;
 
     public ?int $id = null;
+}
 
-    // Note: $name is not declared here so __get will be triggered
+class ProxyTraitBaseEntity {
+    public function baseMethod(): string
+    {
+        return 'base';
+    }
+}
+
+class ProxyTraitCallTestEntity extends ProxyTraitBaseEntity {
+    use ProxyTrait;
+
+    public ?int $id = null;
 }
 
 class ProxyTraitTest extends TestCase {
@@ -41,7 +52,7 @@ class ProxyTraitTest extends TestCase {
         $this->assertTrue($entity->isProxyInitialized());
     }
 
-    public function testMagicMethodsTriggerInitialization(): void
+    public function testGetTriggersInitialization(): void
     {
         $initialized = false;
         $initializer = function ($proxy) use (&$initialized) {
@@ -51,9 +62,62 @@ class ProxyTraitTest extends TestCase {
         $entity = new ProxyTraitTestEntity();
         $entity->_initializeProxy(ProxyTraitTestEntity::class, 123, $initializer, null);
 
-        // Test __get
         $this->assertFalse($initialized);
         $_ = $entity->name;
         $this->assertTrue($initialized);
+    }
+
+    public function testSetTriggersInitialization(): void
+    {
+        $initialized = false;
+        $initializer = function ($proxy) use (&$initialized) {
+            $initialized = true;
+        };
+
+        $entity = new ProxyTraitTestEntity();
+        $entity->_initializeProxy(ProxyTraitTestEntity::class, 123, $initializer, null);
+
+        $this->assertFalse($initialized);
+        $entity->name = 'test';
+        $this->assertTrue($initialized);
+    }
+
+    public function testIssetTriggersInitialization(): void
+    {
+        $initialized = false;
+        $initializer = function ($proxy) use (&$initialized) {
+            $initialized = true;
+        };
+
+        $entity = new ProxyTraitTestEntity();
+        $entity->_initializeProxy(ProxyTraitTestEntity::class, 123, $initializer, null);
+
+        $this->assertFalse($initialized);
+        isset($entity->name);
+        $this->assertTrue($initialized);
+    }
+
+    public function testUnsetTriggersInitialization(): void
+    {
+        $initialized = false;
+        $initializer = function ($proxy) use (&$initialized) {
+            $initialized = true;
+        };
+
+        $entity = new ProxyTraitTestEntity();
+        $entity->_initializeProxy(ProxyTraitTestEntity::class, 123, $initializer, null);
+
+        $this->assertFalse($initialized);
+        unset($entity->name);
+        $this->assertTrue($initialized);
+    }
+
+    public function testCallThrowsForNonExistentMethod(): void
+    {
+        $entity = new ProxyTraitCallTestEntity();
+        $entity->_initializeProxy(ProxyTraitCallTestEntity::class, 1, null, null);
+
+        $this->expectException(\BadMethodCallException::class);
+        $entity->nonExistentMethod();
     }
 }

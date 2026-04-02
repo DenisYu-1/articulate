@@ -66,8 +66,8 @@ abstract class ComparisonCriteria implements CriteriaInterface {
     private function buildNullCondition(string $operator): string
     {
         return match ($operator) {
-            '=', 'eq' => "{$this->field} IS NULL",
-            '!=', '<>', 'ne' => "{$this->field} IS NOT NULL",
+            '=', 'eq', 'like' => "{$this->field} IS NULL",
+            '!=', '<>', 'ne', 'not like' => "{$this->field} IS NOT NULL",
             default => throw new InvalidArgumentException("Unsupported null comparison operator: {$operator}"),
         };
     }

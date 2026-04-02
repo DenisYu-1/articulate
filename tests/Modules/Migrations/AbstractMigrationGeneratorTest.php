@@ -184,7 +184,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->testColumnDefinition('status', $column);
 
-        $this->assertEquals('"status" VARCHAR(255) NOT NULL DEFAULT "default_value"', $result);
+        $this->assertEquals('"status" VARCHAR(255) NOT NULL DEFAULT \'default_value\'', $result);
     }
 
     public function testColumnDefinitionHandlesAutoIncrement(): void

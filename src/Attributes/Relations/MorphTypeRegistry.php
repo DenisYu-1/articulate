@@ -20,6 +20,14 @@ class MorphTypeRegistry {
             throw new \InvalidArgumentException("Entity class '{$entityClass}' does not exist");
         }
 
+        if (isset(self::$mappings[$entityClass])) {
+            unset(self::$reverseMappings[self::$mappings[$entityClass]]);
+        }
+
+        if (isset(self::$reverseMappings[$alias]) && self::$reverseMappings[$alias] !== $entityClass) {
+            unset(self::$mappings[self::$reverseMappings[$alias]]);
+        }
+
         self::$mappings[$entityClass] = $alias;
         self::$reverseMappings[$alias] = $entityClass;
     }

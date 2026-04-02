@@ -69,7 +69,8 @@ abstract class AbstractMigrationGenerator {
             $parts[] = 'NOT NULL';
         }
         if ($column->defaultValue !== null) {
-            $parts[] = 'DEFAULT "' . $column->defaultValue . '"';
+            $escaped = str_replace("'", "''", $column->defaultValue);
+            $parts[] = "DEFAULT '" . $escaped . "'";
         }
 
         return implode(' ', $parts);
