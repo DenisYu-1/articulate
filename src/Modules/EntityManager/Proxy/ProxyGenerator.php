@@ -76,14 +76,50 @@ class ProxyGenerator {
     }
 
     /**
+     * Assert that a string is a valid PHP identifier.
+     */
+    private function assertValidPhpIdentifier(string $name): void
+    {
+        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/', $name)) {
+            throw new \InvalidArgumentException("Invalid PHP identifier: '{$name}'");
+        }
+    }
+
+    /**
+     * Assert that a string is a valid fully-qualified PHP class name.
+     */
+    private function assertValidPhpClass(string $className): void
+    {
+        foreach (explode('\\', ltrim($className, '\\')) as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/', $part)) {
+                throw new \InvalidArgumentException(
+                    "Entity class '{$className}' contains invalid identifier segment: '{$part}'"
+                );
+            }
+        }
+    }
+
+    /**
      * Generate the PHP code for a proxy class.
      */
     private function generateProxyClassCode(string $entityClass, string $proxyClassName): string
     {
+        $this->assertValidPhpClass($entityClass);
+
         // Get metadata to know which properties to exclude from the proxy
         $metadata = $this->metadataRegistry->getMetadata($entityClass);
         $propertiesToExclude = array_keys($metadata->getProperties());
         $relationProperties = array_keys($metadata->getRelations());
+
+        foreach ($propertiesToExclude as $prop) {
+            $this->assertValidPhpIdentifier($prop);
+        }
+        foreach ($relationProperties as $prop) {
+            $this->assertValidPhpIdentifier($prop);
+        }
 
         // Generate property declarations excluding entity properties
         $excludedProps = array_map(fn ($prop) => "'$prop'", $propertiesToExclude);
@@ -136,7 +172,7 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
             return \$this->_dynamicProperties[\$name];
         }
 
-        if (in_array(\$name, \$this->_excludedProperties)) {
+        if (in_array(\$name, \$this->_excludedProperties, true)) {
             \$this->initializeProxy();
         }
         $getBody
@@ -161,7 +197,7 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
             return isset(\$this->_dynamicProperties[\$name]);
         }
 
-        if (in_array(\$name, \$this->_excludedProperties)) {
+        if (in_array(\$name, \$this->_excludedProperties, true)) {
             \$this->initializeProxy();
         }
         $issetBody

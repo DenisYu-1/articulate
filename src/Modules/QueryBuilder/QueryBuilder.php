@@ -535,6 +535,8 @@ class QueryBuilder {
             throw new InvalidArgumentException("Invalid ORDER BY direction '{$direction}'. Must be ASC or DESC.");
         }
 
+        $this->assertValidFieldIdentifier($field);
+
         $this->orderBy[] = "{$field} {$normalized}";
 
         return $this;
@@ -896,5 +898,12 @@ class QueryBuilder {
 
         // Otherwise, we have specific column selection
         return true;
+    }
+
+    private function assertValidFieldIdentifier(string $field): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/', $field)) {
+            throw new InvalidArgumentException("Invalid field identifier '{$field}'.");
+        }
     }
 }

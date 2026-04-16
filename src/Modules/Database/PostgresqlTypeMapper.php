@@ -54,12 +54,12 @@ class PostgresqlTypeMapper extends TypeRegistry {
             return 'string';
         }
 
-        if (in_array($dbType, ['JSON', 'JSONB'])) {
+        if (in_array($dbType, ['JSON', 'JSONB'], true)) {
             return 'mixed';
         }
 
         // Handle SERIAL types (auto-incrementing integers)
-        if (in_array($dbType, ['SERIAL', 'BIGSERIAL', 'SMALLSERIAL'])) {
+        if (in_array($dbType, ['SERIAL', 'BIGSERIAL', 'SMALLSERIAL'], true)) {
             return 'int';
         }
 

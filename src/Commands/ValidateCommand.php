@@ -35,17 +35,22 @@ class ValidateCommand extends Command {
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($entitiesDir));
 
         foreach ($files as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $contents = file_get_contents($file->getRealPath());
-                if ($contents === false) {
-                    continue;
-                }
-                if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatches) &&
-                    preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
-                    $namespace = $namespaceMatches[1];
-                    $className = $classMatches[1];
-                    $classNames[] = $namespace . '\\' . $className;
-                }
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
+            }
+            $realPath = $file->getRealPath();
+            if ($realPath === false || !$this->isFileWithinDirectory($realPath, $entitiesDir)) {
+                continue;
+            }
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+            if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatches) &&
+                preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
+                $namespace = $namespaceMatches[1];
+                $className = $classMatches[1];
+                $classNames[] = $namespace . '\\' . $className;
             }
         }
 
@@ -82,6 +87,11 @@ class ValidateCommand extends Command {
         }
 
         return Command::FAILURE;
+    }
+
+    private function isFileWithinDirectory(string $realPath, string $baseDir): bool
+    {
+        return str_starts_with($realPath, $baseDir . DIRECTORY_SEPARATOR);
     }
 
     private function resolveEntitiesDir(): string
