@@ -135,6 +135,7 @@ class ObjectHydratorTest extends TestCase {
         $this->assertEquals('john@example.com', $entity->emailAddress);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateSkipsCollectionRelationWhenPreInitialized(): void
     {
         $unitOfWork = $this->createMock(UnitOfWork::class);
@@ -162,6 +163,7 @@ class ObjectHydratorTest extends TestCase {
         $this->assertSame([], $entity->books);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
     public function testHydrateLoadsOneToManyRelationWhenCollectionIsNull(): void
     {
         $unitOfWork = $this->createMock(UnitOfWork::class);

@@ -7,6 +7,7 @@ class TableCompareResult extends CompareResult {
      * @param ColumnCompareResult[] $columns
      * @param IndexCompareResult[] $indexes
      * @param ForeignKeyCompareResult[] $foreignKeys
+     * @param string[] $warnings
      */
     public function __construct(
         string $name,
@@ -15,6 +16,7 @@ class TableCompareResult extends CompareResult {
         public array $indexes = [],
         public array $foreignKeys = [],
         public array $primaryColumns = [],
+        public array $warnings = [],
     ) {
         parent::__construct($name, $operation);
     }

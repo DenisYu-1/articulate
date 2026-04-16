@@ -16,9 +16,6 @@
     <include>
       <directory suffix=".php">./src</directory>
     </include>
-    <exclude>
-      <file>./src/EntityManager.php</file>
-    </exclude>
   </source>
 
   <coverage>

@@ -125,6 +125,16 @@ trait ProxyTrait {
     }
 
     /**
+     * Get the names of relation properties on this proxy.
+     *
+     * @return string[]
+     */
+    public function getProxyRelationPropertyNames(): array
+    {
+        return property_exists($this, '_relationProperties') ? $this->_relationProperties : [];
+    }
+
+    /**
      * Load a relationship lazily.
      */
     protected function _loadRelation(string $relationName): mixed

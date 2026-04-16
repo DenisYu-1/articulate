@@ -114,6 +114,19 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     private array \$_excludedProperties = [$excludeList];
     private array \$_relationProperties = [$relationList];
 
+    public function _initializeProxy(string \$entityClass, mixed \$identifier, ?\Closure \$initializer = null, ?object \$proxyManager = null): void {
+        \$this->_entityClass = \$entityClass;
+        \$this->_identifier = \$identifier;
+        \$this->_initializer = \$initializer;
+        \$this->_proxyManager = \$proxyManager;
+        foreach (\$this->_relationProperties as \$prop) {
+            unset(\$this->\$prop);
+        }
+        foreach (\$this->_excludedProperties as \$prop) {
+            unset(\$this->\$prop);
+        }
+    }
+
     public function __get(string \$name): mixed {
         if (in_array(\$name, \$this->_relationProperties, true)) {
             if (!array_key_exists(\$name, \$this->_dynamicProperties)) {
@@ -136,9 +149,6 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
             return;
         }
 
-        if (in_array(\$name, \$this->_excludedProperties)) {
-            \$this->initializeProxy();
-        }
         $setBody
     }
 

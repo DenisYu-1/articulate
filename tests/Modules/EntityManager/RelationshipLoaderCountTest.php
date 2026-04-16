@@ -131,13 +131,13 @@ class RelationshipLoaderCountTest extends DatabaseTestCase {
             'CREATE TABLE cnt_rl_authors (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL)'
         );
         $this->currentConnection->executeQuery(
-            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, cnt_rl_authors_id INT NOT NULL)'
+            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, author_id INT NOT NULL)'
         );
 
         $authorId = $this->insertRow('cnt_rl_authors', ['name' => 'Alice']);
-        $this->insertRow('cnt_rl_books', ['title' => 'Book A', 'cnt_rl_authors_id' => $authorId]);
-        $this->insertRow('cnt_rl_books', ['title' => 'Book B', 'cnt_rl_authors_id' => $authorId]);
-        $this->insertRow('cnt_rl_books', ['title' => 'Book C', 'cnt_rl_authors_id' => $authorId]);
+        $this->insertRow('cnt_rl_books', ['title' => 'Book A', 'author_id' => $authorId]);
+        $this->insertRow('cnt_rl_books', ['title' => 'Book B', 'author_id' => $authorId]);
+        $this->insertRow('cnt_rl_books', ['title' => 'Book C', 'author_id' => $authorId]);
 
         $author = new CntAuthor();
         $author->id = $authorId;
@@ -163,7 +163,7 @@ class RelationshipLoaderCountTest extends DatabaseTestCase {
             'CREATE TABLE cnt_rl_authors (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL)'
         );
         $this->currentConnection->executeQuery(
-            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, cnt_rl_authors_id INT NOT NULL)'
+            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, author_id INT NOT NULL)'
         );
 
         $authorId = $this->insertRow('cnt_rl_authors', ['name' => 'Bob']);
@@ -192,15 +192,15 @@ class RelationshipLoaderCountTest extends DatabaseTestCase {
             'CREATE TABLE cnt_rl_authors (id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255) NOT NULL)'
         );
         $this->currentConnection->executeQuery(
-            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, cnt_rl_authors_id INT NOT NULL)'
+            'CREATE TABLE cnt_rl_books (id INT PRIMARY KEY AUTO_INCREMENT, title VARCHAR(255) NOT NULL, author_id INT NOT NULL)'
         );
 
         $author1Id = $this->insertRow('cnt_rl_authors', ['name' => 'Author1']);
         $author2Id = $this->insertRow('cnt_rl_authors', ['name' => 'Author2']);
 
-        $this->insertRow('cnt_rl_books', ['title' => 'A1', 'cnt_rl_authors_id' => $author1Id]);
-        $this->insertRow('cnt_rl_books', ['title' => 'A2', 'cnt_rl_authors_id' => $author1Id]);
-        $this->insertRow('cnt_rl_books', ['title' => 'B1', 'cnt_rl_authors_id' => $author2Id]);
+        $this->insertRow('cnt_rl_books', ['title' => 'A1', 'author_id' => $author1Id]);
+        $this->insertRow('cnt_rl_books', ['title' => 'A2', 'author_id' => $author1Id]);
+        $this->insertRow('cnt_rl_books', ['title' => 'B1', 'author_id' => $author2Id]);
 
         $author1 = new CntAuthor();
         $author1->id = $author1Id;

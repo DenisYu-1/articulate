@@ -399,9 +399,10 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
         $this->assertEquals(1, count($result));
         $this->assertEquals('update', $result[0]->operation);
-        // Should detect column deletion since entity has no properties
-        $this->assertEquals(1, count($result[0]->columns));
-        $this->assertEquals('delete', $result[0]->columns[0]->operation);
+        // id is NOT NULL without default — not deleted, warned instead
+        $this->assertEmpty($result[0]->columns);
+        $this->assertCount(1, $result[0]->warnings);
+        $this->assertStringContainsString('"id"', $result[0]->warnings[0]);
     }
 
     public function testForeignKeyValidationFailure()
@@ -602,9 +603,10 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
         $this->assertEquals(1, count($result));
         $this->assertEquals('update', $result[0]->operation);
-        // Should detect column deletion
-        $this->assertEquals(1, count($result[0]->columns));
-        $this->assertEquals('delete', $result[0]->columns[0]->operation);
+        // id is NOT NULL without default — not deleted, warned instead
+        $this->assertEmpty($result[0]->columns);
+        $this->assertCount(1, $result[0]->warnings);
+        $this->assertStringContainsString('"id"', $result[0]->warnings[0]);
     }
 
     public function testForeignKeyProcessingEdgeCases()

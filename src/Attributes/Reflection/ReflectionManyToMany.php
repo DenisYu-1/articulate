@@ -125,6 +125,21 @@ class ReflectionManyToMany implements RelationInterface {
         return $this->property->getName();
     }
 
+    public function isManyToMany(): bool
+    {
+        return true;
+    }
+
+    public function getPivotTableName(): string
+    {
+        return $this->getTableName();
+    }
+
+    public function getForeignPivotKey(): string
+    {
+        return $this->getOwnerJoinColumn();
+    }
+
     public function isLazy(): bool
     {
         return $this->attribute->lazy;
@@ -153,7 +168,10 @@ class ReflectionManyToMany implements RelationInterface {
             return;
         }
         $name = $type->getName();
-        if ($name !== MappingCollection::class && !is_subclass_of($name, MappingCollection::class)) {
+        if ($name !== MappingCollection::class
+            && !is_subclass_of($name, MappingCollection::class)
+            && !is_a($name, \Traversable::class, true)
+        ) {
             throw new RuntimeException('Many-to-many property must be array, iterable, or MappingCollection');
         }
     }

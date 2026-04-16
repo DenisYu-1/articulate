@@ -50,7 +50,7 @@ class ProxyManager {
         $entity = $this->entityManager->find($entityClass, $proxy->getProxyIdentifier());
 
         if ($entity !== null) {
-            $this->copyEntityData($entity, $proxy);
+            $this->copyEntityData($entity, $proxy, $proxy->getProxyRelationPropertyNames());
             $proxy->markProxyInitialized();
         }
     }
@@ -64,13 +64,19 @@ class ProxyManager {
     }
 
     /**
-     * Copy data from real entity to proxy.
+     * Copy data from real entity to proxy, skipping specified properties.
+     *
+     * @param string[] $skipProperties
      */
-    private function copyEntityData(object $source, object $target): void
+    private function copyEntityData(object $source, object $target, array $skipProperties = []): void
     {
         $reflection = new \ReflectionClass($source);
         foreach ($reflection->getProperties() as $property) {
             if ($property->isStatic()) {
+                continue;
+            }
+
+            if (in_array($property->getName(), $skipProperties, true)) {
                 continue;
             }
 
