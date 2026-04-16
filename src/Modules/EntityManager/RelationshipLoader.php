@@ -26,6 +26,78 @@ class RelationshipLoader {
     }
 
     /**
+     * Get the entity manager.
+     */
+    public function getEntityManager(): EntityManager
+    {
+        return $this->entityManager;
+    }
+
+    /**
+     * Return the number of related entities without loading them.
+     * Supported for OneToMany and ManyToMany; returns 0 for other relation types.
+     */
+    public function count(object $entity, ReflectionRelation $relation): int
+    {
+        if ($relation->isOneToMany()) {
+            return $this->countOneToMany($entity, $relation);
+        }
+
+        if ($relation->isManyToMany()) {
+            return $this->countManyToMany($entity, $relation);
+        }
+
+        return 0;
+    }
+
+    /**
+     * COUNT(*) for a OneToMany relation.
+     */
+    private function countOneToMany(object $entity, ReflectionRelation $relation): int
+    {
+        $meta            = $this->metadataRegistry->getMetadata($entity::class);
+        $pk              = $this->getPrimaryKeyValue($entity, $meta);
+        $targetEntity    = $relation->getTargetEntity();
+        $targetMeta      = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetTable     = $targetMeta->getTableName();
+
+        $fkColumn = null;
+        $ownedBy  = $relation->getMappedByProperty();
+        if ($ownedBy) {
+            $ownedByRel = $targetMeta->getRelation($ownedBy);
+            if ($ownedByRel instanceof ReflectionRelation && $ownedByRel->isManyToOne()) {
+                $fkColumn = $ownedByRel->getColumnName();
+            }
+        }
+        $fkColumn ??= $meta->getTableName() . '_id';
+
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(*) as cnt')
+            ->from($targetTable)
+            ->where($fkColumn, $pk)
+            ->getResult();
+
+        return (int) ($result[0]['cnt'] ?? 0);
+    }
+
+    /**
+     * COUNT(*) for a ManyToMany relation via the pivot table.
+     */
+    private function countManyToMany(object $entity, ReflectionRelation $relation): int
+    {
+        $meta = $this->metadataRegistry->getMetadata($entity::class);
+        $pk   = $this->getPrimaryKeyValue($entity, $meta);
+
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(*) as cnt')
+            ->from($relation->getPivotTableName())
+            ->where($relation->getForeignPivotKey(), $pk)
+            ->getResult();
+
+        return (int) ($result[0]['cnt'] ?? 0);
+    }
+
+    /**
      * Load a relationship for a given entity.
      *
      * @param object $entity The entity to load the relationship for
@@ -99,7 +171,7 @@ class RelationshipLoader {
         $ownedBy = $relation->getMappedByProperty();
         if ($ownedBy) {
             $ownedByRelation = $targetMetadata->getRelation($ownedBy);
-            if ($ownedByRelation && $ownedByRelation->isManyToOne()) {
+            if ($ownedByRelation instanceof ReflectionRelation && $ownedByRelation->isManyToOne()) {
                 $foreignKeyColumn = $ownedByRelation->getColumnName();
             }
         }

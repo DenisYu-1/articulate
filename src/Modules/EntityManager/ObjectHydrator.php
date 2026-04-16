@@ -5,6 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
 use ReflectionClass;
@@ -202,22 +203,65 @@ class ObjectHydrator implements HydratorInterface {
             return; // No relationship loader configured
         }
 
-        // Get entity metadata
-        $entityClass = $entity::class;
-        $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entityClass);
+        $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entity::class);
+        $em       = null;
 
-        foreach ($metadata->getColumnRelations() as $relationName => $relation) {
-            $reflectionProperty = new ReflectionProperty($entity, $relationName);
-            $reflectionProperty->setAccessible(true);
+        foreach ($metadata->getRelations() as $relationName => $relation) {
+            $prop = new ReflectionProperty($entity, $relationName);
+            $prop->setAccessible(true);
 
-            if (!$reflectionProperty->isInitialized($entity) || $reflectionProperty->getValue($entity) === null) {
+            if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
+                continue;
+            }
+
+            if (!$relation->isLazy()) {
+                // Eager: load all relations immediately (unchanged behaviour).
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
-
                 if (is_array($relatedData) && $relation->isOneToMany()) {
                     $relatedData = new Collection($relatedData);
                 }
+                $prop->setValue($entity, $relatedData);
+                continue;
+            }
 
-                $reflectionProperty->setValue($entity, $relatedData);
+            // ── Lazy relations ────────────────────────────────────────────────
+            $em ??= $this->relationshipLoader->getEntityManager();
+
+            if ($relation->isOwningSide()) {
+                // FK is already present in the row — create a proxy placeholder.
+                $fkValue = $data[$relation->getColumnName()] ?? null;
+                if ($fkValue !== null) {
+                    $prop->setValue($entity, $em->getReference($relation->getTargetEntity(), $fkValue));
+                }
+            } elseif ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()) {
+                // Inverse collection — wrap in a LazyCollection.
+                $loader      = fn () => $this->relationshipLoader->load($entity, $relation);
+                $countLoader = ($relation->isOneToMany() || $relation->isManyToMany())
+                    ? fn () => $this->relationshipLoader->count($entity, $relation)
+                    : null;
+
+                $prop->setValue($entity, new LazyCollection($loader, $countLoader));
+            } else {
+                // Inverse single entity (inverse OneToOne, MorphOne) — proxy with custom loader.
+                $proxy = $em->createLazyReference(
+                    $relation->getTargetEntity(),
+                    function (ProxyInterface $p) use ($entity, $relation): void {
+                        $loaded = $this->relationshipLoader->load($entity, $relation);
+                        if ($loaded !== null) {
+                            $ref = new ReflectionClass($loaded);
+                            foreach ($ref->getProperties() as $rp) {
+                                $rp->setAccessible(true);
+                                try {
+                                    $rp->setValue($p, $rp->getValue($loaded));
+                                } catch (\Error) {
+                                    // skip read-only or uninitialised properties
+                                }
+                            }
+                            $p->markProxyInitialized();
+                        }
+                    }
+                );
+                $prop->setValue($entity, $proxy);
             }
         }
     }

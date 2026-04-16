@@ -27,6 +27,17 @@ class ProxyManager {
     }
 
     /**
+     * Create a proxy with a fully custom initializer closure.
+     * Use this when the identifier is not known upfront (e.g., inverse-side single relations).
+     * The identifier is set to null; the closure is responsible for copying data into the proxy
+     * and calling $proxy->markProxyInitialized().
+     */
+    public function createProxyWithCustomLoader(string $entityClass, \Closure $initializer): ProxyInterface
+    {
+        return $this->proxyGenerator->createProxy($entityClass, null, $initializer, $this);
+    }
+
+    /**
      * Initialize a proxy by loading its data.
      */
     public function initializeProxy(ProxyInterface $proxy): void

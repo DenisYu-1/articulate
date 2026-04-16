@@ -436,6 +436,20 @@ class EntityManager {
         return $entities;
     }
 
+    /**
+     * Create a lazy proxy for an inverse-side single entity relation (e.g., inverse OneToOne).
+     * The supplied closure receives the uninitialized ProxyInterface and is responsible for
+     * loading and copying entity data into it, then calling $proxy->markProxyInitialized().
+     */
+    public function createLazyReference(string $class, \Closure $loader): object
+    {
+        if ($this->proxyManager === null) {
+            throw new \RuntimeException('Proxy manager is not available');
+        }
+
+        return $this->proxyManager->createProxyWithCustomLoader($class, $loader);
+    }
+
     public function getReference(string $class, mixed $id): object
     {
         // Check identity maps of all unit of works first
