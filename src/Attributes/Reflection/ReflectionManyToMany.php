@@ -125,6 +125,11 @@ class ReflectionManyToMany implements RelationInterface {
         return $this->property->getName();
     }
 
+    public function isLazy(): bool
+    {
+        return $this->attribute->lazy;
+    }
+
     public function getAttribute(): ManyToMany
     {
         return $this->attribute;

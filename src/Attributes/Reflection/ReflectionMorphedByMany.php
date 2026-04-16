@@ -125,6 +125,11 @@ class ReflectionMorphedByMany implements RelationInterface {
         return $this->property->getName();
     }
 
+    public function isLazy(): bool
+    {
+        return false;
+    }
+
     public function getAttribute(): MorphedByMany
     {
         return $this->attribute;

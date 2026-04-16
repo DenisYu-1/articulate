@@ -4,7 +4,9 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
@@ -188,6 +190,13 @@ class ObjectHydrator implements HydratorInterface {
 
             if ($propertyName && $reflection->hasProperty($propertyName)) {
                 $property = $reflection->getProperty($propertyName);
+
+                // Skip class-typed properties (entities/relations) — handled by hydrateRelations()
+                $type = $property->getType();
+                if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+                    continue;
+                }
+
                 $property->setAccessible(true);
 
                 // Convert database value to PHP type
@@ -214,10 +223,20 @@ class ObjectHydrator implements HydratorInterface {
                 continue;
             }
 
+            // ── Determine whether this relation is a collection type ───────────
+            $isManyToMany = $relation instanceof ReflectionManyToMany;
+            $isCollectionRelation = $isManyToMany
+                || ($relation instanceof ReflectionRelation
+                    && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
+
             if (!$relation->isLazy()) {
-                // Eager: load all relations immediately (unchanged behaviour).
+                // Eager: load relation immediately.
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
-                if (is_array($relatedData) && $relation->isOneToMany()) {
+                // Wrap in Collection only for relations that use collection-typed properties,
+                // not MorphMany (array-typed) or other non-Collection relations.
+                if (is_array($relatedData)
+                    && ($isManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany()))
+                ) {
                     $relatedData = new Collection($relatedData);
                 }
                 $prop->setValue($entity, $relatedData);
@@ -227,20 +246,21 @@ class ObjectHydrator implements HydratorInterface {
             // ── Lazy relations ────────────────────────────────────────────────
             $em ??= $this->relationshipLoader->getEntityManager();
 
-            if ($relation->isOwningSide()) {
-                // FK is already present in the row — create a proxy placeholder.
-                $fkValue = $data[$relation->getColumnName()] ?? null;
-                if ($fkValue !== null) {
-                    $prop->setValue($entity, $em->getReference($relation->getTargetEntity(), $fkValue));
-                }
-            } elseif ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()) {
-                // Inverse collection — wrap in a LazyCollection.
+            if ($isCollectionRelation) {
+                // Collection — wrap in a LazyCollection with optional COUNT optimisation.
                 $loader      = fn () => $this->relationshipLoader->load($entity, $relation);
-                $countLoader = ($relation->isOneToMany() || $relation->isManyToMany())
+                $countLoader = ($isManyToMany
+                    || ($relation instanceof ReflectionRelation && ($relation->isOneToMany() || $relation->isManyToMany())))
                     ? fn () => $this->relationshipLoader->count($entity, $relation)
                     : null;
 
                 $prop->setValue($entity, new LazyCollection($loader, $countLoader));
+            } elseif ($relation instanceof ReflectionRelation && $relation->isOwningSide()) {
+                // Owning side with FK in row (ManyToOne, owning OneToOne, MorphTo).
+                $fkValue = $data[$relation->getColumnName()] ?? null;
+                if ($fkValue !== null) {
+                    $prop->setValue($entity, $em->getReference($relation->getTargetEntity(), $fkValue));
+                }
             } else {
                 // Inverse single entity (inverse OneToOne, MorphOne) — proxy with custom loader.
                 $proxy = $em->createLazyReference(

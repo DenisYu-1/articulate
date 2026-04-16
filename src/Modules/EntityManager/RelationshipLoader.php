@@ -2,7 +2,9 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use ReflectionProperty;
@@ -37,14 +39,14 @@ class RelationshipLoader {
      * Return the number of related entities without loading them.
      * Supported for OneToMany and ManyToMany; returns 0 for other relation types.
      */
-    public function count(object $entity, ReflectionRelation $relation): int
+    public function count(object $entity, RelationInterface $relation): int
     {
-        if ($relation->isOneToMany()) {
-            return $this->countOneToMany($entity, $relation);
+        if ($relation instanceof ReflectionManyToMany) {
+            return $this->countManyToMany($entity, $relation);
         }
 
-        if ($relation->isManyToMany()) {
-            return $this->countManyToMany($entity, $relation);
+        if ($relation instanceof ReflectionRelation && $relation->isOneToMany()) {
+            return $this->countOneToMany($entity, $relation);
         }
 
         return 0;
@@ -83,7 +85,7 @@ class RelationshipLoader {
     /**
      * COUNT(*) for a ManyToMany relation via the pivot table.
      */
-    private function countManyToMany(object $entity, ReflectionRelation $relation): int
+    private function countManyToMany(object $entity, ReflectionRelation|ReflectionManyToMany $relation): int
     {
         $meta = $this->metadataRegistry->getMetadata($entity::class);
         $pk   = $this->getPrimaryKeyValue($entity, $meta);

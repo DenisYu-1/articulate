@@ -14,4 +14,6 @@ interface RelationInterface {
     public function getInversedBy(): ?string;
 
     public function getPropertyName(): string;
+
+    public function isLazy(): bool;
 }
