@@ -390,7 +390,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $mockEntity = $this->createMock(ReflectionEntity::class);
         $mockEntity->expects($this->once())->method('getAttributes')->willReturn([]);
         $mockEntity->expects($this->once())->method('getEntityProperties')->willReturn([]);
-        $mockEntity->expects($this->any())->method('getPrimaryKeyColumns')->willReturn(['id']);
+        $mockEntity->expects($this->atLeastOnce())->method('getPrimaryKeyColumns')->willReturn(['id']);
         $mockEntity->expects($this->once())->method('getTableName')->willReturn('test_entity');
         $mockEntity->expects($this->once())->method('isEntity')->willReturn(true);
 
@@ -593,7 +593,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $mockEntity = $this->createMock(ReflectionEntity::class);
         $mockEntity->expects($this->once())->method('getAttributes')->willReturn([]); // No index attributes
         $mockEntity->expects($this->once())->method('getEntityProperties')->willReturn([]); // No properties
-        $mockEntity->expects($this->any())->method('getPrimaryKeyColumns')->willReturn(['id']);
+        $mockEntity->expects($this->atLeastOnce())->method('getPrimaryKeyColumns')->willReturn(['id']);
         $mockEntity->expects($this->once())->method('getTableName')->willReturn('test_entity');
         $mockEntity->expects($this->once())->method('isEntity')->willReturn(true);
 

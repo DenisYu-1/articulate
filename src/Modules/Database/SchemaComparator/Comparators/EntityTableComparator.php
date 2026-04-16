@@ -145,7 +145,7 @@ class EntityTableComparator {
         array $columnsIndexed,
         array $entityGroup
     ): ?TableCompareResult {
-        $columnsCompareResults = $this->columnComparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $columnsCompareResults = $this->columnComparator->compareColumns($propertiesIndexed, $columnsIndexed, $tableName);
 
         if (!empty($columnsCompareResults)) {
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;

@@ -8,6 +8,7 @@ use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
+use Articulate\Exceptions\DatabaseSchemaException;
 use RuntimeException;
 
 class ColumnComparator {
@@ -26,13 +27,16 @@ class ColumnComparator {
      *     isAutoIncrement: bool
      * }> $propertiesIndexed
      * @param array<string, object> $columnsIndexed
+     * @param string|null $tableName
      * @return array<ColumnCompareResult>
      */
-    public function compareColumns(array $propertiesIndexed, array $columnsIndexed): array
+    public function compareColumns(array $propertiesIndexed, array $columnsIndexed, ?string $tableName = null): array
     {
         $columnsToDelete = array_diff_key($columnsIndexed, $propertiesIndexed);
         $columnsToCreate = array_diff_key($propertiesIndexed, $columnsIndexed);
         $columnsToUpdate = array_intersect_key($propertiesIndexed, $columnsIndexed);
+
+        $this->validateNotNullColumnsWithoutDefaults($columnsToDelete, $tableName);
 
         $results = [];
 
@@ -95,6 +99,23 @@ class ColumnComparator {
         }
 
         return $results;
+    }
+
+    private function validateNotNullColumnsWithoutDefaults(array $columnsToDelete, ?string $tableName): void
+    {
+        $table = $tableName ?? 'unknown';
+
+        foreach ($columnsToDelete as $columnName => $column) {
+            if (!$column->isNullable && $column->defaultValue === null) {
+                throw new DatabaseSchemaException(
+                    sprintf(
+                        'Cannot remove NOT NULL column "%s" from table "%s" because it has no default value',
+                        $columnName,
+                        $table,
+                    ),
+                );
+            }
+        }
     }
 
     /**

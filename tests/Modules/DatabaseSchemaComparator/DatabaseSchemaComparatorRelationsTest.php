@@ -438,20 +438,20 @@ class DatabaseSchemaComparatorRelationsTest extends AbstractTestCase {
     ): DatabaseSchemaComparator {
         $reader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $reader->expects($this->once())->method('getTables')->willReturn($tables);
-        $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
+        $reader->expects($this->atLeastOnce())->method('getTableColumns')->willReturnCallback($columns);
 
         if ($indexesExpectation === 'once') {
             $reader->expects($this->once())->method('getTableIndexes')->willReturn($indexes ?? []);
         } else {
-            $reader->expects($this->any())->method('getTableIndexes')->willReturn($indexes ?? []);
+            $reader->expects($this->atLeastOnce())->method('getTableIndexes')->willReturn($indexes ?? []);
         }
 
         if ($foreignKeys === null) {
-            $reader->expects($this->any())->method('getTableForeignKeys')->willReturn([]);
+            $reader->expects($this->atLeastOnce())->method('getTableForeignKeys')->willReturn([]);
         } elseif ($foreignKeysExpectation === 'once') {
             $reader->expects($this->once())->method('getTableForeignKeys')->willReturnCallback($foreignKeys);
         } else {
-            $reader->expects($this->any())->method('getTableForeignKeys')->willReturnCallback($foreignKeys);
+            $reader->expects($this->atLeastOnce())->method('getTableForeignKeys')->willReturnCallback($foreignKeys);
         }
 
         return new DatabaseSchemaComparator($reader, new SchemaNaming());

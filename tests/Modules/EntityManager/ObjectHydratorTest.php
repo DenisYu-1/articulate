@@ -3,8 +3,14 @@
 namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\ObjectHydrator;
+use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
@@ -129,6 +135,63 @@ class ObjectHydratorTest extends TestCase {
         $this->assertEquals('john@example.com', $entity->emailAddress);
     }
 
+    public function testHydrateSkipsCollectionRelationWhenPreInitialized(): void
+    {
+        $unitOfWork = $this->createMock(UnitOfWork::class);
+        $unitOfWork->expects($this->once())
+            ->method('registerManaged')
+            ->with($this->isInstanceOf(TestEntityWithPreInitializedCollectionRelation::class), $this->isArray());
+
+        $metadataRegistry = new EntityMetadataRegistry();
+        $relationshipLoader = $this->createMock(RelationshipLoader::class);
+        $relationshipLoader->expects($this->never())
+            ->method('load');
+        $relationshipLoader->method('getMetadataRegistry')
+            ->willReturn($metadataRegistry);
+
+        $hydrator = new ObjectHydrator(
+            $unitOfWork,
+            $relationshipLoader,
+        );
+
+        $entity = $hydrator->hydrate(TestEntityWithPreInitializedCollectionRelation::class, [
+            'id' => 1,
+            'name' => 'Author',
+        ]);
+
+        $this->assertSame([], $entity->books);
+    }
+
+    public function testHydrateLoadsOneToManyRelationWhenCollectionIsNull(): void
+    {
+        $unitOfWork = $this->createMock(UnitOfWork::class);
+        $unitOfWork->expects($this->once())
+            ->method('registerManaged')
+            ->with($this->isInstanceOf(TestEntityWithNullCollectionRelation::class), $this->isArray());
+
+        $metadataRegistry = new EntityMetadataRegistry();
+        $relationshipLoader = $this->createMock(RelationshipLoader::class);
+        $relationshipLoader->expects($this->once())
+            ->method('load')
+            ->willReturn([new TestBookForNullCollectionRelation()]);
+        $relationshipLoader->method('getMetadataRegistry')
+            ->willReturn($metadataRegistry);
+
+        $hydrator = new ObjectHydrator(
+            $unitOfWork,
+            $relationshipLoader,
+        );
+
+        $entity = $hydrator->hydrate(TestEntityWithNullCollectionRelation::class, [
+            'id' => 1,
+            'name' => 'Author',
+        ]);
+
+        $this->assertInstanceOf(Collection::class, $entity->books);
+        $this->assertCount(1, $entity->books);
+        $this->assertInstanceOf(TestBookForNullCollectionRelation::class, $entity->books[0]);
+    }
+
     public function testColumnToPropertyMappingWithAttributes(): void
     {
         $data = [
@@ -180,4 +243,37 @@ class TestEntityWithPropertyAttributes {
 
     #[Property(name: 'profile_id')]
     public ?int $profileId = null;
+}
+
+#[Entity(tableName: 'lazy_loading_authors')]
+class TestEntityWithPreInitializedCollectionRelation {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $name = null;
+
+    #[OneToMany(targetEntity: TestBookForNullCollectionRelation::class, ownedBy: 'author')]
+    public array|Collection $books = [];
+}
+
+#[Entity(tableName: 'lazy_loading_books')]
+class TestBookForNullCollectionRelation {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $title = null;
+}
+
+#[Entity(tableName: 'lazy_loading_authors')]
+class TestEntityWithNullCollectionRelation {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $name = null;
+
+    #[OneToMany(targetEntity: TestBookForNullCollectionRelation::class, ownedBy: 'author')]
+    public ?Collection $books = null;
 }

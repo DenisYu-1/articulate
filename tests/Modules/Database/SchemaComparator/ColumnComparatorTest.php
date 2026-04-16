@@ -5,6 +5,7 @@ namespace Articulate\Modules\Database\SchemaComparator;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Exceptions\DatabaseSchemaException;
 use Articulate\Modules\Database\SchemaComparator\Comparators\ColumnComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
@@ -129,6 +130,24 @@ class ColumnComparatorTest extends TestCase {
         $this->assertTrue($result->columnData->isNullable);
         $this->assertEquals('default_value', $result->columnData->defaultValue);
         $this->assertEquals(100, $result->columnData->length);
+    }
+
+    public function testCompareColumnsDeleteSingleNotNullColumnWithoutDefaultThrows(): void
+    {
+        $propertiesIndexed = [];
+        $columnsIndexed = [
+            'secret' => (object) [
+                'type' => 'string',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => 255,
+            ],
+        ];
+
+        $this->expectException(DatabaseSchemaException::class);
+        $this->expectExceptionMessage('Cannot remove NOT NULL column "secret" from table "users" because it has no default value');
+
+        $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed, 'users');
     }
 
     public function testCompareColumnsUpdateColumnTypeOnly(): void

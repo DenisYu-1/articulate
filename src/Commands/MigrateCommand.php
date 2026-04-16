@@ -3,6 +3,8 @@
 namespace Articulate\Commands;
 
 use Articulate\Connection;
+use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
 use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
 use RecursiveDirectoryIterator;
@@ -21,6 +23,8 @@ class MigrateCommand extends Command {
         private readonly Connection $connection,
         private readonly InitCommand $initCommand,
         private readonly string $migrationsPath,
+        private readonly ?DatabaseSchemaComparator $databaseSchemaComparator = null,
+        private readonly ?string $entitiesPath = null,
     ) {
         parent::__construct();
     }
@@ -42,6 +46,10 @@ class MigrateCommand extends Command {
         $io = new SymfonyStyle($input, $output);
 
         $this->initCommand->ensureMigrationsTableExists();
+
+        if (!$isRollback) {
+            $this->validateSchemaBeforeMigrate();
+        }
 
         $directory = $this->migrationsPath;
 
@@ -69,5 +77,61 @@ class MigrateCommand extends Command {
             : new MigrationExecutionStrategy($this->connection);
 
         return $strategy->execute($io, $executedMigrations, $iterator, $directory);
+    }
+
+    private function validateSchemaBeforeMigrate(): void
+    {
+        if ($this->databaseSchemaComparator === null) {
+            return;
+        }
+
+        $entitiesDir = $this->resolveEntitiesDir();
+        $classNames = [];
+        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($entitiesDir));
+
+        foreach ($files as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $contents = file_get_contents($file->getRealPath());
+                if ($contents === false) {
+                    continue;
+                }
+
+                if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatches)
+                    && preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
+                    $namespace = $namespaceMatches[1];
+                    $className = $classMatches[1];
+                    $classNames[] = $namespace . '\\' . $className;
+                }
+            }
+        }
+
+        $entityClasses = array_filter(
+            array_map(fn (string $className) => new ReflectionEntity($className), $classNames),
+            fn (ReflectionEntity $entity) => $entity->isEntity()
+        );
+
+        $this->databaseSchemaComparator->compareAll($entityClasses);
+    }
+
+    private function resolveEntitiesDir(): string
+    {
+        if ($this->entitiesPath) {
+            $resolved = realpath($this->entitiesPath);
+            if ($resolved !== false) {
+                return $resolved;
+            }
+
+            throw new \RuntimeException(sprintf('Entities directory not found at configured path: %s', $this->entitiesPath));
+        }
+
+        $defaults = ['src/Entities', 'src/Entity'];
+        foreach ($defaults as $path) {
+            $resolved = realpath($path);
+            if ($resolved !== false) {
+                return $resolved;
+            }
+        }
+
+        throw new \RuntimeException('Entities directory is not found. Expected one of: src/Entities, src/Entity, or set a custom path.');
     }
 }

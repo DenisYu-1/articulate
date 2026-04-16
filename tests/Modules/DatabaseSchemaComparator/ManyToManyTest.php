@@ -232,9 +232,9 @@ class ManyToManyTest extends AbstractTestCase {
     ): DatabaseSchemaComparator {
         $reader = $this->createMock(DatabaseSchemaReaderInterface::class);
         $reader->expects($this->once())->method('getTables')->willReturn($tables);
-        $reader->expects($this->any())->method('getTableColumns')->willReturnCallback($columns);
-        $reader->expects($this->any())->method('getTableIndexes')->willReturn([]);
-        $reader->expects($this->any())->method('getTableForeignKeys')->willReturn([]);
+        $reader->expects($this->atLeastOnce())->method('getTableColumns')->willReturnCallback($columns);
+        $reader->expects($this->atLeastOnce())->method('getTableIndexes')->willReturn([]);
+        $reader->expects($this->atLeastOnce())->method('getTableForeignKeys')->willReturn([]);
 
         return new DatabaseSchemaComparator($reader, new SchemaNaming());
     }

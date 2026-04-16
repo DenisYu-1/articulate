@@ -83,10 +83,13 @@ class ProxyGenerator {
         // Get metadata to know which properties to exclude from the proxy
         $metadata = $this->metadataRegistry->getMetadata($entityClass);
         $propertiesToExclude = array_keys($metadata->getProperties());
+        $relationProperties = array_keys($metadata->getRelations());
 
         // Generate property declarations excluding entity properties
         $excludedProps = array_map(fn ($prop) => "'$prop'", $propertiesToExclude);
         $excludeList = implode(', ', $excludedProps);
+        $relationProps = array_map(fn ($prop) => "'$prop'", $relationProperties);
+        $relationList = implode(', ', $relationProps);
 
         $hasParentGet = method_exists($entityClass, '__get');
         $hasParentSet = method_exists($entityClass, '__set');
@@ -109,8 +112,17 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     use \\Articulate\\Modules\\EntityManager\\Proxy\\ProxyTrait;
 
     private array \$_excludedProperties = [$excludeList];
+    private array \$_relationProperties = [$relationList];
 
     public function __get(string \$name): mixed {
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            if (!array_key_exists(\$name, \$this->_dynamicProperties)) {
+                \$this->_dynamicProperties[\$name] = \$this->_loadRelation(\$name);
+            }
+
+            return \$this->_dynamicProperties[\$name];
+        }
+
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
@@ -118,6 +130,12 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     }
 
     public function __set(string \$name, mixed \$value): void {
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            \$this->_dynamicProperties[\$name] = \$value;
+
+            return;
+        }
+
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
@@ -125,6 +143,14 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     }
 
     public function __isset(string \$name): bool {
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            if (!array_key_exists(\$name, \$this->_dynamicProperties)) {
+                \$this->_dynamicProperties[\$name] = \$this->_loadRelation(\$name);
+            }
+
+            return isset(\$this->_dynamicProperties[\$name]);
+        }
+
         if (in_array(\$name, \$this->_excludedProperties)) {
             \$this->initializeProxy();
         }
