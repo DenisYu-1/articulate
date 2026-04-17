@@ -5,6 +5,7 @@ namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareReport;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
@@ -26,13 +27,28 @@ class ColumnComparator {
      *     isAutoIncrement: bool
      * }> $propertiesIndexed
      * @param array<string, object> $columnsIndexed
-     * @return array<ColumnCompareResult>
      */
-    public function compareColumns(array $propertiesIndexed, array $columnsIndexed): array
+    public function compareColumns(array $propertiesIndexed, array $columnsIndexed, ?string $tableName = null): ColumnCompareReport
     {
-        $columnsToDelete = array_diff_key($columnsIndexed, $propertiesIndexed);
+        $allColumnsToDelete = array_diff_key($columnsIndexed, $propertiesIndexed);
         $columnsToCreate = array_diff_key($propertiesIndexed, $columnsIndexed);
         $columnsToUpdate = array_intersect_key($propertiesIndexed, $columnsIndexed);
+
+        $table = $tableName ?? 'unknown';
+        $warnings = [];
+        $safeToDelete = [];
+
+        foreach ($allColumnsToDelete as $columnName => $column) {
+            if (!$column->isNullable && $column->defaultValue === null) {
+                $warnings[] = sprintf(
+                    'Column "%s" in table "%s" is NOT NULL without a default value and is not mapped in any entity. It will not be removed.',
+                    $columnName,
+                    $table,
+                );
+            } else {
+                $safeToDelete[$columnName] = $column;
+            }
+        }
 
         $results = [];
 
@@ -79,8 +95,8 @@ class ColumnComparator {
             }
         }
 
-        // Delete columns
-        foreach ($columnsToDelete as $columnName => $column) {
+        // Delete columns (only safe ones — nullable or with a default)
+        foreach ($safeToDelete as $columnName => $column) {
             $results[] = new ColumnCompareResult(
                 $columnName,
                 CompareResult::OPERATION_DELETE,
@@ -94,7 +110,7 @@ class ColumnComparator {
             );
         }
 
-        return $results;
+        return new ColumnCompareReport($results, $warnings);
     }
 
     /**

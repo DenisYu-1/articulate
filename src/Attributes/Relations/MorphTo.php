@@ -15,6 +15,7 @@ class MorphTo implements RelationAttributeInterface {
     public function __construct(
         public readonly ?string $typeColumn = null,
         public readonly ?string $idColumn = null,
+        public readonly bool $lazy = false,
     ) {
     }
 

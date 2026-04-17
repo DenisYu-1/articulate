@@ -5,6 +5,8 @@ namespace Articulate\Tests\Commands\MigrateCommand;
 use Articulate\Commands\InitCommand;
 use Articulate\Commands\MigrateCommand;
 use Articulate\Connection;
+use Articulate\Exceptions\DatabaseSchemaException;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -180,6 +182,114 @@ PHP;
         $output = $commandTester->getDisplay();
         $this->assertStringContainsString('Migrations directory does not exist', $output);
         $this->assertStringContainsString($nonExistentPath, $output);
+    }
+
+    public function testValidatesSchemaBeforeRunningMigrationsOnUp(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $entitiesDir = $this->tempDir . '/entities';
+        mkdir($entitiesDir, 0777, true);
+
+        $resultMock = $this->createStub(\PDOStatement::class);
+        $resultMock->method('fetchAll')->willReturn([]);
+
+        $connection
+            ->expects($this->once())
+            ->method('executeQuery')
+            ->with('SELECT * FROM migrations')
+            ->willReturn($resultMock);
+
+        $schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $schemaComparator
+            ->expects($this->once())
+            ->method('compareAll')
+            ->with([])
+            ->willReturn([]);
+
+        $this->initCommand->expects($this->once())->method('ensureMigrationsTableExists');
+
+        $command = new MigrateCommand(
+            $connection,
+            $this->initCommand,
+            $this->migrationsPath,
+            $schemaComparator,
+            $entitiesDir
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+    }
+
+    public function testRollbackDoesNotValidateSchema(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $resultMock = $this->createStub(\PDOStatement::class);
+        $resultMock->method('fetch')->willReturn(false);
+        $latestResultMock = $this->createStub(\PDOStatement::class);
+        $latestResultMock->method('fetch')->willReturn(false);
+
+        $connection
+            ->expects($this->exactly(2))
+            ->method('executeQuery')
+            ->willReturnCallback(function ($query) use ($resultMock, $latestResultMock) {
+                if ($query === 'SELECT * FROM migrations') {
+                    return $resultMock;
+                }
+
+                return $latestResultMock;
+            });
+
+        $schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $schemaComparator->expects($this->never())->method('compareAll');
+
+        $this->initCommand
+            ->expects($this->once())
+            ->method('ensureMigrationsTableExists');
+
+        $command = new MigrateCommand(
+            $connection,
+            $this->initCommand,
+            $this->migrationsPath,
+            $schemaComparator,
+            $this->tempDir . '/entities',
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute(['--rollback' => true]);
+
+        $this->assertSame(0, $statusCode);
+    }
+
+    public function testValidatesThrowsExceptionOnSchemaValidationFailure(): void
+    {
+        $connection = $this->createStub(Connection::class);
+        $entitiesDir = $this->tempDir . '/entities';
+        mkdir($entitiesDir, 0777, true);
+
+        $schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $schemaComparator->expects($this->once())->method('compareAll')->willThrowException(
+            new DatabaseSchemaException('Validation failed')
+        );
+
+        $this->initCommand
+            ->expects($this->once())
+            ->method('ensureMigrationsTableExists');
+
+        $command = new MigrateCommand(
+            $connection,
+            $this->initCommand,
+            $this->migrationsPath,
+            $schemaComparator,
+            $entitiesDir
+        );
+
+        $this->expectException(DatabaseSchemaException::class);
+        $this->expectExceptionMessage('Validation failed');
+
+        $commandTester = new CommandTester($command);
+        $commandTester->execute([]);
     }
 
     /**

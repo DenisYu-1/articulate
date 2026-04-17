@@ -22,10 +22,17 @@ class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface 
         $executedCount = 0;
         $migrationFiles = [];
 
+        $realDir = realpath($directory);
+
         foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $migrationFiles[] = $file->getPathname();
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
             }
+            $realFile = realpath($file->getPathname());
+            if ($realFile === false || !$this->isFileWithinDirectory($realFile, $realDir)) {
+                continue;
+            }
+            $migrationFiles[] = $realFile;
         }
 
         sort($migrationFiles);
@@ -41,21 +48,22 @@ class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface 
                 continue;
             }
 
-            if (class_exists($fullClassName)) {
-                $migrationInstance = new $fullClassName($this->connection);
-
-                if (!($migrationInstance instanceof BaseMigration)) {
-                    $io->warning("Class $fullClassName is not a valid migration");
-
-                    continue;
-                }
-
-                $migrationInstance->runMigration();
-                $io->writeln("Executed migration: $fullClassName");
-                $executedCount++;
-            } else {
+            if (!class_exists($fullClassName)) {
                 $io->warning("Class $className does not exist in file $filePath");
+
+                continue;
             }
+
+            if (!is_subclass_of($fullClassName, BaseMigration::class)) {
+                $io->warning("Class $fullClassName is not a valid migration");
+
+                continue;
+            }
+
+            $migrationInstance = new $fullClassName($this->connection);
+            $migrationInstance->runMigration();
+            $io->writeln("Executed migration: $fullClassName");
+            $executedCount++;
         }
 
         if ($executedCount > 0) {
@@ -65,5 +73,11 @@ class MigrationExecutionStrategy implements MigrationExecutionStrategyInterface 
         }
 
         return 0;
+    }
+
+    private function isFileWithinDirectory(string $realFile, string|false $realDir): bool
+    {
+        return $realDir !== false
+            && str_starts_with($realFile, $realDir . DIRECTORY_SEPARATOR);
     }
 }

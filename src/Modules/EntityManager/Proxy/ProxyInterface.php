@@ -30,4 +30,11 @@ interface ProxyInterface {
      * Get the entity identifier.
      */
     public function getProxyIdentifier(): mixed;
+
+    /**
+     * Get the names of relation properties on this proxy.
+     *
+     * @return string[]
+     */
+    public function getProxyRelationPropertyNames(): array;
 }

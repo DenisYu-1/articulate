@@ -76,17 +76,56 @@ class ProxyGenerator {
     }
 
     /**
+     * Assert that a string is a valid PHP identifier.
+     */
+    private function assertValidPhpIdentifier(string $name): void
+    {
+        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/', $name)) {
+            throw new \InvalidArgumentException("Invalid PHP identifier: '{$name}'");
+        }
+    }
+
+    /**
+     * Assert that a string is a valid fully-qualified PHP class name.
+     */
+    private function assertValidPhpClass(string $className): void
+    {
+        foreach (explode('\\', ltrim($className, '\\')) as $part) {
+            if ($part === '') {
+                continue;
+            }
+            if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/', $part)) {
+                throw new \InvalidArgumentException(
+                    "Entity class '{$className}' contains invalid identifier segment: '{$part}'"
+                );
+            }
+        }
+    }
+
+    /**
      * Generate the PHP code for a proxy class.
      */
     private function generateProxyClassCode(string $entityClass, string $proxyClassName): string
     {
+        $this->assertValidPhpClass($entityClass);
+
         // Get metadata to know which properties to exclude from the proxy
         $metadata = $this->metadataRegistry->getMetadata($entityClass);
         $propertiesToExclude = array_keys($metadata->getProperties());
+        $relationProperties = array_keys($metadata->getRelations());
+
+        foreach ($propertiesToExclude as $prop) {
+            $this->assertValidPhpIdentifier($prop);
+        }
+        foreach ($relationProperties as $prop) {
+            $this->assertValidPhpIdentifier($prop);
+        }
 
         // Generate property declarations excluding entity properties
         $excludedProps = array_map(fn ($prop) => "'$prop'", $propertiesToExclude);
         $excludeList = implode(', ', $excludedProps);
+        $relationProps = array_map(fn ($prop) => "'$prop'", $relationProperties);
+        $relationList = implode(', ', $relationProps);
 
         $hasParentGet = method_exists($entityClass, '__get');
         $hasParentSet = method_exists($entityClass, '__set');
@@ -109,23 +148,56 @@ class $proxyClassName extends \\$entityClass implements \\Articulate\\Modules\\E
     use \\Articulate\\Modules\\EntityManager\\Proxy\\ProxyTrait;
 
     private array \$_excludedProperties = [$excludeList];
+    private array \$_relationProperties = [$relationList];
+
+    public function _initializeProxy(string \$entityClass, mixed \$identifier, ?\Closure \$initializer = null, ?object \$proxyManager = null): void {
+        \$this->_entityClass = \$entityClass;
+        \$this->_identifier = \$identifier;
+        \$this->_initializer = \$initializer;
+        \$this->_proxyManager = \$proxyManager;
+        foreach (\$this->_relationProperties as \$prop) {
+            unset(\$this->\$prop);
+        }
+        foreach (\$this->_excludedProperties as \$prop) {
+            unset(\$this->\$prop);
+        }
+    }
 
     public function __get(string \$name): mixed {
-        if (in_array(\$name, \$this->_excludedProperties)) {
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            if (!array_key_exists(\$name, \$this->_dynamicProperties)) {
+                \$this->_dynamicProperties[\$name] = \$this->_loadRelation(\$name);
+            }
+
+            return \$this->_dynamicProperties[\$name];
+        }
+
+        if (in_array(\$name, \$this->_excludedProperties, true)) {
             \$this->initializeProxy();
         }
         $getBody
     }
 
     public function __set(string \$name, mixed \$value): void {
-        if (in_array(\$name, \$this->_excludedProperties)) {
-            \$this->initializeProxy();
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            \$this->_dynamicProperties[\$name] = \$value;
+
+            return;
         }
+
         $setBody
     }
 
     public function __isset(string \$name): bool {
-        if (in_array(\$name, \$this->_excludedProperties)) {
+        if (in_array(\$name, \$this->_relationProperties, true)) {
+            if (!array_key_exists(\$name, \$this->_dynamicProperties)) {
+                \$this->_dynamicProperties[\$name] = \$this->_loadRelation(\$name);
+            }
+
+            return isset(\$this->_dynamicProperties[\$name]);
+        }
+
+        if (in_array(\$name, \$this->_excludedProperties, true)) {
             \$this->initializeProxy();
         }
         $issetBody

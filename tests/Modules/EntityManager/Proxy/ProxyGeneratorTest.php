@@ -5,8 +5,11 @@ namespace Articulate\Tests\Modules\EntityManager\Proxy;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\Proxy\ProxyGenerator;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
+use Articulate\Modules\EntityManager\Proxy\ProxyManager;
 use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -17,6 +20,27 @@ class ProxyGeneratorTestEntity {
 
     #[Property]
     public ?string $name = null;
+}
+
+#[Entity(tableName: 'test_proxy_relation_targets')]
+class ProxyGeneratorRelationTestRelatedEntity {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $name = null;
+}
+
+#[Entity(tableName: 'test_proxy_relation_entities')]
+class ProxyGeneratorRelationTestEntity {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $name = null;
+
+    #[ManyToOne(targetEntity: ProxyGeneratorRelationTestRelatedEntity::class)]
+    public ?ProxyGeneratorRelationTestRelatedEntity $relatedTarget = null;
 }
 
 class ProxyGeneratorTest extends TestCase {
@@ -54,5 +78,87 @@ class ProxyGeneratorTest extends TestCase {
         $this->assertInstanceOf(ProxyInterface::class, $proxy);
         $this->assertEquals(ProxyGeneratorTestEntity::class, $proxy->getProxyEntityClass());
         $this->assertFalse($proxy->isProxyInitialized());
+    }
+
+    public function testRelationAccessLoadsThroughRelationLoaderWithoutInitializingScalarData(): void
+    {
+        $entityManager = $this->createMock(EntityManager::class);
+        $proxyGenerator = new ProxyGenerator($this->metadataRegistry);
+        $proxyGenerator->disableCaching();
+        $proxyManager = new ProxyManager($entityManager, $proxyGenerator);
+
+        $proxy = $proxyManager->createProxy(ProxyGeneratorRelationTestEntity::class, 123);
+
+        $relatedEntity = new ProxyGeneratorRelationTestRelatedEntity();
+        $relatedEntity->id = 456;
+        $relatedEntity->name = 'related';
+
+        $entityManager->expects($this->once())
+            ->method('loadRelation')
+            ->with(
+                $this->isInstanceOf(ProxyInterface::class),
+                'relatedTarget'
+            )
+            ->willReturn($relatedEntity);
+
+        $entityManager->expects($this->never())->method('find');
+
+        $result = $proxy->relatedTarget;
+
+        $this->assertSame($relatedEntity, $result);
+        $this->assertFalse($proxy->isProxyInitialized());
+    }
+
+    public function testRelationAccessLoadsRelationOnlyOncePerProxyInstance(): void
+    {
+        $entityManager = $this->createMock(EntityManager::class);
+        $proxyGenerator = new ProxyGenerator($this->metadataRegistry);
+        $proxyGenerator->disableCaching();
+        $proxyManager = new ProxyManager($entityManager, $proxyGenerator);
+
+        $proxy = $proxyManager->createProxy(ProxyGeneratorRelationTestEntity::class, 123);
+
+        $relatedEntity = new ProxyGeneratorRelationTestRelatedEntity();
+        $relatedEntity->id = 456;
+
+        $entityManager->expects($this->once())
+            ->method('loadRelation')
+            ->with(
+                $this->isInstanceOf(ProxyInterface::class),
+                'relatedTarget'
+            )
+            ->willReturn($relatedEntity);
+
+        $entityManager->expects($this->never())->method('find');
+
+        $first = $proxy->relatedTarget;
+        $second = $proxy->relatedTarget;
+
+        $this->assertSame($relatedEntity, $first);
+        $this->assertSame($first, $second);
+    }
+
+    public function testNonRelationAccessStillInitializesProxy(): void
+    {
+        $entityManager = $this->createMock(EntityManager::class);
+        $proxyGenerator = new ProxyGenerator($this->metadataRegistry);
+        $proxyGenerator->disableCaching();
+        $proxyManager = new ProxyManager($entityManager, $proxyGenerator);
+
+        $proxy = $proxyManager->createProxy(ProxyGeneratorRelationTestEntity::class, 123);
+
+        $loadedEntity = new ProxyGeneratorRelationTestEntity();
+        $loadedEntity->id = 123;
+        $loadedEntity->name = 'loaded';
+
+        $entityManager->expects($this->once())
+            ->method('find')
+            ->with(ProxyGeneratorRelationTestEntity::class, 123)
+            ->willReturn($loadedEntity);
+
+        $entityManager->expects($this->never())->method('loadRelation');
+
+        $this->assertEquals('loaded', $proxy->name);
+        $this->assertTrue($proxy->isProxyInitialized());
     }
 }

@@ -2,7 +2,9 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use ReflectionProperty;
@@ -23,6 +25,78 @@ class RelationshipLoader {
     public function getMetadataRegistry(): EntityMetadataRegistry
     {
         return $this->metadataRegistry;
+    }
+
+    /**
+     * Get the entity manager.
+     */
+    public function getEntityManager(): EntityManager
+    {
+        return $this->entityManager;
+    }
+
+    /**
+     * Return the number of related entities without loading them.
+     * Supported for OneToMany and ManyToMany; returns 0 for other relation types.
+     */
+    public function count(object $entity, RelationInterface $relation): int
+    {
+        if ($relation instanceof ReflectionManyToMany) {
+            return $this->countManyToMany($entity, $relation);
+        }
+
+        if ($relation instanceof ReflectionRelation && $relation->isOneToMany()) {
+            return $this->countOneToMany($entity, $relation);
+        }
+
+        return 0;
+    }
+
+    /**
+     * COUNT(*) for a OneToMany relation.
+     */
+    private function countOneToMany(object $entity, ReflectionRelation $relation): int
+    {
+        $meta = $this->metadataRegistry->getMetadata($entity::class);
+        $pk = $this->getPrimaryKeyValue($entity, $meta);
+        $targetEntity = $relation->getTargetEntity();
+        $targetMeta = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetTable = $targetMeta->getTableName();
+
+        $fkColumn = null;
+        $ownedBy = $relation->getMappedByProperty();
+        if ($ownedBy) {
+            $ownedByRel = $targetMeta->getRelation($ownedBy);
+            if ($ownedByRel instanceof ReflectionRelation && $ownedByRel->isManyToOne()) {
+                $fkColumn = $ownedByRel->getColumnName();
+            }
+        }
+        $fkColumn ??= $meta->getTableName() . '_id';
+
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(*) as cnt')
+            ->from($targetTable)
+            ->where($fkColumn, $pk)
+            ->getResult();
+
+        return (int) ($result[0]['cnt'] ?? 0);
+    }
+
+    /**
+     * COUNT(*) for a ManyToMany relation via the pivot table.
+     */
+    private function countManyToMany(object $entity, ReflectionRelation|ReflectionManyToMany $relation): int
+    {
+        $meta = $this->metadataRegistry->getMetadata($entity::class);
+        $pk = $this->getPrimaryKeyValue($entity, $meta);
+
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(*) as cnt')
+            ->from($relation->getPivotTableName())
+            ->where($relation->getForeignPivotKey(), $pk)
+            ->getResult();
+
+        return (int) ($result[0]['cnt'] ?? 0);
     }
 
     /**
@@ -99,7 +173,7 @@ class RelationshipLoader {
         $ownedBy = $relation->getMappedByProperty();
         if ($ownedBy) {
             $ownedByRelation = $targetMetadata->getRelation($ownedBy);
-            if ($ownedByRelation && $ownedByRelation->isManyToOne()) {
+            if ($ownedByRelation instanceof ReflectionRelation && $ownedByRelation->isManyToOne()) {
                 $foreignKeyColumn = $ownedByRelation->getColumnName();
             }
         }

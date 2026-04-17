@@ -145,7 +145,8 @@ class EntityTableComparator {
         array $columnsIndexed,
         array $entityGroup
     ): ?TableCompareResult {
-        $columnsCompareResults = $this->columnComparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $columnCompareReport = $this->columnComparator->compareColumns($propertiesIndexed, $columnsIndexed, $tableName);
+        $columnsCompareResults = $columnCompareReport->results;
 
         if (!empty($columnsCompareResults)) {
             $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
@@ -193,7 +194,25 @@ class EntityTableComparator {
             throw new EmptyPropertiesListException($tableName);
         }
 
-        if (!$operation || (empty($columnsCompareResults) && empty($indexCompareResults) && empty($foreignKeys))) {
+        $hasChanges = !empty($columnsCompareResults) || !empty($indexCompareResults) || !empty($foreignKeys);
+
+        if (!$operation && !$hasChanges) {
+            if (!empty($columnCompareReport->warnings)) {
+                return new TableCompareResult(
+                    $tableName,
+                    CompareResult::OPERATION_UPDATE,
+                    [],
+                    [],
+                    [],
+                    $entityGroup[0]->getPrimaryKeyColumns(),
+                    $columnCompareReport->warnings,
+                );
+            }
+
+            return null;
+        }
+
+        if (!$hasChanges) {
             return null;
         }
 
@@ -204,6 +223,7 @@ class EntityTableComparator {
             $indexCompareResults,
             $foreignKeys,
             $entityGroup[0]->getPrimaryKeyColumns(),
+            $columnCompareReport->warnings,
         );
     }
 }

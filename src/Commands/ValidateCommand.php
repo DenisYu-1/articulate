@@ -4,8 +4,6 @@ namespace Articulate\Commands;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
-use Articulate\Modules\Migrations\Generator\MigrationGenerator;
-use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -14,19 +12,18 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'articulate:diff')]
-class DiffCommand extends Command {
-    private readonly MigrationGenerator $migrationGenerator;
-
+#[AsCommand(name: 'articulate:validate')]
+class ValidateCommand extends Command {
     public function __construct(
         private readonly DatabaseSchemaComparator $databaseSchemaComparator,
-        private readonly MigrationsCommandGenerator $migrationsCommandGenerator,
-        string $migrationsPath,
         private readonly ?string $entitiesPath = null,
-        private readonly ?string $migrationsNamespace = null,
     ) {
         parent::__construct();
-        $this->migrationGenerator = new MigrationGenerator($migrationsPath);
+    }
+
+    protected function configure(): void
+    {
+        $this->setDescription('Validate that entity mappings are in sync with the database schema.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -53,44 +50,43 @@ class DiffCommand extends Command {
                 preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
                 $namespace = $namespaceMatches[1];
                 $className = $classMatches[1];
-                $fullClassName = $namespace . '\\' . $className;
-                $classNames[] = $fullClassName;
+                $classNames[] = $namespace . '\\' . $className;
             }
         }
+
         $entityClasses = array_filter(
             array_map(fn (string $className) => new ReflectionEntity($className), $classNames),
             fn (ReflectionEntity $entity) => $entity->isEntity()
         );
 
         $compareResults = $this->databaseSchemaComparator->compareAll($entityClasses);
-        $queries = $rollbacks = [];
+
+        $hasDrift = false;
         $allWarnings = [];
+
         foreach ($compareResults as $compareResult) {
+            $hasDrift = true;
             $allWarnings = array_merge($allWarnings, $compareResult->warnings);
-            $queries[] = $this->migrationsCommandGenerator->generate($compareResult);
-            $rollbacks[] = $this->migrationsCommandGenerator->rollback($compareResult);
+            $io->text(sprintf('[%s] Table "%s" needs %s.', strtoupper($compareResult->operation), $compareResult->name, $compareResult->operation));
         }
+
         foreach ($allWarnings as $warning) {
             $io->warning($warning);
         }
-        $queries = array_values(array_filter($queries));
-        $rollbacks = array_values(array_filter($rollbacks));
-        if (empty($queries)) {
-            $io->success('Schema is already in sync.');
+
+        if (!$hasDrift && empty($allWarnings)) {
+            $io->success('Schema is valid. All entities are in sync with the database.');
 
             return Command::SUCCESS;
         }
-        $escapeSql = fn (string $query) => addcslashes($query, '"\\');
-        $upScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', $queries);
-        $downScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', array_reverse($rollbacks));
-        $this->migrationGenerator->generate(
-            $this->migrationsNamespace ?: 'App\Migrations',
-            'MigrationFrom' . time(),
-            implode(PHP_EOL, $upScript),
-            implode(PHP_EOL, $downScript),
-        );
 
-        return Command::SUCCESS;
+        if (!$hasDrift) {
+            $io->caution('Schema is in sync but unmapped required columns were detected (see warnings above).');
+        } else {
+            $io->error('Schema is out of sync. Run articulate:diff to generate a migration.');
+        }
+
+        return Command::FAILURE;
     }
 
     private function isFileWithinDirectory(string $realPath, string $baseDir): bool

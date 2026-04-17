@@ -14,11 +14,22 @@ class MySqlSchemaReader implements DatabaseSchemaReaderInterface {
     }
 
     /**
+     * @throws DatabaseSchemaException
+     */
+    private function assertValidTableName(string $tableName): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $tableName)) {
+            throw new DatabaseSchemaException("Invalid table name: '{$tableName}'");
+        }
+    }
+
+    /**
      * @return DatabaseColumn[]
      * @throws DatabaseSchemaException
      */
     public function getTableColumns(string $tableName): array
     {
+        $this->assertValidTableName($tableName);
         $result = [];
 
         try {
@@ -53,6 +64,7 @@ class MySqlSchemaReader implements DatabaseSchemaReaderInterface {
 
     public function getTableIndexes(string $tableName): array
     {
+        $this->assertValidTableName($tableName);
         $query = "SHOW INDEXES FROM `$tableName`";
 
         $statement = $this->connection->executeQuery($query);

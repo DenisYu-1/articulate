@@ -6,6 +6,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Comparators\ColumnComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareReport;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
@@ -30,10 +31,11 @@ class ColumnComparatorTest extends TestCase {
 
     public function testCompareColumnsWithEmptyInputs(): void
     {
-        $result = $this->comparator->compareColumns([], []);
+        $report = $this->comparator->compareColumns([], []);
 
-        $this->assertIsArray($result);
-        $this->assertEmpty($result);
+        $this->assertInstanceOf(ColumnCompareReport::class, $report);
+        $this->assertEmpty($report->results);
+        $this->assertEmpty($report->warnings);
     }
 
     public function testCompareColumnsCreateSingleColumn(): void
@@ -55,7 +57,8 @@ class ColumnComparatorTest extends TestCase {
         ];
 
         $columnsIndexed = [];
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $this->assertInstanceOf(ColumnCompareResult::class, $results[0]);
@@ -88,7 +91,8 @@ class ColumnComparatorTest extends TestCase {
         ];
 
         $columnsIndexed = [];
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -117,7 +121,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -129,6 +134,53 @@ class ColumnComparatorTest extends TestCase {
         $this->assertTrue($result->columnData->isNullable);
         $this->assertEquals('default_value', $result->columnData->defaultValue);
         $this->assertEquals(100, $result->columnData->length);
+    }
+
+    public function testCompareColumnsSkipsNotNullColumnWithoutDefault(): void
+    {
+        $propertiesIndexed = [];
+        $columnsIndexed = [
+            'secret' => (object) [
+                'type' => 'string',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => 255,
+            ],
+        ];
+
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed, 'users');
+
+        $this->assertEmpty($report->results);
+        $this->assertCount(1, $report->warnings);
+        $this->assertStringContainsString('"secret"', $report->warnings[0]);
+        $this->assertStringContainsString('"users"', $report->warnings[0]);
+    }
+
+    public function testCompareColumnsSafeDeleteAlongsideSkippedColumn(): void
+    {
+        $propertiesIndexed = [];
+        $columnsIndexed = [
+            'secret' => (object) [
+                'type' => 'string',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => 255,
+            ],
+            'old_flag' => (object) [
+                'type' => 'bool',
+                'isNullable' => true,
+                'defaultValue' => null,
+                'length' => null,
+            ],
+        ];
+
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed, 'users');
+
+        $this->assertCount(1, $report->results);
+        $this->assertEquals('old_flag', $report->results[0]->name);
+        $this->assertEquals(CompareResult::OPERATION_DELETE, $report->results[0]->operation);
+        $this->assertCount(1, $report->warnings);
+        $this->assertStringContainsString('"secret"', $report->warnings[0]);
     }
 
     public function testCompareColumnsUpdateColumnTypeOnly(): void
@@ -158,7 +210,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -198,7 +251,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -237,7 +291,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -276,7 +331,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -315,7 +371,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -370,7 +427,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(1, $results);
         $result = $results[0];
@@ -419,9 +477,9 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
 
-        $this->assertCount(0, $results);
+        $this->assertCount(0, $report->results);
     }
 
     public function testCompareColumnsMixedOperations(): void
@@ -474,7 +532,8 @@ class ColumnComparatorTest extends TestCase {
             ],
         ];
 
-        $results = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+        $results = $report->results;
 
         $this->assertCount(3, $results);
 

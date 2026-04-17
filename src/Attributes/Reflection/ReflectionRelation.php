@@ -308,6 +308,11 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         return $this->entityProperty instanceof ManyToMany;
     }
 
+    public function isLazy(): bool
+    {
+        return property_exists($this->entityProperty, 'lazy') && $this->entityProperty->lazy === true;
+    }
+
     public function isMorphTo(): bool
     {
         return $this->entityProperty instanceof MorphTo;
