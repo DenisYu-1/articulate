@@ -4,7 +4,6 @@ namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
-use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
@@ -75,7 +74,7 @@ class LazyRelationFlagTest extends TestCase {
     private function getRelation(string $propertyName): RelationInterface
     {
         $metadata = $this->registry->getMetadata(LazyFlagSource::class);
-        $relation  = $metadata->getRelations()[$propertyName] ?? null;
+        $relation = $metadata->getRelations()[$propertyName] ?? null;
         $this->assertInstanceOf(RelationInterface::class, $relation, "No relation '$propertyName' found");
 
         return $relation;

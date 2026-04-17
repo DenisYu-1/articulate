@@ -57,14 +57,14 @@ class RelationshipLoader {
      */
     private function countOneToMany(object $entity, ReflectionRelation $relation): int
     {
-        $meta            = $this->metadataRegistry->getMetadata($entity::class);
-        $pk              = $this->getPrimaryKeyValue($entity, $meta);
-        $targetEntity    = $relation->getTargetEntity();
-        $targetMeta      = $this->metadataRegistry->getMetadata($targetEntity);
-        $targetTable     = $targetMeta->getTableName();
+        $meta = $this->metadataRegistry->getMetadata($entity::class);
+        $pk = $this->getPrimaryKeyValue($entity, $meta);
+        $targetEntity = $relation->getTargetEntity();
+        $targetMeta = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetTable = $targetMeta->getTableName();
 
         $fkColumn = null;
-        $ownedBy  = $relation->getMappedByProperty();
+        $ownedBy = $relation->getMappedByProperty();
         if ($ownedBy) {
             $ownedByRel = $targetMeta->getRelation($ownedBy);
             if ($ownedByRel instanceof ReflectionRelation && $ownedByRel->isManyToOne()) {
@@ -88,7 +88,7 @@ class RelationshipLoader {
     private function countManyToMany(object $entity, ReflectionRelation|ReflectionManyToMany $relation): int
     {
         $meta = $this->metadataRegistry->getMetadata($entity::class);
-        $pk   = $this->getPrimaryKeyValue($entity, $meta);
+        $pk = $this->getPrimaryKeyValue($entity, $meta);
 
         $result = $this->entityManager->createQueryBuilder()
             ->select('COUNT(*) as cnt')

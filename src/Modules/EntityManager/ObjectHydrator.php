@@ -213,7 +213,7 @@ class ObjectHydrator implements HydratorInterface {
         }
 
         $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entity::class);
-        $em       = null;
+        $em = null;
 
         foreach ($metadata->getRelations() as $relationName => $relation) {
             $prop = new ReflectionProperty($entity, $relationName);
@@ -240,6 +240,7 @@ class ObjectHydrator implements HydratorInterface {
                     $relatedData = new Collection($relatedData);
                 }
                 $prop->setValue($entity, $relatedData);
+
                 continue;
             }
 
@@ -248,7 +249,7 @@ class ObjectHydrator implements HydratorInterface {
 
             if ($isCollectionRelation) {
                 // Collection — wrap in a LazyCollection with optional COUNT optimisation.
-                $loader      = fn () => $this->relationshipLoader->load($entity, $relation);
+                $loader = fn () => $this->relationshipLoader->load($entity, $relation);
                 $countLoader = ($isManyToMany
                     || ($relation instanceof ReflectionRelation && ($relation->isOneToMany() || $relation->isManyToMany())))
                     ? fn () => $this->relationshipLoader->count($entity, $relation)
@@ -271,6 +272,7 @@ class ObjectHydrator implements HydratorInterface {
                             $ref = new ReflectionClass($loaded);
                             foreach ($ref->getProperties() as $rp) {
                                 $rp->setAccessible(true);
+
                                 try {
                                     $rp->setValue($p, $rp->getValue($loaded));
                                 } catch (\Error) {
