@@ -441,4 +441,45 @@ PHP;
 
         $this->assertSame(0, $statusCode);
     }
+
+    public function testValidateSchemaScansRealFilesInEntitiesDir(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $entitiesDir = $this->tempDir . '/entities_scan';
+        mkdir($entitiesDir, 0777, true);
+
+        // Create a PHP file in entities dir so isFileWithinDirectory is actually called
+        file_put_contents($entitiesDir . '/StubEntity.php', '<?php // no namespace or class');
+
+        $resultMock = $this->createStub(\PDOStatement::class);
+        $resultMock->method('fetchAll')->willReturn([]);
+
+        $connection
+            ->expects($this->once())
+            ->method('executeQuery')
+            ->with('SELECT * FROM migrations')
+            ->willReturn($resultMock);
+
+        $schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $schemaComparator
+            ->expects($this->once())
+            ->method('compareAll')
+            ->with([])
+            ->willReturn([]);
+
+        $this->initCommand->expects($this->once())->method('ensureMigrationsTableExists');
+
+        $command = new MigrateCommand(
+            $connection,
+            $this->initCommand,
+            $this->migrationsPath,
+            $schemaComparator,
+            $entitiesDir
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+    }
 }

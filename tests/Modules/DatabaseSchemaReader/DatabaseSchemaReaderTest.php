@@ -3,6 +3,8 @@
 namespace Articulate\Tests\Modules\DatabaseSchemaReader;
 
 use Articulate\Connection;
+use Articulate\Exceptions\DatabaseSchemaException;
+use Articulate\Modules\Database\SchemaReader\MySqlSchemaReader;
 use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
@@ -31,5 +33,21 @@ class DatabaseSchemaReaderTest extends TestCase {
         $this->assertArrayHasKey('idx_name', $indexes);
         $this->assertSame(['name'], $indexes['idx_name']['columns']);
         $this->assertFalse($indexes['idx_name']['unique']);
+    }
+
+    public function testGetTableColumnsWithInvalidTableNameThrowsException(): void
+    {
+        $connection = $this->createStub(Connection::class);
+        $reader = new MySqlSchemaReader($connection);
+        $this->expectException(DatabaseSchemaException::class);
+        $reader->getTableColumns('invalid!table');
+    }
+
+    public function testGetTableIndexesWithInvalidTableNameThrowsException(): void
+    {
+        $connection = $this->createStub(Connection::class);
+        $reader = new MySqlSchemaReader($connection);
+        $this->expectException(DatabaseSchemaException::class);
+        $reader->getTableIndexes('invalid!table');
     }
 }

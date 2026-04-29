@@ -123,6 +123,108 @@ class ExecutionStrategiesTest extends TestCase {
         // The result will be Command::FAILURE (1) because the migration file can't be loaded
         $this->assertIsInt($result);
     }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testMigrationStrategySkipsFilesOutsideDirectory(): void
+    {
+        $strategy = new MigrationExecutionStrategy($this->connection);
+
+        $baseDir = sys_get_temp_dir() . '/articulate_base_' . uniqid();
+        $otherDir = sys_get_temp_dir() . '/articulate_other_' . uniqid();
+        mkdir($baseDir);
+        mkdir($otherDir);
+
+        $phpFile = $otherDir . '/SomeClass.php';
+        file_put_contents($phpFile, '<?php // placeholder');
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($otherDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            $this->io->expects($this->once())
+                     ->method('info')
+                     ->with('No new migrations to execute.');
+
+            $result = $strategy->execute($this->io, [], $iterator, $baseDir);
+            $this->assertEquals(0, $result);
+        } finally {
+            unlink($phpFile);
+            rmdir($otherDir);
+            rmdir($baseDir);
+        }
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testMigrationStrategyProcessesFilesWithinDirectory(): void
+    {
+        $strategy = new MigrationExecutionStrategy($this->connection);
+
+        $tempDir = sys_get_temp_dir() . '/articulate_test_' . uniqid();
+        mkdir($tempDir);
+
+        $phpFile = $tempDir . '/NoClassFile.php';
+        file_put_contents($phpFile, '<?php // no class here');
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            $this->io->expects($this->once())
+                     ->method('warning')
+                     ->with($this->stringContains('NoClassFile'));
+            $this->io->expects($this->once())
+                     ->method('info')
+                     ->with('No new migrations to execute.');
+
+            $result = $strategy->execute($this->io, [], $iterator, $tempDir);
+            $this->assertEquals(0, $result);
+        } finally {
+            unlink($phpFile);
+            rmdir($tempDir);
+        }
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testRollbackStrategySkipsFilesOutsideDirectory(): void
+    {
+        $strategy = new RollbackExecutionStrategy($this->connection);
+
+        $statement = $this->createStub(\PDOStatement::class);
+        $statement->method('fetch')->willReturn(['name' => 'TestNamespace\SomeMigration']);
+
+        $this->connection->expects($this->once())
+                        ->method('executeQuery')
+                        ->with('SELECT name FROM migrations ORDER BY id DESC LIMIT 1')
+                        ->willReturn($statement);
+
+        $baseDir = sys_get_temp_dir() . '/articulate_rollback_base_' . uniqid();
+        $otherDir = sys_get_temp_dir() . '/articulate_rollback_other_' . uniqid();
+        mkdir($baseDir);
+        mkdir($otherDir);
+
+        $phpFile = $otherDir . '/SomeMigration.php';
+        file_put_contents($phpFile, '<?php // placeholder');
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($otherDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            // File is outside baseDir, so it's rejected → migration file not found
+            $this->io->expects($this->once())
+                     ->method('warning')
+                     ->with($this->stringContains('not found'));
+
+            $result = $strategy->execute($this->io, [], $iterator, $baseDir);
+            $this->assertEquals(1, $result);
+        } finally {
+            unlink($phpFile);
+            rmdir($otherDir);
+            rmdir($baseDir);
+        }
+    }
 }
 
 // Mock migration class for testing

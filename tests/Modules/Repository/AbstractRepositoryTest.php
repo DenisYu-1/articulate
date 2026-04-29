@@ -70,4 +70,10 @@ class AbstractRepositoryTest extends TestCase {
     {
         $this->assertSame($this->entityManager, $this->repository->getTestEntityManager());
     }
+
+    public function testFindByWithInvalidFieldNameThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->repository->findBy(['invalid field!' => 'value']);
+    }
 }

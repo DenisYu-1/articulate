@@ -161,4 +161,10 @@ class ProxyGeneratorTest extends TestCase {
         $this->assertEquals('loaded', $proxy->name);
         $this->assertTrue($proxy->isProxyInitialized());
     }
+
+    public function testGenerateProxyClassWithInvalidClassNameThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->generator->generateProxyClass('Invalid!Class');
+    }
 }

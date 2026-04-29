@@ -157,6 +157,12 @@ class MigrationGeneratorTest extends AbstractTestCase {
         $this->assertStringNotContainsString($upScript1, $content2);
     }
 
+    public function testGenerateWithInvalidClassNameThrowsException(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->generator->generate('TestNamespace', 'Invalid Class!', 'SELECT 1', 'SELECT 1');
+    }
+
     private function removeDirectory(string $dir): void
     {
         if (!is_dir($dir)) {
