@@ -13,11 +13,11 @@ use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\LazyCollection;
 use Articulate\Modules\EntityManager\ObjectHydrator;
-use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Modules\EntityManager\RelationshipLoader;
 use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 // ── Test entities ─────────────────────────────────────────────────────────────
@@ -123,7 +123,7 @@ class LazyRelationHydrationTest extends TestCase {
     /**
      * Builds an ObjectHydrator wired to a mock RelationshipLoader and EntityManager.
      *
-     * @return array{ObjectHydrator, RelationshipLoader&\PHPUnit\Framework\MockObject\MockObject, EntityManager&\PHPUnit\Framework\MockObject\MockObject}
+     * @return array{ObjectHydrator, RelationshipLoader&MockObject, EntityManager&MockObject}
      */
     private function buildHydrator(): array
     {

@@ -60,8 +60,8 @@ class LazyCollection extends Collection {
         }
 
         $this->pendingAdditions = [];
-        $this->pendingRemovals  = [];
-        $this->initialized      = true;
+        $this->pendingRemovals = [];
+        $this->initialized = true;
     }
 
     // ── count / empty checks — avoid full load when countLoader is available ──
@@ -101,7 +101,7 @@ class LazyCollection extends Collection {
     {
         if (!$this->initialized) {
             $this->pendingAdditions[] = $item;
-            $this->isDirty            = true;
+            $this->isDirty = true;
 
             return $this;
         }
@@ -115,7 +115,7 @@ class LazyCollection extends Collection {
     {
         if (!$this->initialized) {
             $this->pendingRemovals[] = $item;
-            $this->isDirty           = true;
+            $this->isDirty = true;
 
             return $this;
         }

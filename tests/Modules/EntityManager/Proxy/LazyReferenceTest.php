@@ -32,8 +32,8 @@ class LazyReferenceTest extends TestCase {
     protected function setUp(): void
     {
         $this->metadataRegistry = new EntityMetadataRegistry();
-        $this->entityManager    = $this->createMock(EntityManager::class);
-        $this->proxyGenerator   = new ProxyGenerator($this->metadataRegistry);
+        $this->entityManager = $this->createMock(EntityManager::class);
+        $this->proxyGenerator = new ProxyGenerator($this->metadataRegistry);
         $this->proxyGenerator->disableCaching();
         $this->proxyManager = new ProxyManager($this->entityManager, $this->proxyGenerator);
     }
@@ -95,8 +95,8 @@ class LazyReferenceTest extends TestCase {
     #[AllowMockObjectsWithoutExpectations]
     public function testCustomInitializerCanCopyDataIntoProxy(): void
     {
-        $loadedEntity       = new LazyReferenceTestEntity();
-        $loadedEntity->id   = 7;
+        $loadedEntity = new LazyReferenceTestEntity();
+        $loadedEntity->id = 7;
         $loadedEntity->name = 'Loaded via FK lookup';
 
         $proxy = $this->proxyManager->createProxyWithCustomLoader(
@@ -105,9 +105,11 @@ class LazyReferenceTest extends TestCase {
                 $ref = new \ReflectionClass($loadedEntity);
                 foreach ($ref->getProperties() as $rp) {
                     $rp->setAccessible(true);
+
                     try {
                         $rp->setValue($p, $rp->getValue($loadedEntity));
-                    } catch (\Error) {}
+                    } catch (\Error) {
+                    }
                 }
                 $p->markProxyInitialized();
             }
@@ -145,10 +147,10 @@ class LazyReferenceTest extends TestCase {
     public function testCreateLazyReferenceDelegatesToProxyManager(): void
     {
         $proxyManagerMock = $this->createMock(ProxyManager::class);
-        $emMock           = $this->createMock(EntityManager::class);
+        $emMock = $this->createMock(EntityManager::class);
 
         $expectedProxy = $this->createStub(ProxyInterface::class);
-        $loader        = static function (ProxyInterface $p): void {};
+        $loader = static function (ProxyInterface $p): void {};
 
         $proxyManagerMock->expects($this->once())
             ->method('createProxyWithCustomLoader')

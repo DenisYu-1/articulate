@@ -7,7 +7,9 @@ use Articulate\Modules\EntityManager\LazyCollection;
 use PHPUnit\Framework\TestCase;
 
 class LazyCollectionItem {
-    public function __construct(public int $id, public string $name = '') {}
+    public function __construct(public int $id, public string $name = '')
+    {
+    }
 }
 
 class LazyCollectionTest extends TestCase {
@@ -27,7 +29,7 @@ class LazyCollectionTest extends TestCase {
 
     public function testLoaderIsCalledOnFirstIteration(): void
     {
-        $item  = new LazyCollectionItem(1);
+        $item = new LazyCollectionItem(1);
         $calls = 0;
 
         $col = new LazyCollection(function () use ($item, &$calls) {
@@ -46,7 +48,7 @@ class LazyCollectionTest extends TestCase {
     public function testLoaderIsCalledOnlyOnce(): void
     {
         $calls = 0;
-        $col   = new LazyCollection(function () use (&$calls) {
+        $col = new LazyCollection(function () use (&$calls) {
             $calls++;
 
             return [];
@@ -80,7 +82,7 @@ class LazyCollectionTest extends TestCase {
     public function testCountFallsBackToLoaderWhenNoCountLoader(): void
     {
         $item = new LazyCollectionItem(1);
-        $col  = new LazyCollection(fn () => [$item]);
+        $col = new LazyCollection(fn () => [$item]);
 
         $this->assertSame(1, $col->count());
         $this->assertTrue($col->isInitialized());
@@ -89,7 +91,7 @@ class LazyCollectionTest extends TestCase {
     public function testCountAfterInitializationUsesItemCount(): void
     {
         $dbCount = 3;
-        $col     = new LazyCollection(
+        $col = new LazyCollection(
             fn () => [new LazyCollectionItem(1), new LazyCollectionItem(2)],
             fn () => $dbCount, // would return 3, but after init real count wins
         );
@@ -153,7 +155,7 @@ class LazyCollectionTest extends TestCase {
     public function testAddBeforeInitializationIsIncludedAfterLoad(): void
     {
         $existing = new LazyCollectionItem(1);
-        $pending  = new LazyCollectionItem(2);
+        $pending = new LazyCollectionItem(2);
 
         $col = new LazyCollection(fn () => [$existing]);
         $col->add($pending);
@@ -206,7 +208,7 @@ class LazyCollectionTest extends TestCase {
 
     public function testRemoveBeforeInitializationIsAppliedAfterLoad(): void
     {
-        $keep   = new LazyCollectionItem(1);
+        $keep = new LazyCollectionItem(1);
         $delete = new LazyCollectionItem(2);
 
         $col = new LazyCollection(fn () => [$keep, $delete]);
@@ -231,7 +233,7 @@ class LazyCollectionTest extends TestCase {
     public function testOffsetSetNullBuffersBeforeInit(): void
     {
         $loaderCalled = false;
-        $item         = new LazyCollectionItem(1);
+        $item = new LazyCollectionItem(1);
 
         $col = new LazyCollection(function () use (&$loaderCalled) {
             $loaderCalled = true;
@@ -250,7 +252,7 @@ class LazyCollectionTest extends TestCase {
     public function testContainsTriggersInit(): void
     {
         $item = new LazyCollectionItem(1);
-        $col  = new LazyCollection(fn () => [$item]);
+        $col = new LazyCollection(fn () => [$item]);
 
         $this->assertTrue($col->contains($item));
         $this->assertTrue($col->isInitialized());
@@ -259,15 +261,15 @@ class LazyCollectionTest extends TestCase {
     public function testFirstTriggersInit(): void
     {
         $item = new LazyCollectionItem(42);
-        $col  = new LazyCollection(fn () => [$item]);
+        $col = new LazyCollection(fn () => [$item]);
 
         $this->assertSame($item, $col->first());
     }
 
     public function testLastTriggersInit(): void
     {
-        $a   = new LazyCollectionItem(1);
-        $b   = new LazyCollectionItem(2);
+        $a = new LazyCollectionItem(1);
+        $b = new LazyCollectionItem(2);
         $col = new LazyCollection(fn () => [$a, $b]);
 
         $this->assertSame($b, $col->last());
@@ -284,8 +286,8 @@ class LazyCollectionTest extends TestCase {
 
     public function testFilterReturnsLazyCollectionWithMatchingItems(): void
     {
-        $a   = new LazyCollectionItem(1);
-        $b   = new LazyCollectionItem(2);
+        $a = new LazyCollectionItem(1);
+        $b = new LazyCollectionItem(2);
         $col = new LazyCollection(fn () => [$a, $b]);
 
         $filtered = $col->filter(fn (LazyCollectionItem $i) => $i->id === 1);
@@ -305,7 +307,7 @@ class LazyCollectionTest extends TestCase {
     public function testOffsetGetTriggersInit(): void
     {
         $item = new LazyCollectionItem(3);
-        $col  = new LazyCollection(fn () => [$item]);
+        $col = new LazyCollection(fn () => [$item]);
 
         $this->assertSame($item, $col[0]);
     }
@@ -313,7 +315,7 @@ class LazyCollectionTest extends TestCase {
     public function testIterationTriggersInit(): void
     {
         $items = [new LazyCollectionItem(1), new LazyCollectionItem(2)];
-        $col   = new LazyCollection(fn () => $items);
+        $col = new LazyCollection(fn () => $items);
 
         $collected = [];
         foreach ($col as $item) {

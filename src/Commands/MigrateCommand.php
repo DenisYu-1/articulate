@@ -2,8 +2,8 @@
 
 namespace Articulate\Commands;
 
-use Articulate\Connection;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Migrations\ExecutionStrategies\MigrationExecutionStrategy;
 use Articulate\Modules\Migrations\ExecutionStrategies\RollbackExecutionStrategy;
