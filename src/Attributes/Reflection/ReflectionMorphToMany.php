@@ -124,6 +124,11 @@ class ReflectionMorphToMany implements RelationInterface {
         return $this->property->getName();
     }
 
+    public function isLazy(): bool
+    {
+        return false;
+    }
+
     public function getAttribute(): MorphToMany
     {
         return $this->attribute;

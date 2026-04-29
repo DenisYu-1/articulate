@@ -23,6 +23,7 @@ class MorphMany implements RelationAttributeInterface {
         public readonly ?string $idColumn = null,
         public readonly ?string $referencedBy = null,
         public readonly bool $foreignKey = true,
+        public readonly bool $lazy = false,
     ) {
     }
 

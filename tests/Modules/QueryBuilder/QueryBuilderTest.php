@@ -958,4 +958,12 @@ class QueryBuilderTest extends DatabaseTestCase {
         $expectedParams = [true, true, '%john%', '2023-01-01', 'read', ['admin', 'moderator']];
         $this->assertEquals($expectedParams, $params);
     }
+
+    public function testOrderByWithInvalidFieldThrowsException(): void
+    {
+        $connection = $this->createStub(Connection::class);
+        $qb = new QueryBuilder($connection);
+        $this->expectException(\InvalidArgumentException::class);
+        $qb->orderBy('invalid!field', 'ASC');
+    }
 }

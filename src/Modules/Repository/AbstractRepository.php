@@ -98,6 +98,7 @@ abstract class AbstractRepository implements RepositoryInterface {
     private function applyCriteria(QueryBuilder $qb, array $criteria): void
     {
         foreach ($criteria as $field => $value) {
+            $this->assertValidFieldName($field);
             if ($value === null) {
                 $qb->whereNull($field);
             } elseif (is_array($value)) {
@@ -292,5 +293,12 @@ abstract class AbstractRepository implements RepositoryInterface {
     protected function getEntityManager(): EntityManager
     {
         return $this->entityManager;
+    }
+
+    private function assertValidFieldName(string $field): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_.]*$/', $field)) {
+            throw new \InvalidArgumentException("Invalid field name '{$field}'.");
+        }
     }
 }

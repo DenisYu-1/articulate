@@ -390,7 +390,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $mockEntity = $this->createMock(ReflectionEntity::class);
         $mockEntity->expects($this->once())->method('getAttributes')->willReturn([]);
         $mockEntity->expects($this->once())->method('getEntityProperties')->willReturn([]);
-        $mockEntity->expects($this->any())->method('getPrimaryKeyColumns')->willReturn(['id']);
+        $mockEntity->expects($this->atLeastOnce())->method('getPrimaryKeyColumns')->willReturn(['id']);
         $mockEntity->expects($this->once())->method('getTableName')->willReturn('test_entity');
         $mockEntity->expects($this->once())->method('isEntity')->willReturn(true);
 
@@ -399,9 +399,10 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
         $this->assertEquals(1, count($result));
         $this->assertEquals('update', $result[0]->operation);
-        // Should detect column deletion since entity has no properties
-        $this->assertEquals(1, count($result[0]->columns));
-        $this->assertEquals('delete', $result[0]->columns[0]->operation);
+        // id is NOT NULL without default — not deleted, warned instead
+        $this->assertEmpty($result[0]->columns);
+        $this->assertCount(1, $result[0]->warnings);
+        $this->assertStringContainsString('"id"', $result[0]->warnings[0]);
     }
 
     public function testForeignKeyValidationFailure()
@@ -593,7 +594,7 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
         $mockEntity = $this->createMock(ReflectionEntity::class);
         $mockEntity->expects($this->once())->method('getAttributes')->willReturn([]); // No index attributes
         $mockEntity->expects($this->once())->method('getEntityProperties')->willReturn([]); // No properties
-        $mockEntity->expects($this->any())->method('getPrimaryKeyColumns')->willReturn(['id']);
+        $mockEntity->expects($this->atLeastOnce())->method('getPrimaryKeyColumns')->willReturn(['id']);
         $mockEntity->expects($this->once())->method('getTableName')->willReturn('test_entity');
         $mockEntity->expects($this->once())->method('isEntity')->willReturn(true);
 
@@ -602,9 +603,10 @@ class DatabaseSchemaComparatorTest extends AbstractTestCase {
 
         $this->assertEquals(1, count($result));
         $this->assertEquals('update', $result[0]->operation);
-        // Should detect column deletion
-        $this->assertEquals(1, count($result[0]->columns));
-        $this->assertEquals('delete', $result[0]->columns[0]->operation);
+        // id is NOT NULL without default — not deleted, warned instead
+        $this->assertEmpty($result[0]->columns);
+        $this->assertCount(1, $result[0]->warnings);
+        $this->assertStringContainsString('"id"', $result[0]->warnings[0]);
     }
 
     public function testForeignKeyProcessingEdgeCases()

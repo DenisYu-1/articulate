@@ -25,6 +25,8 @@ class MigrationGenerator {
 
     public function generate(string $namespace, string $className, string $upScript, string $downScript): void
     {
+        $this->assertValidClassName($className);
+
         // Read the template content
         $templateContent = file_get_contents($this->templatePath);
 
@@ -48,6 +50,13 @@ class MigrationGenerator {
 
         if ($this->output) {
             $this->output->writeln("Migration $className generated successfully at $fileName");
+        }
+    }
+
+    private function assertValidClassName(string $className): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $className)) {
+            throw new \InvalidArgumentException("Invalid migration class name: '{$className}'");
         }
     }
 }

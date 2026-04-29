@@ -16,18 +16,22 @@ class OneToOne implements RelationAttributeInterface {
 
     public readonly bool $foreignKey;
 
+    public readonly bool $lazy;
+
     public function __construct(
         ?string $targetEntity = null,
         ?string $ownedBy = null,
         ?string $referencedBy = null,
         ?string $column = null,
         bool $foreignKey = true,
+        bool $lazy = false,
     ) {
         $this->targetEntity = $targetEntity;
         $this->ownedBy = $ownedBy;
         $this->referencedBy = $referencedBy;
         $this->column = $column;
         $this->foreignKey = ($this->ownedBy !== null) ? false : $foreignKey;
+        $this->lazy = $lazy;
     }
 
     public function getTargetEntity(): ?string

@@ -4,7 +4,10 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
 use ReflectionClass;
@@ -187,6 +190,13 @@ class ObjectHydrator implements HydratorInterface {
 
             if ($propertyName && $reflection->hasProperty($propertyName)) {
                 $property = $reflection->getProperty($propertyName);
+
+                // Skip class-typed properties (entities/relations) — handled by hydrateRelations()
+                $type = $property->getType();
+                if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
+                    continue;
+                }
+
                 $property->setAccessible(true);
 
                 // Convert database value to PHP type
@@ -202,22 +212,78 @@ class ObjectHydrator implements HydratorInterface {
             return; // No relationship loader configured
         }
 
-        // Get entity metadata
-        $entityClass = $entity::class;
-        $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entityClass);
+        $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entity::class);
+        $em = null;
 
-        foreach ($metadata->getColumnRelations() as $relationName => $relation) {
-            $reflectionProperty = new ReflectionProperty($entity, $relationName);
-            $reflectionProperty->setAccessible(true);
+        foreach ($metadata->getRelations() as $relationName => $relation) {
+            $prop = new ReflectionProperty($entity, $relationName);
+            $prop->setAccessible(true);
 
-            if (!$reflectionProperty->isInitialized($entity) || $reflectionProperty->getValue($entity) === null) {
+            if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
+                continue;
+            }
+
+            // ── Determine whether this relation is a collection type ───────────
+            $isManyToMany = $relation instanceof ReflectionManyToMany;
+            $isCollectionRelation = $isManyToMany
+                || ($relation instanceof ReflectionRelation
+                    && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
+
+            if (!$relation->isLazy()) {
+                // Eager: load relation immediately.
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
-
-                if (is_array($relatedData) && $relation->isOneToMany()) {
+                // Wrap in Collection only for relations that use collection-typed properties,
+                // not MorphMany (array-typed) or other non-Collection relations.
+                if (is_array($relatedData)
+                    && ($isManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany()))
+                ) {
                     $relatedData = new Collection($relatedData);
                 }
+                $prop->setValue($entity, $relatedData);
 
-                $reflectionProperty->setValue($entity, $relatedData);
+                continue;
+            }
+
+            // ── Lazy relations ────────────────────────────────────────────────
+            $em ??= $this->relationshipLoader->getEntityManager();
+
+            if ($isCollectionRelation) {
+                // Collection — wrap in a LazyCollection with optional COUNT optimisation.
+                $loader = fn () => $this->relationshipLoader->load($entity, $relation);
+                $countLoader = ($isManyToMany
+                    || ($relation instanceof ReflectionRelation && ($relation->isOneToMany() || $relation->isManyToMany())))
+                    ? fn () => $this->relationshipLoader->count($entity, $relation)
+                    : null;
+
+                $prop->setValue($entity, new LazyCollection($loader, $countLoader));
+            } elseif ($relation instanceof ReflectionRelation && $relation->isOwningSide()) {
+                // Owning side with FK in row (ManyToOne, owning OneToOne, MorphTo).
+                $fkValue = $data[$relation->getColumnName()] ?? null;
+                if ($fkValue !== null) {
+                    $prop->setValue($entity, $em->getReference($relation->getTargetEntity(), $fkValue));
+                }
+            } else {
+                // Inverse single entity (inverse OneToOne, MorphOne) — proxy with custom loader.
+                $proxy = $em->createLazyReference(
+                    $relation->getTargetEntity(),
+                    function (ProxyInterface $p) use ($entity, $relation): void {
+                        $loaded = $this->relationshipLoader->load($entity, $relation);
+                        if ($loaded !== null) {
+                            $ref = new ReflectionClass($loaded);
+                            foreach ($ref->getProperties() as $rp) {
+                                $rp->setAccessible(true);
+
+                                try {
+                                    $rp->setValue($p, $rp->getValue($loaded));
+                                } catch (\Error) {
+                                    // skip read-only or uninitialised properties
+                                }
+                            }
+                            $p->markProxyInitialized();
+                        }
+                    }
+                );
+                $prop->setValue($entity, $proxy);
             }
         }
     }

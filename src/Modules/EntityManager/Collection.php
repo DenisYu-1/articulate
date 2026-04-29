@@ -12,9 +12,9 @@ use IteratorAggregate;
  * Provides array-like access with additional relationship management features.
  */
 class Collection implements ArrayAccess, Countable, IteratorAggregate {
-    private array $items = [];
+    protected array $items = [];
 
-    private bool $isDirty = false;
+    protected bool $isDirty = false;
 
     public function __construct(array $items = [])
     {

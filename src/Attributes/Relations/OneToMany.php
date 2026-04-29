@@ -10,12 +10,16 @@ class OneToMany implements RelationAttributeInterface {
 
     public readonly ?string $ownedBy;
 
+    public readonly bool $lazy;
+
     public function __construct(
         ?string $targetEntity = null,
         ?string $ownedBy = null,
+        bool $lazy = false,
     ) {
         $this->targetEntity = $targetEntity;
         $this->ownedBy = $ownedBy;
+        $this->lazy = $lazy;
     }
 
     public function getTargetEntity(): ?string

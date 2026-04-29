@@ -27,6 +27,17 @@ class ProxyManager {
     }
 
     /**
+     * Create a proxy with a fully custom initializer closure.
+     * Use this when the identifier is not known upfront (e.g., inverse-side single relations).
+     * The identifier is set to null; the closure is responsible for copying data into the proxy
+     * and calling $proxy->markProxyInitialized().
+     */
+    public function createProxyWithCustomLoader(string $entityClass, \Closure $initializer): ProxyInterface
+    {
+        return $this->proxyGenerator->createProxy($entityClass, null, $initializer, $this);
+    }
+
+    /**
      * Initialize a proxy by loading its data.
      */
     public function initializeProxy(ProxyInterface $proxy): void
@@ -39,7 +50,7 @@ class ProxyManager {
         $entity = $this->entityManager->find($entityClass, $proxy->getProxyIdentifier());
 
         if ($entity !== null) {
-            $this->copyEntityData($entity, $proxy);
+            $this->copyEntityData($entity, $proxy, $proxy->getProxyRelationPropertyNames());
             $proxy->markProxyInitialized();
         }
     }
@@ -53,13 +64,19 @@ class ProxyManager {
     }
 
     /**
-     * Copy data from real entity to proxy.
+     * Copy data from real entity to proxy, skipping specified properties.
+     *
+     * @param string[] $skipProperties
      */
-    private function copyEntityData(object $source, object $target): void
+    private function copyEntityData(object $source, object $target, array $skipProperties = []): void
     {
         $reflection = new \ReflectionClass($source);
         foreach ($reflection->getProperties() as $property) {
             if ($property->isStatic()) {
+                continue;
+            }
+
+            if (in_array($property->getName(), $skipProperties, true)) {
                 continue;
             }
 

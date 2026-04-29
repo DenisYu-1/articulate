@@ -162,7 +162,7 @@ class ChangeAggregator {
                     function ($update) use ($deleteIdentities) {
                         $entityId = $this->getEntityIdentity($update['entity']);
 
-                        return !in_array($entityId, $deleteIdentities);
+                        return !in_array($entityId, $deleteIdentities, true);
                     }
                 );
             }

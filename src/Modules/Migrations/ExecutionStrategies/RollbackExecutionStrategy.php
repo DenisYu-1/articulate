@@ -37,30 +37,42 @@ class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface {
         $migrationFileFound = false;
         $migrationInstance = null;
 
+        $realDir = realpath($directory);
+
         foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $filePath = $file->getPathname();
-
-                include_once $filePath;
-
-                $className = pathinfo($filePath, PATHINFO_FILENAME);
-                $namespace = MigrationFileUtils::getNamespaceFromFile($filePath);
-                $fullClassName = $namespace . '\\' . $className;
-
-                if ($fullClassName === $migrationToRollback && class_exists($fullClassName)) {
-                    $migrationInstance = new $fullClassName($this->connection);
-
-                    if ($migrationInstance instanceof BaseMigration) {
-                        $migrationFileFound = true;
-
-                        break;
-                    } else {
-                        $io->warning("Class $fullClassName is not a valid migration");
-
-                        return Command::FAILURE;
-                    }
-                }
+            if (!$file->isFile() || $file->getExtension() !== 'php') {
+                continue;
             }
+            $realFile = realpath($file->getPathname());
+            if ($realFile === false || !$this->isFileWithinDirectory($realFile, $realDir)) {
+                continue;
+            }
+            $filePath = $realFile;
+
+            include_once $filePath;
+
+            $className = pathinfo($filePath, PATHINFO_FILENAME);
+            $namespace = MigrationFileUtils::getNamespaceFromFile($filePath);
+            $fullClassName = $namespace . '\\' . $className;
+
+            if ($fullClassName !== $migrationToRollback) {
+                continue;
+            }
+
+            if (!class_exists($fullClassName)) {
+                continue;
+            }
+
+            if (!is_subclass_of($fullClassName, BaseMigration::class)) {
+                $io->warning("Class $fullClassName is not a valid migration");
+
+                return Command::FAILURE;
+            }
+
+            $migrationInstance = new $fullClassName($this->connection);
+            $migrationFileFound = true;
+
+            break;
         }
 
         if (!$migrationFileFound || !$migrationInstance) {
@@ -73,5 +85,11 @@ class RollbackExecutionStrategy implements MigrationExecutionStrategyInterface {
         $io->success("Migration $migrationToRollback rolled back successfully.");
 
         return Command::SUCCESS;
+    }
+
+    private function isFileWithinDirectory(string $realFile, string|false $realDir): bool
+    {
+        return $realDir !== false
+            && str_starts_with($realFile, $realDir . DIRECTORY_SEPARATOR);
     }
 }
