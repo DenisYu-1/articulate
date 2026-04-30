@@ -46,6 +46,8 @@ class EntityManager {
 
     private ?CacheItemPoolInterface $resultCache = null;
 
+    private ?CacheItemPoolInterface $statementCache = null;
+
     private TypeRegistry $typeRegistry;
 
     private RelationshipLoader $relationshipLoader;
@@ -59,7 +61,8 @@ class EntityManager {
         ?QueryExecutor $queryExecutor = null,
         ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
         ?CacheItemPoolInterface $resultCache = null,
-        ?RepositoryFactoryInterface $repositoryFactory = null
+        ?RepositoryFactoryInterface $repositoryFactory = null,
+        ?CacheItemPoolInterface $statementCache = null,
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -94,6 +97,7 @@ class EntityManager {
         $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
         $this->resultCache = $resultCache;
+        $this->statementCache = $statementCache;
         $this->repositoryFactory = $repositoryFactory;
 
         $this->filters = new FilterCollection();
@@ -628,7 +632,7 @@ class EntityManager {
 
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters, $this->statementCache);
         $qb->setUnitOfWork($this->getActiveUnitOfWork());
 
         if ($entityClass) {

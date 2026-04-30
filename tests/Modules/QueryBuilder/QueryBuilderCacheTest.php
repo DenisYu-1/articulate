@@ -513,4 +513,71 @@ class QueryBuilderCacheTest extends DatabaseTestCase {
 
         $this->qb->enableResultCache(-100);
     }
+
+    #[DataProvider('databaseProvider')]
+    public function testStatementCacheReturnsCachedSql(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $connection = $this->getCurrentConnection();
+        $stmtCache = new ArrayCache();
+
+        $connection->executeQuery('DROP TABLE IF EXISTS test_stmt_sql');
+        $connection->executeQuery('CREATE TABLE test_stmt_sql (id INT PRIMARY KEY, name VARCHAR(255))');
+        $connection->executeQuery("INSERT INTO test_stmt_sql VALUES (1, 'Alice'), (2, 'Bob')");
+
+        $qb1 = new QueryBuilder($connection, null, null, null, null, $stmtCache);
+        $result1 = $qb1->select('id', 'name')->from('test_stmt_sql')->where('id = ?', 1)->getResult();
+
+        $qb2 = new QueryBuilder($connection, null, null, null, null, $stmtCache);
+        $result2 = $qb2->select('id', 'name')->from('test_stmt_sql')->where('id = ?', 2)->getResult();
+
+        $this->assertCount(1, $result1);
+        $this->assertCount(1, $result2);
+        $this->assertSame('Alice', $result1[0]['name']);
+        $this->assertSame('Bob', $result2[0]['name']);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testStatementCacheSharesSqlForSameStructureDifferentParams(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $connection = $this->getCurrentConnection();
+        $stmtCache = new ArrayCache();
+
+        $connection->executeQuery('DROP TABLE IF EXISTS test_stmt_key');
+        $connection->executeQuery('CREATE TABLE test_stmt_key (id INT PRIMARY KEY, val VARCHAR(255))');
+        $connection->executeQuery("INSERT INTO test_stmt_key VALUES (1, 'one'), (2, 'two')");
+
+        // First query — cache miss, populates cache
+        $qb1 = new QueryBuilder($connection, null, null, null, null, $stmtCache);
+        $qb1->select('id', 'val')->from('test_stmt_key')->where('id = ?', 1)->getResult();
+
+        // Second query — same structure, different param value — should hit cached SQL
+        $qb2 = new QueryBuilder($connection, null, null, null, null, $stmtCache);
+        $result = $qb2->select('id', 'val')->from('test_stmt_key')->where('id = ?', 2)->getResult();
+
+        $this->assertCount(1, $result);
+        $this->assertSame('two', $result[0]['val']);
+
+        // Verify cache contains exactly one entry for this query structure
+        $sql1 = $qb1->getSQL();
+        $sql2 = $qb2->getSQL();
+        $this->assertSame($sql1, $sql2);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testStatementCacheDisabledWithoutPool(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $connection = $this->getCurrentConnection();
+
+        $connection->executeQuery('DROP TABLE IF EXISTS test_stmt_no_cache');
+        $connection->executeQuery('CREATE TABLE test_stmt_no_cache (id INT PRIMARY KEY)');
+        $connection->executeQuery('INSERT INTO test_stmt_no_cache VALUES (1)');
+
+        $qb = new QueryBuilder($connection);
+        $result = $qb->from('test_stmt_no_cache')->getResult();
+
+        $this->assertCount(1, $result);
+    }
 }

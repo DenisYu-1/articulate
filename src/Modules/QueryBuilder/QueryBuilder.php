@@ -70,18 +70,22 @@ class QueryBuilder {
 
     private DmlOperationHandler $dmlHandler;
 
+    private SqlStatementCache $statementCache;
+
     public function __construct(
         Connection $connection,
         ?HydratorInterface $hydrator = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
         ?CacheItemPoolInterface $resultCache = null,
-        ?FilterCollection $filters = null
+        ?FilterCollection $filters = null,
+        ?CacheItemPoolInterface $statementCache = null,
     ) {
         $this->connection = $connection;
         $this->hydrator = $hydrator;
         $this->entityClass = null;
         $this->metadataRegistry = $metadataRegistry;
         $this->resultCache = new QueryResultCache($resultCache);
+        $this->statementCache = new SqlStatementCache($statementCache);
         $this->sqlCompiler = new SqlCompiler($metadataRegistry);
         $this->cursorCodec = new CursorCodec();
         $this->filters = $filters ?? new FilterCollection();
@@ -739,7 +743,24 @@ class QueryBuilder {
 
         $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
 
-        return $this->sqlCompiler->compile(
+        if ($this->statementCache->isEnabled()) {
+            $cacheKey = $this->buildStructuralCacheKey($where);
+            $cachedSql = $this->statementCache->get($cacheKey);
+
+            if ($cachedSql !== null) {
+                $whereWithCursor = $this->sqlCompiler->buildWhereWithCursor($where, $this->orderBy, $this->cursor);
+                $params = $this->sqlCompiler->collectParametersPublic(
+                    $this->select,
+                    $this->joins,
+                    $whereWithCursor,
+                    $this->having
+                );
+
+                return [$cachedSql, $params];
+            }
+        }
+
+        [$sql, $params] = $this->sqlCompiler->compile(
             $this->rawSql,
             $this->rawParams,
             $this->from,
@@ -755,6 +776,56 @@ class QueryBuilder {
             $this->lockForUpdate,
             $this->cursor
         );
+
+        if (isset($cacheKey)) {
+            $this->statementCache->set($cacheKey, $sql);
+        }
+
+        return [$sql, $params];
+    }
+
+    private function buildStructuralCacheKey(array $where): string
+    {
+        $structural = [
+            'entityClass' => $this->entityClass,
+            'from' => $this->from,
+            'select' => $this->extractSelectExpressions($this->select),
+            'joins' => array_column($this->joins, 'sql'),
+            'where' => $this->extractConditionStructure($where),
+            'groupBy' => $this->groupBy,
+            'having' => array_map(
+                fn (array $h) => ['operator' => $h['operator'], 'condition' => $h['condition']],
+                $this->having
+            ),
+            'orderBy' => $this->orderBy,
+            'limit' => $this->cursorLimit ?? $this->limit,
+            'offset' => $this->offset,
+            'distinct' => $this->distinct,
+            'lockForUpdate' => $this->lockForUpdate,
+            'cursor' => $this->cursor ? $this->cursor->getDirection()->value : null,
+            'disabledFilters' => $this->disabledFilters,
+        ];
+
+        return 'sqls_' . hash('sha256', json_encode($structural));
+    }
+
+    private function extractSelectExpressions(array $select): array
+    {
+        return array_map(
+            fn (mixed $item) => is_array($item) ? $item['expression'] : $item,
+            $select
+        );
+    }
+
+    private function extractConditionStructure(array $conditions): array
+    {
+        return array_map(function (array $cond) {
+            return [
+                'operator' => $cond['operator'],
+                'condition' => $cond['group'] !== null ? null : $cond['condition'],
+                'group' => $cond['group'] !== null ? $this->extractConditionStructure($cond['group']) : null,
+            ];
+        }, $conditions);
     }
 
     public function getSQL(): string

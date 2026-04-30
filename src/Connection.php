@@ -31,6 +31,7 @@ class Connection {
     public function executeQuery(string $sql, array $parameters = []): PDOStatement
     {
         $statement = $this->pdo->prepare($sql);
+
         if ($parameters !== []) {
             $parameters = $this->normalizeParameters($parameters);
         }
