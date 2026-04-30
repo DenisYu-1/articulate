@@ -88,6 +88,26 @@ class ConnectionTest extends AbstractTestCase {
         $this->assertEquals(1, $row['active']);
     }
 
+    public function testPersistentConnectionExecutesQueriesCorrectly(): void
+    {
+        $host = getenv('DATABASE_HOST') ?: '127.0.0.1';
+        $name = getenv('DATABASE_NAME') ?: 'articulate_test';
+        $user = getenv('DATABASE_USER') ?: 'root';
+        $password = getenv('DATABASE_PASSWORD') ?: '';
+
+        $connection = new Connection(
+            'mysql:host=' . $host . ';dbname=' . $name . ';charset=utf8mb4',
+            $user,
+            $password,
+            persistent: true,
+        );
+
+        $result = $connection->executeQuery('SELECT 42 AS val');
+        $row = $result->fetch();
+        $this->assertNotFalse($row);
+        $this->assertSame(42, (int) $row['val']);
+    }
+
     protected function setUpTestTables(Connection $connection, string $databaseName): bool
     {
         return true;

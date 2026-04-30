@@ -18,12 +18,17 @@ class Connection {
         private readonly string $user,
         private readonly string $password,
         private readonly ?QueryLoggerInterface $queryLogger = null,
+        bool $persistent = false,
     ) {
         $options = [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ];
+
+        if ($persistent) {
+            $options[PDO::ATTR_PERSISTENT] = true;
+        }
 
         $this->pdo = new PDO($this->dsn, $this->user, $this->password, $options);
     }
