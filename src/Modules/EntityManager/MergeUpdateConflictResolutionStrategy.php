@@ -50,6 +50,7 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
                 $combinedIndexes[$groupKey] = count($result);
                 $result[] = [
                     'table' => $tableName,
+                    'entity' => $entity,
                     'set' => $columnChanges,
                     'where' => $whereClause,
                     'whereValues' => $whereValues,

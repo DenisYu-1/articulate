@@ -48,6 +48,8 @@ class EntityManager {
 
     private ?CacheItemPoolInterface $statementCache = null;
 
+    private ?SecondLevelCache $secondLevelCache = null;
+
     private TypeRegistry $typeRegistry;
 
     private RelationshipLoader $relationshipLoader;
@@ -63,6 +65,8 @@ class EntityManager {
         ?CacheItemPoolInterface $resultCache = null,
         ?RepositoryFactoryInterface $repositoryFactory = null,
         ?CacheItemPoolInterface $statementCache = null,
+        ?CacheItemPoolInterface $secondLevelCache = null,
+        int $secondLevelCacheTtl = 3600,
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -100,6 +104,11 @@ class EntityManager {
         $this->statementCache = $statementCache;
         $this->repositoryFactory = $repositoryFactory;
 
+        $secondLevelCachePool = $secondLevelCache ?? $resultCache;
+        if ($secondLevelCachePool !== null) {
+            $this->secondLevelCache = new SecondLevelCache($secondLevelCachePool, $secondLevelCacheTtl);
+        }
+
         $this->filters = new FilterCollection();
     }
 
@@ -125,6 +134,7 @@ class EntityManager {
         try {
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
             $this->executeChanges($aggregatedChanges);
+            $this->invalidateSecondLevelCache($aggregatedChanges);
 
             foreach ($this->unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
@@ -164,6 +174,65 @@ class EntityManager {
     {
         $this->flush();
         $this->clear();
+    }
+
+    private function invalidateSecondLevelCache(array $changes): void
+    {
+        if ($this->secondLevelCache === null) {
+            return;
+        }
+
+        foreach ($changes['updates'] as $update) {
+            if (!isset($update['entity'])) {
+                continue;
+            }
+
+            $entity = $update['entity'];
+            $entityClass = $entity instanceof Proxy\ProxyInterface
+                ? $entity->getProxyEntityClass()
+                : $entity::class;
+            $id = $this->extractEntityIdForCache($entity, $entityClass);
+
+            if ($id !== null) {
+                $this->secondLevelCache->evict($entityClass, $id);
+            }
+        }
+
+        foreach ($changes['deletes'] as $entity) {
+            $entityClass = $entity instanceof Proxy\ProxyInterface
+                ? $entity->getProxyEntityClass()
+                : $entity::class;
+            $id = $this->extractEntityIdForCache($entity, $entityClass);
+
+            if ($id !== null) {
+                $this->secondLevelCache->evict($entityClass, $id);
+            }
+        }
+    }
+
+    private function extractEntityIdForCache(object $entity, string $entityClass): mixed
+    {
+        if ($entity instanceof Proxy\ProxyInterface) {
+            return $entity->getProxyIdentifier();
+        }
+
+        $metadata = $this->metadataRegistry->getMetadata($entityClass);
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
+
+        if (empty($primaryKeyColumns)) {
+            return null;
+        }
+
+        $propertyName = $metadata->getPropertyNameForColumn($primaryKeyColumns[0]);
+
+        if ($propertyName === null) {
+            return null;
+        }
+
+        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($entity);
     }
 
     /**
@@ -371,6 +440,14 @@ class EntityManager {
             }
         }
 
+        // Check second-level cache before hitting the database
+        if ($this->secondLevelCache !== null) {
+            $cachedData = $this->secondLevelCache->get($class, $id);
+            if ($cachedData !== null) {
+                return $this->hydrator->hydrate($class, $cachedData);
+            }
+        }
+
         // Query database for the entity
         $metadata = $this->metadataRegistry->getMetadata($class);
         $tableName = $metadata->getTableName();
@@ -402,6 +479,10 @@ class EntityManager {
         }
 
         $rawData = $rawResults[0];
+
+        if ($this->secondLevelCache !== null) {
+            $this->secondLevelCache->set($class, $id, $rawData);
+        }
 
         $entity = $this->hydrator->hydrate($class, $rawData);
 
