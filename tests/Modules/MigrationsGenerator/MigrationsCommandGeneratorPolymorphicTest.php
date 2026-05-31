@@ -25,25 +25,25 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false, null, null, null, null, null, false, null),
+                    new PropertiesData('int', false, null, null, null, null, null, false),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'question',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('string', false, null, 255, null, null, null, false, null),
+                    new PropertiesData('string', false, null, 255, null, null, null, false),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'pollable_type',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('string', false, null, 255, null, null, null, false, null),
+                    new PropertiesData('string', false, null, 255, null, null, null, false),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'pollable_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false, null, null, null, null, null, false, null),
+                    new PropertiesData('int', false, null, null, null, null, null, false),
                     new PropertiesData()
                 ),
             ],
@@ -111,13 +111,13 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'pollable_type',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('string', false, null, 255, null, null, null, false, null),
+                    new PropertiesData('string', false, null, 255, null, null, null, false),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'pollable_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false, null, null, null, null, null, false, null),
+                    new PropertiesData('int', false, null, null, null, null, null, false),
                     new PropertiesData()
                 ),
             ],
@@ -170,13 +170,13 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'pollable_type',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('string', false, null, 255, null, null, null, false, null),
+                    new PropertiesData('string', false, null, 255, null, null, null, false),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'pollable_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false, null, null, null, null, null, false, null),
+                    new PropertiesData('int', false, null, null, null, null, null, false),
                     new PropertiesData()
                 ),
             ],

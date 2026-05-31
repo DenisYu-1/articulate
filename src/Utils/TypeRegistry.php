@@ -99,6 +99,12 @@ class TypeRegistry {
             return $this->mappingCache[$phpType] = $mappedType;
         }
 
+        // Enums map to their backing scalar type
+        $enumType = $this->resolveEnumDatabaseType($phpType);
+        if ($enumType !== null) {
+            return $this->mappingCache[$phpType] = $enumType;
+        }
+
         // Fall back to the type itself (for custom database types)
         return $this->mappingCache[$phpType] = $phpType;
     }
@@ -184,7 +190,36 @@ class TypeRegistry {
      */
     public function getConverter(string $phpType): ?TypeConverterInterface
     {
-        return $this->converters[$phpType] ?? null;
+        if (isset($this->converters[$phpType])) {
+            return $this->converters[$phpType];
+        }
+
+        // Lazily build (and cache) a converter for enum-typed properties
+        $className = ltrim($phpType, '?');
+        if (enum_exists($className)) {
+            return $this->converters[$phpType] = new EnumTypeConverter($className);
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve the database column type for an enum-typed property, or null if
+     * the type is not an enum. Backed int enums → INT, everything else → VARCHAR.
+     */
+    private function resolveEnumDatabaseType(string $phpType): ?string
+    {
+        $className = ltrim($phpType, '?');
+        if (!enum_exists($className)) {
+            return null;
+        }
+
+        $reflection = new \ReflectionEnum($className);
+        if ($reflection->isBacked() && (string) $reflection->getBackingType() === 'int') {
+            return 'INT';
+        }
+
+        return 'VARCHAR(255)';
     }
 
     /**

@@ -125,6 +125,10 @@ class QueryBuilder {
 
     public function from(string $table, ?string $alias = null): self
     {
+        $this->assertValidTableIdentifier($table);
+        if ($alias !== null) {
+            $this->assertValidFieldIdentifier($alias);
+        }
         $this->from = $alias ? "{$table} {$alias}" : $table;
 
         return $this;
@@ -480,6 +484,7 @@ class QueryBuilder {
 
     public function join(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -490,6 +495,7 @@ class QueryBuilder {
 
     public function leftJoin(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "LEFT JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -500,6 +506,7 @@ class QueryBuilder {
 
     public function rightJoin(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "RIGHT JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -510,6 +517,7 @@ class QueryBuilder {
 
     public function crossJoin(string $table): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "CROSS JOIN {$table}",
             'params' => [],
@@ -571,6 +579,9 @@ class QueryBuilder {
 
     public function groupBy(string ...$fields): self
     {
+        foreach ($fields as $field) {
+            $this->assertValidFieldIdentifier($field);
+        }
         $this->groupBy = array_merge($this->groupBy, $fields);
 
         return $this;
@@ -969,6 +980,23 @@ class QueryBuilder {
 
         // Otherwise, we have specific column selection
         return true;
+    }
+
+    private function assertValidTableIdentifier(string $table): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/', $table)) {
+            throw new InvalidArgumentException("Invalid table identifier '{$table}'.");
+        }
+    }
+
+    // join() accepts "table alias" as one string — validate each part separately
+    private function assertValidJoinTable(string $tableWithOptionalAlias): void
+    {
+        $parts = preg_split('/\s+/', trim($tableWithOptionalAlias), 2);
+        $this->assertValidTableIdentifier($parts[0]);
+        if (isset($parts[1])) {
+            $this->assertValidFieldIdentifier($parts[1]);
+        }
     }
 
     private function assertValidFieldIdentifier(string $field): void

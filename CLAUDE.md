@@ -128,6 +128,42 @@ Four hydrators in `src/Modules/EntityManager/Hydrators/`:
 - **No static state**: zero static properties/methods that accumulate state across requests
 - **Dual-DB**: every SQL-touching feature must work on both MySQL and PostgreSQL — use `match($databaseName)` in tests
 
+## Patterns
+
+### Read Replicas
+
+No built-in read/write routing — intentional. Let infrastructure handle it (PgBouncer, ProxySQL, RDS Proxy) or use the per-context design:
+
+```php
+// Write context → primary
+$primary = new EntityManager($primaryConnection, ...);
+$primary->persist($entity);
+$primary->flush();
+
+// Read context → replica
+$replica = new EntityManager($replicaConnection, ...);
+$users = $replica->findAll(User::class);
+```
+
+Each `EntityManager` owns its `IdentityMap` and `UnitOfWork` — calling `flush()` on a replica-backed instance is a caller error, not something the ORM prevents. Document this contract in consuming code.
+
+### Second-Level Cache
+
+`SecondLevelCache` (`src/Modules/EntityManager/`) caches raw entity rows keyed by `class + id` behind a PSR-6 pool. Pass `secondLevelCache:` (and optional `secondLevelCacheTtl:`) to `EntityManager`. `find()` reads through it; `flush()` evicts changed/deleted IDs. Cache faults never break query execution — every operation is wrapped and fails open.
+
+Contract — read before relying on it:
+- **Cross-context staleness is by design.** Eviction only happens in the `EntityManager` that performed the write. A write in context A leaves a stale row readable in context B until its TTL expires. Keep `secondLevelCacheTtl` short for entities shared across contexts, or evict explicitly. Same footgun class as the replica `flush()` rule above.
+- **Caches the root row only, not relations.** A cache hit returns a shallow hydrate; relations still lazy-load on access (consistent with a cold `find()`).
+- **IDs must be scalar, `Stringable`, or a composite array.** Keys are type-tagged so `1` (int) and `"1"` (string) never collide; non-`Stringable` objects throw (caught upstream → caching silently disabled for that ID).
+
+### Enum Properties
+
+Backed enums persist their backing value, pure enums their case name. `TypeRegistry` maps int-backed enums → `INT`, everything else → `VARCHAR(255)`, and lazily builds an `EnumTypeConverter` per enum class (nullable `?Enum` handled too). No registration needed — just type the property with the enum.
+
+### Transaction Helpers
+
+`Connection::transactional(callable, maxRetries, baseDelayMs)` runs work in a transaction and retries on deadlock / serialization failure (SQLSTATE 40001/40P01, MySQL 1213/1205) with exponential backoff; nested calls run in the caller's transaction without committing. Savepoints: `createSavepoint`/`releaseSavepoint`/`rollbackToSavepoint`. `flush()` does **not** auto-retry — wire `transactional()` at the call site if you need it.
+
 ## Safe-Change Rules
 
 CLAUDE.md and README.md should be kept up-to-date with the codebase.

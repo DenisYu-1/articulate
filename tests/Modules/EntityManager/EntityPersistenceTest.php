@@ -8,6 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Tests\AbstractTestCase;
+use Exception;
 
 #[Entity]
 class TestUser {
@@ -93,7 +94,7 @@ class EntityPersistenceTest extends AbstractTestCase {
 
             try {
                 $testFunction($connection, $databaseName);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 throw $e;
             }
         }
@@ -107,21 +108,21 @@ class EntityPersistenceTest extends AbstractTestCase {
         // Drop table if it exists
         $connection->executeQuery('DROP TABLE IF EXISTS test_user');
 
-        if ($databaseName === 'mysql') {
-            $sql = 'CREATE TABLE test_user (
+        $sql = match ($databaseName) {
+            'mysql' => 'CREATE TABLE test_user (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 age INT NULL
-            )';
-        } elseif ($databaseName === 'pgsql') {
-            $sql = 'CREATE TABLE test_user (
+            )',
+            'pgsql' => 'CREATE TABLE test_user (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) NOT NULL,
                 age INTEGER NULL
-            )';
-        }
+            )',
+            default => throw new \InvalidArgumentException("Unsupported database: {$databaseName}"),
+        };
 
         $connection->executeQuery($sql);
     }
@@ -273,7 +274,7 @@ class EntityPersistenceTest extends AbstractTestCase {
             if ($databaseName === 'mysql') {
                 try {
                     $connection->executeQuery('ALTER TABLE test_users ADD UNIQUE KEY unique_email (email)');
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     // Skip if unique constraint not supported or already exists
                 }
             }
@@ -298,7 +299,7 @@ class EntityPersistenceTest extends AbstractTestCase {
                 $entityManager->flush();
                 // If we get here, the constraint wasn't enforced or it succeeded
                 $this->assertTrue(true);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Constraint violation occurred, which is expected for some databases
                 $this->assertTrue(true);
             }
