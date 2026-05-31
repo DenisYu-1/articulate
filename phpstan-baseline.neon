@@ -4494,14 +4494,3 @@ parameters:
 			count: 1
 			path: tests/Utils/PointTypeConverterTest.php
 
-		-
-			message: '#^Call to function method_exists\(\) with Articulate\\Utils\\TypeConverterInterface&PHPUnit\\Framework\\MockObject\\MockObject and ''convertToDatabase'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Utils/TypeConverterInterfaceTest.php
-
-		-
-			message: '#^Call to function method_exists\(\) with Articulate\\Utils\\TypeConverterInterface&PHPUnit\\Framework\\MockObject\\MockObject and ''convertToPHP'' will always evaluate to true\.$#'
-			identifier: function.alreadyNarrowedType
-			count: 1
-			path: tests/Utils/TypeConverterInterfaceTest.php
