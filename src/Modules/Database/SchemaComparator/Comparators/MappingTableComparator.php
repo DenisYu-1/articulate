@@ -112,8 +112,8 @@ class MappingTableComparator {
     private function buildRequiredProperties(array $definition): array
     {
         $requiredProperties = [];
-        $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null);
-        $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null);
+        $requiredProperties[$definition['ownerJoinColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
+        $requiredProperties[$definition['targetJoinColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
         foreach ($definition['extraProperties'] as $extra) {
             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
         }
@@ -300,8 +300,8 @@ class MappingTableComparator {
         $requiredProperties['id'] = new PropertiesData('int', false, null, null);
         // Add morph columns
         $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
-        $requiredProperties[$definition['idColumn']] = new PropertiesData('int', false, null, null);
-        $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null);
+        $requiredProperties[$definition['idColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
+        $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
         // Add extra properties
         foreach ($definition['extraProperties'] as $extra) {
             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);

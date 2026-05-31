@@ -12,6 +12,7 @@ class PropertiesData {
         public readonly ?string $sequence = null,
         public readonly ?bool $isPrimaryKey = false,
         public readonly ?bool $isAutoIncrement = false,
+        public readonly bool $isForeignKey = false,
     ) {
     }
 }

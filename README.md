@@ -226,6 +226,20 @@ $connection = new Connection(
 
 Skips TCP handshake and authentication overhead on each request. Pair with a pool-aware cache backend for full cross-request performance.
 
+## Index Attribute Design
+
+`#[Index]` takes `fields` — PHP property names, not column names:
+
+```php
+#[Index(fields: ['userId', 'createdAt'])]
+#[Entity]
+class Order { ... }
+```
+
+This keeps index definitions coupled to the entity model. When a property is renamed alongside its column, PHP tooling catches the broken reference in `fields`. Raw column strings would silently diverge.
+
+**Expression and prefix indexes** (e.g. `LOWER(email)`, `title(100)`) have no PHP property to reference. If that need arises, a dedicated `ExpressionIndex` attribute will be introduced as an explicit escape hatch rather than mixing column-string support into `Index`.
+
 ## License
 
 Licensed under the Apache License 2.0. See [LICENSE](./LICENSE).

@@ -33,7 +33,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
         // Create related entity table
         $relatedTableName = $this->getTableName('related_entity', $databaseName);
         $createRelatedSql = match ($databaseName) {
-            'mysql' => "CREATE TABLE `{$relatedTableName}` (id INT PRIMARY KEY AUTO_INCREMENT)",
+            'mysql' => "CREATE TABLE `{$relatedTableName}` (id INT UNSIGNED PRIMARY KEY AUTO_INCREMENT)",
             'pgsql' => "CREATE TABLE \"{$relatedTableName}\" (id SERIAL PRIMARY KEY)"
         };
         $connection->executeQuery($createRelatedSql);
@@ -45,13 +45,13 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     name: 'id',
                     operation: 'create',
-                    propertyData: new PropertiesData('int', false),
+                    propertyData: new PropertiesData('int', false, isPrimaryKey: true),
                     columnData: new PropertiesData(),
                 ),
                 new ColumnCompareResult(
                     name: 'related_entity_id',
                     operation: 'create',
-                    propertyData: new PropertiesData('int', false),
+                    propertyData: new PropertiesData('int', false, isForeignKey: true),
                     columnData: new PropertiesData(),
                 ),
             ],

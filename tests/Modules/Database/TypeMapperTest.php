@@ -102,6 +102,14 @@ class TypeMapperTest extends TestCase {
         $this->assertSame('BOOLEAN', $mapper->getDatabaseType('?bool'));
     }
 
+    public function testMySqlTypeMapperIntMapsToSignedByDefault(): void
+    {
+        $mapper = new MySqlTypeMapper();
+
+        $this->assertSame('INT', $mapper->getDatabaseType('int'));
+        $this->assertSame('INT', $mapper->getDatabaseType('?int'));
+    }
+
     public function testMySqlTypeMapperInheritsFromTypeRegistry(): void
     {
         $mapper = new MySqlTypeMapper();

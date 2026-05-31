@@ -66,6 +66,7 @@ class ColumnComparator {
                     $data['sequence'],
                     $data['isPrimaryKey'],
                     $data['isAutoIncrement'],
+                    $data['foreignKeyRequired'],
                 ),
                 new PropertiesData(),
             );

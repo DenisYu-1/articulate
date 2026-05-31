@@ -170,8 +170,13 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
         $result = $this->callProtectedMethod('mapTypeLength', [$column]);
         $this->assertEquals('VARCHAR(100)', $result);
 
-        // Test integer primary key returns INT UNSIGNED
+        // PK int → INT UNSIGNED
         $column = new PropertiesData(type: 'int', isPrimaryKey: true);
+        $result = $this->callProtectedMethod('mapTypeLength', [$column]);
+        $this->assertEquals('INT UNSIGNED', $result);
+
+        // FK int → INT UNSIGNED
+        $column = new PropertiesData(type: 'int', isForeignKey: true);
         $result = $this->callProtectedMethod('mapTypeLength', [$column]);
         $this->assertEquals('INT UNSIGNED', $result);
     }
@@ -230,6 +235,44 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->callProtectedMethod('generateIndexSql', [$uniqueIndex, 'users', true]);
         $this->assertEquals('ADD UNIQUE INDEX `idx_email_unique` (`email`)', $result);
+    }
+
+    public function testForeignKeyIntColumnIsUnsigned(): void
+    {
+        $column = new PropertiesData(
+            type: 'int',
+            isNullable: false,
+            isForeignKey: true
+        );
+
+        $result = $this->callProtectedMethod('columnDefinition', ['user_id', $column]);
+
+        $this->assertEquals('`user_id` INT UNSIGNED NOT NULL', $result);
+    }
+
+    public function testNullableForeignKeyIntColumnIsUnsigned(): void
+    {
+        $column = new PropertiesData(
+            type: '?int',
+            isNullable: true,
+            isForeignKey: true
+        );
+
+        $result = $this->callProtectedMethod('columnDefinition', ['user_id', $column]);
+
+        $this->assertEquals('`user_id` INT UNSIGNED', $result);
+    }
+
+    public function testPlainIntColumnStaysSigned(): void
+    {
+        $column = new PropertiesData(
+            type: 'int',
+            isNullable: true,
+        );
+
+        $result = $this->callProtectedMethod('columnDefinition', ['score', $column]);
+
+        $this->assertEquals('`score` INT', $result);
     }
 
     private function callProtectedMethod(string $methodName, array $args = []): mixed

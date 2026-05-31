@@ -26,7 +26,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'user_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false),
+                    new PropertiesData('int', false, isForeignKey: true),
                     new PropertiesData()
                 ),
             ],
@@ -52,7 +52,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
@@ -103,7 +103,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'profile_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', true), // nullable for OneToOne
+                    new PropertiesData('int', true, isForeignKey: true), // nullable for OneToOne
                     new PropertiesData()
                 ),
             ],
@@ -129,7 +129,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
