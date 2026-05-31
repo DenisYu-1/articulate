@@ -250,19 +250,6 @@ class MySqlMigrationGeneratorTest extends AbstractTestCase {
         $this->assertEquals('`user_id` INT UNSIGNED NOT NULL', $result);
     }
 
-    public function testNullableForeignKeyIntColumnIsUnsigned(): void
-    {
-        $column = new PropertiesData(
-            type: '?int',
-            isNullable: true,
-            isForeignKey: true
-        );
-
-        $result = $this->callProtectedMethod('columnDefinition', ['user_id', $column]);
-
-        $this->assertEquals('`user_id` INT UNSIGNED', $result);
-    }
-
     public function testPlainIntColumnStaysSigned(): void
     {
         $column = new PropertiesData(

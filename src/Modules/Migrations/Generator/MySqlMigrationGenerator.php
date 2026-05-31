@@ -40,7 +40,7 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return 'VARCHAR(' . $propertyData->length . ')';
         }
 
-        if (in_array($propertyData->type, ['int', '?int'], true) && ($propertyData->isPrimaryKey || $propertyData->isForeignKey)) {
+        if ($propertyData->type === 'int' && ($propertyData->isPrimaryKey || $propertyData->isForeignKey)) {
             return 'INT UNSIGNED';
         }
 

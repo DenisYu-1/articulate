@@ -83,6 +83,7 @@ class ColumnComparator {
                     $data['nullable'],
                     $data['default'],
                     $data['length'],
+                    isForeignKey: $data['foreignKeyRequired'],
                 ),
                 new PropertiesData(
                     $column->type,
