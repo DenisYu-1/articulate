@@ -196,8 +196,8 @@ class ExampleMultiDatabaseTest extends DatabaseTestCase {
 
         // Clean up any existing tables
         $this->cleanUpTables([
-            $this->getTableName('parent_table', $databaseName),
             $this->getTableName('child_table', $databaseName),
+            $this->getTableName('parent_table', $databaseName),
         ]);
 
         $parentTable = $this->getTableName('parent_table', $databaseName);

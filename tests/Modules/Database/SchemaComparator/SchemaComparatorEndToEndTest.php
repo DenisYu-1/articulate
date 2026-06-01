@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\Database\SchemaComparator;
+namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;

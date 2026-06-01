@@ -226,6 +226,19 @@ $connection = new Connection(
 
 Skips TCP handshake and authentication overhead on each request. Pair with a pool-aware cache backend for full cross-request performance.
 
+## MySQL Table Options (ENGINE, CHARSET, COLLATE)
+
+Articulate does not append table options like `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=...` to generated `CREATE TABLE` statements. This is intentional.
+
+Storage engine and character set are deployment concerns, not schema concerns. The right values depend on the MySQL version, the hosting environment, and the application's locale requirements — there is no single correct default. Hardcoding them would mean either inheriting outdated assumptions or overriding a deliberate server configuration.
+
+Instead, Articulate delegates to the server's configured defaults:
+
+- **ENGINE** — InnoDB is the MySQL default since 5.7 and is the only engine that supports foreign keys; Articulate's FK generation already implies it.
+- **CHARSET / COLLATE** — configure once at the server or database level (`CREATE DATABASE ... CHARACTER SET utf8mb4`). All tables created in that database inherit the correct charset without per-table repetition.
+
+If per-table overrides are ever needed, the right path is an explicit option on `#[Entity]`, not a framework-wide hardcoded string.
+
 ## Index Attribute Design
 
 `#[Index]` takes `fields` — PHP property names, not column names:

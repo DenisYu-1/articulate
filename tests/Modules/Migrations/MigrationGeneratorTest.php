@@ -122,15 +122,14 @@ class MigrationGeneratorTest extends AbstractTestCase {
     {
         $namespace = 'TestNamespace';
         $className = 'SpecialCharsMigration';
-        $upScript = "CREATE TABLE test (\n    id INT,\n    name VARCHAR(255),\n    data JSON\n);";
-        $downScript = 'DROP TABLE IF EXISTS test;';
+        $upScript = '$this->addSql("CREATE TABLE test (id INT, name VARCHAR(255), data JSON)");';
+        $downScript = '$this->addSql("DROP TABLE IF EXISTS test");';
 
         $this->generator->generate($namespace, $className, $upScript, $downScript);
 
         $expectedFile = $this->tempDir . '/' . date('Y') . '/' . date('m') . '/' . $className . '.php';
         $content = file_get_contents($expectedFile);
 
-        // Verify multiline content is preserved
         $this->assertStringContainsString($upScript, $content);
         $this->assertStringContainsString($downScript, $content);
     }
@@ -155,6 +154,37 @@ class MigrationGeneratorTest extends AbstractTestCase {
         $content2 = file_get_contents($filePath);
         $this->assertStringContainsString($upScript2, $content2);
         $this->assertStringNotContainsString($upScript1, $content2);
+    }
+
+    public function testMultipleStatementsAreIndentedUniformly(): void
+    {
+        $upScript = implode(PHP_EOL, [
+            '$this->addSql("CREATE TABLE users (id INT UNSIGNED NOT NULL)");',
+            '$this->addSql("CREATE TABLE posts (id INT UNSIGNED NOT NULL, user_id INT UNSIGNED NOT NULL)");',
+            '$this->addSql("ALTER TABLE posts ADD CONSTRAINT fk_posts_user_id FOREIGN KEY (user_id) REFERENCES users (id)");',
+        ]);
+
+        $this->generator->generate('TestNamespace', 'MultiStatementMigration', $upScript, '$this->addSql("DROP TABLE posts");');
+
+        $file = $this->tempDir . '/' . date('Y') . '/' . date('m') . '/MultiStatementMigration.php';
+        $content = file_get_contents($file);
+
+        // Every statement line must be indented identically (8 spaces)
+        $this->assertStringContainsString(
+            '        $this->addSql("CREATE TABLE users',
+            $content
+        );
+        $this->assertStringContainsString(
+            '        $this->addSql("CREATE TABLE posts',
+            $content
+        );
+        $this->assertStringContainsString(
+            '        $this->addSql("ALTER TABLE posts',
+            $content
+        );
+
+        // No line should start at column 0 with $this->
+        $this->assertStringNotContainsString("\n\$this->addSql", $content);
     }
 
     public function testGenerateWithInvalidClassNameThrowsException(): void
