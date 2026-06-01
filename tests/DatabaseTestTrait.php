@@ -78,15 +78,24 @@ trait DatabaseTestTrait {
     protected function cleanDatabase(Connection $connection, string $databaseName): void
     {
         try {
-            // Get all tables and drop them
             $tables = match ($databaseName) {
                 'mysql' => $connection->executeQuery('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN),
                 'pgsql' => $connection->executeQuery("SELECT tablename FROM pg_tables WHERE schemaname = 'public'")->fetchAll(\PDO::FETCH_COLUMN),
                 default => []
             };
 
-            foreach ($tables as $table) {
-                $connection->executeQuery("DROP TABLE IF EXISTS `{$table}`");
+            if ($databaseName === 'mysql') {
+                $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 0');
+
+                foreach ($tables as $table) {
+                    $connection->executeQuery("DROP TABLE IF EXISTS `{$table}`");
+                }
+
+                $connection->executeQuery('SET FOREIGN_KEY_CHECKS = 1');
+            } else {
+                foreach ($tables as $table) {
+                    $connection->executeQuery("DROP TABLE IF EXISTS \"{$table}\" CASCADE");
+                }
             }
         } catch (Exception $e) {
             // Ignore cleanup errors

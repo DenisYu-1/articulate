@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\Database\SchemaComparator;
+namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionProperty;
