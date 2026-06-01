@@ -56,6 +56,7 @@ class MigrationGenerator {
     private function indent(string $script): string
     {
         $indent = '        '; // 8 spaces — matches template body indentation
+
         return implode(PHP_EOL . $indent, explode(PHP_EOL, $script));
     }
 
