@@ -187,26 +187,40 @@ class EntityManager {
                 continue;
             }
 
-            $entity = $update['entity'];
-            $entityClass = $entity instanceof Proxy\ProxyInterface
-                ? $entity->getProxyEntityClass()
-                : $entity::class;
-            $id = $this->extractEntityIdForCache($entity, $entityClass);
-
-            if ($id !== null) {
-                $this->secondLevelCache->evict($entityClass, $id);
-            }
+            $this->evictEntityFromSecondLevelCache($update['entity']);
         }
 
         foreach ($changes['deletes'] as $entity) {
-            $entityClass = $entity instanceof Proxy\ProxyInterface
-                ? $entity->getProxyEntityClass()
-                : $entity::class;
-            $id = $this->extractEntityIdForCache($entity, $entityClass);
+            $this->evictEntityFromSecondLevelCache($entity);
+        }
+    }
 
-            if ($id !== null) {
-                $this->secondLevelCache->evict($entityClass, $id);
-            }
+    /**
+     * Evict the entity and all sibling entity classes (same table) from the second-level cache.
+     * This prevents stale reads when multiple entity classes map to the same row.
+     */
+    private function evictEntityFromSecondLevelCache(object $entity): void
+    {
+        $entityClass = $entity instanceof Proxy\ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : $entity::class;
+        $id = $this->extractEntityIdForCache($entity, $entityClass);
+
+        if ($id === null) {
+            return;
+        }
+
+        $tableName = $this->metadataRegistry->getTableName($entityClass);
+        $siblingClasses = $this->metadataRegistry->getClassesByTable($tableName);
+
+        if (empty($siblingClasses)) {
+            $this->secondLevelCache->evict($entityClass, $id);
+
+            return;
+        }
+
+        foreach ($siblingClasses as $class) {
+            $this->secondLevelCache->evict($class, $id);
         }
     }
 

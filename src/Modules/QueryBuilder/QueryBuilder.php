@@ -554,7 +554,7 @@ class QueryBuilder {
         return $this;
     }
 
-    public function cursor(string $token, CursorDirection $direction = CursorDirection::NEXT): self
+    public function cursor(string $token): self
     {
         if (empty($this->orderBy)) {
             throw new CursorPaginationException('ORDER BY clause is required for cursor pagination');
@@ -564,8 +564,7 @@ class QueryBuilder {
             throw new CursorPaginationException('Cursor pagination supports maximum 2 ORDER BY columns');
         }
 
-        $decodedCursor = $this->cursorCodec->decode($token);
-        $this->cursor = new Cursor($decodedCursor->getValues(), $direction);
+        $this->cursor = $this->cursorCodec->decode($token);
 
         return $this;
     }
@@ -752,7 +751,8 @@ class QueryBuilder {
             );
         }
 
-        $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
+        $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit + 1 : $this->limit;
+        $offsetToUse = $this->cursor !== null ? null : $this->offset;
 
         if ($this->statementCache->isEnabled()) {
             $cacheKey = $this->buildStructuralCacheKey($where);
@@ -782,7 +782,7 @@ class QueryBuilder {
             $this->having,
             $this->orderBy,
             $limitToUse,
-            $this->offset,
+            $offsetToUse,
             $this->distinct,
             $this->lockForUpdate,
             $this->cursor
@@ -809,8 +809,8 @@ class QueryBuilder {
                 $this->having
             ),
             'orderBy' => $this->orderBy,
-            'limit' => $this->cursorLimit ?? $this->limit,
-            'offset' => $this->offset,
+            'limit' => $this->cursorLimit !== null ? $this->cursorLimit + 1 : $this->limit,
+            'offset' => $this->cursor !== null ? null : $this->offset,
             'distinct' => $this->distinct,
             'lockForUpdate' => $this->lockForUpdate,
             'cursor' => $this->cursor ? $this->cursor->getDirection()->value : null,
@@ -901,7 +901,7 @@ class QueryBuilder {
         $results = $this->getResult($entityClass);
         $items = is_array($results) ? $results : [];
 
-        return $this->cursorPaginationHandler->createPaginatorWithEntityClass(
+        return $this->cursorPaginationHandler->createPaginator(
             $items,
             $this->orderBy,
             $this->cursor,

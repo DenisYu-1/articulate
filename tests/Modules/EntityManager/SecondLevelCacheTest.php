@@ -142,6 +142,15 @@ class L2CacheUser {
     public string $name;
 }
 
+#[Entity(tableName: 'l2_cache_users')]
+class L2CacheUserSummary {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name;
+}
+
 class FailingCache extends L2ArrayCache {
     public function getItem(string $key): never
     {
@@ -321,6 +330,67 @@ class SecondLevelCacheTest extends DatabaseTestCase {
 
         // After TTL expiry the item should no longer be a hit
         $this->assertFalse($cache->hasItem($key));
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testCacheInvalidatedForSiblingClassOnUpdate(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $connection = $this->getCurrentConnection();
+        $this->createUserTable($connection, $databaseName);
+
+        $connection->executeQuery("INSERT INTO l2_cache_users (name) VALUES ('Helen')");
+        $id = (int) $connection->lastInsertId($databaseName === 'pgsql' ? 'l2_cache_users_id_seq' : null);
+
+        $cache = new L2ArrayCache();
+        $em = new EntityManager($connection, secondLevelCache: $cache);
+
+        // Populate L2 cache for both entity classes
+        $em->find(L2CacheUser::class, $id);
+        $em->clear();
+        $em->find(L2CacheUserSummary::class, $id);
+        $em->clear();
+
+        // Re-load and update via L2CacheUser
+        $user = $em->find(L2CacheUser::class, $id);
+        $user->name = 'Helen Updated';
+        $em->persist($user);
+        $em->flush();
+        $em->clear();
+
+        $l2 = new SecondLevelCache($cache);
+        $this->assertFalse($cache->hasItem($l2->generateKey(L2CacheUser::class, $id)), 'L2CacheUser cache entry should be evicted');
+        $this->assertFalse($cache->hasItem($l2->generateKey(L2CacheUserSummary::class, $id)), 'L2CacheUserSummary cache entry should be evicted alongside sibling');
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testCacheInvalidatedForSiblingClassOnDelete(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $connection = $this->getCurrentConnection();
+        $this->createUserTable($connection, $databaseName);
+
+        $connection->executeQuery("INSERT INTO l2_cache_users (name) VALUES ('Ivan')");
+        $id = (int) $connection->lastInsertId($databaseName === 'pgsql' ? 'l2_cache_users_id_seq' : null);
+
+        $cache = new L2ArrayCache();
+        $em = new EntityManager($connection, secondLevelCache: $cache);
+
+        // Populate L2 cache for both entity classes
+        $em->find(L2CacheUser::class, $id);
+        $em->clear();
+        $em->find(L2CacheUserSummary::class, $id);
+        $em->clear();
+
+        // Delete via L2CacheUser
+        $user = $em->find(L2CacheUser::class, $id);
+        $em->remove($user);
+        $em->flush();
+        $em->clear();
+
+        $l2 = new SecondLevelCache($cache);
+        $this->assertFalse($cache->hasItem($l2->generateKey(L2CacheUser::class, $id)), 'L2CacheUser cache entry should be evicted');
+        $this->assertFalse($cache->hasItem($l2->generateKey(L2CacheUserSummary::class, $id)), 'L2CacheUserSummary cache entry should be evicted alongside sibling');
     }
 
     // --- key normalization (no database needed) ------------------------------

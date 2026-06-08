@@ -8,6 +8,7 @@ use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\Relations\MappingTableProperty;
+use Articulate\Modules\Database\SchemaComparator\RelationDefinitionCollector;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorFactory;
 use Articulate\Modules\Database\SchemaComparator\RelationValidators\RelationValidatorInterface;
 use PHPUnit\Framework\TestCase;

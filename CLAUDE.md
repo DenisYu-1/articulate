@@ -56,6 +56,8 @@ Articulate is a context-bounded ORM for domain-driven PHP applications. PHP 8.4+
 
 **Unit of Work**: `EntityManager` tracks entity state (NEW → MANAGED → REMOVED) via `UnitOfWork`. Changes collected by `ChangeAggregator`, flushed as a batch. Each context (EntityManager instance) has its own `IdentityMap` — no process-wide singletons.
 
+**Cross-entity remove propagation**: When `remove()` is called on an entity, `UnitOfWork` automatically marks all other MANAGED entities in the same `IdentityMap` that share the same table and primary key as REMOVED. Only one `DELETE` is issued — sibling entities are just removed from tracking to prevent ghost `IdentityMap` reads and phantom UPDATE calls on the deleted row. Lifecycle callbacks (`preRemove`/`postRemove`) are only invoked on the explicitly removed entity, not on its siblings.
+
 **Attribute-driven metadata**: No XML/YAML. All mapping via PHP attributes: `#[Entity]`, `#[Property]`, `#[PrimaryKey]`, `#[Index]`, `#[OneToMany]`, `#[ManyToMany]`, etc.
 
 ### Module Map
@@ -153,6 +155,7 @@ Each `EntityManager` owns its `IdentityMap` and `UnitOfWork` — calling `flush(
 
 Contract — read before relying on it:
 - **Cross-context staleness is by design.** Eviction only happens in the `EntityManager` that performed the write. A write in context A leaves a stale row readable in context B until its TTL expires. Keep `secondLevelCacheTtl` short for entities shared across contexts, or evict explicitly. Same footgun class as the replica `flush()` rule above.
+- **Sibling-class eviction is automatic within one `EntityManager`.** When `flush()` writes or deletes a row, the cache is evicted for every entity class mapped to the same table that the registry has seen in this session (via `EntityMetadataRegistry::getClassesByTable`). Example: deleting `Customer(id=1)` also evicts the `CustomerSummary(id=1)` entry. Classes never loaded in the session are not evicted — cross-`EntityManager` staleness still applies.
 - **Caches the root row only, not relations.** A cache hit returns a shallow hydrate; relations still lazy-load on access (consistent with a cold `find()`).
 - **IDs must be scalar, `Stringable`, or a composite array.** Keys are type-tagged so `1` (int) and `"1"` (string) never collide; non-`Stringable` objects throw (caught upstream → caching silently disabled for that ID).
 

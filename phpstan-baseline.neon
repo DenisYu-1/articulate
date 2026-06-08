@@ -1339,18 +1339,6 @@ parameters:
 			path: src/Modules/QueryBuilder/CursorPaginationHandler.php
 
 		-
-			message: '#^Method Articulate\\Modules\\QueryBuilder\\CursorPaginationHandler\:\:createPaginatorWithEntityClass\(\) has parameter \$items with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/QueryBuilder/CursorPaginationHandler.php
-
-		-
-			message: '#^Method Articulate\\Modules\\QueryBuilder\\CursorPaginationHandler\:\:createPaginatorWithEntityClass\(\) has parameter \$orderBy with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/QueryBuilder/CursorPaginationHandler.php
-
-		-
 			message: '#^Method Articulate\\Modules\\QueryBuilder\\CursorPaginationHandler\:\:extractCursorValues\(\) has parameter \$parsedOrderBy with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1

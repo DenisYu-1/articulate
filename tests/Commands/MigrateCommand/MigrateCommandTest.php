@@ -378,7 +378,8 @@ PHP;
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
 
-        // Create migrations table first
+        // Create migrations table first (drop first to handle MySQL DDL non-rollback)
+        $connection->executeQuery('DROP TABLE IF EXISTS migrations');
         $createTableSql = match ($databaseName) {
             'mysql' => 'CREATE TABLE migrations (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), executed_at DATETIME, running_time INT)',
             'pgsql' => 'CREATE TABLE migrations (id SERIAL PRIMARY KEY, name VARCHAR(255), executed_at TIMESTAMP, running_time INT)'

@@ -3,7 +3,6 @@
 namespace Articulate\Modules\Repository;
 
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\QueryBuilder\CursorDirection;
 use Articulate\Modules\QueryBuilder\CursorPaginator;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\Criteria\CriteriaInterface;
@@ -214,7 +213,7 @@ abstract class AbstractRepository implements RepositoryInterface {
         }
 
         if ($cursor !== null) {
-            $qb->cursor($cursor, CursorDirection::NEXT);
+            $qb->cursor($cursor);
         }
 
         $qb->cursorLimit($limit);
@@ -239,7 +238,7 @@ abstract class AbstractRepository implements RepositoryInterface {
         }
 
         if ($cursor !== null) {
-            $qb->cursor($cursor, CursorDirection::NEXT);
+            $qb->cursor($cursor);
         }
 
         $qb->cursorLimit($limit);
