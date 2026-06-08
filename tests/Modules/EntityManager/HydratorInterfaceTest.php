@@ -21,7 +21,7 @@ class HydratorInterfaceTest extends TestCase {
 
         // Check method signatures
         $hydrateMethod = $reflection->getMethod('hydrate');
-        $this->assertEquals(3, $hydrateMethod->getNumberOfParameters());
+        $this->assertEquals(4, $hydrateMethod->getNumberOfParameters());
         $this->assertEquals('mixed', $hydrateMethod->getReturnType()->getName());
 
         $extractMethod = $reflection->getMethod('extract');

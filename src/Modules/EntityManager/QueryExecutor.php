@@ -110,11 +110,7 @@ class QueryExecutor {
             implode(', ', $placeholders)
         );
 
-        try {
-            $this->connection->executeQuery($sql, $values);
-        } catch (\Exception) {
-            return null;
-        }
+        $this->connection->executeQuery($sql, $values);
 
         if ($preGeneratedId !== null) {
             return $preGeneratedId;
@@ -193,10 +189,7 @@ class QueryExecutor {
             $whereClause
         );
 
-        try {
-            $this->connection->executeQuery($sql, $allValues);
-        } catch (\Exception) {
-        }
+        $this->connection->executeQuery($sql, $allValues);
     }
 
     /**
@@ -248,10 +241,7 @@ class QueryExecutor {
             $whereClause
         );
 
-        try {
-            $this->connection->executeQuery($sql, $whereValues);
-        } catch (\Exception) {
-        }
+        $this->connection->executeQuery($sql, $whereValues);
     }
 
     /**

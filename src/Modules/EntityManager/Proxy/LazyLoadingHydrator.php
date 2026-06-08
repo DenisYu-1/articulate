@@ -20,7 +20,7 @@ class LazyLoadingHydrator implements HydratorInterface {
     ) {
     }
 
-    public function hydrate(string $class, array $data, ?object $entity = null): mixed
+    public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed
     {
         // For lazy loading, we create a proxy that will load data on first access
         if (!$entity) {

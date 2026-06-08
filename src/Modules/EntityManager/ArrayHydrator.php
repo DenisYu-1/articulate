@@ -5,7 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Schema\HydratorInterface;
 
 class ArrayHydrator implements HydratorInterface {
-    public function hydrate(string $class, array $data, ?object $entity = null): mixed
+    public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed
     {
         // ArrayHydrator returns associative arrays instead of objects
         return $data;

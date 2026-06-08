@@ -8,7 +8,8 @@ use Attribute;
 class Entity {
     public function __construct(
         public ?string $tableName = null,
-        public ?string $repositoryClass = null
+        public ?string $repositoryClass = null,
+        public bool $readOnly = false,
     ) {
     }
 }

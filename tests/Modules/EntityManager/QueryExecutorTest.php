@@ -148,23 +148,21 @@ class QueryExecutorTest extends TestCase {
         $this->assertEquals($expectedResults, $result);
     }
 
-    public function testExecuteInsertHandlesMockExceptions(): void
+    public function testExecuteInsertPropagatesExceptions(): void
     {
         $entity = new QueryExecutorTestEntity();
         $entity->id = 1;
         $entity->name = 'Test Entity';
 
-        // Mock a PHPUnit mock exception (when method is not expected to be called)
         $this->connection->expects($this->once())
             ->method('executeQuery')
-            ->willThrowException(new \Exception('Method executeQuery() should not have been called'));
+            ->willThrowException(new \PDOException('DB constraint violation'));
 
-        // Should not throw exception, should return null for generated ID
-        $result = $this->queryExecutor->executeInsert($entity);
-        $this->assertNull($result);
+        $this->expectException(\PDOException::class);
+        $this->queryExecutor->executeInsert($entity);
     }
 
-    public function testExecuteUpdateHandlesMockExceptions(): void
+    public function testExecuteUpdatePropagatesExceptions(): void
     {
         $entity = new QueryExecutorTestEntity();
         $entity->id = 1;
@@ -172,26 +170,24 @@ class QueryExecutorTest extends TestCase {
 
         $changes = ['name' => 'New Name'];
 
-        // Mock a PHPUnit mock exception
         $this->connection->expects($this->once())
             ->method('executeQuery')
-            ->willThrowException(new \Exception('Method executeQuery() should not have been called'));
+            ->willThrowException(new \PDOException('DB constraint violation'));
 
-        // Should not throw exception
+        $this->expectException(\PDOException::class);
         $this->queryExecutor->executeUpdate($entity, $changes);
     }
 
-    public function testExecuteDeleteHandlesMockExceptions(): void
+    public function testExecuteDeletePropagatesExceptions(): void
     {
         $entity = new QueryExecutorTestEntity();
         $entity->id = 1;
 
-        // Mock a PHPUnit mock exception
         $this->connection->expects($this->once())
             ->method('executeQuery')
-            ->willThrowException(new \Exception('Method executeQuery() should not have been called'));
+            ->willThrowException(new \PDOException('DB constraint violation'));
 
-        // Should not throw exception
+        $this->expectException(\PDOException::class);
         $this->queryExecutor->executeDelete($entity);
     }
 

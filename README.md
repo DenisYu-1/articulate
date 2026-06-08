@@ -126,6 +126,34 @@ Articulate is aimed at projects where different bounded contexts need different 
 
 Multiple entity classes can point to the same database table, each exposing only the fields and relationships needed for that context. Articulate merges compatible column definitions and validates for conflicts.
 
+### Read-Only Entities
+
+Mark a context-bounded entity as read-only when it intentionally omits required columns — for example, a `LoginUser` that exposes only `login` and `password` from a `users` table that has many more non-nullable columns.
+
+```php
+#[Entity(tableName: 'user', readOnly: true)]
+class LoginUser
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $login;
+
+    #[Property]
+    public string $password;
+}
+
+// find() and QueryBuilder work normally:
+$loginUser = $em->getRepository(LoginUser::class)->find($id);
+$auth->validate($loginUser->login, $loginUser->password);
+
+// persist() and remove() throw ReadOnlyEntityException:
+$em->persist($loginUser); // throws
+```
+
+`ReadOnlyEntityException` is thrown at `persist()` and `remove()` — before any SQL is built.
+
 ### Memory-Efficient Unit of Work
 
 - Clear entities from memory that are no longer needed within specific operations

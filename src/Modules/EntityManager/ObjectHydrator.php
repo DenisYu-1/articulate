@@ -32,7 +32,7 @@ class ObjectHydrator implements HydratorInterface {
         $this->typeRegistry = $typeRegistry ?? new TypeRegistry();
     }
 
-    public function hydrate(string $class, array $data, ?object $entity = null): mixed
+    public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed
     {
         // 1. Create entity instance (or use provided)
         $entity ??= $this->createEntity($class);
@@ -41,7 +41,7 @@ class ObjectHydrator implements HydratorInterface {
         $this->hydrateProperties($entity, $data);
 
         // 3. Handle relations (lazy proxies or eager loading)
-        $this->hydrateRelations($entity, $data);
+        $this->hydrateRelations($entity, $data, $with);
 
         // 4. Register in identity map
         $this->registerEntity($entity, $data);
@@ -169,7 +169,7 @@ class ObjectHydrator implements HydratorInterface {
     public function hydratePartial(object $entity, array $data): void
     {
         $this->hydrateProperties($entity, $data);
-        $this->hydrateRelations($entity, $data);
+        $this->hydrateRelations($entity, $data, []);
     }
 
     private function createEntity(string $class): object
@@ -206,7 +206,10 @@ class ObjectHydrator implements HydratorInterface {
         }
     }
 
-    private function hydrateRelations(object $entity, array $data): void
+    /**
+     * @param string[] $with Relation property names to force-eager even when lazy: true
+     */
+    private function hydrateRelations(object $entity, array $data, array $with = []): void
     {
         if (!$this->relationshipLoader) {
             return; // No relationship loader configured
@@ -229,7 +232,7 @@ class ObjectHydrator implements HydratorInterface {
                 || ($relation instanceof ReflectionRelation
                     && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
 
-            if (!$relation->isLazy()) {
+            if (!$relation->isLazy() || in_array($relationName, $with, true)) {
                 // Eager: load relation immediately.
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
                 // Wrap in Collection only for relations that use collection-typed properties,

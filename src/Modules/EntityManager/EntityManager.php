@@ -430,8 +430,16 @@ class EntityManager {
     }
 
     // Retrieval operations
-    public function find(string $class, mixed $id): ?object
+
+    /**
+     * @param string[] $with Relation property names to force-eager even when lazy: true
+     */
+    public function find(string $class, mixed $id, array $with = []): ?object
     {
+        if (!empty($with)) {
+            $this->validateWith($class, $with);
+        }
+
         // Check identity maps of all unit of works first
         foreach ($this->unitOfWorks as $unitOfWork) {
             $entity = $unitOfWork->tryGetById($class, $id);
@@ -444,7 +452,7 @@ class EntityManager {
         if ($this->secondLevelCache !== null) {
             $cachedData = $this->secondLevelCache->get($class, $id);
             if ($cachedData !== null) {
-                return $this->hydrator->hydrate($class, $cachedData);
+                return $this->hydrator->hydrate($class, $cachedData, null, $with);
             }
         }
 
@@ -484,13 +492,21 @@ class EntityManager {
             $this->secondLevelCache->set($class, $id, $rawData);
         }
 
-        $entity = $this->hydrator->hydrate($class, $rawData);
+        $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
 
         return $entity;
     }
 
-    public function findAll(string $class): array
+    /**
+     * @param string[] $with Relation property names to force-eager even when lazy: true
+     * @return object[]
+     */
+    public function findAll(string $class, array $with = []): array
     {
+        if (!empty($with)) {
+            $this->validateWith($class, $with);
+        }
+
         // Get entity metadata
         $metadata = $this->metadataRegistry->getMetadata($class);
         $tableName = $metadata->getTableName();
@@ -513,12 +529,30 @@ class EntityManager {
 
         // Hydrate each entity and register in unit of work
         foreach ($rawResults as $rawData) {
-            $entity = $this->hydrator->hydrate($class, $rawData);
+            $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
             $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
             $entities[] = $entity;
         }
 
         return $entities;
+    }
+
+    /**
+     * @param string[] $with
+     * @throws InvalidArgumentException on unknown relation name
+     */
+    private function validateWith(string $class, array $with): void
+    {
+        $metadata = $this->metadataRegistry->getMetadata($class);
+        $knownRelations = array_keys($metadata->getRelations());
+
+        foreach ($with as $name) {
+            if (!in_array($name, $knownRelations, true)) {
+                throw new InvalidArgumentException(
+                    "Relation '$name' not found on entity $class. Known relations: " . implode(', ', $knownRelations)
+                );
+            }
+        }
     }
 
     /**

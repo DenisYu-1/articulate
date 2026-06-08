@@ -10,10 +10,10 @@ class PartialHydrator implements HydratorInterface {
     ) {
     }
 
-    public function hydrate(string $class, array $data, ?object $entity = null): mixed
+    public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed
     {
         // Create entity if not provided
-        $entity ??= $this->objectHydrator->hydrate($class, [], null);
+        $entity ??= $this->objectHydrator->hydrate($class, [], null, $with);
 
         // Only hydrate the provided fields
         $this->objectHydrator->hydratePartial($entity, $data);

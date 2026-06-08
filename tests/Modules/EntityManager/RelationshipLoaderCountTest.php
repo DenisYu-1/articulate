@@ -78,7 +78,7 @@ class RelationshipLoaderCountTest extends DatabaseTestCase {
     private function buildLoader(): void
     {
         $hydrator = new class() implements HydratorInterface {
-            public function hydrate(string $class, array $data, ?object $entity = null): mixed
+            public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed
             {
                 $entity ??= new $class();
                 $reflection = new \ReflectionClass($entity);

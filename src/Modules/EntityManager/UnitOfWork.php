@@ -5,6 +5,7 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 
+use Articulate\Exceptions\ReadOnlyEntityException;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\EntityRegistrarInterface;
@@ -46,6 +47,13 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function persist(object $entity): void
     {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        if ($reflectionEntity->isEntity() && $reflectionEntity->isReadOnly()) {
+            throw new ReadOnlyEntityException(
+                sprintf("Entity '%s' is marked as read-only and cannot be written.", $entity::class)
+            );
+        }
+
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
@@ -81,6 +89,13 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function remove(object $entity): void
     {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        if ($reflectionEntity->isEntity() && $reflectionEntity->isReadOnly()) {
+            throw new ReadOnlyEntityException(
+                sprintf("Entity '%s' is marked as read-only and cannot be written.", $entity::class)
+            );
+        }
+
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
