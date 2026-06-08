@@ -83,9 +83,9 @@ class EagerOverridePost {
  */
 function buildEagerOverrideHydrator(EntityMetadataRegistry $registry): array
 {
-    $unitOfWork = (new \PHPUnit\Framework\TestCase())->createStub(UnitOfWork::class);
-    $em         = (new \PHPUnit\Framework\TestCase())->createMock(EntityManager::class);
-    $loader     = (new \PHPUnit\Framework\TestCase())->createMock(RelationshipLoader::class);
+    $unitOfWork = (new TestCase())->createStub(UnitOfWork::class);
+    $em = (new TestCase())->createMock(EntityManager::class);
+    $loader = (new TestCase())->createMock(RelationshipLoader::class);
 
     $loader->method('getMetadataRegistry')->willReturn($registry);
     $loader->method('getEntityManager')->willReturn($em);
@@ -106,8 +106,8 @@ class EagerLoadOverrideTest extends TestCase {
     private function buildHydrator(): array
     {
         $unitOfWork = $this->createStub(UnitOfWork::class);
-        $em         = $this->createMock(EntityManager::class);
-        $loader     = $this->createMock(RelationshipLoader::class);
+        $em = $this->createMock(EntityManager::class);
+        $loader = $this->createMock(RelationshipLoader::class);
 
         $loader->method('getMetadataRegistry')->willReturn($this->registry);
         $loader->method('getEntityManager')->willReturn($em);
