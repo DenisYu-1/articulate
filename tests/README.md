@@ -210,7 +210,39 @@ vendor/bin/phpunit --testsuite="Database Tests"
 3. **Handle database-specific SQL** using match expressions or conditionals
 4. **Test database-specific features** in separate methods when needed
 5. **Use appropriate groups** for filtering tests
-6. **Keep tests isolated** - each test should clean up after itself
+6. **Keep tests isolated** - each test must clean up after itself (see below)
+
+## Test Cleanup
+
+Connections are shared across the entire test suite via `ConnectionPool`. Any tables a test creates persist until explicitly dropped — transaction rollback does **not** clean up DDL (MySQL auto-commits on `CREATE TABLE`/`DROP TABLE`). Leftover tables from one test will pollute the schema seen by later tests, including comparator tests that read `SHOW TABLES`.
+
+Every test class that creates tables **must** override `tearDownTestTables` and drop them:
+
+```php
+protected function tearDownTestTables(Connection $connection, string $databaseName): void
+{
+    $this->setCurrentDatabase($connection, $databaseName);
+    $this->cleanUpTables([
+        $this->getTableName('my_table', $databaseName),
+    ]);
+}
+```
+
+`cleanUpTables` disables foreign key checks before dropping (MySQL) and uses `CASCADE` (PostgreSQL), so drop order does not matter.
+
+If the test also runs `setUpTestTables` to prepare a clean state before the test body, drop the same tables there too so a failed previous run does not leave stale tables:
+
+```php
+protected function setUpTestTables(Connection $connection, string $databaseName): bool
+{
+    // Drop first so a previously failed run doesn't leave stale tables
+    $this->setCurrentDatabase($connection, $databaseName);
+    $this->cleanUpTables([
+        $this->getTableName('my_table', $databaseName),
+    ]);
+    return true;
+}
+```
 
 ## Examples
 

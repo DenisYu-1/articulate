@@ -15,6 +15,20 @@ use PHPUnit\Framework\Attributes\Group;
  * 3. Testing single database scenarios
  */
 class ExampleMultiDatabaseTest extends DatabaseTestCase {
+    protected function tearDownTestTables(Connection $connection, string $databaseName): void
+    {
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->cleanUpTables([
+            $this->getTableName('child_table', $databaseName),
+            $this->getTableName('parent_table', $databaseName),
+            $this->getTableName('test_basic', $databaseName),
+            $this->getTableName('test_data', $databaseName),
+            $this->getTableName('test_mysql', $databaseName),
+            $this->getTableName('test_pgsql', $databaseName),
+            $this->getTableName('test_single', $databaseName),
+        ]);
+    }
+
     /**
      * Test that runs against all available databases.
      *

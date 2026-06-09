@@ -10,6 +10,7 @@ use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\FkIntChild;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\FkIntParent;
 
@@ -52,7 +53,10 @@ class ForeignKeyTypeMigrationTest extends AbstractTestCase {
         $comparator = new DatabaseSchemaComparator($reader, new SchemaNaming());
         $generator = new MySqlMigrationGenerator(new MySqlTypeMapper());
 
-        $results = iterator_to_array($comparator->compareAll([$parent, $child]));
+        $results = array_filter(
+            iterator_to_array($comparator->compareAll([$parent, $child])),
+            fn ($r) => $r->operation !== CompareResult::OPERATION_DELETE,
+        );
 
         // Sort: parent table first so FK reference is valid on execute
         usort($results, fn ($a, $b) => $a->name === 'fk_int_parent' ? -1 : 1);
