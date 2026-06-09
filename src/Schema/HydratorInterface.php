@@ -9,9 +9,10 @@ interface HydratorInterface {
      * @param string $class The entity class name
      * @param array $data Database row data
      * @param object|null $entity Existing entity to hydrate into (optional)
+     * @param string[] $with Relation property names to force-eager even when lazy: true
      * @return mixed The hydrated entity (object, array, or scalar depending on hydrator)
      */
-    public function hydrate(string $class, array $data, ?object $entity = null): mixed;
+    public function hydrate(string $class, array $data, ?object $entity = null, array $with = []): mixed;
 
     /**
      * Extract entity data for database storage.

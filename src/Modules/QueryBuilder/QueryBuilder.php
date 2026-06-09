@@ -70,18 +70,22 @@ class QueryBuilder {
 
     private DmlOperationHandler $dmlHandler;
 
+    private SqlStatementCache $statementCache;
+
     public function __construct(
         Connection $connection,
         ?HydratorInterface $hydrator = null,
         ?EntityMetadataRegistry $metadataRegistry = null,
         ?CacheItemPoolInterface $resultCache = null,
-        ?FilterCollection $filters = null
+        ?FilterCollection $filters = null,
+        ?CacheItemPoolInterface $statementCache = null,
     ) {
         $this->connection = $connection;
         $this->hydrator = $hydrator;
         $this->entityClass = null;
         $this->metadataRegistry = $metadataRegistry;
         $this->resultCache = new QueryResultCache($resultCache);
+        $this->statementCache = new SqlStatementCache($statementCache);
         $this->sqlCompiler = new SqlCompiler($metadataRegistry);
         $this->cursorCodec = new CursorCodec();
         $this->filters = $filters ?? new FilterCollection();
@@ -121,6 +125,10 @@ class QueryBuilder {
 
     public function from(string $table, ?string $alias = null): self
     {
+        $this->assertValidTableIdentifier($table);
+        if ($alias !== null) {
+            $this->assertValidFieldIdentifier($alias);
+        }
         $this->from = $alias ? "{$table} {$alias}" : $table;
 
         return $this;
@@ -476,6 +484,7 @@ class QueryBuilder {
 
     public function join(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -486,6 +495,7 @@ class QueryBuilder {
 
     public function leftJoin(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "LEFT JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -496,6 +506,7 @@ class QueryBuilder {
 
     public function rightJoin(string $table, string $condition, mixed ...$params): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "RIGHT JOIN {$table} ON {$condition}",
             'params' => $params,
@@ -506,6 +517,7 @@ class QueryBuilder {
 
     public function crossJoin(string $table): self
     {
+        $this->assertValidJoinTable($table);
         $this->joins[] = [
             'sql' => "CROSS JOIN {$table}",
             'params' => [],
@@ -542,7 +554,7 @@ class QueryBuilder {
         return $this;
     }
 
-    public function cursor(string $token, CursorDirection $direction = CursorDirection::NEXT): self
+    public function cursor(string $token): self
     {
         if (empty($this->orderBy)) {
             throw new CursorPaginationException('ORDER BY clause is required for cursor pagination');
@@ -552,8 +564,7 @@ class QueryBuilder {
             throw new CursorPaginationException('Cursor pagination supports maximum 2 ORDER BY columns');
         }
 
-        $decodedCursor = $this->cursorCodec->decode($token);
-        $this->cursor = new Cursor($decodedCursor->getValues(), $direction);
+        $this->cursor = $this->cursorCodec->decode($token);
 
         return $this;
     }
@@ -567,6 +578,9 @@ class QueryBuilder {
 
     public function groupBy(string ...$fields): self
     {
+        foreach ($fields as $field) {
+            $this->assertValidFieldIdentifier($field);
+        }
         $this->groupBy = array_merge($this->groupBy, $fields);
 
         return $this;
@@ -737,9 +751,27 @@ class QueryBuilder {
             );
         }
 
-        $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit : $this->limit;
+        $limitToUse = $this->cursorLimit !== null ? $this->cursorLimit + 1 : $this->limit;
+        $offsetToUse = $this->cursor !== null ? null : $this->offset;
 
-        return $this->sqlCompiler->compile(
+        if ($this->statementCache->isEnabled()) {
+            $cacheKey = $this->buildStructuralCacheKey($where);
+            $cachedSql = $this->statementCache->get($cacheKey);
+
+            if ($cachedSql !== null) {
+                $whereWithCursor = $this->sqlCompiler->buildWhereWithCursor($where, $this->orderBy, $this->cursor);
+                $params = $this->sqlCompiler->collectParametersPublic(
+                    $this->select,
+                    $this->joins,
+                    $whereWithCursor,
+                    $this->having
+                );
+
+                return [$cachedSql, $params];
+            }
+        }
+
+        [$sql, $params] = $this->sqlCompiler->compile(
             $this->rawSql,
             $this->rawParams,
             $this->from,
@@ -750,11 +782,61 @@ class QueryBuilder {
             $this->having,
             $this->orderBy,
             $limitToUse,
-            $this->offset,
+            $offsetToUse,
             $this->distinct,
             $this->lockForUpdate,
             $this->cursor
         );
+
+        if (isset($cacheKey)) {
+            $this->statementCache->set($cacheKey, $sql);
+        }
+
+        return [$sql, $params];
+    }
+
+    private function buildStructuralCacheKey(array $where): string
+    {
+        $structural = [
+            'entityClass' => $this->entityClass,
+            'from' => $this->from,
+            'select' => $this->extractSelectExpressions($this->select),
+            'joins' => array_column($this->joins, 'sql'),
+            'where' => $this->extractConditionStructure($where),
+            'groupBy' => $this->groupBy,
+            'having' => array_map(
+                fn (array $h) => ['operator' => $h['operator'], 'condition' => $h['condition']],
+                $this->having
+            ),
+            'orderBy' => $this->orderBy,
+            'limit' => $this->cursorLimit !== null ? $this->cursorLimit + 1 : $this->limit,
+            'offset' => $this->cursor !== null ? null : $this->offset,
+            'distinct' => $this->distinct,
+            'lockForUpdate' => $this->lockForUpdate,
+            'cursor' => $this->cursor ? $this->cursor->getDirection()->value : null,
+            'disabledFilters' => $this->disabledFilters,
+        ];
+
+        return 'sqls_' . hash('sha256', json_encode($structural));
+    }
+
+    private function extractSelectExpressions(array $select): array
+    {
+        return array_map(
+            fn (mixed $item) => is_array($item) ? $item['expression'] : $item,
+            $select
+        );
+    }
+
+    private function extractConditionStructure(array $conditions): array
+    {
+        return array_map(function (array $cond) {
+            return [
+                'operator' => $cond['operator'],
+                'condition' => $cond['group'] !== null ? null : $cond['condition'],
+                'group' => $cond['group'] !== null ? $this->extractConditionStructure($cond['group']) : null,
+            ];
+        }, $conditions);
     }
 
     public function getSQL(): string
@@ -819,7 +901,7 @@ class QueryBuilder {
         $results = $this->getResult($entityClass);
         $items = is_array($results) ? $results : [];
 
-        return $this->cursorPaginationHandler->createPaginatorWithEntityClass(
+        return $this->cursorPaginationHandler->createPaginator(
             $items,
             $this->orderBy,
             $this->cursor,
@@ -898,6 +980,23 @@ class QueryBuilder {
 
         // Otherwise, we have specific column selection
         return true;
+    }
+
+    private function assertValidTableIdentifier(string $table): void
+    {
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$/', $table)) {
+            throw new InvalidArgumentException("Invalid table identifier '{$table}'.");
+        }
+    }
+
+    // join() accepts "table alias" as one string — validate each part separately
+    private function assertValidJoinTable(string $tableWithOptionalAlias): void
+    {
+        $parts = preg_split('/\s+/', trim($tableWithOptionalAlias), 2);
+        $this->assertValidTableIdentifier($parts[0]);
+        if (isset($parts[1])) {
+            $this->assertValidFieldIdentifier($parts[1]);
+        }
     }
 
     private function assertValidFieldIdentifier(string $field): void

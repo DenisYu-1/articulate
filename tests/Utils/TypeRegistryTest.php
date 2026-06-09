@@ -3,11 +3,24 @@
 namespace Articulate\Tests\Utils;
 
 use Articulate\Utils\BoolTypeConverter;
+use Articulate\Utils\EnumTypeConverter;
 use Articulate\Utils\Point;
 use Articulate\Utils\PointTypeConverter;
 use Articulate\Utils\TypeConverterInterface;
 use Articulate\Utils\TypeRegistry;
 use PHPUnit\Framework\TestCase;
+
+enum TypeRegistryStringEnum: string {
+    case A = 'a';
+}
+
+enum TypeRegistryIntEnum: int {
+    case One = 1;
+}
+
+enum TypeRegistryPureEnum {
+    case X;
+}
 
 class TypeRegistryTest extends TestCase {
     private TypeRegistry $registry;
@@ -42,6 +55,42 @@ class TypeRegistryTest extends TestCase {
 
         $this->assertSame('CUSTOM_TYPE', $this->registry->getDatabaseType('custom'));
         $this->assertSame($converter, $this->registry->getConverter('custom'));
+    }
+
+    public function testIntBackedEnumMapsToInt(): void
+    {
+        $this->assertSame('INT', $this->registry->getDatabaseType(TypeRegistryIntEnum::class));
+    }
+
+    public function testStringBackedEnumMapsToVarchar(): void
+    {
+        $this->assertSame('VARCHAR(255)', $this->registry->getDatabaseType(TypeRegistryStringEnum::class));
+    }
+
+    public function testPureEnumMapsToVarchar(): void
+    {
+        $this->assertSame('VARCHAR(255)', $this->registry->getDatabaseType(TypeRegistryPureEnum::class));
+    }
+
+    public function testNullableEnumMapsToBackingType(): void
+    {
+        $this->assertSame('INT', $this->registry->getDatabaseType('?' . TypeRegistryIntEnum::class));
+    }
+
+    public function testGetConverterForEnumReturnsEnumConverter(): void
+    {
+        $this->assertInstanceOf(
+            EnumTypeConverter::class,
+            $this->registry->getConverter(TypeRegistryStringEnum::class),
+        );
+    }
+
+    public function testGetConverterForNullableEnum(): void
+    {
+        $this->assertInstanceOf(
+            EnumTypeConverter::class,
+            $this->registry->getConverter('?' . TypeRegistryIntEnum::class),
+        );
     }
 
     public function testGetConverterForUnregisteredType(): void

@@ -4,7 +4,7 @@ namespace Articulate\Tests\Attributes;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\Index;
-use Articulate\Attributes\PrimaryKey;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use PHPUnit\Framework\TestCase;

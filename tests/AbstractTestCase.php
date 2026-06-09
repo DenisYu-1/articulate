@@ -22,26 +22,18 @@ abstract class AbstractTestCase extends TestCase {
         $this->pgsqlConnection = $pool->getPgsqlConnection();
 
         if ($this->mysqlConnection) {
-            try {
-                if (!$this->setUpTestTables($this->mysqlConnection, 'mysql')) {
-                    $this->mysqlConnection = null;
-                } elseif (!$this->mysqlConnection->inTransaction()) {
-                    $this->mysqlConnection->beginTransaction();
-                }
-            } catch (Exception $e) {
+            if (!$this->setUpTestTables($this->mysqlConnection, 'mysql')) {
                 $this->mysqlConnection = null;
+            } elseif (!$this->mysqlConnection->inTransaction()) {
+                $this->mysqlConnection->beginTransaction();
             }
         }
 
         if ($this->pgsqlConnection) {
-            try {
-                if (!$this->setUpTestTables($this->pgsqlConnection, 'pgsql')) {
-                    $this->pgsqlConnection = null;
-                } elseif (!$this->pgsqlConnection->inTransaction()) {
-                    $this->pgsqlConnection->beginTransaction();
-                }
-            } catch (Exception $e) {
+            if (!$this->setUpTestTables($this->pgsqlConnection, 'pgsql')) {
                 $this->pgsqlConnection = null;
+            } elseif (!$this->pgsqlConnection->inTransaction()) {
+                $this->pgsqlConnection->beginTransaction();
             }
         }
     }

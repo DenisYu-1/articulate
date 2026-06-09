@@ -3,7 +3,7 @@
 namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Entity;
-use Articulate\Attributes\PrimaryKey;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Relations\ManyToOne;

@@ -46,6 +46,10 @@ class EntityManager {
 
     private ?CacheItemPoolInterface $resultCache = null;
 
+    private ?CacheItemPoolInterface $statementCache = null;
+
+    private ?SecondLevelCache $secondLevelCache = null;
+
     private TypeRegistry $typeRegistry;
 
     private RelationshipLoader $relationshipLoader;
@@ -59,7 +63,10 @@ class EntityManager {
         ?QueryExecutor $queryExecutor = null,
         ?UpdateConflictResolutionStrategy $updateConflictResolutionStrategy = null,
         ?CacheItemPoolInterface $resultCache = null,
-        ?RepositoryFactoryInterface $repositoryFactory = null
+        ?RepositoryFactoryInterface $repositoryFactory = null,
+        ?CacheItemPoolInterface $statementCache = null,
+        ?CacheItemPoolInterface $secondLevelCache = null,
+        int $secondLevelCacheTtl = 3600,
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
@@ -94,7 +101,13 @@ class EntityManager {
         $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
         $this->resultCache = $resultCache;
+        $this->statementCache = $statementCache;
         $this->repositoryFactory = $repositoryFactory;
+
+        $secondLevelCachePool = $secondLevelCache ?? $resultCache;
+        if ($secondLevelCachePool !== null) {
+            $this->secondLevelCache = new SecondLevelCache($secondLevelCachePool, $secondLevelCacheTtl);
+        }
 
         $this->filters = new FilterCollection();
     }
@@ -121,6 +134,7 @@ class EntityManager {
         try {
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
             $this->executeChanges($aggregatedChanges);
+            $this->invalidateSecondLevelCache($aggregatedChanges);
 
             foreach ($this->unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
@@ -160,6 +174,79 @@ class EntityManager {
     {
         $this->flush();
         $this->clear();
+    }
+
+    private function invalidateSecondLevelCache(array $changes): void
+    {
+        if ($this->secondLevelCache === null) {
+            return;
+        }
+
+        foreach ($changes['updates'] as $update) {
+            if (!isset($update['entity'])) {
+                continue;
+            }
+
+            $this->evictEntityFromSecondLevelCache($update['entity']);
+        }
+
+        foreach ($changes['deletes'] as $entity) {
+            $this->evictEntityFromSecondLevelCache($entity);
+        }
+    }
+
+    /**
+     * Evict the entity and all sibling entity classes (same table) from the second-level cache.
+     * This prevents stale reads when multiple entity classes map to the same row.
+     */
+    private function evictEntityFromSecondLevelCache(object $entity): void
+    {
+        $entityClass = $entity instanceof Proxy\ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : $entity::class;
+        $id = $this->extractEntityIdForCache($entity, $entityClass);
+
+        if ($id === null) {
+            return;
+        }
+
+        $tableName = $this->metadataRegistry->getTableName($entityClass);
+        $siblingClasses = $this->metadataRegistry->getClassesByTable($tableName);
+
+        if (empty($siblingClasses)) {
+            $this->secondLevelCache->evict($entityClass, $id);
+
+            return;
+        }
+
+        foreach ($siblingClasses as $class) {
+            $this->secondLevelCache->evict($class, $id);
+        }
+    }
+
+    private function extractEntityIdForCache(object $entity, string $entityClass): mixed
+    {
+        if ($entity instanceof Proxy\ProxyInterface) {
+            return $entity->getProxyIdentifier();
+        }
+
+        $metadata = $this->metadataRegistry->getMetadata($entityClass);
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
+
+        if (empty($primaryKeyColumns)) {
+            return null;
+        }
+
+        $propertyName = $metadata->getPropertyNameForColumn($primaryKeyColumns[0]);
+
+        if ($propertyName === null) {
+            return null;
+        }
+
+        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty->setAccessible(true);
+
+        return $reflectionProperty->getValue($entity);
     }
 
     /**
@@ -357,13 +444,29 @@ class EntityManager {
     }
 
     // Retrieval operations
-    public function find(string $class, mixed $id): ?object
+
+    /**
+     * @param string[] $with Relation property names to force-eager even when lazy: true
+     */
+    public function find(string $class, mixed $id, array $with = []): ?object
     {
+        if (!empty($with)) {
+            $this->validateWith($class, $with);
+        }
+
         // Check identity maps of all unit of works first
         foreach ($this->unitOfWorks as $unitOfWork) {
             $entity = $unitOfWork->tryGetById($class, $id);
             if ($entity) {
                 return $entity;
+            }
+        }
+
+        // Check second-level cache before hitting the database
+        if ($this->secondLevelCache !== null) {
+            $cachedData = $this->secondLevelCache->get($class, $id);
+            if ($cachedData !== null) {
+                return $this->hydrator->hydrate($class, $cachedData, null, $with);
             }
         }
 
@@ -399,13 +502,25 @@ class EntityManager {
 
         $rawData = $rawResults[0];
 
-        $entity = $this->hydrator->hydrate($class, $rawData);
+        if ($this->secondLevelCache !== null) {
+            $this->secondLevelCache->set($class, $id, $rawData);
+        }
+
+        $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
 
         return $entity;
     }
 
-    public function findAll(string $class): array
+    /**
+     * @param string[] $with Relation property names to force-eager even when lazy: true
+     * @return object[]
+     */
+    public function findAll(string $class, array $with = []): array
     {
+        if (!empty($with)) {
+            $this->validateWith($class, $with);
+        }
+
         // Get entity metadata
         $metadata = $this->metadataRegistry->getMetadata($class);
         $tableName = $metadata->getTableName();
@@ -428,12 +543,30 @@ class EntityManager {
 
         // Hydrate each entity and register in unit of work
         foreach ($rawResults as $rawData) {
-            $entity = $this->hydrator->hydrate($class, $rawData);
+            $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
             $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
             $entities[] = $entity;
         }
 
         return $entities;
+    }
+
+    /**
+     * @param string[] $with
+     * @throws InvalidArgumentException on unknown relation name
+     */
+    private function validateWith(string $class, array $with): void
+    {
+        $metadata = $this->metadataRegistry->getMetadata($class);
+        $knownRelations = array_keys($metadata->getRelations());
+
+        foreach ($with as $name) {
+            if (!in_array($name, $knownRelations, true)) {
+                throw new InvalidArgumentException(
+                    "Relation '$name' not found on entity $class. Known relations: " . implode(', ', $knownRelations)
+                );
+            }
+        }
     }
 
     /**
@@ -628,7 +761,7 @@ class EntityManager {
 
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters);
+        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters, $this->statementCache);
         $qb->setUnitOfWork($this->getActiveUnitOfWork());
 
         if ($entityClass) {

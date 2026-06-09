@@ -370,6 +370,30 @@ class SqlCompiler {
         return $this->collectWhereParameters($conditions);
     }
 
+    public function collectParametersPublic(array $select, array $joins, array $where, array $having): array
+    {
+        return $this->collectParameters($select, $joins, $where, $having);
+    }
+
+    public function buildWhereWithCursor(array $where, array $orderBy, ?Cursor $cursor): array
+    {
+        $whereWithCursor = $where;
+
+        if ($cursor !== null && !empty($orderBy)) {
+            $cursorCondition = $this->buildCursorCondition($orderBy, $cursor);
+            if ($cursorCondition !== null) {
+                $whereWithCursor[] = [
+                    'operator' => 'AND',
+                    'condition' => $cursorCondition['condition'],
+                    'params' => $cursorCondition['params'],
+                    'group' => null,
+                ];
+            }
+        }
+
+        return $whereWithCursor;
+    }
+
     /**
      * Compile INSERT SQL statement.
      *

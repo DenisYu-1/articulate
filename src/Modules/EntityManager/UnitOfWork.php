@@ -5,6 +5,8 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 
+use Articulate\Exceptions\ReadOnlyEntityException;
+use Articulate\Exceptions\ScheduleConflictException;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\EntityRegistrarInterface;
@@ -31,6 +33,9 @@ class UnitOfWork implements EntityRegistrarInterface {
     /** @var array<int, object> */
     private array $entitiesByOid = [];
 
+    /** @var array<int, true> OIDs registered via persist() with an explicit ID (not loaded from DB) */
+    private array $explicitPersistOids = [];
+
     private LifecycleCallbackManager $callbackManager;
 
     public function __construct(
@@ -46,6 +51,13 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function persist(object $entity): void
     {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        if ($reflectionEntity->isEntity() && $reflectionEntity->isReadOnly()) {
+            throw new ReadOnlyEntityException(
+                sprintf("Entity '%s' is marked as read-only and cannot be written.", $entity::class)
+            );
+        }
+
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
@@ -57,10 +69,12 @@ class UnitOfWork implements EntityRegistrarInterface {
 
             // If entity has an ID, it's likely already persisted
             if ($id !== null && $id !== '') {
+                $this->assertNoConflictingDelete($entity, $id);
                 $snapshot = $this->extractEntitySnapshot($entity);
                 $this->registerManaged($entity, $snapshot);
                 $this->entityStates[$oid] = EntityState::MANAGED;
                 $this->entitiesByOid[$oid] = $entity;
+                $this->explicitPersistOids[$oid] = true;
             } else {
                 // New entity without ID - schedule for insert
                 $this->scheduledInserts[$oid] = $entity;
@@ -81,6 +95,13 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function remove(object $entity): void
     {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+        if ($reflectionEntity->isEntity() && $reflectionEntity->isReadOnly()) {
+            throw new ReadOnlyEntityException(
+                sprintf("Entity '%s' is marked as read-only and cannot be written.", $entity::class)
+            );
+        }
+
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
@@ -93,6 +114,8 @@ class UnitOfWork implements EntityRegistrarInterface {
             unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
             unset($this->entitiesByOid[$oid]);
             $this->identityMap->remove($entity);
+
+            $this->removeSiblingEntities($entity);
         } elseif ($state === EntityState::NEW) {
             unset($this->scheduledInserts[$oid]);
             unset($this->entityStates[$oid]);
@@ -149,6 +172,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
+        $this->explicitPersistOids = [];
     }
 
     /**
@@ -230,7 +254,7 @@ class UnitOfWork implements EntityRegistrarInterface {
 
         $this->identityMap->remove($entity);
         $this->changeTrackingStrategy->untrackEntity($entity);
-        unset($this->entityStates[$oid], $this->entitiesByOid[$oid]);
+        unset($this->entityStates[$oid], $this->entitiesByOid[$oid], $this->explicitPersistOids[$oid]);
         unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid], $this->scheduledDeletes[$oid]);
     }
 
@@ -239,10 +263,43 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->identityMap->clear();
         $this->entityStates = [];
         $this->entitiesByOid = [];
+        $this->explicitPersistOids = [];
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
         $this->changeTrackingStrategy->clear();
+    }
+
+    private function assertNoConflictingDelete(object $entity, mixed $id): void
+    {
+        try {
+            $tableName = $this->metadataRegistry->getMetadata($entity::class)->getTableName();
+        } catch (\InvalidArgumentException) {
+            return;
+        }
+
+        $key = $this->identityMap->generateKey($id);
+
+        foreach ($this->scheduledDeletes as $deleted) {
+            try {
+                $deletedTable = $this->metadataRegistry->getMetadata($deleted::class)->getTableName();
+            } catch (\InvalidArgumentException) {
+                continue;
+            }
+
+            if ($deletedTable !== $tableName) {
+                continue;
+            }
+
+            if ($this->identityMap->generateKey($this->extractEntityId($deleted)) === $key) {
+                throw new ScheduleConflictException(sprintf(
+                    "Cannot persist '%s' with id '%s': a delete is already scheduled for the same row (table '%s'). Flush before persisting.",
+                    $entity::class,
+                    $key,
+                    $tableName,
+                ));
+            }
+        }
     }
 
     private function hasChanges(object $entity): bool
@@ -283,6 +340,62 @@ class UnitOfWork implements EntityRegistrarInterface {
         }
 
         return $snapshot;
+    }
+
+    /**
+     * Mark all managed sibling entities (same table, same id) as REMOVED.
+     * Does not add them to scheduledDeletes — the DB row is already covered by the primary entity's DELETE.
+     */
+    private function removeSiblingEntities(object $removed): void
+    {
+        try {
+            $tableName = $this->metadataRegistry->getMetadata($removed::class)->getTableName();
+        } catch (\InvalidArgumentException) {
+            return;
+        }
+
+        $removedKey = $this->identityMap->generateKey($this->extractEntityId($removed));
+
+        foreach (array_keys($this->entitiesByOid) as $siblingOid) {
+            if (!array_key_exists($siblingOid, $this->entitiesByOid)) {
+                continue;
+            }
+
+            $sibling = $this->entitiesByOid[$siblingOid];
+
+            if (($this->entityStates[$siblingOid] ?? EntityState::NEW) !== EntityState::MANAGED) {
+                continue;
+            }
+
+            try {
+                $siblingTable = $this->metadataRegistry->getMetadata($sibling::class)->getTableName();
+            } catch (\InvalidArgumentException) {
+                continue;
+            }
+
+            if ($siblingTable !== $tableName) {
+                continue;
+            }
+
+            if ($this->identityMap->generateKey($this->extractEntityId($sibling)) !== $removedKey) {
+                continue;
+            }
+
+            if (array_key_exists($siblingOid, $this->explicitPersistOids)) {
+                throw new ScheduleConflictException(sprintf(
+                    "Cannot remove '%s': a persist is already scheduled for '%s' sharing the same row (table '%s', id '%s'). Flush before removing.",
+                    $removed::class,
+                    $sibling::class,
+                    $tableName,
+                    $removedKey,
+                ));
+            }
+
+            $this->entityStates[$siblingOid] = EntityState::REMOVED;
+            unset($this->scheduledInserts[$siblingOid], $this->scheduledUpdates[$siblingOid]);
+            unset($this->entitiesByOid[$siblingOid]);
+            $this->identityMap->remove($sibling);
+        }
     }
 
     private function findPrimaryKeyProperty(object $entity): ?ArticulateReflectionProperty

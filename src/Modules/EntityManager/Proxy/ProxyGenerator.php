@@ -14,9 +14,13 @@ class ProxyGenerator {
     /** @var bool */
     private bool $enableCaching = true;
 
+    private string $proxyDir;
+
     public function __construct(
-        private EntityMetadataRegistry $metadataRegistry
+        private EntityMetadataRegistry $metadataRegistry,
+        string $proxyDir = '',
     ) {
+        $this->proxyDir = $proxyDir !== '' ? $proxyDir : sys_get_temp_dir();
     }
 
     /**
@@ -42,7 +46,7 @@ class ProxyGenerator {
 
         if (!class_exists($proxyClassName, false)) {
             $proxyCode = $this->generateProxyClassCode($entityClass, $proxyClassName);
-            eval($proxyCode);
+            $this->loadProxyClass($proxyClassName, $proxyCode);
         }
 
         if ($this->enableCaching) {
@@ -73,6 +77,19 @@ class ProxyGenerator {
         $className = basename(str_replace('\\', '_', $entityClass));
 
         return sprintf('Proxy_%s_%s', $className, $hash);
+    }
+
+    private function loadProxyClass(string $proxyClassName, string $proxyCode): void
+    {
+        $file = $this->proxyDir . DIRECTORY_SEPARATOR . $proxyClassName . '.php';
+
+        if (!file_exists($file)) {
+            $tmp = $file . '.' . getmypid() . '.tmp';
+            file_put_contents($tmp, "<?php\n" . $proxyCode);
+            rename($tmp, $file);
+        }
+
+        require_once $file;
     }
 
     /**

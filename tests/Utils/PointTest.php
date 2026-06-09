@@ -112,8 +112,8 @@ class PointTest extends TestCase {
         $parsed = Point::fromString($pointString);
 
         // Should maintain reasonable precision (up to 6 decimal places in string representation)
-        $this->assertEquals(1.234568, $parsed->x, '', 0.000001);
-        $this->assertEquals(-9.876543, $parsed->y, '', 0.000001);
+        $this->assertEqualsWithDelta(1.234568, $parsed->x, 0.000001);
+        $this->assertEqualsWithDelta(-9.876543, $parsed->y, 0.000001);
     }
 
     public function testScientificNotationCoordinates(): void

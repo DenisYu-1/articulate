@@ -100,78 +100,55 @@ class CursorPaginationHandler {
         array $items,
         array $orderBy,
         ?Cursor $currentCursor,
-        int $cursorLimit
-    ): CursorPaginator {
-        $parsedOrderBy = $this->parseOrderByForCursor($orderBy);
-        $nextCursor = null;
-        $prevCursor = null;
-
-        if (!empty($items)) {
-            $lastItem = end($items);
-            $lastValues = $this->extractCursorValues($lastItem, $parsedOrderBy, null);
-            if ($lastValues !== null) {
-                $nextCursor = $this->cursorCodec->encode(new Cursor($lastValues, CursorDirection::NEXT));
-            }
-
-            // Only create prevCursor if we're not on the first page
-            if ($currentCursor !== null) {
-                $firstItem = reset($items);
-                $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, null);
-                if ($firstValues !== null) {
-                    $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
-                }
-            }
-        }
-
-        $hasMore = count($items) === $cursorLimit;
-        if (!$hasMore) {
-            $nextCursor = null;
-        }
-
-        if ($currentCursor === null || $currentCursor->getDirection() === CursorDirection::NEXT) {
-            return new CursorPaginator($items, $nextCursor, $prevCursor);
-        }
-
-        return new CursorPaginator(array_reverse($items), $prevCursor, $nextCursor);
-    }
-
-    public function createPaginatorWithEntityClass(
-        array $items,
-        array $orderBy,
-        ?Cursor $currentCursor,
         int $cursorLimit,
-        ?string $entityClass
+        ?string $entityClass = null
     ): CursorPaginator {
         $parsedOrderBy = $this->parseOrderByForCursor($orderBy);
         $nextCursor = null;
         $prevCursor = null;
 
+        $hasMore = count($items) > $cursorLimit;
+        if ($hasMore) {
+            $items = array_slice($items, 0, $cursorLimit);
+        }
+
         if (!empty($items)) {
-            $lastItem = end($items);
-            $lastValues = $this->extractCursorValues($lastItem, $parsedOrderBy, $entityClass);
-            if ($lastValues !== null) {
-                $nextCursor = $this->cursorCodec->encode(new Cursor($lastValues, CursorDirection::NEXT));
+            $isPrev = $currentCursor?->getDirection() === CursorDirection::PREV;
+
+            if ($isPrev) {
+                // DB returned items in reversed order: first = highest value, last = lowest value
+                $nextBoundaryItem = reset($items);
+                $prevBoundaryItem = end($items);
+            } else {
+                $nextBoundaryItem = end($items);
+                $prevBoundaryItem = reset($items);
             }
 
-            // Only create prevCursor if we're not on the first page
+            $nextValues = $this->extractCursorValues($nextBoundaryItem, $parsedOrderBy, $entityClass);
+            if ($nextValues !== null) {
+                $nextCursor = $this->cursorCodec->encode(new Cursor($nextValues, CursorDirection::NEXT));
+            }
+
             if ($currentCursor !== null) {
-                $firstItem = reset($items);
-                $firstValues = $this->extractCursorValues($firstItem, $parsedOrderBy, $entityClass);
-                if ($firstValues !== null) {
-                    $prevCursor = $this->cursorCodec->encode(new Cursor($firstValues, CursorDirection::PREV));
+                $prevValues = $this->extractCursorValues($prevBoundaryItem, $parsedOrderBy, $entityClass);
+                if ($prevValues !== null) {
+                    $prevCursor = $this->cursorCodec->encode(new Cursor($prevValues, CursorDirection::PREV));
                 }
             }
         }
 
-        $hasMore = count($items) === $cursorLimit;
         if (!$hasMore) {
-            $nextCursor = null;
+            if ($currentCursor?->getDirection() === CursorDirection::PREV) {
+                $prevCursor = null;
+            } else {
+                $nextCursor = null;
+            }
         }
 
-        if ($currentCursor === null || $currentCursor->getDirection() === CursorDirection::NEXT) {
-            return new CursorPaginator($items, $nextCursor, $prevCursor);
+        if ($currentCursor?->getDirection() === CursorDirection::PREV) {
+            return new CursorPaginator(array_reverse($items), $nextCursor, $prevCursor);
         }
 
-        return new CursorPaginator(array_reverse($items), $prevCursor, $nextCursor);
+        return new CursorPaginator($items, $nextCursor, $prevCursor);
     }
 }

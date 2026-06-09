@@ -90,6 +90,7 @@ class LockTest extends DatabaseTestCase {
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_users');
         $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
         $this->connection->executeQuery('INSERT INTO test_users (id, name) VALUES (1, \'John\'), (2, \'Jane\')');
 
@@ -116,6 +117,7 @@ class LockTest extends DatabaseTestCase {
         $this->connection = $this->getCurrentConnection();
         $this->qb = new QueryBuilder($this->connection);
 
+        $this->connection->executeQuery('DROP TABLE IF EXISTS test_users');
         $this->connection->executeQuery('CREATE TABLE test_users (id INT, name VARCHAR(255))');
         $this->connection->executeQuery('INSERT INTO test_users (id, name) VALUES (1, \'John\'), (2, \'Jane\')');
 

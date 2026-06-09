@@ -26,13 +26,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'user_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false),
+                    new PropertiesData('int', false, isForeignKey: true),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'post_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false),
+                    new PropertiesData('int', false, isForeignKey: true),
                     new PropertiesData()
                 ),
             ],
@@ -65,7 +65,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
@@ -96,13 +96,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     'test_many_to_many_owner_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false),
+                    new PropertiesData('int', false, isForeignKey: true),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
                     'test_many_to_many_target_id',
                     CompareResult::OPERATION_CREATE,
-                    new PropertiesData('int', false),
+                    new PropertiesData('int', false, isForeignKey: true),
                     new PropertiesData()
                 ),
                 new ColumnCompareResult(
@@ -141,7 +141,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
@@ -179,13 +179,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
                     'user_id',
                     CompareResult::OPERATION_DELETE,
                     new PropertiesData(),
-                    new PropertiesData('int', false)
+                    new PropertiesData('int', false, isForeignKey: true)
                 ),
                 new ColumnCompareResult(
                     'post_id',
                     CompareResult::OPERATION_DELETE,
                     new PropertiesData(),
-                    new PropertiesData('int', false)
+                    new PropertiesData('int', false, isForeignKey: true)
                 ),
             ],
             [],
@@ -219,7 +219,7 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
 
         // Should recreate the table with all original structure
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 

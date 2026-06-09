@@ -5,14 +5,12 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
-use Articulate\Attributes\Table;
 use Articulate\Connection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-#[Entity]
-#[Table('testusers')]
+#[Entity(tableName: 'testusers')]
 class TestUser {
     #[PrimaryKey]
     #[Property]

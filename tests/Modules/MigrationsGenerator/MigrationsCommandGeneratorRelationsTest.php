@@ -116,7 +116,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     name: 'related_entity_id',
                     operation: 'create',
-                    propertyData: new PropertiesData('int', false),
+                    propertyData: new PropertiesData('int', false, isForeignKey: true),
                     columnData: new PropertiesData(),
                 ),
             ],
@@ -142,7 +142,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
@@ -168,7 +168,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                 new ColumnCompareResult(
                     name: 'related_entity_id',
                     operation: 'create',
-                    propertyData: new PropertiesData('int', false),
+                    propertyData: new PropertiesData('int', false, isForeignKey: true),
                     columnData: new PropertiesData(),
                 ),
             ],
@@ -187,7 +187,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 
@@ -259,7 +259,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     name: 'related_entity_id',
                     operation: 'delete',
                     propertyData: new PropertiesData(),
-                    columnData: new PropertiesData('int', false),
+                    columnData: new PropertiesData('int', false, isForeignKey: true),
                 ),
             ],
             [],
@@ -311,7 +311,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     name: 'related_entity_id',
                     operation: 'delete',
                     propertyData: new PropertiesData(),
-                    columnData: new PropertiesData('int', false),
+                    columnData: new PropertiesData('int', false, isForeignKey: true),
                 ),
             ],
             [],
@@ -336,7 +336,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         };
 
         $intType = match ($databaseName) {
-            'mysql' => 'INT',
+            'mysql' => 'INT UNSIGNED',
             'pgsql' => 'INTEGER',
         };
 

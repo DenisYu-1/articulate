@@ -1,12 +1,14 @@
 <?php
 
-namespace Articulate\Modules\Database\SchemaComparator;
+namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
+use Articulate\Modules\Database\SchemaComparator\RelationDefinitionCollector;
+use Articulate\Modules\Database\SchemaComparator\SchemaComparisonCoordinator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;

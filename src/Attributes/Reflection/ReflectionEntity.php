@@ -398,6 +398,15 @@ class ReflectionEntity extends ReflectionClass {
         return $this->getAttributes(Entity::class)[0]->newInstance()->repositoryClass;
     }
 
+    public function isReadOnly(): bool
+    {
+        if (!$this->isEntity()) {
+            return false;
+        }
+
+        return $this->getAttributes(Entity::class)[0]->newInstance()->readOnly;
+    }
+
     private function parseTableName(): string
     {
         $className = explode('\\', $this->getName());

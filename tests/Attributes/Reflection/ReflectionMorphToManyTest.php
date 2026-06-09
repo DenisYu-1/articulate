@@ -205,7 +205,7 @@ class TestEntityWithMorphToManyValid {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public array $tags;
 }
 
@@ -214,7 +214,7 @@ class TestEntityWithMorphToManyNoType {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public $tags;
 }
 
@@ -223,7 +223,7 @@ class TestEntityWithMorphToManyArray {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public array $tags;
 }
 
@@ -232,7 +232,7 @@ class TestEntityWithMorphToManyIterable {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public iterable $tags;
 }
 
@@ -241,7 +241,7 @@ class TestEntityWithMorphToManyMappingCollection {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public MappingCollection $tags;
 }
 
@@ -253,7 +253,7 @@ class TestEntityWithMorphToManyMappingCollectionSubclass {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public CustomMappingCollection $tags;
 }
 
@@ -262,7 +262,7 @@ class TestEntityWithMorphToManyInvalidType {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public string $tags;
 }
 
@@ -271,7 +271,7 @@ class TestEntityWithMorphToManyInvalidClass {
     #[Property]
     public int $id;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public \stdClass $tags;
 }
 
@@ -301,6 +301,6 @@ class TestEntityWithMultiplePrimaryKeys {
     #[Property]
     public string $name;
 
-    #[MorphToMany(targetEntity: TestTagEntity::class)]
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public array $tags;
 }

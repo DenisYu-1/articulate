@@ -103,13 +103,21 @@ class RelationshipLoader {
      * Load a relationship for a given entity.
      *
      * @param object $entity The entity to load the relationship for
-     * @param ReflectionRelation $relation The relationship metadata
+     * @param RelationInterface $relation The relationship metadata
      * @param array $data The raw data from the database (for morph relationships)
      * @param bool $forceLoad Whether to force loading even if already loaded
      * @return mixed The loaded relationship data
      */
-    public function load(object $entity, ReflectionRelation $relation, array $data = [], bool $forceLoad = false): mixed
+    public function load(object $entity, RelationInterface $relation, array $data = [], bool $forceLoad = false): mixed
     {
+        if ($relation instanceof ReflectionManyToMany) {
+            return $this->loadManyToMany($entity, $relation);
+        }
+
+        if (!($relation instanceof ReflectionRelation)) {
+            return null;
+        }
+
         if ($relation->isOneToOne()) {
             return $this->loadOneToOne($entity, $relation);
         }
@@ -207,7 +215,7 @@ class RelationshipLoader {
     /**
      * Load a ManyToMany relationship.
      */
-    private function loadManyToMany(object $entity, ReflectionRelation $relation): array
+    private function loadManyToMany(object $entity, ReflectionRelation|ReflectionManyToMany $relation): array
     {
         // For ManyToMany, we need to query through a pivot table
         $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);

@@ -35,7 +35,7 @@ class MigrationGenerator {
         // Replace the placeholders with actual content
         $migrationContent = str_replace(
             ['{{namespace}}', '{{className}}', '{{upScript}}', '{{downScript}}'],
-            [$namespace, $className, $upScript, $downScript],
+            [$namespace, $className, $this->indent($upScript), $this->indent($downScript)],
             $templateContent
         );
 
@@ -51,6 +51,13 @@ class MigrationGenerator {
         if ($this->output) {
             $this->output->writeln("Migration $className generated successfully at $fileName");
         }
+    }
+
+    private function indent(string $script): string
+    {
+        $indent = '        '; // 8 spaces — matches template body indentation
+
+        return implode(PHP_EOL . $indent, explode(PHP_EOL, $script));
     }
 
     private function assertValidClassName(string $className): void

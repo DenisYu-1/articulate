@@ -5,6 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Exceptions\ScheduleConflictException;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
@@ -276,6 +277,112 @@ class UnitOfWorkTest extends TestCase {
             'Entity with changes should be scheduled for update, but getEntityByOid returns null'
         );
     }
+
+    public function testRemovePropagatesRemovedStateToSiblingEntity(): void
+    {
+        $registry = new EntityMetadataRegistry();
+        $uow = new UnitOfWork(null, null, $registry);
+
+        $entityA = new SharedTableEntityA();
+        $entityA->id = 1;
+        $entityA->name = 'Alice';
+
+        $entityB = new SharedTableEntityB();
+        $entityB->id = 1;
+
+        $uow->registerManaged($entityA, ['id' => 1, 'name' => 'Alice']);
+        $uow->registerManaged($entityB, ['id' => 1]);
+
+        $uow->remove($entityA);
+
+        $this->assertEquals(EntityState::REMOVED, $uow->getEntityState($entityA));
+        $this->assertEquals(EntityState::REMOVED, $uow->getEntityState($entityB));
+        $this->assertNull($uow->tryGetById(SharedTableEntityB::class, 1));
+    }
+
+    public function testRemoveDoesNotPropagateToSiblingWithDifferentId(): void
+    {
+        $registry = new EntityMetadataRegistry();
+        $uow = new UnitOfWork(null, null, $registry);
+
+        $entityA = new SharedTableEntityA();
+        $entityA->id = 1;
+        $entityA->name = 'Alice';
+
+        $entityB = new SharedTableEntityB();
+        $entityB->id = 2;
+
+        $uow->registerManaged($entityA, ['id' => 1, 'name' => 'Alice']);
+        $uow->registerManaged($entityB, ['id' => 2]);
+
+        $uow->remove($entityA);
+
+        $this->assertEquals(EntityState::REMOVED, $uow->getEntityState($entityA));
+        $this->assertEquals(EntityState::MANAGED, $uow->getEntityState($entityB));
+        $this->assertNotNull($uow->tryGetById(SharedTableEntityB::class, 2));
+    }
+
+    public function testPersistAfterRemoveSameRowThrows(): void
+    {
+        $registry = new EntityMetadataRegistry();
+        $uow = new UnitOfWork(null, null, $registry);
+
+        $entityA = new SharedTableEntityA();
+        $entityA->id = 1;
+        $entityA->name = 'Alice';
+
+        $entityB = new SharedTableEntityA();
+        $entityB->id = 1;
+        $entityB->name = 'Bob';
+
+        $uow->registerManaged($entityA, ['id' => 1, 'name' => 'Alice']);
+        $uow->remove($entityA);
+
+        $this->expectException(ScheduleConflictException::class);
+        $uow->persist($entityB);
+    }
+
+    public function testRemoveAfterPersistSameRowThrows(): void
+    {
+        $registry = new EntityMetadataRegistry();
+        $uow = new UnitOfWork(null, null, $registry);
+
+        $entityA = new SharedTableEntityA();
+        $entityA->id = 1;
+        $entityA->name = 'Alice';
+
+        $entityB = new SharedTableEntityA();
+        $entityB->id = 1;
+        $entityB->name = 'Bob';
+
+        $uow->registerManaged($entityA, ['id' => 1, 'name' => 'Alice']);
+        $uow->persist($entityB);
+
+        $this->expectException(ScheduleConflictException::class);
+        $uow->remove($entityA);
+    }
+
+    public function testSiblingEntityNotAddedToScheduledDeletes(): void
+    {
+        $registry = new EntityMetadataRegistry();
+        $uow = new UnitOfWork(null, null, $registry);
+
+        $entityA = new SharedTableEntityA();
+        $entityA->id = 1;
+        $entityA->name = 'Alice';
+
+        $entityB = new SharedTableEntityB();
+        $entityB->id = 1;
+
+        $uow->registerManaged($entityA, ['id' => 1, 'name' => 'Alice']);
+        $uow->registerManaged($entityB, ['id' => 1]);
+
+        $uow->remove($entityA);
+
+        $changes = $uow->getChangeSets();
+        $this->assertCount(1, $changes['deletes'], 'Only one DELETE needed for sibling entities on the same row');
+        $this->assertSame($entityA, $changes['deletes'][0]);
+    }
 }
 
 // Test entity class for ID generation tests
@@ -296,4 +403,19 @@ class TestEntityForUuid {
 
     #[Property]
     public string $name;
+}
+
+#[Entity(tableName: 'shared_table')]
+class SharedTableEntityA {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+}
+
+#[Entity(tableName: 'shared_table')]
+class SharedTableEntityB {
+    #[PrimaryKey]
+    public int $id;
 }

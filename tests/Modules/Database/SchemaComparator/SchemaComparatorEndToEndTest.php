@@ -1,6 +1,6 @@
 <?php
 
-namespace Articulate\Modules\Database\SchemaComparator;
+namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
@@ -10,6 +10,7 @@ use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Connection;
+use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;

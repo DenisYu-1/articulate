@@ -21,6 +21,7 @@ class ConnectionPool {
 
     private function __construct()
     {
+        $this->initializeConnections();
     }
 
     public static function getInstance(): self
@@ -34,19 +35,11 @@ class ConnectionPool {
 
     public function getMysqlConnection(): ?Connection
     {
-        if ($this->mysqlConnection === null) {
-            $this->initializeConnections();
-        }
-
         return $this->mysqlConnection;
     }
 
     public function getPgsqlConnection(): ?Connection
     {
-        if ($this->pgsqlConnection === null) {
-            $this->initializeConnections();
-        }
-
         return $this->pgsqlConnection;
     }
 
