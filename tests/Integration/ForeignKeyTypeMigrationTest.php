@@ -6,11 +6,11 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Connection;
 use Articulate\Modules\Database\MySqlTypeMapper;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use Articulate\Modules\Migrations\Generator\MySqlMigrationGenerator;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
-use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\FkIntChild;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\FkIntParent;
 
