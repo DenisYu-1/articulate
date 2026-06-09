@@ -21,6 +21,20 @@ class MigrateCommandTest extends DatabaseTestCase {
 
     private MockObject&InitCommand $initCommand;
 
+    protected function setUpTestTables(Connection $connection, string $databaseName): bool
+    {
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->cleanUpTables(['test', 'migrations']);
+
+        return true;
+    }
+
+    protected function tearDownTestTables(Connection $connection, string $databaseName): void
+    {
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->cleanUpTables(['test', 'migrations']);
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
