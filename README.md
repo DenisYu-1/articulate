@@ -1,24 +1,35 @@
 # Articulate
 
-Context-bounded PHP ORM for domain-driven applications
+Context-bounded ORM for modular PHP applications that share database tables across modules.
 
-## The Problem
+## Why Articulate?
 
-Traditional ORMs force one entity class per table. Auth needs only `login` and `password`, but it loads `phones`, `groups`, `cart`, and every other relation. The admin panel needs different fields than the API. Adding one relation to a `User` entity affects every consumer of that class.
+Most ORMs make the table/entity boundary the modeling boundary: one table, one primary entity class. In modular systems, that turns shared tables into shared domain objects.
 
-The entity manager accumulates objects in memory for the entire request or process. Long-running jobs, batch imports, or complex flows have no way to release entities that are no longer needed without detaching everything.
+A `users` table may be touched by authentication, administration, billing, public APIs, reporting, and background workers. Those contexts do not need the same fields, relations, invariants, or lifecycle behavior. A single shared `User` entity gradually becomes a coupling point between modules.
+
+Articulate makes the bounded context the modeling boundary. Several small entity classes can map to the same physical table: `LoginUser` for authentication, `AdminUser` for administration, `BillingCustomer` for billing, and read-only projection entities for public APIs.
 
 <p align="center">
   <img src="logo.svg" alt="Articulate Logo" width="80" height="80">
 </p>
 
-Articulate addresses these pains with context-bounded entities and scoped unit-of-work management.
+Articulate still provides the expected ORM foundations: attributes, repositories, relations, migrations, type mapping, identity map, unit of work, lazy loading, and caching. The difference is that these pieces are designed around context-bounded entities from the start.
 
 ## Badges
 
 [![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
 [![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
+
+## What Makes It Different?
+
+- Multiple entity classes can map to one physical table.
+- Partial entities can be marked read-only when they intentionally omit required columns.
+- Each `EntityManager` owns its identity map and units of work.
+- Shared-table sibling entities are handled deliberately during writes and cache eviction.
+- Schema metadata, migrations, relations, lazy loading, repositories, and type conversion all understand context-bounded entities.
+- MySQL and PostgreSQL are first-class targets.
 
 ## Quick Start
 
@@ -53,7 +64,7 @@ $user = $em->getRepository(User::class)->find($user->id);
 
 ## Before / After
 
-**Before** — one fat entity, every context gets everything:
+**Before** — one shared entity shape for every context:
 
 ```php
 #[Entity]
@@ -63,7 +74,7 @@ class User
     public string $login;
     public string $password;
     public string $name;
-    public array $phones;   // Auth doesn't need this
+    public array $phones;  // Auth doesn't need this
     public array $groups;  // Auth doesn't need this
     public Cart $cart;     // Auth doesn't need this
 }
@@ -110,15 +121,11 @@ $loginUser = $em->getRepository(LoginUser::class)->find($id);
 return $auth->validate($loginUser->login, $loginUser->password);
 ```
 
-## How Articulate Compares?
+## When It Fits
 
-| | Doctrine | Cycle ORM | Articulate |
-|---|---|---|---|
-| Multiple entity classes per table | No built-in support | No, one entity per table | Yes, first-class context-bounded entities |
-| Memory control | Identity map held for process lifetime; clear-all or nothing | Similar model | Scoped unit-of-work; release entities mid-request |
-| Config style | XML/YAML common, attributes optional | Annotations/attributes | Attributes only (PHP 8.4+) |
+Articulate is a good fit when different bounded contexts need different views of the same data, when adding a relation for one workflow should not affect every other workflow, or when long-running processes need tighter control over tracked entities.
 
-Articulate is aimed at projects where different bounded contexts need different views of the same data and where memory pressure matters in long-running or batch processes.
+If your application has one stable entity model per table and your current ORM handles that well, Articulate would still fit, just probably will not solve a meaningful problem for you.
 
 ## Core Concepts
 

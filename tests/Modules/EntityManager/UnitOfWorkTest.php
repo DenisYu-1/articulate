@@ -199,29 +199,24 @@ class UnitOfWorkTest extends TestCase {
         $this->assertTrue($this->unitOfWork->isInIdentityMap($entity));
     }
 
-    public function testPersistEntityWithExistingIdDoesNotOverwrite(): void
+    public function testPersistEntityWithExistingIdSchedulesInsert(): void
     {
         $entity = new TestEntityForId();
         $entity->id = 42;
         $entity->name = 'Entity with ID';
 
-        // Debug: check entity state before persist
         $this->assertEquals(EntityState::NEW, $this->unitOfWork->getEntityState($entity));
 
         $this->unitOfWork->persist($entity);
 
-        // Debug: check entity state after persist
         $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
 
-        $this->unitOfWork->clearChanges();
+        // Should be scheduled for INSERT, not silently treated as already-managed
+        $changes = $this->unitOfWork->getChangeSets();
+        $this->assertContains($entity, $changes['inserts'], 'Entity with explicit ID must be scheduled for INSERT');
 
         // Should keep the original ID
         $this->assertEquals(42, $entity->id);
-
-        // Should be in identity map with original ID
-        $retrieved = $this->unitOfWork->tryGetById(TestEntityForId::class, 42);
-        $this->assertNotNull($retrieved, 'Entity should be retrievable from identity map');
-        $this->assertSame($entity, $retrieved);
     }
 
     public function testUuidEntityWithExistingIdDoesNotOverwrite(): void
@@ -232,16 +227,14 @@ class UnitOfWorkTest extends TestCase {
         $entity->id = $existingUuid;
         $entity->name = 'UUID Entity';
 
-        $entity->id = $existingUuid;
-
         $this->unitOfWork->persist($entity);
-        $this->unitOfWork->clearChanges();
 
-        // Should keep the original UUID
+        // Should keep the original UUID (not overwrite with a new generated one)
         $this->assertEquals($existingUuid, $entity->id);
 
-        // Should be in identity map with original UUID
-        $this->assertSame($entity, $this->unitOfWork->tryGetById($entity::class, $existingUuid));
+        // Should be scheduled for INSERT
+        $changes = $this->unitOfWork->getChangeSets();
+        $this->assertContains($entity, $changes['inserts']);
     }
 
     public function testGetEntityByOidFailureInComputeChangeSets(): void

@@ -18,6 +18,10 @@ class ProxyGenerator {
 
     public function __construct(
         private EntityMetadataRegistry $metadataRegistry,
+        /**
+         * Directory where generated proxy class files are written.
+         * Defaults to sys_get_temp_dir(), which is node-local and unsafe on multi-server deployments
+         */
         string $proxyDir = '',
     ) {
         $this->proxyDir = $proxyDir !== '' ? $proxyDir : sys_get_temp_dir();

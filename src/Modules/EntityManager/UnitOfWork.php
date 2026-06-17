@@ -67,21 +67,15 @@ class UnitOfWork implements EntityRegistrarInterface {
 
             $id = $this->extractEntityId($entity);
 
-            // If entity has an ID, it's likely already persisted
             if ($id !== null && $id !== '') {
                 $this->assertNoConflictingDelete($entity, $id);
-                $snapshot = $this->extractEntitySnapshot($entity);
-                $this->registerManaged($entity, $snapshot);
-                $this->entityStates[$oid] = EntityState::MANAGED;
-                $this->entitiesByOid[$oid] = $entity;
                 $this->explicitPersistOids[$oid] = true;
-            } else {
-                // New entity without ID - schedule for insert
-                $this->scheduledInserts[$oid] = $entity;
-                $this->entityStates[$oid] = EntityState::MANAGED;
-                $this->entitiesByOid[$oid] = $entity;
-                $this->changeTrackingStrategy->trackEntity($entity, []);
             }
+
+            $this->scheduledInserts[$oid] = $entity;
+            $this->entityStates[$oid] = EntityState::MANAGED;
+            $this->entitiesByOid[$oid] = $entity;
+            $this->changeTrackingStrategy->trackEntity($entity, []);
         } elseif ($state === EntityState::MANAGED) {
             // Call preUpdate callbacks for managed entities being updated
             $this->callbackManager->invokeCallbacks($entity, 'preUpdate');
@@ -260,6 +254,15 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function clear(): void
     {
+        $trackedEntities = $this->entitiesByOid
+            + $this->scheduledInserts
+            + $this->scheduledUpdates
+            + $this->scheduledDeletes;
+
+        foreach ($trackedEntities as $entity) {
+            $this->changeTrackingStrategy->untrackEntity($entity);
+        }
+
         $this->identityMap->clear();
         $this->entityStates = [];
         $this->entitiesByOid = [];
@@ -267,7 +270,6 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
-        $this->changeTrackingStrategy->clear();
     }
 
     private function assertNoConflictingDelete(object $entity, mixed $id): void

@@ -1183,18 +1183,6 @@ parameters:
 			path: src/Modules/Generators/AbstractGenerator.php
 
 		-
-			message: '#^Method Articulate\\Modules\\Generators\\AutoIncrementGenerator\:\:generateInternal\(\) has parameter \$options with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/Generators/AutoIncrementGenerator.php
-
-		-
-			message: '#^Method Articulate\\Modules\\Generators\\BigSerialGenerator\:\:generateInternal\(\) has parameter \$options with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/Generators/BigSerialGenerator.php
-
-		-
 			message: '#^Method Articulate\\Modules\\Generators\\CustomGenerator\:\:generateInternal\(\) has parameter \$options with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1223,12 +1211,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/Generators/PrefixedIdGeneratorAdapter.php
-
-		-
-			message: '#^Method Articulate\\Modules\\Generators\\SerialGenerator\:\:generateInternal\(\) has parameter \$options with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/Generators/SerialGenerator.php
 
 		-
 			message: '#^Method Articulate\\Modules\\Generators\\Strategies\\PrefixedIdGenerator\:\:generate\(\) has parameter \$options with no value type specified in iterable type array\.$#'

@@ -274,6 +274,10 @@ class TypeRegistry {
         // Class/Interface mappings
         $this->registerClassMapping(\DateTimeInterface::class, 'DATETIME', new DateTimeTypeConverter(), 10); // High priority for DateTime
 
+        // JSON/array type
+        $this->registerType('array', 'JSON', new JsonTypeConverter());
+        $this->registerType('?array', 'JSON', new JsonTypeConverter());
+
         // Nullable versions (these override the db->php mapping for reverse lookups)
         $this->registerType('?int', 'INT');
         $this->registerType('?float', 'FLOAT');

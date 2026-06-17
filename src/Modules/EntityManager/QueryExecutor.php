@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
+use Articulate\Utils\ReflectionCache;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**
@@ -17,8 +18,15 @@ use ReflectionProperty as NativeReflectionProperty;
  * or change tracking.
  */
 class QueryExecutor {
-    /** @var ReflectionEntity[] */
+    /**
+     * @var ReflectionEntity[]
+     * Static cache keyed by entity class name. Bounded by the number of distinct entity classes
+     * in the process — safe for long-running processes (FPM, Swoole, CLI daemons).
+     */
     private static array $reflectionEntityCache = [];
+
+    /** @var EntityMetadata[] */
+    private array $entityMetadataCache = [];
 
     public function __construct(
         private Connection $connection,
@@ -52,6 +60,7 @@ class QueryExecutor {
         $columns = [];
         $placeholders = [];
         $values = [];
+        $pkColumnName = null;
 
         foreach ($properties as $property) {
             $columnName = $property->getColumnName();
@@ -64,6 +73,7 @@ class QueryExecutor {
 
             // Skip primary key columns with null values (they should be auto-generated)
             if ($property->isPrimaryKey() && $value === null) {
+                $pkColumnName = $columnName;
                 continue;
             }
 
@@ -75,7 +85,7 @@ class QueryExecutor {
 
             $columns[] = $columnName;
             $placeholders[] = '?';
-            $values[] = $value;
+            $values[] = $this->normalizeForDatabase($value);
         }
 
         // Handle MorphTo relationships
@@ -101,6 +111,24 @@ class QueryExecutor {
                 }
                 $this->setEntityId($entity, $generatedId);
             }
+        }
+
+        $dbAssignedId = $preGeneratedId === null && ($id === null || $id === '');
+
+        if ($dbAssignedId && $pkColumnName !== null && $this->connection->getDriverName() === 'pgsql') {
+            $sql = sprintf(
+                'INSERT INTO %s (%s) VALUES (%s) RETURNING %s',
+                $tableName,
+                implode(', ', $columns),
+                implode(', ', $placeholders),
+                $pkColumnName
+            );
+            $stmt = $this->connection->executeQuery($sql, $values);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $lastId = (int) $row[$pkColumnName];
+            $this->setEntityId($entity, $lastId);
+
+            return $lastId;
         }
 
         $sql = sprintf(
@@ -145,24 +173,23 @@ class QueryExecutor {
         $setParts = [];
         $values = [];
 
-        foreach ($changes as $propertyName => $newValue) {
-            // Find the property metadata
+        foreach ($changes as $columnName => $newValue) {
+            // Find the property metadata by column name (changes are keyed by column name)
             $property = null;
             foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $prop) {
-                if ($prop->getFieldName() === $propertyName) {
+                if ($prop instanceof ReflectionProperty && $prop->getColumnName() === $columnName) {
                     $property = $prop;
 
                     break;
                 }
             }
 
-            if ($property === null || !($property instanceof ReflectionProperty)) {
+            if ($property === null) {
                 continue; // Skip if property not found or is a relation
             }
 
-            $columnName = $property->getColumnName();
             $setParts[] = "{$columnName} = ?";
-            $values[] = $newValue;
+            $values[] = $this->normalizeForDatabase($newValue);
         }
 
         if (empty($setParts)) {
@@ -356,14 +383,14 @@ class QueryExecutor {
         // First try to find primary key from entity metadata
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
             if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
-                return new NativeReflectionProperty($entity, $property->getFieldName());
+                return ReflectionCache::getProperty($entity::class, $property->getFieldName());
             }
         }
 
         // Treat 'id' property as implicit primary key
-        $reflection = new \ReflectionClass($entity);
+        $reflection = ReflectionCache::getClass($entity::class);
         if ($reflection->hasProperty('id')) {
-            return $reflection->getProperty('id');
+            return ReflectionCache::getProperty($entity::class, 'id');
         }
 
         return null;
@@ -374,13 +401,13 @@ class QueryExecutor {
      */
     private function addMorphToColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
-                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
                 $reflectionProperty->setAccessible(true);
                 $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -407,13 +434,13 @@ class QueryExecutor {
      */
     private function addMorphToChanges(object $entity, array &$setParts, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
-                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
                 $reflectionProperty->setAccessible(true);
                 $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -437,14 +464,14 @@ class QueryExecutor {
 
     private function addManyToOneColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }
 
-            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $relation->getPropertyName());
             $reflectionProperty->setAccessible(true);
             $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -460,14 +487,14 @@ class QueryExecutor {
 
     private function addManyToOneChanges(object $entity, array &$setParts, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }
 
-            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $relation->getPropertyName());
             $reflectionProperty->setAccessible(true);
             $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -516,12 +543,28 @@ class QueryExecutor {
 
             $columns[] = $columnName;
             $placeholders[] = '?';
-            $values[] = $value;
+            $values[] = $this->normalizeForDatabase($value);
         }
 
         $this->addMorphToColumns($entity, $columns, $placeholders, $values);
 
         return ['columns' => $columns, 'values' => $values];
+    }
+
+    /**
+     * Convert a PHP value to its database-bindable scalar representation.
+     * Backed enums → backing value; pure enums → case name; everything else pass-through.
+     */
+    private function normalizeForDatabase(mixed $value): mixed
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        return $value;
     }
 
     /**

@@ -26,8 +26,8 @@ abstract class AbstractGenerator implements GeneratorInterface {
         return $this->generateInternal($entityClass, $options);
     }
 
-    /**
-     * Internal generation method to be implemented by subclasses.
-     */
-    abstract protected function generateInternal(string $entityClass, array $options = []): mixed;
+    protected function generateInternal(string $entityClass, array $options = []): mixed
+    {
+        return null;
+    }
 }

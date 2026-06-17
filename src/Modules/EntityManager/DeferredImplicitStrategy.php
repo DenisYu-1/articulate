@@ -68,8 +68,19 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
 
     private function getPropertyValue(object $entity, ReflectionProperty $property): mixed
     {
-        // Use metadata-driven property access instead of direct reflection
-        return $property->getValue($entity);
+        $value = $property->getValue($entity);
+
+        // Normalize enum values to their scalar representation so snapshot comparisons
+        // are DB-format-to-DB-format (avoids false positives when DB stores 'active' but
+        // the hydrated property holds the ProductStatus::Active enum object).
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        return $value;
     }
 
     public function clear(): void

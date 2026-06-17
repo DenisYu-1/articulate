@@ -8,7 +8,9 @@ use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
+use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Utils\ReflectionCache;
 use Articulate\Utils\TypeRegistry;
 use ReflectionClass;
 use ReflectionNamedType;
@@ -22,7 +24,7 @@ class ObjectHydrator implements HydratorInterface {
     private TypeRegistry $typeRegistry;
 
     public function __construct(
-        private readonly UnitOfWork $unitOfWork,
+        private readonly EntityRegistrarInterface $entityRegistrar,
         ?RelationshipLoader $relationshipLoader = null,
         ?LifecycleCallbackManager $callbackManager = null,
         ?TypeRegistry $typeRegistry = null
@@ -55,7 +57,7 @@ class ObjectHydrator implements HydratorInterface {
     public function extract(mixed $entity): array
     {
         $data = [];
-        $reflection = new ReflectionClass($entity);
+        $reflection = ReflectionCache::getClass($entity::class);
 
         foreach ($reflection->getProperties(ReflectionProperty::IS_PUBLIC) as $property) {
             $name = $property->getName();
@@ -78,8 +80,7 @@ class ObjectHydrator implements HydratorInterface {
             return null;
         }
 
-        $reflection = new ReflectionClass($entity);
-        $property = $reflection->getProperty($propertyName);
+        $property = ReflectionCache::getProperty($entity::class, $propertyName);
         $type = $property->getType();
 
         if (!$type) {
@@ -108,8 +109,7 @@ class ObjectHydrator implements HydratorInterface {
             return null;
         }
 
-        $reflection = new ReflectionClass($entity);
-        $property = $reflection->getProperty($propertyName);
+        $property = ReflectionCache::getProperty($entity::class, $propertyName);
         $type = $property->getType();
 
         if (!$type) {
@@ -174,7 +174,7 @@ class ObjectHydrator implements HydratorInterface {
 
     private function createEntity(string $class): object
     {
-        $reflection = new ReflectionClass($class);
+        $reflection = ReflectionCache::getClass($class);
 
         // Create instance without calling constructor
         return $reflection->newInstanceWithoutConstructor();
@@ -182,19 +182,23 @@ class ObjectHydrator implements HydratorInterface {
 
     private function hydrateProperties(object $entity, array $data): void
     {
-        $reflection = new ReflectionClass($entity);
+        $reflection = ReflectionCache::getClass($entity::class);
 
         foreach ($data as $columnName => $value) {
             // Try to map column to property
             $propertyName = $this->mapColumnToProperty($reflection, $columnName);
 
             if ($propertyName && $reflection->hasProperty($propertyName)) {
-                $property = $reflection->getProperty($propertyName);
+                $property = ReflectionCache::getProperty($entity::class, $propertyName);
 
                 // Skip class-typed properties (entities/relations) — handled by hydrateRelations()
+                // Allow non-built-in types that have a registered converter (e.g. enums, DateTime)
                 $type = $property->getType();
                 if ($type instanceof ReflectionNamedType && !$type->isBuiltin()) {
-                    continue;
+                    $phpType = $this->getPHPTypeFromReflection($type);
+                    if ($this->typeRegistry->getConverter($phpType) === null) {
+                        continue;
+                    }
                 }
 
                 $property->setAccessible(true);
@@ -219,7 +223,7 @@ class ObjectHydrator implements HydratorInterface {
         $em = null;
 
         foreach ($metadata->getRelations() as $relationName => $relation) {
-            $prop = new ReflectionProperty($entity, $relationName);
+            $prop = ReflectionCache::getProperty($entity::class, $relationName);
             $prop->setAccessible(true);
 
             if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
@@ -272,7 +276,7 @@ class ObjectHydrator implements HydratorInterface {
                     function (ProxyInterface $p) use ($entity, $relation): void {
                         $loaded = $this->relationshipLoader->load($entity, $relation);
                         if ($loaded !== null) {
-                            $ref = new ReflectionClass($loaded);
+                            $ref = ReflectionCache::getClass($loaded::class);
                             foreach ($ref->getProperties() as $rp) {
                                 $rp->setAccessible(true);
 
@@ -293,9 +297,7 @@ class ObjectHydrator implements HydratorInterface {
 
     private function registerEntity(object $entity, array $data): void
     {
-        // Extract ID and register in UnitOfWork
-        $id = $this->extractEntityId($entity, $data);
-        $this->unitOfWork->registerManaged($entity, $data);
+        $this->entityRegistrar->registerManaged($entity, $data);
     }
 
     private function invokePostLoadCallbacks(object $entity): void

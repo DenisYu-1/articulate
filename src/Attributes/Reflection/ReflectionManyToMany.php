@@ -140,6 +140,11 @@ class ReflectionManyToMany implements RelationInterface {
         return $this->getOwnerJoinColumn();
     }
 
+    public function getRelatedPivotKey(): string
+    {
+        return $this->getTargetJoinColumn();
+    }
+
     public function isLazy(): bool
     {
         return $this->attribute->lazy;

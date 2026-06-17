@@ -6,13 +6,16 @@ use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
+use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Utils\ReflectionCache;
 use Articulate\Utils\TypeRegistry;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 
 class EntityManager {
     private Connection $connection;
@@ -23,6 +26,10 @@ class EntityManager {
     private UnitOfWork $activeUnitOfWork;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;
+
+    private bool $usesDefaultChangeTrackingStrategy;
+
+    private bool $changeTrackingStrategyPrototypeConsumed = false;
 
     private HydratorInterface $hydrator;
 
@@ -67,12 +74,14 @@ class EntityManager {
         ?CacheItemPoolInterface $statementCache = null,
         ?CacheItemPoolInterface $secondLevelCache = null,
         int $secondLevelCacheTtl = 3600,
+        ?LoggerInterface $logger = null,
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
 
         // Create default change tracking strategy with metadata registry
+        $this->usesDefaultChangeTrackingStrategy = $changeTrackingStrategy === null;
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
 
         // Initialize callback manager
@@ -80,10 +89,10 @@ class EntityManager {
 
         // Initialize change aggregator and query executor
         $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy ?? new MergeUpdateConflictResolutionStrategy();
-        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
+        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy, $logger);
         $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
-        $initialUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
+        $initialUow = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $initialUow;
         $this->activeUnitOfWork = $initialUow;
 
@@ -98,7 +107,7 @@ class EntityManager {
 
         $this->typeRegistry = new TypeRegistry();
 
-        $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator(new ActiveUnitOfWorkRegistrar($this), $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
 
         $this->resultCache = $resultCache;
         $this->statementCache = $statementCache;
@@ -135,6 +144,7 @@ class EntityManager {
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
             $this->executeChanges($aggregatedChanges);
             $this->invalidateSecondLevelCache($aggregatedChanges);
+            $this->incrementQueryCacheGeneration();
 
             foreach ($this->unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
@@ -174,6 +184,35 @@ class EntityManager {
     {
         $this->flush();
         $this->clear();
+    }
+
+    private function readQueryCacheGeneration(): int
+    {
+        if ($this->resultCache === null) {
+            return 0;
+        }
+
+        try {
+            $item = $this->resultCache->getItem('articulate_qrc_gen');
+
+            return $item->isHit() ? (int) $item->get() : 0;
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
+    private function incrementQueryCacheGeneration(): void
+    {
+        if ($this->resultCache === null) {
+            return;
+        }
+
+        try {
+            $item = $this->resultCache->getItem('articulate_qrc_gen');
+            $item->set($item->isHit() ? (int) $item->get() + 1 : 1);
+            $this->resultCache->save($item);
+        } catch (\Throwable) {
+        }
     }
 
     private function invalidateSecondLevelCache(array $changes): void
@@ -243,7 +282,7 @@ class EntityManager {
             return null;
         }
 
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
         $reflectionProperty->setAccessible(true);
 
         return $reflectionProperty->getValue($entity);
@@ -394,7 +433,9 @@ class EntityManager {
             }
 
             if (isset($visiting[$class])) {
-                throw new \RuntimeException(sprintf('Circular dependency detected for entity class %s', $class));
+                $chain = implode(' → ', array_keys(array_filter($visiting))) . ' → ' . $class;
+
+                throw new \RuntimeException("Circular dependency detected: {$chain}. Check your entity FK relationships.");
             }
 
             $visiting[$class] = true;
@@ -466,7 +507,10 @@ class EntityManager {
         if ($this->secondLevelCache !== null) {
             $cachedData = $this->secondLevelCache->get($class, $id);
             if ($cachedData !== null) {
-                return $this->hydrator->hydrate($class, $cachedData, null, $with);
+                $entity = $this->hydrator->hydrate($class, $cachedData, null, $with);
+                $this->getActiveUnitOfWork()->registerManaged($entity, $cachedData);
+
+                return $entity;
             }
         }
 
@@ -507,6 +551,7 @@ class EntityManager {
         }
 
         $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
+        $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
 
         return $entity;
     }
@@ -570,9 +615,15 @@ class EntityManager {
     }
 
     /**
-     * Create a lazy proxy for an inverse-side single entity relation (e.g., inverse OneToOne).
-     * The supplied closure receives the uninitialized ProxyInterface and is responsible for
-     * loading and copying entity data into it, then calling $proxy->markProxyInitialized().
+     * Creates an unregistered lazy proxy with a custom loader closure.
+     * The proxy is NOT added to the identity map or UnitOfWork — the caller owns its lifecycle.
+     * The closure receives the uninitialized ProxyInterface and must load and copy entity data
+     * into it, then call $proxy->markProxyInitialized().
+     *
+     * Use for inverse-side relations (e.g., inverse OneToOne) where the ORM cannot auto-load
+     * by a simple ID lookup.
+     *
+     * @see getReference() for a managed proxy loaded by ID and registered in the identity map
      */
     public function createLazyReference(string $class, \Closure $loader): object
     {
@@ -583,6 +634,14 @@ class EntityManager {
         return $this->proxyManager->createProxyWithCustomLoader($class, $loader);
     }
 
+    /**
+     * Returns a managed identity-map proxy for the given class and ID.
+     * If the entity is already loaded in any active UnitOfWork, that instance is returned.
+     * Otherwise a lazy proxy is created, registered as MANAGED, and returned without hitting the DB.
+     * Use this when you need a reference to associate as a FK without loading the full entity.
+     *
+     * @see createLazyReference() for an unregistered proxy with a custom loader closure
+     */
     public function getReference(string $class, mixed $id): object
     {
         // Check identity maps of all unit of works first
@@ -607,6 +666,13 @@ class EntityManager {
         return $proxy;
     }
 
+    /**
+     * Reloads an entity's properties from the database, overwriting in-memory state.
+     * Throws EntityNotFoundException if the row no longer exists.
+     * This is the inverse of find(): find() returns null on miss, refresh() throws.
+     *
+     * @throws \RuntimeException if the entity has no primary key value or the row is missing
+     */
     public function refresh(object $entity): void
     {
         // Get entity class name (handle proxies)
@@ -631,7 +697,7 @@ class EntityManager {
         }
 
         // Get the entity's ID
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+        $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
         $reflectionProperty->setAccessible(true);
         $id = $reflectionProperty->getValue($entity);
 
@@ -709,13 +775,43 @@ class EntityManager {
         return $this->activeUnitOfWork;
     }
 
-    // Create new unit of work, mostly for scopes
+    /**
+     * Creates a new UnitOfWork scoped to this EntityManager and registers it for flush.
+     * Use when a bounded sub-operation needs its own identity map and change set,
+     * but should commit as part of the next flush() call together with other UoWs.
+     *
+     * Example — isolated write scope:
+     *   $scope = $em->createUnitOfWork();
+     *   $em->setActiveUnitOfWork($scope);
+     *   $em->persist($entity); // tracked in $scope
+     *   $em->flush();          // flushes all registered UoWs, including $scope
+     */
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
+        $unitOfWork = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;
+    }
+
+    private function createChangeTrackingStrategy(): ChangeTrackingStrategy
+    {
+        if ($this->usesDefaultChangeTrackingStrategy) {
+            return new DeferredImplicitStrategy($this->metadataRegistry);
+        }
+
+        $reflection = new \ReflectionObject($this->changeTrackingStrategy);
+        if ($reflection->isCloneable()) {
+            return clone $this->changeTrackingStrategy;
+        }
+
+        if (!$this->changeTrackingStrategyPrototypeConsumed) {
+            $this->changeTrackingStrategyPrototypeConsumed = true;
+
+            return $this->changeTrackingStrategy;
+        }
+
+        throw new \LogicException('Custom ChangeTrackingStrategy must be cloneable to create an independent UnitOfWork.');
     }
 
     public function setActiveUnitOfWork(UnitOfWork $unitOfWork): void
@@ -763,6 +859,7 @@ class EntityManager {
     {
         $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters, $this->statementCache);
         $qb->setUnitOfWork($this->getActiveUnitOfWork());
+        $qb->setResultCacheGeneration($this->readQueryCacheGeneration());
 
         if ($entityClass) {
             $qb->setEntityClass($entityClass);
@@ -856,7 +953,7 @@ class EntityManager {
                     $phpValue = $value; // Basic conversion - most types don't need special handling
                 }
 
-                $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
+                $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
                 $reflectionProperty->setAccessible(true);
                 $reflectionProperty->setValue($entity, $phpValue);
             }

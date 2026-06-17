@@ -104,6 +104,7 @@ class WhereClauseBuilder {
             return $this;
         }
 
+        // Empty IN list → always-false condition; avoids malformed `IN ()` rejected by both MySQL and PostgreSQL.
         if (empty($values)) {
             return $this->where('1 = 0');
         }

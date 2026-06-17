@@ -13,6 +13,8 @@ class QueryResultCache {
 
     private ?string $cacheId = null;
 
+    private int $generation = 0;
+
     public function __construct(?CacheItemPoolInterface $cachePool = null)
     {
         $this->cachePool = $cachePool;
@@ -56,6 +58,11 @@ class QueryResultCache {
     public function getCachePool(): ?CacheItemPoolInterface
     {
         return $this->cachePool;
+    }
+
+    public function setGeneration(int $generation): void
+    {
+        $this->generation = $generation;
     }
 
     public function get(string $cacheKey): ?array
@@ -114,7 +121,7 @@ class QueryResultCache {
             'having' => $having,
         ];
 
-        return hash('sha256', json_encode($cacheData));
+        return 'g' . $this->generation . '_' . hash('sha256', json_encode($cacheData));
     }
 
     private function normalizeParamsForCacheKey(array $params): array

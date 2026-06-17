@@ -130,6 +130,19 @@ class ReflectionManyToManyTest extends AbstractTestCase {
         $this->assertEquals('id', $reflection->getOwnerPrimaryColumn());
     }
 
+    public function testGetRelatedPivotKeyReturnsTargetJoinColumn(): void
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new ManyToMany(targetEntity: TestPrimaryKeyEntity::class);
+
+        // $this->reflectionProperty is typed as array, which satisfies assertCollectionType()
+        $reflection = new ReflectionManyToMany($attribute, $this->reflectionProperty, $schemaNaming);
+
+        // getRelatedPivotKey must delegate to getTargetJoinColumn (the pivot column for the target side)
+        $this->assertSame($reflection->getTargetJoinColumn(), $reflection->getRelatedPivotKey());
+        $this->assertStringEndsWith('_id', $reflection->getRelatedPivotKey());
+    }
+
     public function testInvalidPropertyTypeThrowsException()
     {
         $schemaNaming = new SchemaNaming();

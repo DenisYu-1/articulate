@@ -69,6 +69,9 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
     private function canCombineUpdate(EntityMetadata $metadata): bool
     {
         foreach ($metadata->getColumnRelations() as $relation) {
+            // MorphTo stores two columns (type + id) that must change atomically.
+            // Merging them as independent column changes across UoWs risks writing
+            // a mismatched type/id pair, so entities with morph relations cannot be combined.
             if ($relation->isMorphTo()) {
                 return false;
             }

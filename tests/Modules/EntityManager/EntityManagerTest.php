@@ -4,6 +4,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
@@ -30,6 +31,15 @@ class EntityManagerTestEntity {
     public int $id;
 
     public string $name;
+}
+
+#[Entity]
+class EntityManagerTrackedEntity {
+    #[PrimaryKey]
+    public int $id = 1;
+
+    #[Property]
+    public string $name = 'Original';
 }
 
 class EntityManagerTest extends TestCase {
@@ -255,6 +265,31 @@ class EntityManagerTest extends TestCase {
         $newDefaultUow = $this->entityManager->getActiveUnitOfWork();
         $this->assertEquals(EntityState::NEW, $newDefaultUow->getEntityState($entity));
         $this->assertNotSame($scopedUow, $newDefaultUow);
+    }
+
+    public function testClearingScopedUnitOfWorkDoesNotClearDefaultSnapshots(): void
+    {
+        $defaultUow = $this->entityManager->getActiveUnitOfWork();
+
+        $defaultEntity = new EntityManagerTrackedEntity();
+        $defaultEntity->id = 1;
+        $defaultEntity->name = 'Original';
+        $defaultUow->registerManaged($defaultEntity, ['id' => 1, 'name' => 'Original']);
+
+        $scopedUow = $this->entityManager->createUnitOfWork();
+        $scopedEntity = new EntityManagerTrackedEntity();
+        $scopedEntity->id = 2;
+        $scopedEntity->name = 'Scoped';
+        $scopedUow->registerManaged($scopedEntity, ['id' => 2, 'name' => 'Scoped']);
+
+        $scopedUow->clear();
+        $defaultEntity->name = 'Changed';
+
+        $changeSets = $defaultUow->getChangeSets();
+
+        $this->assertCount(1, $changeSets['updates']);
+        $this->assertSame($defaultEntity, $changeSets['updates'][0]['entity']);
+        $this->assertSame(['name' => 'Changed'], $changeSets['updates'][0]['changes']);
     }
 
     #[AllowMockObjectsWithoutExpectations]

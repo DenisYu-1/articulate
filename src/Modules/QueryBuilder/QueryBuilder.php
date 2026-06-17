@@ -623,6 +623,11 @@ class QueryBuilder {
         return $this;
     }
 
+    public function setResultCacheGeneration(int $generation): void
+    {
+        $this->resultCache->setGeneration($generation);
+    }
+
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
@@ -861,6 +866,10 @@ class QueryBuilder {
         // Don't hydrate when selecting specific columns (not SELECT *)
         if ($this->hasSpecificColumnSelection()) {
             $targetClass = null;
+        }
+
+        if ($targetClass !== null && $this->hydrator === null) {
+            throw new \LogicException('QueryBuilder requires a HydratorInterface to hydrate entity results.');
         }
 
         $sql = $this->getSQL();

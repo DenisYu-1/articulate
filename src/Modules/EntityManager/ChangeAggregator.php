@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Schema\EntityMetadataRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * Aggregates and optimizes changes from multiple UnitOfWorks.
@@ -18,6 +19,7 @@ class ChangeAggregator {
     public function __construct(
         private readonly EntityMetadataRegistry $metadataRegistry,
         private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy,
+        private readonly ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -122,6 +124,13 @@ class ChangeAggregator {
                 }
 
                 // Merge changes - later changes override earlier ones
+                $overwritten = array_keys(array_intersect_key($updatesByEntity[$entityId]['changes'], $update['changes']));
+                if (!empty($overwritten)) {
+                    $this->logger?->debug('ChangeAggregator: overlapping changes for entity {entity}, overwriting keys: {keys}', [
+                        'entity' => $entityId,
+                        'keys' => implode(', ', $overwritten),
+                    ]);
+                }
                 $updatesByEntity[$entityId]['changes'] = array_merge(
                     $updatesByEntity[$entityId]['changes'],
                     $update['changes']
