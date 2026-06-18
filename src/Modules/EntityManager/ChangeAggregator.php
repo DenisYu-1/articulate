@@ -13,7 +13,7 @@ use Psr\Log\LoggerInterface;
  * compatible operations.
  */
 class ChangeAggregator {
-    /** @var array<string, array{insert?: object[], update?: array{entity: object, changes: array}[], delete?: object[]}> */
+    /** @var array<string, array{insert?: object[], update?: array{entity: object, changes: array}[], delete?: object[], softDelete?: object[]}> */
     private array $aggregatedChanges = [];
 
     public function __construct(
@@ -27,7 +27,7 @@ class ChangeAggregator {
      * Aggregates changes from multiple UnitOfWorks into an optimized execution plan.
      *
      * @param UnitOfWork[] $unitOfWorks
-     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]}
+     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]}
      */
     public function aggregateChanges(array $unitOfWorks): array
     {
@@ -46,6 +46,7 @@ class ChangeAggregator {
                 $this->metadataRegistry,
             ),
             'deletes' => $deletes,
+            'softDeletes' => $this->optimizeSoftDeletes(),
         ];
     }
 
@@ -75,6 +76,11 @@ class ChangeAggregator {
         foreach ($changeSets['deletes'] as $entity) {
             $class = $entity::class;
             $this->aggregatedChanges[$class]['delete'][] = $entity;
+        }
+
+        foreach ($changeSets['softDeletes'] as $entity) {
+            $class = $entity::class;
+            $this->aggregatedChanges[$class]['softDelete'][] = $entity;
         }
     }
 
@@ -180,6 +186,22 @@ class ChangeAggregator {
         }
 
         return $deletes;
+    }
+
+    /**
+     * @return object[]
+     */
+    private function optimizeSoftDeletes(): array
+    {
+        $softDeletes = [];
+
+        foreach ($this->aggregatedChanges as $classChanges) {
+            if (isset($classChanges['softDelete'])) {
+                $softDeletes = array_merge($softDeletes, $classChanges['softDelete']);
+            }
+        }
+
+        return $softDeletes;
     }
 
     /**

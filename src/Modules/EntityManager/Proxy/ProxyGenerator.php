@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager\Proxy;
 
 use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Utils\ReflectionCache;
 
 /**
  * Generates proxy classes for lazy loading entities.
@@ -43,6 +44,16 @@ class ProxyGenerator {
         // Check if proxy already exists and caching is enabled
         if ($this->enableCaching && isset($this->generatedProxies[$entityClass])) {
             return $this->generatedProxies[$entityClass];
+        }
+
+        $this->assertValidPhpClass($entityClass);
+
+        $ref = ReflectionCache::getClass($entityClass);
+        if ($ref->isFinal()) {
+            throw new \LogicException(
+                "Cannot create a lazy-loading proxy for final class '{$entityClass}'. " .
+                "Remove 'final' from the class declaration to enable lazy loading."
+            );
         }
 
         // Generate unique proxy class name

@@ -30,6 +30,9 @@ class UnitOfWork implements EntityRegistrarInterface {
     /** @var array<int, object> */
     private array $scheduledDeletes = [];
 
+    /** @var array<int, object> Entities removed via soft-delete (UPDATE instead of DELETE) */
+    private array $scheduledSoftDeletes = [];
+
     /** @var array<int, object> */
     private array $entitiesByOid = [];
 
@@ -102,9 +105,17 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->callbackManager->invokeCallbacks($entity, 'preRemove');
 
         if ($state === EntityState::MANAGED) {
-            $this->scheduledDeletes[$oid] = $entity;
-            $this->entityStates[$oid] = EntityState::REMOVED;
+            $softDeleteColumn = $this->getSoftDeleteColumn($entity);
 
+            if ($softDeleteColumn !== null) {
+                // Soft delete: set the delete field to now and schedule an UPDATE
+                $this->setSoftDeleteField($entity, $softDeleteColumn);
+                $this->scheduledSoftDeletes[$oid] = $entity;
+            } else {
+                $this->scheduledDeletes[$oid] = $entity;
+            }
+
+            $this->entityStates[$oid] = EntityState::REMOVED;
             unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
             unset($this->entitiesByOid[$oid]);
             $this->identityMap->remove($entity);
@@ -125,6 +136,11 @@ class UnitOfWork implements EntityRegistrarInterface {
             if ($state === EntityState::MANAGED && !isset($this->scheduledInserts[$oid])) {
                 $entity = $this->getEntityByOid($oid);
                 if ($entity && $this->hasChanges($entity)) {
+                    if (!isset($this->scheduledUpdates[$oid])) {
+                        // Detected dirty without an explicit persist() — invoke preUpdate now
+                        // so callbacks like `updatedAt = now` are included in the change set.
+                        $this->callbackManager->invokeCallbacks($entity, 'preUpdate');
+                    }
                     $this->scheduledUpdates[$oid] = $entity;
                 }
             }
@@ -139,7 +155,7 @@ class UnitOfWork implements EntityRegistrarInterface {
     /**
      * Gets all pending changes without executing them.
      *
-     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]}
+     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]}
      */
     public function getChangeSets(): array
     {
@@ -152,6 +168,7 @@ class UnitOfWork implements EntityRegistrarInterface {
                 array_values($this->scheduledUpdates)
             ),
             'deletes' => array_values($this->scheduledDeletes),
+            'softDeletes' => array_values($this->scheduledSoftDeletes),
         ];
     }
 
@@ -166,6 +183,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
+        $this->scheduledSoftDeletes = [];
         $this->explicitPersistOids = [];
     }
 
@@ -173,7 +191,7 @@ class UnitOfWork implements EntityRegistrarInterface {
      * Executes post-operation callbacks for the given changes.
      * This should be called after the changes have been successfully executed.
      *
-     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]} $changes
      */
     public function executePostCallbacks(array $changes): void
     {
@@ -187,8 +205,13 @@ class UnitOfWork implements EntityRegistrarInterface {
             $this->callbackManager->invokeCallbacks($update['entity'], 'postUpdate');
         }
 
-        // Call postRemove for deleted entities
+        // Call postRemove for hard-deleted entities
         foreach ($changes['deletes'] as $entity) {
+            $this->callbackManager->invokeCallbacks($entity, 'postRemove');
+        }
+
+        // Call postRemove for soft-deleted entities
+        foreach ($changes['softDeletes'] as $entity) {
             $this->callbackManager->invokeCallbacks($entity, 'postRemove');
         }
     }
@@ -249,7 +272,8 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->identityMap->remove($entity);
         $this->changeTrackingStrategy->untrackEntity($entity);
         unset($this->entityStates[$oid], $this->entitiesByOid[$oid], $this->explicitPersistOids[$oid]);
-        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid], $this->scheduledDeletes[$oid]);
+        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
+        unset($this->scheduledDeletes[$oid], $this->scheduledSoftDeletes[$oid]);
     }
 
     public function clear(): void
@@ -257,7 +281,8 @@ class UnitOfWork implements EntityRegistrarInterface {
         $trackedEntities = $this->entitiesByOid
             + $this->scheduledInserts
             + $this->scheduledUpdates
-            + $this->scheduledDeletes;
+            + $this->scheduledDeletes
+            + $this->scheduledSoftDeletes;
 
         foreach ($trackedEntities as $entity) {
             $this->changeTrackingStrategy->untrackEntity($entity);
@@ -270,6 +295,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
+        $this->scheduledSoftDeletes = [];
     }
 
     private function assertNoConflictingDelete(object $entity, mixed $id): void
@@ -397,6 +423,38 @@ class UnitOfWork implements EntityRegistrarInterface {
             unset($this->scheduledInserts[$siblingOid], $this->scheduledUpdates[$siblingOid]);
             unset($this->entitiesByOid[$siblingOid]);
             $this->identityMap->remove($sibling);
+        }
+    }
+
+    private function getSoftDeleteColumn(object $entity): ?string
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+
+            return $metadata->isSoftDeleteable() ? $metadata->getSoftDeleteColumn() : null;
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    private function setSoftDeleteField(object $entity, string $columnName): void
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+            $fieldName = $metadata->getSoftDeleteField();
+
+            if ($fieldName === null) {
+                return;
+            }
+
+            foreach ($metadata->getProperties() as $property) {
+                if ($property->getColumnName() === $columnName) {
+                    $property->setValue($entity, new \DateTimeImmutable());
+
+                    return;
+                }
+            }
+        } catch (\InvalidArgumentException) {
         }
     }
 

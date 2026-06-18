@@ -3,6 +3,8 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Schema\EntityMetadata;
@@ -112,6 +114,14 @@ class RelationshipLoader {
     {
         if ($relation instanceof ReflectionManyToMany) {
             return $this->loadManyToMany($entity, $relation);
+        }
+
+        if ($relation instanceof ReflectionMorphToMany) {
+            return $this->loadMorphToMany($entity, $relation);
+        }
+
+        if ($relation instanceof ReflectionMorphedByMany) {
+            return $this->loadMorphedByMany($entity, $relation);
         }
 
         if (!($relation instanceof ReflectionRelation)) {
@@ -247,6 +257,60 @@ class RelationshipLoader {
             ->where("$targetPrimaryKey IN (" . str_repeat('?,', count($relatedIds) - 1) . '?)', $relatedIds);
 
         return $qb->getResult($targetEntity);
+    }
+
+    private function loadMorphToMany(object $entity, ReflectionMorphToMany $relation): array
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $ownerPK = $this->getPrimaryKeyValue($entity, $entityMetadata);
+
+        $pivotResults = $this->entityManager->createQueryBuilder()
+            ->select($relation->getTargetJoinColumn())
+            ->from($relation->getTableName())
+            ->where($relation->getTypeColumn(), $entity::class)
+            ->where($relation->getOwnerJoinColumn(), $ownerPK)
+            ->getResult();
+
+        $targetIds = array_column($pivotResults, $relation->getTargetJoinColumn());
+
+        if (empty($targetIds)) {
+            return [];
+        }
+
+        $targetEntity = $relation->getTargetEntity();
+        $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetPK = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
+
+        return $this->entityManager->createQueryBuilder($targetEntity)
+            ->whereIn($targetPK, $targetIds)
+            ->getResult($targetEntity);
+    }
+
+    private function loadMorphedByMany(object $entity, ReflectionMorphedByMany $relation): array
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $ownerPK = $this->getPrimaryKeyValue($entity, $entityMetadata);
+        $targetEntity = $relation->getTargetEntity();
+
+        $pivotResults = $this->entityManager->createQueryBuilder()
+            ->select($relation->getOwnerJoinColumn())
+            ->from($relation->getTableName())
+            ->where($relation->getTypeColumn(), $targetEntity)
+            ->where($relation->getTargetJoinColumn(), $ownerPK)
+            ->getResult();
+
+        $morphIds = array_column($pivotResults, $relation->getOwnerJoinColumn());
+
+        if (empty($morphIds)) {
+            return [];
+        }
+
+        $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetPK = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
+
+        return $this->entityManager->createQueryBuilder($targetEntity)
+            ->whereIn($targetPK, $morphIds)
+            ->getResult($targetEntity);
     }
 
     /**

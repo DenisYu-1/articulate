@@ -133,20 +133,18 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
     }
 
     /**
-     * @param array<string, mixed> $changes
+     * @param array<string, mixed> $changes  Changes keyed by column name
      * @return array<string, mixed>
      */
     private function mapChangesToColumns(array $changes, EntityMetadata $metadata): array
     {
         $columnChanges = [];
 
-        foreach ($changes as $propertyName => $value) {
-            $columnName = $metadata->getColumnName($propertyName);
-            if ($columnName === null) {
-                continue;
+        foreach ($changes as $columnName => $value) {
+            // Changes are already keyed by column name; validate the column is known.
+            if ($metadata->getPropertyNameForColumn($columnName) !== null) {
+                $columnChanges[$columnName] = $value;
             }
-
-            $columnChanges[$columnName] = $value;
         }
 
         return $columnChanges;

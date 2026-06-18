@@ -889,6 +889,48 @@ class QueryBuilder {
         );
     }
 
+    /**
+     * Iterate over all matching rows in chunks of $size using LIMIT/OFFSET pagination.
+     * Each iteration yields an array of up to $size results.
+     *
+     * @return \Generator<int, array<int, mixed>>
+     */
+    public function chunk(int $size): \Generator
+    {
+        if ($size <= 0) {
+            throw new InvalidArgumentException('Chunk size must be a positive integer.');
+        }
+
+        $savedLimit = $this->limit;
+        $savedOffset = $this->offset;
+
+        try {
+            $this->limit = $size;
+            $offset = 0;
+
+            while (true) {
+                $this->offset = $offset;
+                $results = $this->getResult();
+                $batch = is_array($results) ? $results : [];
+
+                if (empty($batch)) {
+                    break;
+                }
+
+                yield $batch;
+
+                if (count($batch) < $size) {
+                    break;
+                }
+
+                $offset += $size;
+            }
+        } finally {
+            $this->limit = $savedLimit;
+            $this->offset = $savedOffset;
+        }
+    }
+
     public function getSingleResult(?string $entityClass = null): mixed
     {
         $originalLimit = $this->limit;

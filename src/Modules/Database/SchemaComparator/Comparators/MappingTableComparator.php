@@ -2,6 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
@@ -11,6 +12,8 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\ReflectionCache;
+use ReflectionNamedType;
 
 class MappingTableComparator {
     public function __construct(
@@ -300,7 +303,7 @@ class MappingTableComparator {
         $requiredProperties['id'] = new PropertiesData('int', false, null, null);
         // Add morph columns
         $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
-        $requiredProperties[$definition['idColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
+        $requiredProperties[$definition['idColumn']] = $this->resolveMorphIdColumnType($definition);
         $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
         // Add extra properties
         foreach ($definition['extraProperties'] as $extra) {
@@ -431,5 +434,23 @@ class MappingTableComparator {
             array_values($foreignKeysByName),
             $definition['primaryColumns'],
         );
+    }
+
+    private function resolveMorphIdColumnType(array $definition): PropertiesData
+    {
+        foreach ($definition['relations'] as $relation) {
+            $rClass = ReflectionCache::getClass($relation->getDeclaringClassName());
+            foreach ($rClass->getProperties() as $property) {
+                if (empty($property->getAttributes(PrimaryKey::class))) {
+                    continue;
+                }
+                $type = $property->getType();
+                if ($type instanceof ReflectionNamedType && $type->getName() === 'string') {
+                    return new PropertiesData('string', false, null, 36, isForeignKey: true);
+                }
+            }
+        }
+
+        return new PropertiesData('int', false, null, null, isForeignKey: true);
     }
 }

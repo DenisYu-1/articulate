@@ -6,7 +6,6 @@ use Articulate\Connection;
 use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
-use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
@@ -232,6 +231,10 @@ class EntityManager {
         foreach ($changes['deletes'] as $entity) {
             $this->evictEntityFromSecondLevelCache($entity);
         }
+
+        foreach ($changes['softDeletes'] as $entity) {
+            $this->evictEntityFromSecondLevelCache($entity);
+        }
     }
 
     /**
@@ -291,7 +294,7 @@ class EntityManager {
     /**
      * Execute aggregated changes in proper order respecting foreign key constraints.
      *
-     * @param array{inserts: object[], updates: array<int, array{entity: object, changes: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[]} $changes
+     * @param array{inserts: object[], updates: array<int, array{entity: object, changes: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[], softDeletes: object[]} $changes
      */
     private function executeChanges(array $changes): void
     {
@@ -322,6 +325,32 @@ class EntityManager {
         foreach ($orderedDeletes as $entity) {
             $this->queryExecutor->executeDelete($entity);
         }
+
+        // Execute soft deletes as UPDATEs (set the delete column to current timestamp)
+        foreach ($changes['softDeletes'] as $entity) {
+            $this->executeSoftDelete($entity);
+        }
+    }
+
+    private function executeSoftDelete(object $entity): void
+    {
+        $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        $softDeleteColumn = $metadata->getSoftDeleteColumn();
+
+        if ($softDeleteColumn === null) {
+            return;
+        }
+
+        $where = $this->queryExecutor->buildEntityWhereClause($entity);
+        $whereClause = $where['clause'];
+        $whereValues = $where['values'];
+
+        $this->queryExecutor->executeUpdateByTable(
+            $metadata->getTableName(),
+            [$softDeleteColumn => (new \DateTimeImmutable())->format('Y-m-d H:i:s')],
+            $whereClause,
+            $whereValues,
+        );
     }
 
     /**

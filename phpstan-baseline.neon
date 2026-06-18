@@ -457,6 +457,12 @@ parameters:
 			path: src/Modules/Database/SchemaComparator/Comparators/MappingTableComparator.php
 
 		-
+			message: '#^Method Articulate\\Modules\\Database\\SchemaComparator\\Comparators\\MappingTableComparator\:\:resolveMorphIdColumnType\(\) has parameter \$definition with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/Database/SchemaComparator/Comparators/MappingTableComparator.php
+
+		-
 			message: '#^Method Articulate\\Modules\\Database\\SchemaComparator\\Comparators\\MappingTableComparator\:\:compareMorphToManyTable\(\) has parameter \$definition with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1052,6 +1058,18 @@ parameters:
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadManyToMany\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/RelationshipLoader.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadMorphToMany\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/RelationshipLoader.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadMorphedByMany\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/EntityManager/RelationshipLoader.php

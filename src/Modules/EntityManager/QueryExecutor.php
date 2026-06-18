@@ -74,6 +74,7 @@ class QueryExecutor {
             // Skip primary key columns with null values (they should be auto-generated)
             if ($property->isPrimaryKey() && $value === null) {
                 $pkColumnName = $columnName;
+
                 continue;
             }
 

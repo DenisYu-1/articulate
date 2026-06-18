@@ -315,6 +315,11 @@ class ObjectHydrator implements HydratorInterface {
             return $propertyName;
         }
 
+        // Support snake_case property names (e.g. $street_address maps from street_address column)
+        if ($propertyName !== $columnName && $reflection->hasProperty($columnName)) {
+            return $columnName;
+        }
+
         // Check for Property attribute mapping
         foreach ($reflection->getProperties() as $property) {
             $attributes = $property->getAttributes(Property::class);

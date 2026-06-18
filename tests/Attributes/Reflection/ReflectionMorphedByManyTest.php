@@ -9,6 +9,8 @@ use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\AbstractTestCase;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyPost;
+use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyTag;
 use ReflectionProperty;
 
 class ReflectionMorphedByManyTest extends AbstractTestCase {
@@ -133,13 +135,15 @@ class ReflectionMorphedByManyTest extends AbstractTestCase {
     {
         $schemaNaming = new SchemaNaming();
         $attribute = new MorphedByMany(
-            TestEntity::class,
+            TestPolymorphicManyToManyPost::class,
             'taggable'
         );
 
-        $reflection = new ReflectionMorphedByMany($attribute, $this->reflectionProperty, $schemaNaming);
+        // Property declared on TestPolymorphicManyToManyTag → column must point back to that declaring entity
+        $property = new ReflectionProperty(TestPolymorphicManyToManyTag::class, 'posts');
+        $reflection = new ReflectionMorphedByMany($attribute, $property, $schemaNaming);
 
-        $this->assertEquals('test_entity_id', $reflection->getTargetJoinColumn());
+        $this->assertEquals('test_polymorphic_many_to_many_tag_id', $reflection->getTargetJoinColumn());
     }
 
     public function testGetTypeColumn()
