@@ -39,7 +39,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->generate($compareResult);
 
-        $this->assertEquals('DROP TABLE test_table', $result);
+        $this->assertEquals(['DROP TABLE test_table'], $result);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -56,7 +56,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->generate($compareResult);
 
-        $this->assertEquals('CREATE TABLE test_table', $result);
+        $this->assertEquals(['CREATE TABLE test_table'], $result);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -73,7 +73,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->generate($compareResult);
 
-        $this->assertEquals('ALTER TABLE test_table', $result);
+        $this->assertEquals(['ALTER TABLE test_table'], $result);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -90,7 +90,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->rollback($compareResult);
 
-        $this->assertEquals('DROP TABLE test_table', $result);
+        $this->assertEquals(['DROP TABLE test_table'], $result);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -107,7 +107,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->rollback($compareResult);
 
-        $this->assertEquals('CREATE TABLE test_table FROM ROLLBACK', $result);
+        $this->assertEquals(['CREATE TABLE test_table FROM ROLLBACK'], $result);
     }
 
     #[AllowMockObjectsWithoutExpectations]
@@ -124,7 +124,7 @@ class AbstractMigrationGeneratorTest extends AbstractTestCase {
 
         $result = $this->generator->rollback($compareResult);
 
-        $this->assertEquals('ALTER TABLE test_table ROLLBACK', $result);
+        $this->assertEquals(['ALTER TABLE test_table ROLLBACK'], $result);
     }
 
     public function testColumnDefinitionGeneratesBasicColumn(): void

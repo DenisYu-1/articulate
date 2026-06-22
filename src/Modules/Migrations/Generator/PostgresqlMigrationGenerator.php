@@ -27,6 +27,96 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
         return 'DROP TABLE "' . $tableName . '"';
     }
 
+    public function generate(TableCompareResult $compareResult): array
+    {
+        if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
+            return [$this->generateDropTable($compareResult->name)];
+        }
+
+        if ($compareResult->operation === CompareResult::OPERATION_CREATE) {
+            $stmts = [$this->generateCreateTable($compareResult)];
+            foreach ($compareResult->indexes as $index) {
+                if ($index->operation === CompareResult::OPERATION_CREATE) {
+                    $stmts[] = $this->buildCreateIndex($index, $compareResult->name);
+                }
+            }
+
+            return $stmts;
+        }
+
+        // ALTER TABLE: index drops are standalone DROP INDEX, index creates are standalone CREATE INDEX
+        $stmts = [];
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
+                $stmts[] = 'DROP INDEX "' . $index->name . '"';
+            }
+        }
+        $alter = $this->generateAlterTable($compareResult);
+        if ($alter !== '') {
+            $stmts[] = $alter;
+        }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_CREATE) {
+                $stmts[] = $this->buildCreateIndex($index, $compareResult->name);
+            }
+        }
+
+        return array_values(array_filter($stmts));
+    }
+
+    public function rollback(TableCompareResult $compareResult): array
+    {
+        if ($compareResult->operation === CompareResult::OPERATION_CREATE) {
+            return [$this->generateDropTable($compareResult->name)];
+        }
+
+        if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
+            $stmts = [$this->generateCreateTableFromRollback($compareResult)];
+            foreach ($compareResult->indexes as $index) {
+                if ($index->operation === CompareResult::OPERATION_DELETE) {
+                    $stmts[] = $this->buildCreateIndex($index, $compareResult->name);
+                }
+            }
+
+            return array_values(array_filter($stmts));
+        }
+
+        // Rollback of ALTER TABLE: undo CREATEs (drop them) first, then the alter, then undo DELETEs (recreate)
+        $stmts = [];
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_CREATE) {
+                $stmts[] = 'DROP INDEX "' . $index->name . '"';
+            }
+        }
+        $alter = $this->generateAlterTableRollback($compareResult);
+        if ($alter !== '') {
+            $stmts[] = $alter;
+        }
+        foreach ($compareResult->indexes as $index) {
+            if ($index->operation === CompareResult::OPERATION_DELETE) {
+                $stmts[] = $this->buildCreateIndex($index, $compareResult->name);
+            }
+        }
+
+        return array_values(array_filter($stmts));
+    }
+
+    private function buildCreateIndex(IndexCompareResult $index, string $tableName): string
+    {
+        $uniqueKeyword = $index->isUnique ? 'UNIQUE ' : '';
+        $concurrentKeyword = $index->isConcurrent ? 'CONCURRENTLY ' : '';
+        $columns = implode(', ', array_map(fn ($col) => '"' . $col . '"', $index->columns));
+
+        return sprintf(
+            'CREATE %sINDEX %s"%s" ON "%s" (%s)',
+            $uniqueKeyword,
+            $concurrentKeyword,
+            $index->name,
+            $tableName,
+            $columns
+        );
+    }
+
     protected function generateCreateTable(TableCompareResult $compareResult): string
     {
         $query = 'CREATE TABLE "' . $compareResult->name . '" (';
@@ -38,12 +128,6 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
         if (!empty($compareResult->primaryColumns)) {
             $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
-        }
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation !== CompareResult::OPERATION_CREATE) {
-                continue;
-            }
-            $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
         }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_CREATE) {
@@ -58,15 +142,9 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
 
     protected function generateAlterTable(TableCompareResult $compareResult): string
     {
-        $alterParts = [];
-
-        // Generate changes in correct order: deletions first, then modifications, then additions
         $alterParts = array_merge(
-            $alterParts,
             $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_DELETE),
-            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_DELETE),
             $this->generateColumnChanges($compareResult->columns, false),
-            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_CREATE, $compareResult->name),
             $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_CREATE)
         );
 
@@ -94,30 +172,6 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
                     $changes[] = $this->getDropForeignKeySyntax($foreignKey->name);
                 } else {
                     $changes[] = $this->foreignKeyDefinition($foreignKey);
-                }
-            }
-        }
-
-        return $changes;
-    }
-
-    /**
-     * Generates index changes for the specified operation.
-     *
-     * @param IndexCompareResult[] $indexes
-     * @param bool $isRollback Whether this is for rollback (reverses operations)
-     * @return string[]
-     */
-    private function generateIndexChanges(array $indexes, string $operation, string $tableName = '', bool $isRollback = false): array
-    {
-        $changes = [];
-        foreach ($indexes as $index) {
-            $targetOperation = $isRollback ? $this->reverseOperation($index->operation) : $index->operation;
-            if ($targetOperation === $operation) {
-                if ($operation === CompareResult::OPERATION_DELETE) {
-                    $changes[] = $this->getDropIndexSyntax($index->name);
-                } else {
-                    $changes[] = $this->generateIndexSql($index, $tableName ?: $index->tableName ?? '');
                 }
             }
         }
@@ -193,16 +247,10 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
 
     protected function generateAlterTableRollback(TableCompareResult $compareResult): string
     {
-        $alterParts = [];
-
-        // For rollback, reverse the operations: undo creations first, then undo deletions
         $alterParts = array_merge(
-            $alterParts,
-            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_DELETE, true), // undo ADD FK -> DROP FK
-            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_DELETE, $compareResult->name, true), // undo ADD INDEX -> DROP INDEX
-            $this->generateColumnChanges($compareResult->columns, true), // rollback column ops
-            $this->generateIndexChanges($compareResult->indexes, CompareResult::OPERATION_CREATE, $compareResult->name, true), // undo DROP INDEX -> ADD INDEX
-            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_CREATE, true) // undo DROP FK -> ADD FK
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_DELETE, true),
+            $this->generateColumnChanges($compareResult->columns, true),
+            $this->generateForeignKeyChanges($compareResult->foreignKeys, CompareResult::OPERATION_CREATE, true)
         );
 
         if (empty($alterParts)) {
@@ -223,11 +271,6 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
         if (!empty($compareResult->primaryColumns)) {
             $quotedColumns = array_map(fn ($col) => '"' . $col . '"', $compareResult->primaryColumns);
             $parts[] = 'PRIMARY KEY (' . implode(', ', $quotedColumns) . ')';
-        }
-        foreach ($compareResult->indexes as $index) {
-            if ($index->operation === CompareResult::OPERATION_DELETE) {
-                $parts[] = $this->generateIndexSql($index, $compareResult->name, false);
-            }
         }
         foreach ($compareResult->foreignKeys as $foreignKey) {
             if ($foreignKey->operation !== CompareResult::OPERATION_DELETE) {

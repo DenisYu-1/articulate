@@ -478,7 +478,7 @@ class QueryBuilderTest extends DatabaseTestCase {
         $unitOfWork = $this->createMock(UnitOfWork::class);
         $unitOfWork->expects($this->exactly(2))
             ->method('registerManaged')
-            ->with($this->isInstanceOf(EntityManagerTestEntity::class), []);
+            ->with($this->isInstanceOf(EntityManagerTestEntity::class), $this->isArray());
 
         $qb = new QueryBuilder($this->connection, $hydrator);
         $qb->setUnitOfWork($unitOfWork);

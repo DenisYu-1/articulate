@@ -187,12 +187,12 @@ class MappingTableComparator {
     ): array {
         $foreignKeysByName = [];
         $desiredForeignKeys = [
-            $this->schemaNaming->foreignKeyName($tableName, $definition['ownerTable'], $definition['ownerJoinColumn']) => [
+            $this->schemaNaming->foreignKeyName($tableName, $definition['ownerJoinColumn']) => [
                 'column' => $definition['ownerJoinColumn'],
                 'referencedTable' => $definition['ownerTable'],
                 'referencedColumn' => $definition['ownerReferencedColumn'],
             ],
-            $this->schemaNaming->foreignKeyName($tableName, $definition['targetTable'], $definition['targetJoinColumn']) => [
+            $this->schemaNaming->foreignKeyName($tableName, $definition['targetJoinColumn']) => [
                 'column' => $definition['targetJoinColumn'],
                 'referencedTable' => $definition['targetTable'],
                 'referencedColumn' => $definition['targetReferencedColumn'],
@@ -359,7 +359,7 @@ class MappingTableComparator {
         ];
 
         foreach ($requiredForeignKeys as $column => $target) {
-            $fkName = $this->schemaNaming->foreignKeyName($tableName, $target['table'], $column);
+            $fkName = $this->schemaNaming->foreignKeyName($tableName, $column);
             unset($foreignKeysToRemove[$fkName]);
             if (!isset($existingForeignKeys[$fkName])) {
                 $operation = $operation ?? CompareResult::OPERATION_UPDATE;

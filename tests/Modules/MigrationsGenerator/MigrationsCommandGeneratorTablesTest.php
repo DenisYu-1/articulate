@@ -35,7 +35,7 @@ class MigrationsCommandGeneratorTablesTest extends DatabaseTestCase {
             };
 
             $this->assertEquals(
-                $case['query'],
+                [$case['query']],
                 $generator->generate($tableCompareResult),
                 "Failed for database: {$databaseName}, operation: {$case['operation']}"
             );

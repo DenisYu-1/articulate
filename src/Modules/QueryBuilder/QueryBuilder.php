@@ -17,6 +17,8 @@ class QueryBuilder {
 
     private ?HydratorInterface $hydrator;
 
+    private bool $hydratorExplicitlySet = false;
+
     private ?string $entityClass = null;
 
     private ?EntityMetadataRegistry $metadataRegistry;
@@ -631,6 +633,7 @@ class QueryBuilder {
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
+        $this->hydratorExplicitlySet = true;
         $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $hydrator, $this->unitOfWork);
 
         return $this;
@@ -858,14 +861,13 @@ class QueryBuilder {
     {
         $targetClass = $entityClass ?? $this->entityClass;
 
-        // Don't hydrate when using aggregate functions
-        if ($this->hasAggregateFunction()) {
-            $targetClass = null;
-        }
-
-        // Don't hydrate when selecting specific columns (not SELECT *)
-        if ($this->hasSpecificColumnSelection()) {
-            $targetClass = null;
+        // Bypass entity hydration for aggregates/partial selects unless hydrator was explicitly set.
+        // ObjectHydrator (default) requires full entity rows; custom hydrators (e.g. ScalarHydrator)
+        // should always be invoked regardless of select shape.
+        if (!$this->hydratorExplicitlySet) {
+            if ($this->hasAggregateFunction() || $this->hasSpecificColumnSelection()) {
+                $targetClass = null;
+            }
         }
 
         if ($targetClass !== null && $this->hydrator === null) {

@@ -58,7 +58,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    name: (new SchemaNaming())->foreignKeyName('test_table', $relatedTableName, 'related_entity_id'),
+                    name: (new SchemaNaming())->foreignKeyName('test_table', 'related_entity_id'),
                     operation: 'create',
                     column: 'related_entity_id',
                     referencedTable: $relatedTableName,

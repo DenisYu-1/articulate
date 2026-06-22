@@ -76,8 +76,9 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
 
         $result = $generator->generate($tableCompareResult);
 
-        $expected = match ($databaseName) {
-            'mysql' => "CREATE TABLE {$quote}poll{$quote} (" .
+        if ($databaseName === 'mysql') {
+            $expected = [
+                "CREATE TABLE {$quote}poll{$quote} (" .
                 "{$quote}id{$quote} {$intType} NOT NULL, " .
                 "{$quote}question{$quote} VARCHAR(255) NOT NULL, " .
                 "{$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
@@ -85,15 +86,20 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
                 "PRIMARY KEY ({$quote}id{$quote}), " .
                 "INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})" .
                 ')',
-            'pgsql' => "CREATE TABLE {$quote}poll{$quote} (" .
+            ];
+        } else {
+            // PostgreSQL: CREATE TABLE without inline indexes, then separate CREATE INDEX
+            $expected = [
+                "CREATE TABLE {$quote}poll{$quote} (" .
                 "{$quote}id{$quote} {$intType} NOT NULL, " .
                 "{$quote}question{$quote} VARCHAR(255) NOT NULL, " .
                 "{$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
                 "{$quote}pollable_id{$quote} {$intType} NOT NULL, " .
-                "PRIMARY KEY ({$quote}id{$quote}), " .
-                "INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})" .
+                "PRIMARY KEY ({$quote}id{$quote})" .
                 ')',
-        };
+                'CREATE INDEX "pollable_morph_index" ON "poll" ("pollable_type", "pollable_id")',
+            ];
+        }
 
         $this->assertEquals($expected, $result);
     }
@@ -149,10 +155,20 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
 
         $result = $generator->generate($tableCompareResult);
 
-        $expected = "ALTER TABLE {$quote}poll{$quote} " .
-            "ADD {$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
-            "ADD {$quote}pollable_id{$quote} {$intType} NOT NULL, " .
-            "ADD INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})";
+        if ($databaseName === 'mysql') {
+            $expected = [
+                "ALTER TABLE {$quote}poll{$quote} " .
+                "ADD {$quote}pollable_type{$quote} VARCHAR(255) NOT NULL, " .
+                "ADD {$quote}pollable_id{$quote} {$intType} NOT NULL, " .
+                "ADD INDEX {$quote}pollable_morph_index{$quote} ({$quote}pollable_type{$quote}, {$quote}pollable_id{$quote})",
+            ];
+        } else {
+            // PostgreSQL: ALTER TABLE for columns, then separate CREATE INDEX
+            $expected = [
+                'ALTER TABLE "poll" ADD "pollable_type" VARCHAR(255) NOT NULL, ADD "pollable_id" INTEGER NOT NULL',
+                'CREATE INDEX "pollable_morph_index" ON "poll" ("pollable_type", "pollable_id")',
+            ];
+        }
 
         $this->assertEquals($expected, $result);
     }
@@ -203,10 +219,20 @@ class MigrationsCommandGeneratorPolymorphicTest extends DatabaseTestCase {
 
         $result = $generator->rollback($tableCompareResult);
 
-        $expected = "ALTER TABLE {$quote}poll{$quote} " .
-            "DROP INDEX {$quote}pollable_morph_index{$quote}, " .
-            "DROP {$quote}pollable_type{$quote}, " .
-            "DROP {$quote}pollable_id{$quote}";
+        if ($databaseName === 'mysql') {
+            $expected = [
+                "ALTER TABLE {$quote}poll{$quote} " .
+                "DROP INDEX {$quote}pollable_morph_index{$quote}, " .
+                "DROP {$quote}pollable_type{$quote}, " .
+                "DROP {$quote}pollable_id{$quote}",
+            ];
+        } else {
+            // PostgreSQL rollback: DROP INDEX (undo CREATE) as standalone, then ALTER TABLE for columns
+            $expected = [
+                'DROP INDEX "pollable_morph_index"',
+                'ALTER TABLE "poll" DROP "pollable_type", DROP "pollable_id"',
+            ];
+        }
 
         $this->assertEquals($expected, $result);
     }

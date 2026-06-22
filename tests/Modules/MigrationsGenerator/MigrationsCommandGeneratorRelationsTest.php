@@ -36,7 +36,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
             };
 
             $this->assertEquals(
-                $case['query'],
+                [$case['query']],
                 $generator->generate($tableCompareResult),
                 "Failed for database: {$databaseName}"
             );
@@ -149,7 +149,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL, ADD CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote})";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -194,7 +194,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -239,7 +239,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -291,7 +291,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}, DROP {$quote}related_entity_id{$quote}";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -343,7 +343,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "CREATE TABLE {$quote}test_table{$quote} ({$quote}related_entity_id{$quote} {$intType} NOT NULL, CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote}))";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->rollback($tableCompareResult),
             "Failed for database: {$databaseName}"
         );

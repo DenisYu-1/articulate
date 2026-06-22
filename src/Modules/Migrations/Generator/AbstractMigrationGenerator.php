@@ -15,30 +15,36 @@ abstract class AbstractMigrationGenerator {
     ) {
     }
 
-    public function generate(TableCompareResult $compareResult): string
+    /**
+     * @return string[]
+     */
+    public function generate(TableCompareResult $compareResult): array
     {
         if ($compareResult->operation === CompareResult::OPERATION_DELETE) {
-            return $this->generateDropTable($compareResult->name);
+            return [$this->generateDropTable($compareResult->name)];
         }
 
         if ($compareResult->operation === CompareResult::OPERATION_CREATE) {
-            return $this->generateCreateTable($compareResult);
+            return array_values(array_filter([$this->generateCreateTable($compareResult)]));
         }
 
-        return $this->generateAlterTable($compareResult);
+        return array_values(array_filter([$this->generateAlterTable($compareResult)]));
     }
 
-    public function rollback(TableCompareResult $compareResult): string
+    /**
+     * @return string[]
+     */
+    public function rollback(TableCompareResult $compareResult): array
     {
         if ($compareResult->operation === TableCompareResult::OPERATION_CREATE) {
-            return $this->generateDropTable($compareResult->name);
+            return [$this->generateDropTable($compareResult->name)];
         }
 
         if ($compareResult->operation === TableCompareResult::OPERATION_DELETE) {
-            return $this->generateCreateTableFromRollback($compareResult);
+            return array_values(array_filter([$this->generateCreateTableFromRollback($compareResult)]));
         }
 
-        return $this->generateAlterTableRollback($compareResult);
+        return array_values(array_filter([$this->generateAlterTableRollback($compareResult)]));
     }
 
     abstract protected function generateDropTable(string $tableName): string;
@@ -82,6 +88,9 @@ abstract class AbstractMigrationGenerator {
         $template = $this->getForeignKeyKeyword() . ' ' . $quote . '%s' . $quote . ' FOREIGN KEY (' . $quote . '%s' . $quote . ') REFERENCES ' . $quote . '%s' . $quote . '(' . $quote . '%s' . $quote . ')';
         if ($withAdd) {
             $template = 'ADD ' . $template;
+        }
+        if ($foreignKey->onDelete !== null) {
+            $template .= ' ON DELETE ' . strtoupper($foreignKey->onDelete);
         }
 
         return sprintf(

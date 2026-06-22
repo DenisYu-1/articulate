@@ -7,7 +7,13 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 interface MigrationGeneratorInterface {
     public function getIdentifierQuote(): string;
 
-    public function generate(TableCompareResult $compareResult): string;
+    /**
+     * @return string[]
+     */
+    public function generate(TableCompareResult $compareResult): array;
 
-    public function rollback(TableCompareResult $compareResult): string;
+    /**
+     * @return string[]
+     */
+    public function rollback(TableCompareResult $compareResult): array;
 }

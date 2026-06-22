@@ -67,8 +67,8 @@ class DiffCommand extends Command {
         $allWarnings = [];
         foreach ($compareResults as $compareResult) {
             $allWarnings = array_merge($allWarnings, $compareResult->warnings);
-            $queries[] = $this->migrationsCommandGenerator->generate($compareResult);
-            $rollbacks[] = $this->migrationsCommandGenerator->rollback($compareResult);
+            array_push($queries, ...$this->migrationsCommandGenerator->generate($compareResult));
+            array_push($rollbacks, ...$this->migrationsCommandGenerator->rollback($compareResult));
         }
         foreach ($allWarnings as $warning) {
             $io->warning($warning);

@@ -114,10 +114,19 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         return $this->getMappedByProperty() ?? $this->parseColumnName($this->property->getName());
     }
 
+    public function getOnDelete(): ?string
+    {
+        return property_exists($this->entityProperty, 'onDelete') ? $this->entityProperty->onDelete : null;
+    }
+
     public function getInversedBy(): ?string
     {
         if ($this->isManyToOne()) {
             return $this->getInversedByProperty();
+        }
+        // Owning OneToOne with no inverse side configured is valid — just no back-reference
+        if ($this->isOneToOne() && $this->getMappedByProperty() === null && $this->getInversedByProperty() === null) {
+            return null;
         }
         $this->assertMappingConfigured();
 

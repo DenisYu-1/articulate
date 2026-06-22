@@ -15,7 +15,7 @@ class MySqlTypeMapper extends TypeRegistry {
     {
         // Basic types (register non-nullable first) - using MySQL-specific syntax
         $this->registerType('int', 'INT');
-        $this->registerType('float', 'FLOAT');
+        $this->registerType('float', 'DOUBLE');
         $this->registerType('string', 'VARCHAR(255)');
         $this->registerType('bool', 'TINYINT(1)', new BoolTypeConverter());
         $this->registerType('mixed', 'TEXT');
@@ -32,7 +32,7 @@ class MySqlTypeMapper extends TypeRegistry {
 
         // Nullable versions (these override the db->php mapping for reverse lookups)
         $this->registerType('?int', 'INT');
-        $this->registerType('?float', 'FLOAT');
+        $this->registerType('?float', 'DOUBLE');
         $this->registerType('?string', 'VARCHAR(255)');
         $this->registerType('?bool', 'TINYINT(1)', new BoolTypeConverter());
         $this->registerType('?DateTime', 'DATETIME');

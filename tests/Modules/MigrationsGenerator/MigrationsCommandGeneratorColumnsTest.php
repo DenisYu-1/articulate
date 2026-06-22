@@ -35,7 +35,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
             };
 
             $this->assertEquals(
-                $case['query'],
+                [$case['query']],
                 $generator->generate($tableCompareResult),
                 "Failed for database: {$databaseName}"
             );
@@ -155,7 +155,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
             'pgsql' => '"',
         };
 
-        $result = $generator->generate($tableCompareResult);
+        $result = implode(' ', $generator->generate($tableCompareResult));
         $this->assertStringContainsString("ADD {$quote}user_id{$quote}", $result);
         $this->assertStringContainsString("DROP {$quote}old_column{$quote}", $result);
     }

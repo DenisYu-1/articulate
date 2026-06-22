@@ -9,6 +9,7 @@ class ForeignKeyCompareResult extends CompareResult {
         public readonly string $column,
         public readonly string $referencedTable,
         public readonly string $referencedColumn = 'id',
+        public readonly ?string $onDelete = null,
     ) {
         parent::__construct($name, $operation);
     }

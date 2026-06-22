@@ -10,9 +10,9 @@ class SchemaNaming {
         return StringUtils::snakeCase($propertyName) . '_id';
     }
 
-    public function foreignKeyName(string $table, string $referencedTable, string $column): string
+    public function foreignKeyName(string $table, string $column): string
     {
-        return sprintf('fk_%s_%s_%s', $table, $referencedTable, $column);
+        return sprintf('fk_%s_%s', $table, $column);
     }
 
     public function mappingTableName(string $ownerTable, string $targetTable): string

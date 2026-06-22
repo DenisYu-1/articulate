@@ -33,7 +33,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('posts', 'users', 'user_id'),
+                    (new SchemaNaming())->foreignKeyName('posts', 'user_id'),
                     CompareResult::OPERATION_CREATE,
                     'user_id',
                     'users'
@@ -58,9 +58,9 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
         $result = $generator->generate($tableCompareResult);
 
-        $expected = "ALTER TABLE {$quote}posts{$quote} ADD {$quote}user_id{$quote} {$intType} NOT NULL, ADD CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('posts', 'users', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote})";
+        $expected = "ALTER TABLE {$quote}posts{$quote} ADD {$quote}user_id{$quote} {$intType} NOT NULL, ADD CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('posts', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote})";
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -87,7 +87,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
         $result = $generator->generate($tableCompareResult);
 
         // Should generate no SQL changes
-        $this->assertEquals('', $result);
+        $this->assertEquals([], $result);
     }
 
     /**
@@ -110,7 +110,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('users', 'profiles', 'profile_id'),
+                    (new SchemaNaming())->foreignKeyName('users', 'profile_id'),
                     CompareResult::OPERATION_CREATE,
                     'profile_id',
                     'profiles'
@@ -135,9 +135,9 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
         $result = $generator->generate($tableCompareResult);
 
-        $expected = "ALTER TABLE {$quote}users{$quote} ADD {$quote}profile_id{$quote} {$intType}, ADD CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('users', 'profiles', 'profile_id') . "{$quote} FOREIGN KEY ({$quote}profile_id{$quote}) REFERENCES {$quote}profiles{$quote}({$quote}id{$quote})";
+        $expected = "ALTER TABLE {$quote}users{$quote} ADD {$quote}profile_id{$quote} {$intType}, ADD CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('users', 'profile_id') . "{$quote} FOREIGN KEY ({$quote}profile_id{$quote}) REFERENCES {$quote}profiles{$quote}({$quote}id{$quote})";
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -180,7 +180,7 @@ class MigrationsCommandGeneratorRelationsExtendedTest extends DatabaseTestCase {
 
         $expected = "ALTER TABLE {$quote}posts{$quote} DROP {$fkKeyword} {$quote}fk_posts_users_user_id{$quote}";
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**

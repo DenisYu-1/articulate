@@ -72,7 +72,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
                 ')',
         };
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -111,7 +111,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             'PRIMARY KEY ("id")' .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -150,7 +150,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             'PRIMARY KEY ("id")' .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -204,7 +204,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -253,7 +253,7 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -292,6 +292,6 @@ class MigrationsCommandGeneratorPrimaryKeyTest extends DatabaseTestCase {
             'PRIMARY KEY ("id")' .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 }

@@ -39,13 +39,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id'),
+                    (new SchemaNaming())->foreignKeyName('user_post_map', 'user_id'),
                     CompareResult::OPERATION_CREATE,
                     'user_id',
                     'users'
                 ),
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id'),
+                    (new SchemaNaming())->foreignKeyName('user_post_map', 'post_id'),
                     CompareResult::OPERATION_CREATE,
                     'post_id',
                     'posts'
@@ -76,11 +76,11 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             "{$quote}user_id{$quote} {$intType} NOT NULL, " .
             "{$quote}post_id{$quote} {$intType} NOT NULL, " .
             "PRIMARY KEY ({$quote}user_id{$quote}, {$quote}post_id{$quote}), " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -115,13 +115,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_owner', 'test_many_to_many_owner_id'),
+                    (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_owner_id'),
                     CompareResult::OPERATION_CREATE,
                     'test_many_to_many_owner_id',
                     'test_many_to_many_owner'
                 ),
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_target', 'test_many_to_many_target_id'),
+                    (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_target_id'),
                     CompareResult::OPERATION_CREATE,
                     'test_many_to_many_target_id',
                     'test_many_to_many_target'
@@ -158,11 +158,11 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             "{$quote}test_many_to_many_target_id{$quote} {$intType} NOT NULL, " .
             "{$quote}created_at{$quote} {$datetimeType}, " .
             "PRIMARY KEY ({$quote}test_many_to_many_owner_id{$quote}, {$quote}test_many_to_many_target_id{$quote}), " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_owner', 'test_many_to_many_owner_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_owner_id{$quote}) REFERENCES {$quote}test_many_to_many_owner{$quote}({$quote}id{$quote}), " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_target', 'test_many_to_many_target_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_target_id{$quote}) REFERENCES {$quote}test_many_to_many_target{$quote}({$quote}id{$quote})" .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_owner_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_owner_id{$quote}) REFERENCES {$quote}test_many_to_many_owner{$quote}({$quote}id{$quote}), " .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('owner_target_map', 'test_many_to_many_target_id') . "{$quote} FOREIGN KEY ({$quote}test_many_to_many_target_id{$quote}) REFERENCES {$quote}test_many_to_many_target{$quote}({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -191,13 +191,13 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id'),
+                    (new SchemaNaming())->foreignKeyName('user_post_map', 'user_id'),
                     CompareResult::OPERATION_DELETE,
                     'user_id',
                     'users'
                 ),
                 new ForeignKeyCompareResult(
-                    (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id'),
+                    (new SchemaNaming())->foreignKeyName('user_post_map', 'post_id'),
                     CompareResult::OPERATION_DELETE,
                     'post_id',
                     'posts'
@@ -226,10 +226,10 @@ class MigrationsCommandGeneratorManyToManyTest extends DatabaseTestCase {
         $expected = "CREATE TABLE {$quote}user_post_map{$quote} (" .
             "{$quote}user_id{$quote} {$intType} NOT NULL, " .
             "{$quote}post_id{$quote} {$intType} NOT NULL, " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'users', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
-            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'posts', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'user_id') . "{$quote} FOREIGN KEY ({$quote}user_id{$quote}) REFERENCES {$quote}users{$quote}({$quote}id{$quote}), " .
+            "CONSTRAINT {$quote}" . (new SchemaNaming())->foreignKeyName('user_post_map', 'post_id') . "{$quote} FOREIGN KEY ({$quote}post_id{$quote}) REFERENCES {$quote}posts{$quote}({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 }

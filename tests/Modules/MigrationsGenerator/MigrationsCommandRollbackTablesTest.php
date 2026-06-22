@@ -35,7 +35,7 @@ class MigrationsCommandRollbackTablesTest extends DatabaseTestCase {
             };
 
             $this->assertEquals(
-                $case['query'],
+                [$case['query']],
                 $generator->rollback($tableCompareResult),
                 "Failed for database: {$databaseName}, operation: {$case['operation']}"
             );
