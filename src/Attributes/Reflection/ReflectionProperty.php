@@ -24,6 +24,11 @@ class ReflectionProperty implements PropertyInterface {
         return $this->property->getName();
     }
 
+    public function getDeclaringClassName(): string
+    {
+        return $this->property->class;
+    }
+
     public function getColumnName(): string
     {
         return $this->entityProperty->name ?? $this->parseColumnName();

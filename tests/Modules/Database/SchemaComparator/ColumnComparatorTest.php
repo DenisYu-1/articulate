@@ -2,7 +2,7 @@
 
 namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
-use Articulate\Attributes\Property;
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Comparators\ColumnComparator;
@@ -21,6 +21,32 @@ class ColumnComparatorTest extends TestCase {
     {
         $this->comparator = new ColumnComparator();
     }
+
+    // ===== Helpers =====
+
+    private function scalarOf(string $entityClass, string $propertyName): ReflectionProperty
+    {
+        $entity = new ReflectionEntity($entityClass);
+        foreach ($entity->getEntityProperties() as $prop) {
+            if ($prop->getFieldName() === $propertyName) {
+                return $prop;
+            }
+        }
+        throw new \InvalidArgumentException("Property $propertyName not found in $entityClass");
+    }
+
+    private function relationOf(string $entityClass, string $propertyName): ReflectionRelation
+    {
+        $entity = new ReflectionEntity($entityClass);
+        foreach ($entity->getColumnRelationProperties() as $rel) {
+            if ($rel->getPropertyName() === $propertyName) {
+                return $rel;
+            }
+        }
+        throw new \InvalidArgumentException("Relation $propertyName not found in $entityClass");
+    }
+
+    // ===== Instance test =====
 
     public function testColumnComparatorCanBeInstantiated(): void
     {
@@ -229,7 +255,7 @@ class ColumnComparatorTest extends TestCase {
         $propertiesIndexed = [
             'name' => [
                 'type' => 'string',
-                'nullable' => true, // Changed from false to true
+                'nullable' => true,
                 'default' => null,
                 'length' => 255,
                 'relation' => null,
@@ -270,7 +296,7 @@ class ColumnComparatorTest extends TestCase {
             'status' => [
                 'type' => 'string',
                 'nullable' => false,
-                'default' => 'active', // New default
+                'default' => 'active',
                 'length' => 50,
                 'relation' => null,
                 'foreignKeyRequired' => false,
@@ -311,7 +337,7 @@ class ColumnComparatorTest extends TestCase {
                 'type' => 'string',
                 'nullable' => false,
                 'default' => null,
-                'length' => 100, // Changed length
+                'length' => 100,
                 'relation' => null,
                 'foreignKeyRequired' => false,
                 'referencedColumn' => null,
@@ -348,10 +374,10 @@ class ColumnComparatorTest extends TestCase {
     {
         $propertiesIndexed = [
             'mixed_column' => [
-                'type' => 'string', // Same
-                'nullable' => true, // Different
-                'default' => 'new_default', // Different
-                'length' => 255, // Same
+                'type' => 'string',
+                'nullable' => true,
+                'default' => 'new_default',
+                'length' => 255,
                 'relation' => null,
                 'foreignKeyRequired' => false,
                 'referencedColumn' => null,
@@ -364,10 +390,10 @@ class ColumnComparatorTest extends TestCase {
 
         $columnsIndexed = [
             'mixed_column' => (object) [
-                'type' => 'string', // Same
-                'isNullable' => false, // Different
-                'defaultValue' => null, // Different
-                'length' => 255, // Same
+                'type' => 'string',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => 255,
             ],
         ];
 
@@ -378,15 +404,13 @@ class ColumnComparatorTest extends TestCase {
         $result = $results[0];
         $this->assertEquals(CompareResult::OPERATION_UPDATE, $result->operation);
 
-        // Check partial matching
-        $this->assertTrue($result->typeMatch); // Same
-        $this->assertFalse($result->isNullableMatch); // Different
-        $this->assertFalse($result->isDefaultValueMatch); // Different
-        $this->assertTrue($result->isLengthMatch); // Same
+        $this->assertTrue($result->typeMatch);
+        $this->assertFalse($result->isNullableMatch);
+        $this->assertFalse($result->isDefaultValueMatch);
+        $this->assertTrue($result->isLengthMatch);
 
-        $this->assertTrue($result->hasChanges()); // Should have changes
+        $this->assertTrue($result->hasChanges());
 
-        // Verify PropertiesData content
         $this->assertEquals('string', $result->propertyData->type);
         $this->assertTrue($result->propertyData->isNullable);
         $this->assertEquals('new_default', $result->propertyData->defaultValue);
@@ -400,8 +424,6 @@ class ColumnComparatorTest extends TestCase {
 
     public function testCompareColumnsUpdatePropertiesDataConstructor(): void
     {
-        // Test that the PropertiesData constructor in update section works correctly
-        // The update section uses a different constructor than create section
         $propertiesIndexed = [
             'test_column' => [
                 'type' => 'varchar',
@@ -411,16 +433,16 @@ class ColumnComparatorTest extends TestCase {
                 'relation' => null,
                 'foreignKeyRequired' => false,
                 'referencedColumn' => null,
-                'generatorType' => 'uuid', // Not used in update PropertiesData
-                'sequence' => 'seq', // Not used in update PropertiesData
-                'isPrimaryKey' => true, // Not used in update PropertiesData
-                'isAutoIncrement' => true, // Not used in update PropertiesData
+                'generatorType' => 'uuid',
+                'sequence' => 'seq',
+                'isPrimaryKey' => true,
+                'isAutoIncrement' => true,
             ],
         ];
 
         $columnsIndexed = [
             'test_column' => (object) [
-                'type' => 'text', // Different
+                'type' => 'text',
                 'isNullable' => false,
                 'defaultValue' => 'test',
                 'length' => 100,
@@ -433,21 +455,17 @@ class ColumnComparatorTest extends TestCase {
         $this->assertCount(1, $results);
         $result = $results[0];
 
-        // Property data should include all fields from propertiesIndexed
         $this->assertEquals('varchar', $result->propertyData->type);
         $this->assertFalse($result->propertyData->isNullable);
         $this->assertEquals('test', $result->propertyData->defaultValue);
         $this->assertEquals(100, $result->propertyData->length);
 
-        // Column data should only include compared fields from database
         $this->assertEquals('text', $result->columnData->type);
         $this->assertFalse($result->columnData->isNullable);
         $this->assertEquals('test', $result->columnData->defaultValue);
         $this->assertEquals(100, $result->columnData->length);
 
-        // The additional fields (generatorType, sequence, etc.) are not compared
-        // so they're not included in the PropertiesData for updates
-        $this->assertFalse($result->typeMatch); // varchar vs text
+        $this->assertFalse($result->typeMatch);
     }
 
     public function testCompareColumnsNoUpdateWhenIdentical(): void
@@ -485,7 +503,6 @@ class ColumnComparatorTest extends TestCase {
     public function testCompareColumnsMixedOperations(): void
     {
         $propertiesIndexed = [
-            // New column
             'new_column' => [
                 'type' => 'int',
                 'nullable' => false,
@@ -499,7 +516,6 @@ class ColumnComparatorTest extends TestCase {
                 'isPrimaryKey' => false,
                 'isAutoIncrement' => false,
             ],
-            // Changed column
             'changed_column' => [
                 'type' => 'string',
                 'nullable' => false,
@@ -516,14 +532,12 @@ class ColumnComparatorTest extends TestCase {
         ];
 
         $columnsIndexed = [
-            // Changed column (different length)
             'changed_column' => (object) [
                 'type' => 'string',
                 'isNullable' => false,
                 'defaultValue' => null,
                 'length' => 255,
             ],
-            // Deleted column
             'deleted_column' => (object) [
                 'type' => 'bool',
                 'isNullable' => true,
@@ -553,18 +567,9 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithNewColumn(): void
     {
-        $property = $this->createStub(ReflectionProperty::class);
-        $property->method('getType')->willReturn('string');
-        $property->method('isNullable')->willReturn(false);
-        $property->method('getDefaultValue')->willReturn(null);
-        $property->method('getLength')->willReturn(255);
-        $property->method('getGeneratorType')->willReturn(null);
-        $property->method('getSequence')->willReturn(null);
-        $property->method('isPrimaryKey')->willReturn(false);
-        $property->method('isAutoIncrement')->willReturn(false);
+        $property = $this->scalarOf(CcStringName255::class, 'name');
 
-        $propertiesIndexed = [];
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $property, 'users');
+        $result = $this->comparator->mergeColumnDefinition([], 'name', $property, 'users');
 
         $this->assertArrayHasKey('name', $result);
         $this->assertEquals('string', $result['name']['type']);
@@ -578,16 +583,9 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithRelationProperty(): void
     {
-        $property = $this->createStub(ReflectionRelation::class);
-        $property->method('getType')->willReturn('int');
-        $property->method('isNullable')->willReturn(false);
-        $property->method('getDefaultValue')->willReturn(null);
-        $property->method('getLength')->willReturn(null);
-        $property->method('isForeignKeyRequired')->willReturn(true);
-        $property->method('getReferencedColumnName')->willReturn('id');
+        $property = $this->relationOf(CcPostA::class, 'user');
 
-        $propertiesIndexed = [];
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $property, 'posts');
+        $result = $this->comparator->mergeColumnDefinition([], 'user_id', $property, 'posts');
 
         $this->assertArrayHasKey('user_id', $result);
         $this->assertEquals('int', $result['user_id']['type']);
@@ -598,179 +596,114 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithExistingColumnCompatible(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('string');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn(null);
-        $existingProperty->method('getLength')->willReturn(255);
-        $existingProperty->method('getGeneratorType')->willReturn(null);
-        $existingProperty->method('getSequence')->willReturn(null);
-        $existingProperty->method('isPrimaryKey')->willReturn(false);
-        $existingProperty->method('isAutoIncrement')->willReturn(false);
+        $existing = $this->scalarOf(CcStringName255::class, 'name');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existing, 'users');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
-
-        // Second property with compatible definition
-        $newProperty = $this->createStub(ReflectionProperty::class);
-        $newProperty->method('getType')->willReturn('string');
-        $newProperty->method('isNullable')->willReturn(true); // Different nullable - should be merged
-        $newProperty->method('getDefaultValue')->willReturn(null);
-        $newProperty->method('getLength')->willReturn(255);
-        $newProperty->method('getGeneratorType')->willReturn(null);
-        $newProperty->method('getSequence')->willReturn(null);
-        $newProperty->method('isPrimaryKey')->willReturn(false);
-        $newProperty->method('isAutoIncrement')->willReturn(false);
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $newProperty, 'users');
+        $incoming = $this->scalarOf(CcNullableName::class, 'name');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $incoming, 'users');
 
         $this->assertArrayHasKey('name', $result);
         $this->assertEquals('string', $result['name']['type']);
-        $this->assertTrue($result['name']['nullable']); // Should be merged to true
+        $this->assertTrue($result['name']['nullable']);
         $this->assertEquals(255, $result['name']['length']);
     }
 
     public function testMergeColumnDefinitionThrowsOnTypeConflict(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('string');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn(null);
-        $existingProperty->method('getLength')->willReturn(255);
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
-
-        $conflictingProperty = $this->createStub(ReflectionProperty::class);
-        $conflictingProperty->method('getType')->willReturn('int'); // Different type
-        $conflictingProperty->method('isNullable')->willReturn(false);
-        $conflictingProperty->method('getDefaultValue')->willReturn(null);
-        $conflictingProperty->method('getLength')->willReturn(255);
+        $existing = $this->scalarOf(CcStringName255::class, 'name');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existing, 'users');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Column "name" on table "users" conflicts between entities');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $conflictingProperty, 'users');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $this->scalarOf(CcIntName::class, 'name'), 'users');
     }
 
     public function testMergeColumnDefinitionThrowsOnLengthConflict(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('string');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn(null);
-        $existingProperty->method('getLength')->willReturn(255);
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existingProperty, 'users');
-
-        $conflictingProperty = $this->createStub(ReflectionProperty::class);
-        $conflictingProperty->method('getType')->willReturn('string');
-        $conflictingProperty->method('isNullable')->willReturn(false);
-        $conflictingProperty->method('getDefaultValue')->willReturn(null);
-        $conflictingProperty->method('getLength')->willReturn(100); // Different length
+        $existing = $this->scalarOf(CcStringName255::class, 'name');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'name', $existing, 'users');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Column "name" on table "users" conflicts between entities');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $conflictingProperty, 'users');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'name', $this->scalarOf(CcStringName100::class, 'name'), 'users');
     }
 
     public function testMergeColumnDefinitionThrowsOnDefaultValueConflict(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('string');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn('default1');
-        $existingProperty->method('getLength')->willReturn(255);
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'status', $existingProperty, 'users');
-
-        $conflictingProperty = $this->createStub(ReflectionProperty::class);
-        $conflictingProperty->method('getType')->willReturn('string');
-        $conflictingProperty->method('isNullable')->willReturn(false);
-        $conflictingProperty->method('getDefaultValue')->willReturn('default2'); // Different default
-        $conflictingProperty->method('getLength')->willReturn(255);
+        $existing = $this->scalarOf(CcStatusDefault1::class, 'status');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'status', $existing, 'users');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Column "status" on table "users" conflicts between entities');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'status', $conflictingProperty, 'users');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'status', $this->scalarOf(CcStatusDefault2::class, 'status'), 'users');
     }
 
     public function testMergeColumnDefinitionThrowsOnRelationVsScalarConflict(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('int');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn(null);
-        $existingProperty->method('getLength')->willReturn(null);
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingProperty, 'posts');
-
-        $relationProperty = $this->createStub(ReflectionRelation::class);
-        $relationProperty->method('getType')->willReturn('int');
-        $relationProperty->method('isNullable')->willReturn(false);
-        $relationProperty->method('getDefaultValue')->willReturn(null);
-        $relationProperty->method('getLength')->willReturn(null);
-        $relationProperty->method('isForeignKeyRequired')->willReturn(true); // This makes it a relation
+        $scalar = $this->scalarOf(CcScalarUserId::class, 'userId');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $scalar, 'posts');
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Column "user_id" on table "posts" conflicts between relation and scalar definitions');
+        $this->expectExceptionMessage('Invalid duplicate mapping for column "user_id" on table "posts"');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $relationProperty, 'posts');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $this->relationOf(CcPostA::class, 'user'), 'posts');
+    }
+
+    public function testMergeColumnDefinitionThrowsOnRelationFirstScalarSecond(): void
+    {
+        $relation = $this->relationOf(CcOrder::class, 'customer');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'customer_id', $relation, 'orders');
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Invalid duplicate mapping for column "customer_id" on table "orders"');
+
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'customer_id', $this->scalarOf(CcScalarCustomerId::class, 'customerId'), 'orders');
+    }
+
+    public function testMergeColumnDefinitionScalarRelationConflictMessageIncludesAllDetails(): void
+    {
+        $scalar = $this->scalarOf(CcScalarCustomerId::class, 'customerId');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'customer_id', $scalar, 'orders');
+
+        $relation = $this->relationOf(CcOrder::class, 'customer');
+
+        try {
+            $this->comparator->mergeColumnDefinition($propertiesIndexed, 'customer_id', $relation, 'orders');
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (RuntimeException $e) {
+            $message = $e->getMessage();
+            $this->assertStringContainsString('customer_id', $message);
+            $this->assertStringContainsString('orders', $message);
+            $this->assertStringContainsString(CcScalarCustomerId::class . '::$customerId', $message);
+            $this->assertStringContainsString(CcOrder::class . '::$customer', $message);
+            $this->assertStringContainsString(CcCustomer::class, $message);
+            $this->assertStringContainsString('#[Property]', $message);
+            $this->assertStringContainsString('Remove the scalar property', $message);
+        }
     }
 
     public function testMergeColumnDefinitionThrowsOnRelationTargetConflict(): void
     {
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
-
-        $conflictingRelation = $this->createStub(ReflectionRelation::class);
-        $conflictingRelation->method('getType')->willReturn('int');
-        $conflictingRelation->method('isNullable')->willReturn(false);
-        $conflictingRelation->method('getDefaultValue')->willReturn(null);
-        $conflictingRelation->method('getLength')->willReturn(null);
-        $conflictingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $conflictingRelation->method('getReferencedColumnName')->willReturn('uuid'); // Different referenced column
-        $conflictingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
+        $existing = $this->relationOf(CcPostA::class, 'user');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existing, 'posts');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Relation column "user_id" on table "posts" points to different targets');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $conflictingRelation, 'posts');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $this->relationOf(CcConflictPost::class, 'user'), 'posts');
     }
 
     public function testMergeColumnDefinitionWithCompatibleRelationsSameTarget(): void
     {
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
+        $existing = $this->relationOf(CcPostA::class, 'user');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existing, 'posts');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
+        $compatible = $this->relationOf(CcPostB::class, 'user');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $compatible, 'posts');
 
-        $compatibleRelation = $this->createStub(ReflectionRelation::class);
-        $compatibleRelation->method('getType')->willReturn('int');
-        $compatibleRelation->method('isNullable')->willReturn(false);
-        $compatibleRelation->method('getDefaultValue')->willReturn(null);
-        $compatibleRelation->method('getLength')->willReturn(null);
-        $compatibleRelation->method('isForeignKeyRequired')->willReturn(true);
-        $compatibleRelation->method('getReferencedColumnName')->willReturn('id'); // Same referenced column
-        $compatibleRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity'); // Same target entity
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $compatibleRelation, 'posts');
-
-        // Should merge successfully without throwing exception
         $this->assertArrayHasKey('user_id', $result);
         $this->assertEquals('int', $result['user_id']['type']);
         $this->assertTrue($result['user_id']['foreignKeyRequired']);
@@ -779,144 +712,66 @@ class ColumnComparatorTest extends TestCase {
 
     public function testMergeColumnDefinitionWithNullTargetRelations(): void
     {
-        // Test the case where relations have null targets (MorphTo case)
-        // This should skip the target comparison entirely
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn(null); // Null target
+        $existing = $this->relationOf(CcCommentA::class, 'commentable');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existing, 'comments');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existingRelation, 'comments');
+        $incoming = $this->relationOf(CcCommentB::class, 'commentable');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'commentable_id', $incoming, 'comments');
 
-        $incomingRelation = $this->createStub(ReflectionRelation::class);
-        $incomingRelation->method('getType')->willReturn('int');
-        $incomingRelation->method('isNullable')->willReturn(false);
-        $incomingRelation->method('getDefaultValue')->willReturn(null);
-        $incomingRelation->method('getLength')->willReturn(null);
-        $incomingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $incomingRelation->method('getReferencedColumnName')->willReturn('id');
-        $incomingRelation->method('getTargetEntity')->willReturn(null); // Also null target
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'commentable_id', $incomingRelation, 'comments');
-
-        // Should merge successfully without checking targets (since both are null)
         $this->assertArrayHasKey('commentable_id', $result);
         $this->assertEquals('int', $result['commentable_id']['type']);
     }
 
     public function testMergeColumnDefinitionWithMorphToRelationsNullTargets(): void
     {
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn(null); // MorphTo - null target
+        $existing = $this->relationOf(CcCommentA::class, 'commentable');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existing, 'comments');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'commentable_id', $existingRelation, 'comments');
+        $another = $this->relationOf(CcCommentB::class, 'commentable');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'commentable_id', $another, 'comments');
 
-        $anotherMorphToRelation = $this->createStub(ReflectionRelation::class);
-        $anotherMorphToRelation->method('getType')->willReturn('int');
-        $anotherMorphToRelation->method('isNullable')->willReturn(false);
-        $anotherMorphToRelation->method('getDefaultValue')->willReturn(null);
-        $anotherMorphToRelation->method('getLength')->willReturn(null);
-        $anotherMorphToRelation->method('isForeignKeyRequired')->willReturn(true);
-        $anotherMorphToRelation->method('getReferencedColumnName')->willReturn('id');
-        $anotherMorphToRelation->method('getTargetEntity')->willReturn(null); // Also MorphTo - null target
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'commentable_id', $anotherMorphToRelation, 'comments');
-
-        // Should skip comparison and merge successfully
         $this->assertArrayHasKey('commentable_id', $result);
         $this->assertEquals('int', $result['commentable_id']['type']);
     }
 
     public function testMergeColumnDefinitionMergesAllPropertiesWithNullCoalescing(): void
     {
-        // First property with some values
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('string');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn('default_value');
-        $existingProperty->method('getLength')->willReturn(255);
-        $existingProperty->method('getGeneratorType')->willReturn('uuid');
-        $existingProperty->method('getSequence')->willReturn('my_sequence');
-        $existingProperty->method('isPrimaryKey')->willReturn(true);
-        $existingProperty->method('isAutoIncrement')->willReturn(false);
+        $existing = $this->scalarOf(CcPkUuidTestColumn::class, 'testColumn');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'test_column', $existing, 'test_table');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'test_column', $existingProperty, 'test_table');
-
-        // Second property with default values (false/null) that should be overridden by existing
-        $incomingProperty = $this->createStub(ReflectionProperty::class);
-        $incomingProperty->method('getType')->willReturn('string');
-        $incomingProperty->method('isNullable')->willReturn(false);
-        $incomingProperty->method('getDefaultValue')->willReturn('default_value');
-        $incomingProperty->method('getLength')->willReturn(255);
-        $incomingProperty->method('getGeneratorType')->willReturn(null); // Should use existing
-        $incomingProperty->method('getSequence')->willReturn(null); // Should use existing
-        $incomingProperty->method('isPrimaryKey')->willReturn(false); // Should be OR'd with existing true
-        $incomingProperty->method('isAutoIncrement')->willReturn(false); // Should be OR'd with existing false
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'test_column', $incomingProperty, 'test_table');
+        $incoming = $this->scalarOf(CcPlainTestColumn::class, 'testColumn');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'test_column', $incoming, 'test_table');
 
         $this->assertArrayHasKey('test_column', $result);
-        $this->assertEquals('uuid', $result['test_column']['generatorType']); // From existing
-        $this->assertEquals('my_sequence', $result['test_column']['sequence']); // From existing
-        $this->assertTrue($result['test_column']['isPrimaryKey']); // From existing
-        $this->assertFalse($result['test_column']['isAutoIncrement']); // From existing
+        $this->assertEquals('uuid_v4', $result['test_column']['generatorType']);
+        $this->assertEquals('my_sequence', $result['test_column']['sequence']);
+        $this->assertTrue($result['test_column']['isPrimaryKey']);
+        $this->assertFalse($result['test_column']['isAutoIncrement']);
     }
 
     public function testMergeColumnDefinitionMergesRelationProperties(): void
     {
-        // First relation with some properties
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
+        $existing = $this->relationOf(CcPostA::class, 'user');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existing, 'posts');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
-
-        // Second relation with different FK requirement
-        $incomingRelation = $this->createStub(ReflectionRelation::class);
-        $incomingRelation->method('getType')->willReturn('int');
-        $incomingRelation->method('isNullable')->willReturn(false);
-        $incomingRelation->method('getDefaultValue')->willReturn(null);
-        $incomingRelation->method('getLength')->willReturn(null);
-        $incomingRelation->method('isForeignKeyRequired')->willReturn(false); // Different FK requirement
-        $incomingRelation->method('getReferencedColumnName')->willReturn('uuid'); // Different referenced column
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $incomingRelation, 'posts');
+        $incoming = $this->relationOf(CcPostB::class, 'user');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $incoming, 'posts');
 
         $this->assertArrayHasKey('user_id', $result);
-        $this->assertTrue($result['user_id']['foreignKeyRequired']); // Should be OR'd: true || false = true
-        $this->assertEquals('id', $result['user_id']['referencedColumn']); // Should use existing non-null value (?? operator)
+        $this->assertTrue($result['user_id']['foreignKeyRequired']);
+        $this->assertEquals('id', $result['user_id']['referencedColumn']);
     }
 
     // ===== addMorphToColumns Tests =====
 
     public function testAddMorphToColumnsCreatesBothColumns(): void
     {
-        $propertiesIndexed = [];
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
-
-        $result = $this->comparator->addMorphToColumns($propertiesIndexed, $relation, 'comments');
+        $relation = $this->relationOf(CcCommentA::class, 'commentable');
+        $result = $this->comparator->addMorphToColumns([], $relation, 'comments');
 
         $this->assertArrayHasKey('commentable_type', $result);
         $this->assertArrayHasKey('commentable_id', $result);
 
-        // Check type column
         $typeColumn = $result['commentable_type'];
         $this->assertEquals('string', $typeColumn['type']);
         $this->assertFalse($typeColumn['nullable']);
@@ -926,7 +781,6 @@ class ColumnComparatorTest extends TestCase {
         $this->assertFalse($typeColumn['foreignKeyRequired']);
         $this->assertNull($typeColumn['referencedColumn']);
 
-        // Check ID column
         $idColumn = $result['commentable_id'];
         $this->assertEquals('int', $idColumn['type']);
         $this->assertFalse($idColumn['nullable']);
@@ -939,12 +793,8 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesWithExistingCompatibleTypeColumn(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcTaggable::class, 'taggable');
 
-        // Start with existing compatible type column
         $propertiesIndexed = [
             'taggable_type' => [
                 'type' => 'string',
@@ -966,7 +816,6 @@ class ColumnComparatorTest extends TestCase {
         $this->assertArrayHasKey('taggable_type', $result);
         $this->assertArrayHasKey('taggable_id', $result);
 
-        // Type column should remain unchanged
         $typeColumn = $result['taggable_type'];
         $this->assertEquals('string', $typeColumn['type']);
         $this->assertFalse($typeColumn['nullable']);
@@ -975,14 +824,11 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsThrowsOnTypeColumnConflict(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
+        $relation = $this->relationOf(CcTaggable::class, 'taggable');
 
-        // Start with conflicting type column
         $propertiesIndexed = [
             'taggable_type' => [
-                'type' => 'int', // Wrong type
+                'type' => 'int',
                 'nullable' => false,
                 'default' => null,
                 'length' => 255,
@@ -1004,14 +850,11 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsThrowsOnIdColumnConflict(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
+        $relation = $this->relationOf(CcTaggable::class, 'taggable');
 
-        // Start with conflicting ID column
         $propertiesIndexed = [
             'taggable_id' => [
-                'type' => 'string', // Wrong type
+                'type' => 'string',
                 'nullable' => false,
                 'default' => null,
                 'length' => null,
@@ -1033,16 +876,12 @@ class ColumnComparatorTest extends TestCase {
 
     public function testAddMorphToColumnsMergesNullableIdColumn(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcTaggable::class, 'taggable');
 
-        // Start with nullable ID column
         $propertiesIndexed = [
             'taggable_id' => [
                 'type' => 'int',
-                'nullable' => true, // Existing is nullable
+                'nullable' => true,
                 'default' => null,
                 'length' => null,
                 'relation' => null,
@@ -1057,30 +896,25 @@ class ColumnComparatorTest extends TestCase {
 
         $result = $this->comparator->addMorphToColumns($propertiesIndexed, $relation, 'tags');
 
-        // ID column should be merged, but morph relations are not nullable
         $idColumn = $result['taggable_id'];
         $this->assertEquals('int', $idColumn['type']);
-        $this->assertFalse($idColumn['nullable']); // Morph relations are not nullable: true && false = false
+        $this->assertFalse($idColumn['nullable']);
         $this->assertEquals($relation, $idColumn['relation']);
     }
 
     public function testAddMorphToColumnsMergesIdColumnWithAllExistingProperties(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcCommentA::class, 'commentable');
 
-        // Start with ID column that has all properties set
         $propertiesIndexed = [
             'commentable_id' => [
                 'type' => 'int',
                 'nullable' => true,
                 'default' => '0',
                 'length' => 11,
-                'relation' => null, // Will be overridden by morph relation
-                'foreignKeyRequired' => true, // Will be OR'd
-                'referencedColumn' => 'uuid', // Will be overridden by morph relation
+                'relation' => null,
+                'foreignKeyRequired' => true,
+                'referencedColumn' => 'uuid',
                 'generatorType' => 'auto',
                 'sequence' => 'comment_seq',
                 'isPrimaryKey' => true,
@@ -1091,27 +925,23 @@ class ColumnComparatorTest extends TestCase {
         $result = $this->comparator->addMorphToColumns($propertiesIndexed, $relation, 'comments');
 
         $idColumn = $result['commentable_id'];
-        $this->assertEquals('int', $idColumn['type']); // Must stay int
-        $this->assertFalse($idColumn['nullable']); // Morph relation is not nullable, so false
-        $this->assertEquals('0', $idColumn['default']); // Existing default preserved (?? operator)
-        $this->assertEquals(11, $idColumn['length']); // Existing length preserved (?? operator)
-        $this->assertEquals($relation, $idColumn['relation']); // Morph relation takes precedence
-        $this->assertTrue($idColumn['foreignKeyRequired']); // true || false = true
-        $this->assertEquals('id', $idColumn['referencedColumn']); // Morph relation takes precedence
-        $this->assertEquals('auto', $idColumn['generatorType']); // Existing preserved
-        $this->assertEquals('comment_seq', $idColumn['sequence']); // Existing preserved
-        $this->assertTrue($idColumn['isPrimaryKey']); // Existing preserved
-        $this->assertTrue($idColumn['isAutoIncrement']); // Existing preserved
+        $this->assertEquals('int', $idColumn['type']);
+        $this->assertFalse($idColumn['nullable']);
+        $this->assertEquals('0', $idColumn['default']);
+        $this->assertEquals(11, $idColumn['length']);
+        $this->assertEquals($relation, $idColumn['relation']);
+        $this->assertTrue($idColumn['foreignKeyRequired']);
+        $this->assertEquals('id', $idColumn['referencedColumn']);
+        $this->assertEquals('auto', $idColumn['generatorType']);
+        $this->assertEquals('comment_seq', $idColumn['sequence']);
+        $this->assertTrue($idColumn['isPrimaryKey']);
+        $this->assertTrue($idColumn['isAutoIncrement']);
     }
 
     public function testAddMorphToColumnsMergesIdColumnWithNullExistingProperties(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcCommentA::class, 'commentable');
 
-        // Start with ID column that has null properties
         $propertiesIndexed = [
             'commentable_id' => [
                 'type' => 'int',
@@ -1132,16 +962,16 @@ class ColumnComparatorTest extends TestCase {
 
         $idColumn = $result['commentable_id'];
         $this->assertEquals('int', $idColumn['type']);
-        $this->assertFalse($idColumn['nullable']); // false && false = false
-        $this->assertNull($idColumn['default']); // null ?? null = null
-        $this->assertNull($idColumn['length']); // null ?? null = null
-        $this->assertEquals($relation, $idColumn['relation']); // relation ?? null = relation
-        $this->assertFalse($idColumn['foreignKeyRequired']); // false || false = false
-        $this->assertEquals('id', $idColumn['referencedColumn']); // 'id' ?? null = 'id'
-        $this->assertNull($idColumn['generatorType']); // null ?? null = null
-        $this->assertNull($idColumn['sequence']); // null ?? null = null
-        $this->assertFalse($idColumn['isPrimaryKey']); // false ?? false = false
-        $this->assertFalse($idColumn['isAutoIncrement']); // false ?? false = false
+        $this->assertFalse($idColumn['nullable']);
+        $this->assertNull($idColumn['default']);
+        $this->assertNull($idColumn['length']);
+        $this->assertEquals($relation, $idColumn['relation']);
+        $this->assertFalse($idColumn['foreignKeyRequired']);
+        $this->assertEquals('id', $idColumn['referencedColumn']);
+        $this->assertNull($idColumn['generatorType']);
+        $this->assertNull($idColumn['sequence']);
+        $this->assertFalse($idColumn['isPrimaryKey']);
+        $this->assertFalse($idColumn['isAutoIncrement']);
     }
 
     // ===== normalizeTypeName Tests =====
@@ -1229,71 +1059,38 @@ class ColumnComparatorTest extends TestCase {
         $method = $reflection->getMethod('normalizeTypeName');
         $method->setAccessible(true);
 
-        $result = $method->invoke($this->comparator, 123); // Some other type
-        $this->assertEquals('123', $result); // This should use string casting for non-string types
+        $result = $method->invoke($this->comparator, 123);
+        $this->assertEquals('123', $result);
     }
 
-    // Additional targeted tests to ensure specific lines are covered
+    // ===== Additional coverage tests =====
 
     public function testMergeColumnDefinitionThrowsWhenRelationConflictsWithScalar(): void
     {
-        $existingProperty = $this->createStub(ReflectionProperty::class);
-        $existingProperty->method('getType')->willReturn('int');
-        $existingProperty->method('isNullable')->willReturn(false);
-        $existingProperty->method('getDefaultValue')->willReturn(null);
-        $existingProperty->method('getLength')->willReturn(null);
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingProperty, 'posts');
-
-        $relationProperty = $this->createStub(ReflectionRelation::class);
-        $relationProperty->method('getType')->willReturn('int');
-        $relationProperty->method('isNullable')->willReturn(false);
-        $relationProperty->method('getDefaultValue')->willReturn(null);
-        $relationProperty->method('getLength')->willReturn(null);
-        $relationProperty->method('isForeignKeyRequired')->willReturn(true); // This makes it a relation - different from existing
+        $scalar = $this->scalarOf(CcScalarUserId::class, 'userId');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $scalar, 'posts');
 
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Column "user_id" on table "posts" conflicts between relation and scalar definitions');
+        $this->expectExceptionMessage('Invalid duplicate mapping for column "user_id" on table "posts"');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $relationProperty, 'posts');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $this->relationOf(CcPostA::class, 'user'), 'posts');
     }
 
     public function testMergeColumnDefinitionThrowsWhenRelationsPointToDifferentTargets(): void
     {
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
-
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
-
-        $conflictingRelation = $this->createStub(ReflectionRelation::class);
-        $conflictingRelation->method('getType')->willReturn('int');
-        $conflictingRelation->method('isNullable')->willReturn(false);
-        $conflictingRelation->method('getDefaultValue')->willReturn(null);
-        $conflictingRelation->method('getLength')->willReturn(null);
-        $conflictingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $conflictingRelation->method('getReferencedColumnName')->willReturn('uuid'); // Different referenced column
-        $conflictingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity'); // Same target, different column
+        $existing = $this->relationOf(CcPostA::class, 'user');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existing, 'posts');
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Relation column "user_id" on table "posts" points to different targets');
 
-        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $conflictingRelation, 'posts');
+        $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $this->relationOf(CcConflictPost::class, 'user'), 'posts');
     }
 
     public function testAddMorphToColumnsMergesExistingCompatibleTypeColumn(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('taggable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('taggable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcTaggable::class, 'taggable');
 
-        // Start with existing compatible type column
         $propertiesIndexed = [
             'taggable_type' => [
                 'type' => 'string',
@@ -1312,25 +1109,20 @@ class ColumnComparatorTest extends TestCase {
 
         $result = $this->comparator->addMorphToColumns($propertiesIndexed, $relation, 'tags');
 
-        // Verify merge happened correctly
         $this->assertArrayHasKey('taggable_type', $result);
         $typeColumn = $result['taggable_type'];
-        $this->assertEquals('string', $typeColumn['type']); // Existing type preserved
-        $this->assertEquals(255, $typeColumn['length']); // Existing length preserved
+        $this->assertEquals('string', $typeColumn['type']);
+        $this->assertEquals(255, $typeColumn['length']);
     }
 
     public function testAddMorphToColumnsMergesExistingCompatibleIdColumn(): void
     {
-        $relation = $this->createStub(ReflectionRelation::class);
-        $relation->method('getMorphTypeColumnName')->willReturn('commentable_type');
-        $relation->method('getMorphIdColumnName')->willReturn('commentable_id');
-        $relation->method('getReferencedColumnName')->willReturn('id');
+        $relation = $this->relationOf(CcCommentA::class, 'commentable');
 
-        // Start with existing compatible ID column
         $propertiesIndexed = [
             'commentable_id' => [
                 'type' => 'int',
-                'nullable' => true, // Will be merged with morph requirement
+                'nullable' => true,
                 'default' => null,
                 'length' => null,
                 'relation' => null,
@@ -1345,45 +1137,58 @@ class ColumnComparatorTest extends TestCase {
 
         $result = $this->comparator->addMorphToColumns($propertiesIndexed, $relation, 'comments');
 
-        // Verify merge happened correctly
         $this->assertArrayHasKey('commentable_id', $result);
         $idColumn = $result['commentable_id'];
-        $this->assertEquals('int', $idColumn['type']); // Type must stay int
-        $this->assertFalse($idColumn['nullable']); // Morph relation overrides to false
-        $this->assertEquals($relation, $idColumn['relation']); // Morph relation assigned
+        $this->assertEquals('int', $idColumn['type']);
+        $this->assertFalse($idColumn['nullable']);
+        $this->assertEquals($relation, $idColumn['relation']);
     }
-
-    // Additional test for edge case: ensure all merge paths are covered
 
     public function testMergeColumnDefinitionCoversAllNullCoalescing(): void
     {
-        // Test case where existing has null values and incoming has non-null values
-        $existingRelation = $this->createStub(ReflectionRelation::class);
-        $existingRelation->method('getType')->willReturn('int');
-        $existingRelation->method('isNullable')->willReturn(false);
-        $existingRelation->method('getDefaultValue')->willReturn(null);
-        $existingRelation->method('getLength')->willReturn(null);
-        $existingRelation->method('isForeignKeyRequired')->willReturn(true);
-        $existingRelation->method('getReferencedColumnName')->willReturn('id');
-        $existingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity');
+        $existing = $this->relationOf(CcPostA::class, 'user');
+        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existing, 'posts');
 
-        $propertiesIndexed = $this->comparator->mergeColumnDefinition([], 'user_id', $existingRelation, 'posts');
+        $incoming = $this->relationOf(CcPostB::class, 'user');
+        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $incoming, 'posts');
 
-        // Second relation with null values that should be overridden by existing non-null values
-        $incomingRelation = $this->createStub(ReflectionRelation::class);
-        $incomingRelation->method('getType')->willReturn('int');
-        $incomingRelation->method('isNullable')->willReturn(false);
-        $incomingRelation->method('getDefaultValue')->willReturn(null);
-        $incomingRelation->method('getLength')->willReturn(null);
-        $incomingRelation->method('isForeignKeyRequired')->willReturn(false); // Different, will be OR'd
-        $incomingRelation->method('getReferencedColumnName')->willReturn('id'); // Same, no conflict
-        $incomingRelation->method('getTargetEntity')->willReturn('Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\TestEntities\\TestEntity'); // Same, no conflict
-
-        $result = $this->comparator->mergeColumnDefinition($propertiesIndexed, 'user_id', $incomingRelation, 'posts');
-
-        // Verify null coalescing worked correctly
-        $this->assertTrue($result['user_id']['foreignKeyRequired']); // true || false = true
-        $this->assertEquals('id', $result['user_id']['referencedColumn']); // 'id' ?? null = 'id'
-        $this->assertEquals($existingRelation, $result['user_id']['relation']); // existing ?? incoming = existing
+        $this->assertTrue($result['user_id']['foreignKeyRequired']);
+        $this->assertEquals('id', $result['user_id']['referencedColumn']);
+        $this->assertEquals($existing, $result['user_id']['relation']);
     }
 }
+
+// Fixture entity classes — defined in same file to avoid PSR-4 one-class-per-file constraint
+
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\MorphTo;
+
+// Relation targets
+#[Entity] class CcUser { #[PrimaryKey] public int $id; }
+#[Entity] class CcCustomer { #[PrimaryKey] public int $id; }
+
+// Scalar fixtures
+#[Entity] class CcStringName255 { #[Property(maxLength: 255)] public string $name; }
+#[Entity] class CcIntName { #[Property] public int $name; }
+#[Entity] class CcStringName100 { #[Property(maxLength: 100)] public string $name; }
+#[Entity] class CcNullableName { #[Property(maxLength: 255)] public ?string $name; }
+#[Entity] class CcStatusDefault1 { #[Property(defaultValue: 'default1', maxLength: 255)] public string $status; }
+#[Entity] class CcStatusDefault2 { #[Property(defaultValue: 'default2', maxLength: 255)] public string $status; }
+#[Entity] class CcScalarUserId { #[Property] public int $userId; }
+#[Entity] class CcScalarCustomerId { #[Property] public int $customerId; }
+#[Entity] class CcPkUuidTestColumn { #[PrimaryKey(generator: PrimaryKey::GENERATOR_UUID_V4, sequence: 'my_sequence')] public string $testColumn; }
+#[Entity] class CcPlainTestColumn { #[Property] public string $testColumn; }
+
+// Relation fixtures
+#[Entity] class CcPostA { #[ManyToOne(targetEntity: CcUser::class)] public CcUser $user; }
+#[Entity] class CcPostB { #[ManyToOne(targetEntity: CcUser::class)] public CcUser $user; }
+#[Entity] class CcConflictPost { #[ManyToOne(targetEntity: CcCustomer::class)] public CcCustomer $user; }
+#[Entity] class CcOrder { #[ManyToOne(targetEntity: CcCustomer::class)] public CcCustomer $customer; }
+
+// Morph fixtures
+#[Entity] class CcCommentA { #[MorphTo] public $commentable; }
+#[Entity] class CcCommentB { #[MorphTo] public $commentable; }
+#[Entity] class CcTaggable { #[MorphTo] public $taggable; }

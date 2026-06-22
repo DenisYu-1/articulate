@@ -180,6 +180,8 @@ class ColumnComparator {
             'sequence' => $property instanceof ReflectionProperty ? $property->getSequence() : null,
             'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
             'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
+            'propertyName' => $property instanceof ReflectionRelation ? $property->getPropertyName() : $property->getFieldName(),
+            'declaringClass' => $property->getDeclaringClassName(),
         ];
     }
 
@@ -205,11 +207,23 @@ class ColumnComparator {
     private function validateRelationConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
     {
         if (($incoming['relation'] !== null) !== ($existing['relation'] !== null)) {
+            [$scalarSide, $relationSide] = $incoming['relation'] !== null
+                ? [$existing, $incoming]
+                : [$incoming, $existing];
+
+            $targetEntity = $relationSide['relation']->getTargetEntity();
+            $relationDescription = $targetEntity !== null
+                ? sprintf('%s::$%s maps it as a relation to %s', $relationSide['declaringClass'], $relationSide['propertyName'], $targetEntity)
+                : sprintf('%s::$%s maps it as a relation', $relationSide['declaringClass'], $relationSide['propertyName']);
+
             throw new RuntimeException(
                 sprintf(
-                    'Column "%s" on table "%s" conflicts between relation and scalar definitions',
+                    'Invalid duplicate mapping for column "%s" on table "%s": %s::$%s maps it as a scalar #[Property], while %s. Relation-owned foreign key columns must not also be mapped as scalar properties. Remove the scalar property, or remove the relation and keep scalar FK access only.',
                     $columnName,
                     $tableName,
+                    $scalarSide['declaringClass'],
+                    $scalarSide['propertyName'],
+                    $relationDescription,
                 ),
             );
         }
