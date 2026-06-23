@@ -12,7 +12,7 @@ class MappingItemTest extends TestCase {
         $mappingItem = new MappingItem($entity);
 
         $this->assertSame($entity, $mappingItem->entity);
-        $this->assertSame([], $mappingItem->pivot);
+        $this->assertSame([], $mappingItem->pivot());
     }
 
     public function testConstructsWithEntityAndPivotData(): void
@@ -22,7 +22,7 @@ class MappingItemTest extends TestCase {
         $mappingItem = new MappingItem($entity, $pivot);
 
         $this->assertSame($entity, $mappingItem->entity);
-        $this->assertSame($pivot, $mappingItem->pivot);
+        $this->assertSame($pivot, $mappingItem->pivot());
     }
 
     public function testPivotReturnsPivotData(): void
@@ -85,6 +85,6 @@ class MappingItemTest extends TestCase {
         $pivot = ['key' => 'value'];
         $mappingItem = new MappingItem(new \stdClass(), $pivot);
 
-        $this->assertSame($pivot, $mappingItem->pivot);
+        $this->assertSame($pivot, $mappingItem->pivot());
     }
 }

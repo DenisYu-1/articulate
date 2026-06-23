@@ -265,6 +265,14 @@ class UnitOfWork implements EntityRegistrarInterface {
         return $this->scheduledUpdates;
     }
 
+    /**
+     * @return object[]
+     */
+    public function getManagedEntities(): array
+    {
+        return array_values($this->entitiesByOid);
+    }
+
     public function detach(object $entity): void
     {
         $oid = spl_object_id($entity);

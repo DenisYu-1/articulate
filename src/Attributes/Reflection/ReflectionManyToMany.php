@@ -150,6 +150,17 @@ class ReflectionManyToMany implements RelationInterface {
         return $this->attribute->lazy;
     }
 
+    public function isMappingCollectionType(): bool
+    {
+        $type = $this->property->getType();
+        if (!$type instanceof ReflectionNamedType || $type->isBuiltin()) {
+            return false;
+        }
+        $name = $type->getName();
+
+        return $name === MappingCollection::class || is_subclass_of($name, MappingCollection::class);
+    }
+
     public function getAttribute(): ManyToMany
     {
         return $this->attribute;

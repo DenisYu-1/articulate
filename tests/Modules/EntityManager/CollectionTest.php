@@ -205,4 +205,74 @@ class CollectionTest extends TestCase {
 
         $this->assertEquals([1, 2], $ids);
     }
+
+    public function testConstructorItemsAreInAddedItems(): void
+    {
+        $a = new CollectionTestEntity();
+        $b = new CollectionTestEntity();
+        $col = new Collection([$a, $b]);
+
+        $this->assertSame([$a, $b], $col->getAddedItems());
+        $this->assertSame([], $col->getRemovedItems());
+        $this->assertTrue($col->isDirty());
+    }
+
+    public function testMarkCleanResetsTrackingArrays(): void
+    {
+        $a = new CollectionTestEntity();
+        $col = new Collection([$a]);
+
+        $col->markClean();
+
+        $this->assertSame([], $col->getAddedItems());
+        $this->assertSame([], $col->getRemovedItems());
+        $this->assertFalse($col->isDirty());
+    }
+
+    public function testAddTrackedInAddedItems(): void
+    {
+        $a = new CollectionTestEntity();
+        $this->collection->add($a);
+
+        $this->assertSame([$a], $this->collection->getAddedItems());
+        $this->assertSame([], $this->collection->getRemovedItems());
+    }
+
+    public function testRemoveOfAddedItemCancelsBothSides(): void
+    {
+        $a = new CollectionTestEntity();
+        $this->collection->add($a);
+        $this->collection->remove($a);
+
+        $this->assertSame([], $this->collection->getAddedItems());
+        $this->assertSame([], $this->collection->getRemovedItems());
+    }
+
+    public function testRemoveOfLoadedItemTrackedInRemovedItems(): void
+    {
+        $a = new CollectionTestEntity();
+        $col = new Collection([$a]);
+        $col->markClean();
+
+        $col->remove($a);
+
+        $this->assertSame([], $col->getAddedItems());
+        $this->assertSame([$a], $col->getRemovedItems());
+    }
+
+    public function testClearMovesLoadedItemsToRemovedAndResetsAdded(): void
+    {
+        $a = new CollectionTestEntity();
+        $b = new CollectionTestEntity();
+        $col = new Collection([$a, $b]);
+        $col->markClean();
+
+        $newItem = new CollectionTestEntity();
+        $col->add($newItem);
+        $col->clear();
+
+        $this->assertSame([], $col->getAddedItems());
+        $this->assertSame([$a, $b], $col->getRemovedItems());
+        $this->assertSame(0, $col->count());
+    }
 }

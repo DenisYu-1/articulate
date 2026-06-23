@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
+use Articulate\Collection\MappingCollection;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Schema\HydratorInterface;
@@ -236,15 +237,18 @@ class ObjectHydrator implements HydratorInterface {
                 || ($relation instanceof ReflectionRelation
                     && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
 
-            if (!$relation->isLazy() || in_array($relationName, $with, true)) {
+            $isMappingCollectionType = $relation instanceof ReflectionManyToMany && $relation->isMappingCollectionType();
+
+            if (!$relation->isLazy() || in_array($relationName, $with, true) || $isMappingCollectionType) {
                 // Eager: load relation immediately.
+                // MappingCollection-typed properties always load eagerly — LazyCollection can't satisfy their type.
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
-                // Wrap in Collection only for relations that use collection-typed properties,
-                // not MorphMany (array-typed) or other non-Collection relations.
-                if (is_array($relatedData)
-                    && ($isManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany()))
-                ) {
-                    $relatedData = new Collection($relatedData);
+                if (is_array($relatedData)) {
+                    if ($isMappingCollectionType) {
+                        $relatedData = new MappingCollection($relatedData);
+                    } elseif ($isManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany())) {
+                        $relatedData = (new Collection($relatedData))->markClean();
+                    }
                 }
                 $prop->setValue($entity, $relatedData);
 

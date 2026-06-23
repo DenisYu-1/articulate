@@ -142,6 +142,13 @@ class EntityManager {
         try {
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
             $this->executeChanges($aggregatedChanges);
+
+            foreach ($this->unitOfWorks as $unitOfWork) {
+                foreach ($unitOfWork->getManagedEntities() as $entity) {
+                    $this->queryExecutor->syncManyToMany($entity, dirtyOnly: true);
+                }
+            }
+
             $this->invalidateSecondLevelCache($aggregatedChanges);
             $this->incrementQueryCacheGeneration();
 
@@ -303,8 +310,13 @@ class EntityManager {
         foreach ($orderedInserts as $entity) {
             $this->queryExecutor->executeInsert($entity);
         }
+        // Sync M2M after all inserts so every related entity already has a PK
+        foreach ($orderedInserts as $entity) {
+            $this->queryExecutor->syncManyToMany($entity);
+        }
 
         // Execute updates (order doesn't matter for foreign key constraints)
+        $updatedEntities = [];
         foreach ($changes['updates'] as $update) {
             if (isset($update['table'])) {
                 $this->queryExecutor->executeUpdateByTable(
@@ -318,11 +330,17 @@ class EntityManager {
             }
 
             $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
+            $updatedEntities[] = $update['entity'];
+        }
+        // Sync M2M after all updates for the same reason
+        foreach ($updatedEntities as $entity) {
+            $this->queryExecutor->syncManyToMany($entity);
         }
 
         // Execute deletes in reverse dependency order (children before parents)
         $orderedDeletes = $this->orderEntitiesByDependencies($changes['deletes'], 'delete');
         foreach ($orderedDeletes as $entity) {
+            $this->queryExecutor->deletePivotRows($entity);
             $this->queryExecutor->executeDelete($entity);
         }
 

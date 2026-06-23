@@ -32,6 +32,7 @@ class ColumnComparatorTest extends TestCase {
                 return $prop;
             }
         }
+
         throw new \InvalidArgumentException("Property $propertyName not found in $entityClass");
     }
 
@@ -43,6 +44,7 @@ class ColumnComparatorTest extends TestCase {
                 return $rel;
             }
         }
+
         throw new \InvalidArgumentException("Relation $propertyName not found in $entityClass");
     }
 
@@ -1167,28 +1169,85 @@ use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MorphTo;
 
 // Relation targets
-#[Entity] class CcUser { #[PrimaryKey] public int $id; }
-#[Entity] class CcCustomer { #[PrimaryKey] public int $id; }
+#[Entity] class CcUser {
+    #[PrimaryKey]
+    public int $id;
+}
+#[Entity] class CcCustomer {
+    #[PrimaryKey]
+    public int $id;
+}
 
 // Scalar fixtures
-#[Entity] class CcStringName255 { #[Property(maxLength: 255)] public string $name; }
-#[Entity] class CcIntName { #[Property] public int $name; }
-#[Entity] class CcStringName100 { #[Property(maxLength: 100)] public string $name; }
-#[Entity] class CcNullableName { #[Property(maxLength: 255)] public ?string $name; }
-#[Entity] class CcStatusDefault1 { #[Property(defaultValue: 'default1', maxLength: 255)] public string $status; }
-#[Entity] class CcStatusDefault2 { #[Property(defaultValue: 'default2', maxLength: 255)] public string $status; }
-#[Entity] class CcScalarUserId { #[Property] public int $userId; }
-#[Entity] class CcScalarCustomerId { #[Property] public int $customerId; }
-#[Entity] class CcPkUuidTestColumn { #[PrimaryKey(generator: PrimaryKey::GENERATOR_UUID_V4, sequence: 'my_sequence')] public string $testColumn; }
-#[Entity] class CcPlainTestColumn { #[Property] public string $testColumn; }
+#[Entity] class CcStringName255 {
+    #[Property(maxLength: 255)]
+    public string $name;
+}
+#[Entity] class CcIntName {
+    #[Property]
+    public int $name;
+}
+#[Entity] class CcStringName100 {
+    #[Property(maxLength: 100)]
+    public string $name;
+}
+#[Entity] class CcNullableName {
+    #[Property(maxLength: 255)]
+    public ?string $name;
+}
+#[Entity] class CcStatusDefault1 {
+    #[Property(defaultValue: 'default1', maxLength: 255)]
+    public string $status;
+}
+#[Entity] class CcStatusDefault2 {
+    #[Property(defaultValue: 'default2', maxLength: 255)]
+    public string $status;
+}
+#[Entity] class CcScalarUserId {
+    #[Property]
+    public int $userId;
+}
+#[Entity] class CcScalarCustomerId {
+    #[Property]
+    public int $customerId;
+}
+#[Entity] class CcPkUuidTestColumn {
+    #[PrimaryKey(generator: PrimaryKey::GENERATOR_UUID_V4, sequence: 'my_sequence')]
+    public string $testColumn;
+}
+#[Entity] class CcPlainTestColumn {
+    #[Property]
+    public string $testColumn;
+}
 
 // Relation fixtures
-#[Entity] class CcPostA { #[ManyToOne(targetEntity: CcUser::class)] public CcUser $user; }
-#[Entity] class CcPostB { #[ManyToOne(targetEntity: CcUser::class)] public CcUser $user; }
-#[Entity] class CcConflictPost { #[ManyToOne(targetEntity: CcCustomer::class)] public CcCustomer $user; }
-#[Entity] class CcOrder { #[ManyToOne(targetEntity: CcCustomer::class)] public CcCustomer $customer; }
+#[Entity] class CcPostA {
+    #[ManyToOne(targetEntity: CcUser::class)]
+    public CcUser $user;
+}
+#[Entity] class CcPostB {
+    #[ManyToOne(targetEntity: CcUser::class)]
+    public CcUser $user;
+}
+#[Entity] class CcConflictPost {
+    #[ManyToOne(targetEntity: CcCustomer::class)]
+    public CcCustomer $user;
+}
+#[Entity] class CcOrder {
+    #[ManyToOne(targetEntity: CcCustomer::class)]
+    public CcCustomer $customer;
+}
 
 // Morph fixtures
-#[Entity] class CcCommentA { #[MorphTo] public $commentable; }
-#[Entity] class CcCommentB { #[MorphTo] public $commentable; }
-#[Entity] class CcTaggable { #[MorphTo] public $taggable; }
+#[Entity] class CcCommentA {
+    #[MorphTo]
+    public $commentable;
+}
+#[Entity] class CcCommentB {
+    #[MorphTo]
+    public $commentable;
+}
+#[Entity] class CcTaggable {
+    #[MorphTo]
+    public $taggable;
+}

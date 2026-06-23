@@ -3,8 +3,11 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Collection\MappingCollection;
 use Articulate\Connection;
+use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Utils\ReflectionCache;
@@ -578,5 +581,195 @@ class QueryExecutor {
         [$clause, $values] = $this->buildWhereClause($entity);
 
         return ['clause' => $clause, 'values' => $values];
+    }
+
+    /**
+     * Sync owning-side M2M pivot rows for an entity using granular INSERT/UPDATE/DELETE.
+     *
+     * MappingCollection: three-pass diff — DELETE removed items, INSERT new items, UPDATE dirty pivot.
+     * Plain Collection:  DELETE-all then INSERT-all (no pivot data to diff).
+     *
+     * @param bool $dirtyOnly Skip collections that haven't changed since last flush
+     */
+    public function syncManyToMany(object $entity, bool $dirtyOnly = false): void
+    {
+        $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
+
+        foreach ($metadata->getRelations() as $propName => $relation) {
+            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+                continue;
+            }
+
+            $entityProp = ReflectionCache::getProperty($entity::class, $propName);
+            $entityProp->setAccessible(true);
+
+            if (!$entityProp->isInitialized($entity)) {
+                continue;
+            }
+
+            $value = $entityProp->getValue($entity);
+
+            if ($value === null || is_array($value)) {
+                continue;
+            }
+
+            if ($dirtyOnly && !$value->isDirty()) {
+                continue;
+            }
+
+            [, $ownerPkValues] = $this->buildWhereClause($entity);
+            $ownerPk = $ownerPkValues[0];
+
+            $pivotTable = $relation->getPivotTableName();
+            $foreignKey = $relation->getForeignPivotKey();
+            $relatedKey = $relation->getRelatedPivotKey();
+
+            if ($value instanceof MappingCollection) {
+                $this->syncMappingCollection(
+                    $value,
+                    $pivotTable,
+                    $foreignKey,
+                    $relatedKey,
+                    $ownerPk,
+                    $relation
+                );
+            } else {
+                $this->syncPlainCollection($value, $pivotTable, $foreignKey, $relatedKey, $ownerPk);
+            }
+
+            $value->markClean();
+        }
+    }
+
+    private function syncMappingCollection(
+        MappingCollection $collection,
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        mixed $ownerPk,
+        ReflectionManyToMany $relation,
+    ): void {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $createdAtCol = null;
+        $updatedAtCol = null;
+        foreach ($relation->getExtraProperties() as $extraProp) {
+            if ($extraProp->createdAt) {
+                $createdAtCol = $extraProp->name;
+            }
+            if ($extraProp->updatedAt) {
+                $updatedAtCol = $extraProp->name;
+            }
+        }
+
+        // 1. DELETE removed items
+        foreach ($collection->getRemovedItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+            $this->connection->executeQuery(
+                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+
+        // 2. INSERT new items
+        $autoTimestampCols = array_filter([$createdAtCol, $updatedAtCol]);
+        foreach ($collection->getNewItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+
+            $pivotData = array_diff_key($item->pivot(), array_flip($autoTimestampCols));
+            $columns = array_merge([$foreignKey, $relatedKey], array_keys($pivotData));
+            $values = array_merge([$ownerPk, $relatedPkValues[0]], array_values($pivotData));
+
+            if ($createdAtCol !== null) {
+                $columns[] = $createdAtCol;
+                $values[] = $now;
+            }
+            if ($updatedAtCol !== null) {
+                $columns[] = $updatedAtCol;
+                $values[] = $now;
+            }
+
+            $this->connection->executeQuery(
+                sprintf(
+                    'INSERT INTO %s (%s) VALUES (%s)',
+                    $pivotTable,
+                    implode(', ', $columns),
+                    implode(', ', array_fill(0, count($values), '?'))
+                ),
+                $values
+            );
+        }
+
+        // 3. UPDATE dirty pivot items (only changed columns + updatedAt)
+        foreach ($collection->getDirtyItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+
+            $changes = array_diff_key($item->getPivotChanges(), array_flip(array_filter([$createdAtCol])));
+            if ($updatedAtCol !== null) {
+                $changes[$updatedAtCol] = $now;
+            }
+
+            if (empty($changes)) {
+                continue;
+            }
+
+            $setParts = array_map(fn (string $col) => "{$col} = ?", array_keys($changes));
+            $this->connection->executeQuery(
+                sprintf(
+                    'UPDATE %s SET %s WHERE %s = ? AND %s = ?',
+                    $pivotTable,
+                    implode(', ', $setParts),
+                    $foreignKey,
+                    $relatedKey
+                ),
+                [...array_values($changes), $ownerPk, $relatedPkValues[0]]
+            );
+        }
+    }
+
+    private function syncPlainCollection(
+        Collection $collection,
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        mixed $ownerPk,
+    ): void {
+        foreach ($collection->getRemovedItems() as $entity) {
+            [, $relatedPkValues] = $this->buildWhereClause($entity);
+            $this->connection->executeQuery(
+                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+
+        foreach ($collection->getAddedItems() as $entity) {
+            [, $relatedPkValues] = $this->buildWhereClause($entity);
+            $this->connection->executeQuery(
+                "INSERT INTO {$pivotTable} ({$foreignKey}, {$relatedKey}) VALUES (?, ?)",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+    }
+
+    /**
+     * Delete all owning-side pivot rows for an entity before its row is deleted.
+     * Prevents FK violations when there is no CASCADE DELETE on the pivot table.
+     */
+    public function deletePivotRows(object $entity): void
+    {
+        $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
+
+        foreach ($metadata->getRelations() as $relation) {
+            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+                continue;
+            }
+
+            [, $ownerPkValues] = $this->buildWhereClause($entity);
+
+            $this->connection->executeQuery(
+                sprintf('DELETE FROM %s WHERE %s = ?', $relation->getPivotTableName(), $relation->getForeignPivotKey()),
+                [$ownerPkValues[0]]
+            );
+        }
     }
 }
