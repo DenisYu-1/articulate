@@ -70,8 +70,10 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             'mysql' => MigrationsGeneratorTestHelper::forMySql(),
             'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
         };
-        $sql = $generator->generate($compareResult);
-        $connection->executeQuery($sql);
+        $statements = $generator->generate($compareResult);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         // Verify table and columns exist
         $verifyColumnsSql = match ($databaseName) {

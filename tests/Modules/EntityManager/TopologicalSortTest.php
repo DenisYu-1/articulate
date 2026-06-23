@@ -6,8 +6,8 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
-use Articulate\Connection;
-use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityDependencySorter;
+use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
 
 #[Entity(tableName: 'topo_node_a')]
@@ -35,21 +35,16 @@ class TopoNodeB {
 }
 
 class TopologicalSortTest extends TestCase {
-    private EntityManager $entityManager;
+    private EntityDependencySorter $dependencySorter;
 
     protected function setUp(): void
     {
-        $connection = $this->createStub(Connection::class);
-        $this->entityManager = new EntityManager($connection);
+        $this->dependencySorter = new EntityDependencySorter(new EntityMetadataRegistry());
     }
 
     private function callOrderEntitiesByDependencies(array $entities, string $operation): array
     {
-        $reflection = new \ReflectionClass($this->entityManager);
-        $method = $reflection->getMethod('orderEntitiesByDependencies');
-        $method->setAccessible(true);
-
-        return $method->invoke($this->entityManager, $entities, $operation);
+        return $this->dependencySorter->order($entities, $operation);
     }
 
     public function testCircularDependencyExceptionIncludesBothClassNames(): void

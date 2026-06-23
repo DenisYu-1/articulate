@@ -302,9 +302,9 @@ class ManyToManyWriteTest extends DatabaseTestCase {
 
         $rows = $this->pivotRows('wt_user_tags');
         $this->assertCount(2, $rows);
-        $ids = array_column($rows, 'wt_tags_id');
-        $this->assertContains((string) $tag1->id, $ids);
-        $this->assertContains((string) $tag2->id, $ids);
+        $ids = array_map('intval', array_column($rows, 'wt_tags_id'));
+        $this->assertContains($tag1->id, $ids);
+        $this->assertContains($tag2->id, $ids);
     }
 
     #[Group('database')]
@@ -334,6 +334,6 @@ class ManyToManyWriteTest extends DatabaseTestCase {
 
         $rows = $this->pivotRows('wt_user_tags');
         $this->assertCount(1, $rows);
-        $this->assertSame((string) $tag2->id, $rows[0]['wt_tags_id']);
+        $this->assertSame($tag2->id, (int) $rows[0]['wt_tags_id']);
     }
 }

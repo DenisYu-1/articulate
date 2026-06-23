@@ -62,9 +62,11 @@ class ForeignKeyTypeMigrationTest extends AbstractTestCase {
         usort($results, fn ($a, $b) => $a->name === 'fk_int_parent' ? -1 : 1);
 
         foreach ($results as $result) {
-            $sql = $generator->generate($result);
+            $statements = $generator->generate($result);
             // Executing here fails with MySQL error 3780 if FK type != PK type
-            $connection->executeQuery($sql);
+            foreach ($statements as $statement) {
+                $connection->executeQuery($statement);
+            }
         }
 
         // Verify column types directly in the schema

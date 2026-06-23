@@ -72,7 +72,7 @@ class QueryExecutor {
             // Get the value from the entity
             $reflectionProperty = new NativeReflectionProperty($entity, $fieldName);
             $reflectionProperty->setAccessible(true);
-            $value = $reflectionProperty->getValue($entity);
+            $value = $reflectionProperty->isInitialized($entity) ? $reflectionProperty->getValue($entity) : null;
 
             // Skip primary key columns with null values (they should be auto-generated)
             if ($property->isPrimaryKey() && $value === null) {
@@ -374,7 +374,7 @@ class QueryExecutor {
         if ($primaryKeyProperty !== null) {
             $primaryKeyProperty->setAccessible(true);
 
-            return $primaryKeyProperty->getValue($entity);
+            return $primaryKeyProperty->isInitialized($entity) ? $primaryKeyProperty->getValue($entity) : null;
         }
 
         return null;
@@ -535,7 +535,7 @@ class QueryExecutor {
 
             $reflectionProperty = new NativeReflectionProperty($entity, $fieldName);
             $reflectionProperty->setAccessible(true);
-            $value = $reflectionProperty->getValue($entity);
+            $value = $reflectionProperty->isInitialized($entity) ? $reflectionProperty->getValue($entity) : null;
 
             if ($property->isPrimaryKey() && $value === null) {
                 continue;

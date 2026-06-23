@@ -254,7 +254,7 @@ class RelationshipLoader {
         $targetPrimaryKey = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
 
         $entities = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("$targetPrimaryKey IN (" . str_repeat('?,', count($relatedIds) - 1) . '?)', $relatedIds)
+            ->whereIn($targetPrimaryKey, $relatedIds)
             ->getResult($targetEntity);
 
         if (!$usePivotData) {

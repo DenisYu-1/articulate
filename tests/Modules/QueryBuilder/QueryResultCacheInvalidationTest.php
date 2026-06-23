@@ -4,8 +4,122 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityCacheCoordinator;
 use Articulate\Modules\QueryBuilder\QueryResultCache;
+use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
+
+class QueryResultInvalidationCacheItem implements CacheItemInterface {
+    private mixed $value = null;
+
+    private bool $isHit = false;
+
+    public function __construct(
+        private string $key,
+    ) {
+    }
+
+    public function getKey(): string
+    {
+        return $this->key;
+    }
+
+    public function get(): mixed
+    {
+        return $this->isHit ? $this->value : null;
+    }
+
+    public function isHit(): bool
+    {
+        return $this->isHit;
+    }
+
+    public function set(mixed $value): static
+    {
+        $this->value = $value;
+        $this->isHit = true;
+
+        return $this;
+    }
+
+    public function expiresAt(?\DateTimeInterface $expiration): static
+    {
+        return $this;
+    }
+
+    public function expiresAfter(int|\DateInterval|null $time): static
+    {
+        return $this;
+    }
+}
+
+class QueryResultInvalidationCache implements CacheItemPoolInterface {
+    /** @var array<string, QueryResultInvalidationCacheItem> */
+    private array $items = [];
+
+    public function getItem(string $key): CacheItemInterface
+    {
+        if (!isset($this->items[$key])) {
+            $this->items[$key] = new QueryResultInvalidationCacheItem($key);
+        }
+
+        return $this->items[$key];
+    }
+
+    public function getItems(array $keys = []): iterable
+    {
+        foreach ($keys as $key) {
+            yield $key => $this->getItem($key);
+        }
+    }
+
+    public function hasItem(string $key): bool
+    {
+        return isset($this->items[$key]) && $this->items[$key]->isHit();
+    }
+
+    public function clear(): bool
+    {
+        $this->items = [];
+
+        return true;
+    }
+
+    public function deleteItem(string $key): bool
+    {
+        unset($this->items[$key]);
+
+        return true;
+    }
+
+    public function deleteItems(array $keys): bool
+    {
+        foreach ($keys as $key) {
+            unset($this->items[$key]);
+        }
+
+        return true;
+    }
+
+    public function save(CacheItemInterface $item): bool
+    {
+        $this->items[$item->getKey()] = $item;
+
+        return true;
+    }
+
+    public function saveDeferred(CacheItemInterface $item): bool
+    {
+        return $this->save($item);
+    }
+
+    public function commit(): bool
+    {
+        return true;
+    }
+}
 
 class QueryResultCacheInvalidationTest extends TestCase {
     private Connection $connection;
@@ -17,7 +131,7 @@ class QueryResultCacheInvalidationTest extends TestCase {
 
     public function testGenerationChangeMakesOldKeyStale(): void
     {
-        $pool = new ArrayCache();
+        $pool = new QueryResultInvalidationCache();
         $cache = new QueryResultCache($pool);
         $cache->enable(3600);
 
@@ -34,7 +148,7 @@ class QueryResultCacheInvalidationTest extends TestCase {
 
     public function testSharedPoolGenerationSeenBySecondEntityManager(): void
     {
-        $pool = new ArrayCache();
+        $pool = new QueryResultInvalidationCache();
         $em1 = new EntityManager($this->connection, null, null, null, null, null, null, $pool);
         $em2 = new EntityManager($this->connection, null, null, null, null, null, null, $pool);
 
@@ -47,8 +161,8 @@ class QueryResultCacheInvalidationTest extends TestCase {
             'Both EMs start at the same generation'
         );
 
-        // Simulate flush: increment generation in the shared pool via em1
-        $this->callIncrement($em1);
+        // Simulate flush: increment generation in the shared pool.
+        (new EntityCacheCoordinator($pool, new EntityMetadataRegistry()))->incrementQueryCacheGeneration();
 
         // em2 must now read the incremented generation
         $qb2After = $em2->createQueryBuilder();
@@ -61,25 +175,17 @@ class QueryResultCacheInvalidationTest extends TestCase {
 
     public function testMultipleFlushesIncrementGenerationMonotonically(): void
     {
-        $pool = new ArrayCache();
+        $pool = new QueryResultInvalidationCache();
         $em = new EntityManager($this->connection, null, null, null, null, null, null, $pool);
 
         $gen0 = $this->readGeneration($em->createQueryBuilder());
-        $this->callIncrement($em);
+        (new EntityCacheCoordinator($pool, new EntityMetadataRegistry()))->incrementQueryCacheGeneration();
         $gen1 = $this->readGeneration($em->createQueryBuilder());
-        $this->callIncrement($em);
+        (new EntityCacheCoordinator($pool, new EntityMetadataRegistry()))->incrementQueryCacheGeneration();
         $gen2 = $this->readGeneration($em->createQueryBuilder());
 
         $this->assertGreaterThan($gen0, $gen1);
         $this->assertGreaterThan($gen1, $gen2);
-    }
-
-    private function callIncrement(EntityManager $em): void
-    {
-        $ref = new \ReflectionClass($em);
-        $method = $ref->getMethod('incrementQueryCacheGeneration');
-        $method->setAccessible(true);
-        $method->invoke($em);
     }
 
     private function readGeneration(object $queryBuilder): int

@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Commands\DiffCommand;
 
 use Articulate\Commands\DiffCommand;
+use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
@@ -79,6 +80,23 @@ class DiffCommandTest extends DatabaseTestCase {
         rmdir($dir);
     }
 
+    private function writeFixtureClass(string $directory, string $fileName, string $namespace, string $className, bool $entity): string
+    {
+        $attribute = $entity ? "#[\\Articulate\\Attributes\\Entity]\n" : '';
+        $path = $directory . '/' . $fileName;
+        file_put_contents($path, <<<PHP
+<?php
+
+namespace {$namespace};
+
+{$attribute}class {$className} {
+}
+PHP);
+        require_once $path;
+
+        return $namespace . '\\' . $className;
+    }
+
     /**
      * Test diff command finds entities and generates migration when schema differences exist.
      */
@@ -115,6 +133,81 @@ class DiffCommandTest extends DatabaseTestCase {
         $this->assertStringContainsString('CREATE TABLE', $migrationContent);
         $this->assertStringContainsString('DROP TABLE', $migrationContent);
         $this->assertStringContainsString('Test\Migrations', $migrationContent);
+    }
+
+    public function testDiscoversOnlyEntityClassesFromPhpFiles(): void
+    {
+        $entitiesPath = $this->tempDir . '/scan_entities';
+        $nestedPath = $entitiesPath . '/Nested';
+        mkdir($nestedPath, 0777, true);
+
+        $suffix = str_replace('.', '', uniqid('', true));
+        $entityClass = $this->writeFixtureClass($entitiesPath, 'ScannedEntity.php', 'Articulate\\Tests\\Generated\\Diff' . $suffix, 'ScannedEntity', true);
+        $nestedEntityClass = $this->writeFixtureClass($nestedPath, 'NestedEntity.php', 'Articulate\\Tests\\Generated\\Diff' . $suffix . '\\Nested', 'NestedEntity', true);
+        $this->writeFixtureClass($entitiesPath, 'PlainClass.php', 'Articulate\\Tests\\Generated\\Diff' . $suffix, 'PlainClass', false);
+        file_put_contents($entitiesPath . '/Ignored.txt', "<?php\n#[\\Articulate\\Attributes\\Entity]\nclass IgnoredTextFile {}\n");
+
+        $this->schemaComparator = $this->createMock(DatabaseSchemaComparator::class);
+        $this->schemaComparator->expects($this->once())
+            ->method('compareAll')
+            ->with($this->callback(function (array $entities) use ($entityClass, $nestedEntityClass): bool {
+                $this->assertContainsOnlyInstancesOf(ReflectionEntity::class, $entities);
+                $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), array_values($entities));
+                sort($classNames);
+                $expected = [$entityClass, $nestedEntityClass];
+                sort($expected);
+                $this->assertSame($expected, $classNames);
+
+                return true;
+            }))
+            ->willReturn([]);
+
+        $command = new DiffCommand(
+            $this->schemaComparator,
+            $this->commandGenerator,
+            $this->migrationsPath,
+            $entitiesPath
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertStringContainsString('Schema is already in sync', $commandTester->getDisplay());
+    }
+
+    public function testWritesWarningsAndEscapedRollbackInGeneratedMigration(): void
+    {
+        require_once __DIR__ . '/TestEntities/TestEntity.php';
+
+        $compareResult = new TableCompareResult('quoted_table', TableCompareResult::OPERATION_CREATE);
+        $compareResult->warnings[] = 'manual review required';
+
+        $this->schemaComparator->method('compareAll')->willReturn([$compareResult]);
+
+        $command = new DiffCommand(
+            $this->schemaComparator,
+            $this->commandGenerator,
+            $this->migrationsPath,
+            $this->entitiesPath,
+            'Test\Migrations'
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertStringContainsString('manual review required', $commandTester->getDisplay());
+
+        $migrationFiles = $this->findMigrationFiles();
+        $this->assertCount(1, $migrationFiles);
+        $migrationContent = file_get_contents($migrationFiles[0]);
+        $this->assertStringContainsString('$this->addSql("CREATE TABLE `quoted_table` ()");', $migrationContent);
+        $this->assertStringContainsString('$this->addSql("DROP TABLE `quoted_table`");', $migrationContent);
+        $this->assertLessThan(
+            strpos($migrationContent, '$this->addSql("DROP TABLE `quoted_table`");'),
+            strpos($migrationContent, '$this->addSql("CREATE TABLE `quoted_table` ()");')
+        );
     }
 
     /**
