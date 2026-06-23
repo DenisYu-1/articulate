@@ -408,8 +408,12 @@ class MappingTableComparator {
         }
 
         foreach ($indexesToRemove as $indexName => $_) {
-            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
             $existingIndex = $existingIndexes[$indexName] ?? [];
+            if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndex, $definition['primaryColumns'], $existingForeignKeys)) {
+                continue;
+            }
+
+            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
             $indexCompareResults[] = new IndexCompareResult(
                 $indexName,
                 CompareResult::OPERATION_DELETE,

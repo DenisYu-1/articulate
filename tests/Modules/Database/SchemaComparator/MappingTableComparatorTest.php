@@ -515,6 +515,78 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertNull($result);
     }
 
+    public function testCompareMorphToManyTableKeepsForeignKeyBackedIndexAndDeletesExtraIndex(): void
+    {
+        $definition = [
+            'tableName' => 'taggables',
+            'morphName' => 'taggable',
+            'typeColumn' => 'taggable_type',
+            'idColumn' => 'taggable_id',
+            'targetColumn' => 'tag_id',
+            'targetTable' => 'tags',
+            'targetReferencedColumn' => 'id',
+            'extraProperties' => [],
+            'primaryColumns' => ['id'],
+            'relations' => [],
+        ];
+
+        $existingTables = ['taggables', 'tags'];
+
+        $this->databaseSchemaReader->method('getTableColumns')
+            ->willReturn([
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+            ]);
+
+        $this->databaseSchemaReader->method('getTableForeignKeys')
+            ->willReturn([
+                'fk_taggables_tag_id' => [
+                    'column' => 'tag_id',
+                    'referencedTable' => 'tags',
+                    'referencedColumn' => 'id',
+                ],
+            ]);
+
+        $this->databaseSchemaReader->method('getTableIndexes')
+            ->willReturn([
+                'PRIMARY' => [
+                    'columns' => ['id'],
+                    'unique' => true,
+                ],
+                'taggable_type_taggable_id_index' => [
+                    'columns' => ['taggable_type', 'taggable_id'],
+                    'unique' => false,
+                ],
+                'fk_taggables_tag_id' => [
+                    'columns' => ['tag_id'],
+                    'unique' => false,
+                ],
+                'legacy_extra_index' => [
+                    'columns' => ['taggable_type'],
+                    'unique' => false,
+                ],
+            ]);
+
+        $result = $this->comparator->compareMorphToManyTable($definition, $existingTables);
+
+        $this->assertInstanceOf(TableCompareResult::class, $result);
+        $this->assertEquals(CompareResult::OPERATION_UPDATE, $result->operation);
+        $this->assertEmpty($result->columns);
+        $this->assertEmpty($result->foreignKeys);
+
+        $this->assertCount(1, $result->indexes);
+        $this->assertEquals('legacy_extra_index', $result->indexes[0]->name);
+        $this->assertEquals(CompareResult::OPERATION_DELETE, $result->indexes[0]->operation);
+
+        $deletedIndexNames = array_map(
+            fn ($index) => $index->operation === CompareResult::OPERATION_DELETE ? $index->name : null,
+            $result->indexes
+        );
+        $this->assertNotContains('fk_taggables_tag_id', $deletedIndexNames);
+    }
+
     public function testCompareMorphToManyTableHandlesColumnUpdates(): void
     {
         $definition = [
