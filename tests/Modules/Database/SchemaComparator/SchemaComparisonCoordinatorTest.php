@@ -2,6 +2,10 @@
 
 namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\Index;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparator;
@@ -10,6 +14,7 @@ use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationDefinitionCollector;
 use Articulate\Modules\Database\SchemaComparator\SchemaComparisonCoordinator;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
+use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\TestCase;
 
@@ -393,4 +398,31 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertContains(TableCompareResult::OPERATION_CREATE, $operations);
         $this->assertContains(TableCompareResult::OPERATION_DELETE, $operations);
     }
+
+    public function testCompareAllValidatesIndexesBeforeReadingSchema(): void
+    {
+        $entity = new ReflectionEntity(TestInvalidIndexEntity::class);
+
+        $this->schemaReader->expects($this->never())
+            ->method('getTables');
+
+        $this->relationDefinitionCollector->expects($this->never())
+            ->method('validateRelations');
+
+        $this->entityTableComparator->expects($this->never())
+            ->method('compareEntityTable');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Index references unmapped property "missingField"');
+
+        iterator_to_array($this->coordinator->compareAll([$entity]));
+    }
+}
+
+#[Index(['missingField'], name: 'idx_missing_field')]
+#[Entity]
+class TestInvalidIndexEntity {
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
 }

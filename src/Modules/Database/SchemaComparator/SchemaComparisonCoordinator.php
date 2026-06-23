@@ -2,6 +2,7 @@
 
 namespace Articulate\Modules\Database\SchemaComparator;
 
+use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
@@ -23,10 +24,12 @@ class SchemaComparisonCoordinator {
      */
     public function compareAll(array $entities): iterable
     {
+        $this->validateIndexes($entities);
+        $this->relationDefinitionCollector->validateRelations($entities);
+
         $existingTables = $this->databaseSchemaReader->getTables();
         $tablesToRemove = array_fill_keys($existingTables, true);
 
-        $this->relationDefinitionCollector->validateRelations($entities);
         $manyToManyTables = $this->relationDefinitionCollector->collectManyToManyTables($entities);
         $morphToManyTables = $this->relationDefinitionCollector->collectMorphToManyTables($entities);
 
@@ -82,5 +85,23 @@ class SchemaComparisonCoordinator {
         }
 
         return $entitiesIndexed;
+    }
+
+    /**
+     * @param ReflectionEntity[] $entities
+     */
+    private function validateIndexes(array $entities): void
+    {
+        foreach ($entities as $entity) {
+            if (!$entity->isEntity()) {
+                continue;
+            }
+
+            foreach ($entity->getAttributes(Index::class) as $indexAttribute) {
+                /** @var Index $index */
+                $index = $indexAttribute->newInstance();
+                $index->resolveColumns($entity);
+            }
+        }
     }
 }
