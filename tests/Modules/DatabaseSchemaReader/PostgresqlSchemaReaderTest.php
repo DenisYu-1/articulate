@@ -66,7 +66,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
             ->method('executeQuery')
             ->with(
                 $this->stringContains('information_schema.columns'),
-                [$tableName]
+                ['table' => $tableName]
             )
             ->willReturn($this->mockStatement);
 
@@ -166,7 +166,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
             ->method('executeQuery')
             ->with(
                 $this->stringContains('pg_indexes'),
-                [$tableName]
+                ['table' => $tableName]
             )
             ->willReturn($this->mockStatement);
 
@@ -233,7 +233,7 @@ class PostgresqlSchemaReaderTest extends AbstractTestCase {
             ->method('executeQuery')
             ->with(
                 $this->stringContains('table_constraints'),
-                [$tableName]
+                ['table' => $tableName]
             )
             ->willReturn($this->mockStatement);
 

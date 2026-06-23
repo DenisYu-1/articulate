@@ -13,6 +13,7 @@ class PropertiesData {
         public readonly ?bool $isPrimaryKey = false,
         public readonly ?bool $isAutoIncrement = false,
         public readonly bool $isForeignKey = false,
+        public readonly ?string $databaseType = null,
     ) {
     }
 }

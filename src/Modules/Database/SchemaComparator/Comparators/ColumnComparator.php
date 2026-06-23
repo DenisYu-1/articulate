@@ -90,10 +90,11 @@ class ColumnComparator {
                     $data['foreignKeyRequired'],
                 ),
                 new PropertiesData(
-                    $column->type,
+                    $this->getComparableColumnType($column),
                     $column->isNullable,
                     $column->defaultValue,
                     $column->length,
+                    databaseType: $this->getRawColumnType($column),
                 ),
             );
             if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
@@ -108,10 +109,11 @@ class ColumnComparator {
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
                 new PropertiesData(
-                    $column->type,
+                    $this->getComparableColumnType($column),
                     $column->isNullable,
                     $column->defaultValue,
                     $column->length,
+                    databaseType: $this->getRawColumnType($column),
                 ),
             );
         }
@@ -172,9 +174,11 @@ class ColumnComparator {
      */
     private function buildColumnProperties(ReflectionProperty|ReflectionRelation $property): array
     {
+        $isPrimaryKey = $property instanceof ReflectionProperty && $property->isPrimaryKey();
+
         return [
             'type' => $this->normalizeTypeName($property->getType()),
-            'nullable' => $property->isNullable(),
+            'nullable' => $isPrimaryKey ? false : $property->isNullable(),
             'default' => $property->getDefaultValue(),
             'length' => $property->getLength(),
             'relation' => $property instanceof ReflectionRelation ? $property : null,
@@ -182,7 +186,7 @@ class ColumnComparator {
             'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
             'generatorType' => $property instanceof ReflectionProperty ? $property->getGeneratorType() : null,
             'sequence' => $property instanceof ReflectionProperty ? $property->getSequence() : null,
-            'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
+            'isPrimaryKey' => $isPrimaryKey,
             'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
             'propertyName' => $property instanceof ReflectionRelation ? $property->getPropertyName() : $property->getFieldName(),
             'declaringClass' => $property->getDeclaringClassName(),
@@ -399,5 +403,22 @@ class ColumnComparator {
         }
 
         return (string) $type;
+    }
+
+    private function getComparableColumnType(object $column): ?string
+    {
+        $type = $column->phpType ?? $column->type ?? null;
+        $rawType = $column->type ?? null;
+
+        if ($type === 'mixed' && is_string($rawType) && in_array($rawType, ['int', 'float', 'string', 'bool', 'DateTime', 'DateTimeImmutable'], true)) {
+            return $rawType;
+        }
+
+        return $type;
+    }
+
+    private function getRawColumnType(object $column): ?string
+    {
+        return $column->type ?? null;
     }
 }

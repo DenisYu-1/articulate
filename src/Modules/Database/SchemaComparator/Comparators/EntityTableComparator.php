@@ -61,7 +61,9 @@ class EntityTableComparator {
         $existingForeignKeys = [];
         $foreignKeysToRemove = [];
 
-        if (!in_array($tableName, $existingTables, true)) {
+        $tableExists = in_array($tableName, $existingTables, true);
+
+        if (!$tableExists) {
             $operation = TableCompareResult::OPERATION_CREATE;
         } else {
             $existingIndexes = $this->indexComparator->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
@@ -70,10 +72,14 @@ class EntityTableComparator {
             $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
         }
 
-        try {
+        if ($tableExists) {
             $columns = $this->databaseSchemaReader->getTableColumns($tableName);
-        } catch (DatabaseSchemaException $e) {
-            $columns = [];
+        } else {
+            try {
+                $columns = $this->databaseSchemaReader->getTableColumns($tableName);
+            } catch (DatabaseSchemaException) {
+                $columns = [];
+            }
         }
 
         $columnsIndexed = [];

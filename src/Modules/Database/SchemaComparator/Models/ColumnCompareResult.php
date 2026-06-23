@@ -31,7 +31,7 @@ class ColumnCompareResult extends CompareResult {
 
     private function typesMatch(PropertiesData $propertyData, PropertiesData $columnData): bool
     {
-        if ($propertyData->type === $columnData->type) {
+        if ($this->normalizeComparableType($propertyData->type) === $this->normalizeComparableType($columnData->type)) {
             return true;
         }
 
@@ -44,5 +44,18 @@ class ColumnCompareResult extends CompareResult {
         }
 
         return strtolower($columnData->type) === 'int unsigned';
+    }
+
+    private function normalizeComparableType(?string $type): ?string
+    {
+        if ($type === null) {
+            return null;
+        }
+
+        if (in_array($type, ['DateTime', 'DateTimeImmutable', 'DateTimeInterface'], true)) {
+            return 'DateTime';
+        }
+
+        return $type;
     }
 }

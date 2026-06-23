@@ -33,6 +33,10 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return 'TEXT'; // fallback for unknown types
         }
 
+        if ($propertyData->databaseType !== null) {
+            return strtoupper($propertyData->databaseType);
+        }
+
         $dbType = $this->typeRegistry->getDatabaseType($propertyData->type);
 
         // Handle string types with length
