@@ -10,6 +10,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Modules\Database\SchemaComparator\Comparators\EntityTableComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaComparator\RelationDefinitionCollector;
 use Articulate\Modules\Database\SchemaComparator\SchemaComparisonCoordinator;
@@ -399,6 +400,142 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->assertContains(TableCompareResult::OPERATION_DELETE, $operations);
     }
 
+    #[AllowMockObjectsWithoutExpectations]
+    public function testCompareAllOrdersNewTablesByForeignKeyDependencies(): void
+    {
+        $customerEntity = $this->createTableEntity('customers');
+        $addressEntity = $this->createTableEntity('customer_addresses');
+
+        $customerResult = new TableCompareResult(
+            'customers',
+            TableCompareResult::OPERATION_CREATE,
+            foreignKeys: [
+                new ForeignKeyCompareResult(
+                    'fk_customers_address_id',
+                    TableCompareResult::OPERATION_CREATE,
+                    'address_id',
+                    'customer_addresses',
+                ),
+            ],
+        );
+        $addressResult = new TableCompareResult('customer_addresses', TableCompareResult::OPERATION_CREATE);
+
+        $this->schemaReader->method('getTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectManyToManyTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectMorphToManyTables')->willReturn([]);
+        $this->entityTableComparator->method('compareEntityTable')
+            ->willReturnCallback(fn (array $entityGroup, array $existingTables, string $tableName) => match ($tableName) {
+                'customers' => $customerResult,
+                'customer_addresses' => $addressResult,
+            });
+
+        $results = iterator_to_array($this->coordinator->compareAll([$customerEntity, $addressEntity]));
+
+        $this->assertSame(['customer_addresses', 'customers'], array_map(fn ($result) => $result->name, $results));
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testCompareAllEmitsMappingTablesAfterParticipatingEntityTables(): void
+    {
+        $userEntity = $this->createTableEntity('users');
+        $postEntity = $this->createTableEntity('posts');
+        $manyToManyDefinition = [
+            'tableName' => 'post_user',
+            'ownerTable' => 'users',
+            'targetTable' => 'posts',
+            'ownerJoinColumn' => 'user_id',
+            'targetJoinColumn' => 'post_id',
+            'ownerReferencedColumn' => 'id',
+            'targetReferencedColumn' => 'id',
+            'extraProperties' => [],
+            'primaryColumns' => ['user_id', 'post_id'],
+        ];
+
+        $userResult = new TableCompareResult('users', TableCompareResult::OPERATION_CREATE);
+        $postResult = new TableCompareResult('posts', TableCompareResult::OPERATION_CREATE);
+        $mappingResult = new TableCompareResult(
+            'post_user',
+            TableCompareResult::OPERATION_CREATE,
+            foreignKeys: [
+                new ForeignKeyCompareResult('fk_post_user_user_id', TableCompareResult::OPERATION_CREATE, 'user_id', 'users'),
+                new ForeignKeyCompareResult('fk_post_user_post_id', TableCompareResult::OPERATION_CREATE, 'post_id', 'posts'),
+            ],
+        );
+
+        $this->schemaReader->method('getTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectManyToManyTables')->willReturn(['post_user' => $manyToManyDefinition]);
+        $this->relationDefinitionCollector->method('collectMorphToManyTables')->willReturn([]);
+        $this->entityTableComparator->method('compareEntityTable')
+            ->willReturnCallback(fn (array $entityGroup, array $existingTables, string $tableName) => match ($tableName) {
+                'users' => $userResult,
+                'posts' => $postResult,
+            });
+        $this->mappingTableComparator->method('compareManyToManyTable')->willReturn($mappingResult);
+
+        $results = iterator_to_array($this->coordinator->compareAll([$userEntity, $postEntity]));
+
+        $this->assertSame(['users', 'posts', 'post_user'], array_map(fn ($result) => $result->name, $results));
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testCompareAllOrdersTableDeletesWithDependentsFirst(): void
+    {
+        $this->schemaReader->method('getTables')->willReturn(['customer_addresses', 'customers']);
+        $this->schemaReader->method('getTableForeignKeys')
+            ->willReturnCallback(fn (string $tableName) => match ($tableName) {
+                'customers' => [
+                    'fk_customers_address_id' => [
+                        'column' => 'address_id',
+                        'referencedTable' => 'customer_addresses',
+                        'referencedColumn' => 'id',
+                    ],
+                ],
+                default => [],
+            });
+        $this->relationDefinitionCollector->method('collectManyToManyTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectMorphToManyTables')->willReturn([]);
+
+        $results = iterator_to_array($this->coordinator->compareAll([]));
+
+        $this->assertSame(['customers', 'customer_addresses'], array_map(fn ($result) => $result->name, $results));
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testCompareAllFailsClearlyForCyclicForeignKeyDependencies(): void
+    {
+        $entityA = $this->createTableEntity('table_a');
+        $entityB = $this->createTableEntity('table_b');
+        $resultA = new TableCompareResult(
+            'table_a',
+            TableCompareResult::OPERATION_CREATE,
+            foreignKeys: [
+                new ForeignKeyCompareResult('fk_table_a_b_id', TableCompareResult::OPERATION_CREATE, 'b_id', 'table_b'),
+            ],
+        );
+        $resultB = new TableCompareResult(
+            'table_b',
+            TableCompareResult::OPERATION_CREATE,
+            foreignKeys: [
+                new ForeignKeyCompareResult('fk_table_b_a_id', TableCompareResult::OPERATION_CREATE, 'a_id', 'table_a'),
+            ],
+        );
+
+        $this->schemaReader->method('getTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectManyToManyTables')->willReturn([]);
+        $this->relationDefinitionCollector->method('collectMorphToManyTables')->willReturn([]);
+        $this->entityTableComparator->method('compareEntityTable')
+            ->willReturnCallback(fn (array $entityGroup, array $existingTables, string $tableName) => match ($tableName) {
+                'table_a' => $resultA,
+                'table_b' => $resultB,
+            });
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Circular table foreign key dependency detected while ordering schema changes');
+
+        iterator_to_array($this->coordinator->compareAll([$entityA, $entityB]));
+    }
+
+    #[AllowMockObjectsWithoutExpectations]
     public function testCompareAllValidatesIndexesBeforeReadingSchema(): void
     {
         $entity = new ReflectionEntity(TestInvalidIndexEntity::class);
@@ -416,6 +553,15 @@ class SchemaComparisonCoordinatorTest extends TestCase {
         $this->expectExceptionMessage('Index references unmapped property "missingField"');
 
         iterator_to_array($this->coordinator->compareAll([$entity]));
+    }
+
+    private function createTableEntity(string $tableName): ReflectionEntity
+    {
+        $entity = $this->createStub(ReflectionEntity::class);
+        $entity->method('isEntity')->willReturn(true);
+        $entity->method('getTableName')->willReturn($tableName);
+
+        return $entity;
     }
 }
 

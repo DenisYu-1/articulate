@@ -3,6 +3,7 @@
 namespace Articulate\Tests\Modules\MigrationsGenerator;
 
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
@@ -207,6 +208,38 @@ class MigrationsCommandGeneratorOrderingTest extends DatabaseTestCase {
             $this->assertStringContainsString('DROP INDEX "idx_column1"', $result);
             $this->assertStringContainsString('CREATE UNIQUE INDEX "idx_column2" ON "test_table"', $result);
         }
+    }
+
+    public function testMysqlRollbackDropsReferencingTableBeforeReferencedTable(): void
+    {
+        $generator = MigrationsGeneratorTestHelper::forMySql();
+        $orderedCreateResults = [
+            new TableCompareResult('customer_addresses', CompareResult::OPERATION_CREATE),
+            new TableCompareResult(
+                'customers',
+                CompareResult::OPERATION_CREATE,
+                foreignKeys: [
+                    new ForeignKeyCompareResult(
+                        'fk_customers_address_id',
+                        CompareResult::OPERATION_CREATE,
+                        'address_id',
+                        'customer_addresses',
+                    ),
+                ],
+            ),
+        ];
+
+        $rollbackStatements = [];
+        foreach ($orderedCreateResults as $result) {
+            array_push($rollbackStatements, ...$generator->rollback($result));
+        }
+
+        $downStatements = array_reverse($rollbackStatements);
+
+        $this->assertSame(
+            ['DROP TABLE `customers`', 'DROP TABLE `customer_addresses`'],
+            $downStatements,
+        );
     }
 
     /**
