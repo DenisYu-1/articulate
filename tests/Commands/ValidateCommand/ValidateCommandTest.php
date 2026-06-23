@@ -2,8 +2,8 @@
 
 namespace Articulate\Tests\Commands\ValidateCommand;
 
-use Articulate\Commands\ValidateCommand;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Commands\ValidateCommand;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use PHPUnit\Framework\TestCase;

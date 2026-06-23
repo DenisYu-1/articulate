@@ -2,8 +2,8 @@
 
 namespace Articulate\Tests\Commands\DiffCommand;
 
-use Articulate\Commands\DiffCommand;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Commands\DiffCommand;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;

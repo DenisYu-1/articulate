@@ -404,5 +404,4 @@ class EntityManager {
 
         return $this->repositoryFactory->getRepository($entityClass);
     }
-
 }
