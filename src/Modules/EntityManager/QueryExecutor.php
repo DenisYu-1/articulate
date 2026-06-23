@@ -7,7 +7,6 @@ use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Collection\MappingCollection;
 use Articulate\Connection;
-use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Utils\ReflectionCache;
