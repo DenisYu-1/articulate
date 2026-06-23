@@ -3,8 +3,8 @@
 namespace Articulate\Tests\Modules\QueryBuilder;
 
 use Articulate\Connection;
-use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\EntityManager\EntityCacheCoordinator;
+use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Modules\QueryBuilder\QueryResultCache;
 use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
