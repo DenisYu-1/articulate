@@ -83,7 +83,11 @@ class ColumnComparator {
                     $data['nullable'],
                     $data['default'],
                     $data['length'],
-                    isForeignKey: $data['foreignKeyRequired'],
+                    $data['generatorType'],
+                    $data['sequence'],
+                    $data['isPrimaryKey'],
+                    $data['isAutoIncrement'],
+                    $data['foreignKeyRequired'],
                 ),
                 new PropertiesData(
                     $column->type,

@@ -502,6 +502,105 @@ class ColumnComparatorTest extends TestCase {
         $this->assertCount(0, $report->results);
     }
 
+    public function testCompareColumnsDoesNotUpdateMysqlUnsignedIntPrimaryKey(): void
+    {
+        $propertiesIndexed = [
+            'id' => [
+                'type' => 'int',
+                'nullable' => false,
+                'default' => null,
+                'length' => null,
+                'relation' => null,
+                'foreignKeyRequired' => false,
+                'referencedColumn' => null,
+                'generatorType' => 'auto_increment',
+                'sequence' => null,
+                'isPrimaryKey' => true,
+                'isAutoIncrement' => true,
+            ],
+        ];
+
+        $columnsIndexed = [
+            'id' => (object) [
+                'type' => 'int unsigned',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => null,
+            ],
+        ];
+
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+
+        $this->assertCount(0, $report->results);
+    }
+
+    public function testCompareColumnsDoesNotUpdateMysqlUnsignedIntForeignKey(): void
+    {
+        $propertiesIndexed = [
+            'product_id' => [
+                'type' => 'int',
+                'nullable' => false,
+                'default' => null,
+                'length' => null,
+                'relation' => null,
+                'foreignKeyRequired' => true,
+                'referencedColumn' => 'id',
+                'generatorType' => null,
+                'sequence' => null,
+                'isPrimaryKey' => false,
+                'isAutoIncrement' => false,
+            ],
+        ];
+
+        $columnsIndexed = [
+            'product_id' => (object) [
+                'type' => 'int unsigned',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => null,
+            ],
+        ];
+
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+
+        $this->assertCount(0, $report->results);
+    }
+
+    public function testCompareColumnsStillUpdatesNonKeyMysqlUnsignedInt(): void
+    {
+        $propertiesIndexed = [
+            'quantity' => [
+                'type' => 'int',
+                'nullable' => false,
+                'default' => null,
+                'length' => null,
+                'relation' => null,
+                'foreignKeyRequired' => false,
+                'referencedColumn' => null,
+                'generatorType' => null,
+                'sequence' => null,
+                'isPrimaryKey' => false,
+                'isAutoIncrement' => false,
+            ],
+        ];
+
+        $columnsIndexed = [
+            'quantity' => (object) [
+                'type' => 'int unsigned',
+                'isNullable' => false,
+                'defaultValue' => null,
+                'length' => null,
+            ],
+        ];
+
+        $report = $this->comparator->compareColumns($propertiesIndexed, $columnsIndexed);
+
+        $this->assertCount(1, $report->results);
+        $this->assertSame('quantity', $report->results[0]->name);
+        $this->assertSame(CompareResult::OPERATION_UPDATE, $report->results[0]->operation);
+        $this->assertFalse($report->results[0]->typeMatch);
+    }
+
     public function testCompareColumnsMixedOperations(): void
     {
         $propertiesIndexed = [
