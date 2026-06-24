@@ -458,5 +458,4 @@ class MappingTableComparator {
 
         return new PropertiesData('int', false, null, null, isForeignKey: true);
     }
-
 }
