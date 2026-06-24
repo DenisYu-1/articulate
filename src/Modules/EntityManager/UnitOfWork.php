@@ -4,8 +4,8 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
-use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 
 use Articulate\Collection\MappingItem;
 use Articulate\Exceptions\ReadOnlyEntityException;
