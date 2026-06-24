@@ -80,9 +80,8 @@ class DiffCommand extends Command {
 
             return Command::SUCCESS;
         }
-        $escapeSql = fn (string $query) => addcslashes($query, '"\\');
-        $upScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', $queries);
-        $downScript = array_map(fn ($query) => '$this->addSql("' . $escapeSql($query) . '");', array_reverse($rollbacks));
+        $upScript = array_map(fn ($query) => '$this->addSql(' . $this->phpStringLiteral($query) . ');', $queries);
+        $downScript = array_map(fn ($query) => '$this->addSql(' . $this->phpStringLiteral($query) . ');', array_reverse($rollbacks));
         $this->migrationGenerator->generate(
             $this->migrationsNamespace ?: 'App\Migrations',
             'MigrationFrom' . time(),
@@ -91,6 +90,11 @@ class DiffCommand extends Command {
         );
 
         return Command::SUCCESS;
+    }
+
+    private function phpStringLiteral(string $value): string
+    {
+        return var_export($value, true);
     }
 
     private function isFileWithinDirectory(string $realPath, string $baseDir): bool

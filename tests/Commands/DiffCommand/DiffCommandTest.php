@@ -6,6 +6,9 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Commands\DiffCommand;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\MigrationsCommandGenerator;
 use Articulate\Tests\DatabaseTestCase;
@@ -202,12 +205,63 @@ PHP);
         $migrationFiles = $this->findMigrationFiles();
         $this->assertCount(1, $migrationFiles);
         $migrationContent = file_get_contents($migrationFiles[0]);
-        $this->assertStringContainsString('$this->addSql("CREATE TABLE `quoted_table` ()");', $migrationContent);
-        $this->assertStringContainsString('$this->addSql("DROP TABLE `quoted_table`");', $migrationContent);
+        $this->assertStringContainsString('$this->addSql(\'CREATE TABLE `quoted_table` ()\');', $migrationContent);
+        $this->assertStringContainsString('$this->addSql(\'DROP TABLE `quoted_table`\');', $migrationContent);
         $this->assertLessThan(
-            strpos($migrationContent, '$this->addSql("DROP TABLE `quoted_table`");'),
-            strpos($migrationContent, '$this->addSql("CREATE TABLE `quoted_table` ()");')
+            strpos($migrationContent, '$this->addSql(\'DROP TABLE `quoted_table`\');'),
+            strpos($migrationContent, '$this->addSql(\'CREATE TABLE `quoted_table` ()\');')
         );
+    }
+
+    public function testPostgresqlGeneratedMigrationUsesSingleQuotedPhpStringLiterals(): void
+    {
+        require_once __DIR__ . '/TestEntities/TestEntity.php';
+
+        $compareResult = new TableCompareResult(
+            name: 'quoted_table',
+            operation: CompareResult::OPERATION_CREATE,
+            columns: [
+                new ColumnCompareResult(
+                    name: 'status',
+                    operation: CompareResult::OPERATION_CREATE,
+                    propertyData: new PropertiesData(type: 'string', isNullable: false, defaultValue: 'active'),
+                    columnData: new PropertiesData(),
+                ),
+            ],
+        );
+
+        $this->schemaComparator->method('compareAll')->willReturn([$compareResult]);
+
+        $mockConnection = $this->createStub(Connection::class);
+        $mockConnection->method('getDriverName')->willReturn(Connection::PGSQL);
+        $commandGenerator = new MigrationsCommandGenerator($mockConnection);
+
+        $command = new DiffCommand(
+            $this->schemaComparator,
+            $commandGenerator,
+            $this->migrationsPath,
+            $this->entitiesPath,
+            'Test\Migrations'
+        );
+
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        $this->assertSame(0, $statusCode);
+
+        $migrationFiles = $this->findMigrationFiles();
+        $this->assertCount(1, $migrationFiles);
+        $migrationContent = file_get_contents($migrationFiles[0]);
+
+        $this->assertStringContainsString(
+            '$this->addSql(\'CREATE TABLE "quoted_table" ("status" VARCHAR(255) NOT NULL DEFAULT \\\'active\\\')\');',
+            $migrationContent
+        );
+        $this->assertStringContainsString(
+            '$this->addSql(\'DROP TABLE "quoted_table"\');',
+            $migrationContent
+        );
+        $this->assertStringNotContainsString('\\"quoted_table\\"', $migrationContent);
     }
 
     /**
