@@ -10,6 +10,7 @@ use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\MappingTable;
+use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
@@ -63,7 +64,18 @@ class IdempotenceProduct {
     #[ManyToOne(targetEntity: IdempotenceCategory::class, referencedBy: 'products', nullable: false)]
     public IdempotenceCategory $category;
 
-    #[ManyToMany(targetEntity: IdempotenceTag::class, referencedBy: 'products', mappingTable: new MappingTable(name: 'idempotence_product_tags'))]
+    #[ManyToMany(
+        targetEntity: IdempotenceTag::class,
+        referencedBy: 'products',
+        mappingTable: new MappingTable(
+            name: 'idempotence_product_tags',
+            properties: [
+                new MappingTableProperty('assigned_at', 'datetime', nullable: true),
+                new MappingTableProperty('assignment_source', 'string', nullable: true),
+                new MappingTableProperty('assignment_note', 'string', nullable: true, length: 120),
+            ],
+        ),
+    )]
     public array $tags;
 }
 
@@ -160,5 +172,11 @@ class MigrationDiffIdempotenceTest extends DatabaseTestCase {
 
         $mappingForeignKeys = $reader->getTableForeignKeys('idempotence_product_tags');
         $this->assertCount(2, $mappingForeignKeys);
+
+        $mappingColumns = $reader->getTableColumns('idempotence_product_tags');
+        $mappingColumnNames = array_map(static fn ($column) => $column->name, $mappingColumns);
+        $this->assertContains('assigned_at', $mappingColumnNames);
+        $this->assertContains('assignment_source', $mappingColumnNames);
+        $this->assertContains('assignment_note', $mappingColumnNames);
     }
 }

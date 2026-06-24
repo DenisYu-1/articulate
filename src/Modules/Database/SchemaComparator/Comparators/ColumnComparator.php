@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareReport;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnComparisonNormalizer;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use RuntimeException;
@@ -89,15 +90,9 @@ class ColumnComparator {
                     $data['isAutoIncrement'],
                     $data['foreignKeyRequired'],
                 ),
-                new PropertiesData(
-                    $this->getComparableColumnType($column),
-                    $column->isNullable,
-                    $column->defaultValue,
-                    $column->length,
-                    databaseType: $this->getRawColumnType($column),
-                ),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
-            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+            if ($result->hasChanges()) {
                 $results[] = $result;
             }
         }
@@ -108,13 +103,7 @@ class ColumnComparator {
                 $columnName,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData(
-                    $this->getComparableColumnType($column),
-                    $column->isNullable,
-                    $column->defaultValue,
-                    $column->length,
-                    databaseType: $this->getRawColumnType($column),
-                ),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -405,20 +394,4 @@ class ColumnComparator {
         return (string) $type;
     }
 
-    private function getComparableColumnType(object $column): ?string
-    {
-        $type = $column->phpType ?? $column->type ?? null;
-        $rawType = $column->type ?? null;
-
-        if ($type === 'mixed' && is_string($rawType) && in_array($rawType, ['int', 'float', 'string', 'bool', 'DateTime', 'DateTimeImmutable'], true)) {
-            return $rawType;
-        }
-
-        return $type;
-    }
-
-    private function getRawColumnType(object $column): ?string
-    {
-        return $column->type ?? null;
-    }
 }

@@ -5,6 +5,7 @@ namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnComparisonNormalizer;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
@@ -152,9 +153,9 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_UPDATE,
                 $property,
-                new PropertiesData($this->getComparableColumnType($column), $column->isNullable, $column->defaultValue, $column->length, databaseType: $this->getRawColumnType($column)),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
-            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+            if ($result->hasChanges()) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
                 $columnsCompareResults[] = $result;
             }
@@ -166,7 +167,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData($this->getComparableColumnType($column), $column->isNullable, $column->defaultValue, $column->length, databaseType: $this->getRawColumnType($column)),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -331,7 +332,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_UPDATE,
                 $property,
-                new PropertiesData($this->getComparableColumnType($column), $column->isNullable, $column->defaultValue, $column->length, databaseType: $this->getRawColumnType($column)),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
             if ($result->hasChanges()) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
@@ -345,7 +346,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData($this->getComparableColumnType($column), $column->isNullable, $column->defaultValue, $column->length, databaseType: $this->getRawColumnType($column)),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -458,20 +459,4 @@ class MappingTableComparator {
         return new PropertiesData('int', false, null, null, isForeignKey: true);
     }
 
-    private function getComparableColumnType(object $column): ?string
-    {
-        $type = $column->phpType ?? $column->type ?? null;
-        $rawType = $column->type ?? null;
-
-        if ($type === 'mixed' && is_string($rawType) && in_array($rawType, ['int', 'float', 'string', 'bool', 'DateTime', 'DateTimeImmutable'], true)) {
-            return $rawType;
-        }
-
-        return $type;
-    }
-
-    private function getRawColumnType(object $column): ?string
-    {
-        return $column->type ?? null;
-    }
 }
