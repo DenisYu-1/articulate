@@ -393,5 +393,4 @@ class ColumnComparator {
 
         return (string) $type;
     }
-
 }
