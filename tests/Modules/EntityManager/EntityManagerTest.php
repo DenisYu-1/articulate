@@ -5,6 +5,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityManager;
@@ -102,7 +103,52 @@ class EntityManagerTest extends TestCase {
 
         $this->entityManager->clear();
 
-        $this->assertEquals(EntityState::NEW, $unitOfWork->getEntityState($entity));
+        $this->assertEquals(EntityState::DETACHED, $unitOfWork->getEntityState($entity));
+    }
+
+    public function testDetachMarksEntityDetachedAcrossUnitOfWorks(): void
+    {
+        $entity = new EntityManagerTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+
+        $scopedUow = $this->entityManager->createUnitOfWork();
+        $scopedUow->persist($entity);
+
+        $this->entityManager->detach($entity);
+
+        $this->assertEquals(EntityState::DETACHED, $scopedUow->getEntityState($entity));
+        $this->assertSame([], $scopedUow->getManagedEntities());
+    }
+
+    public function testFlushRejectsManagedEntityReferencingDetachedEntity(): void
+    {
+        $connection = $this->createMock(Connection::class);
+        $connection->method('inTransaction')->willReturn(false);
+        $connection->expects($this->once())->method('beginTransaction');
+        $connection->expects($this->once())->method('rollbackTransaction');
+        $connection->expects($this->never())->method('executeQuery');
+
+        $entityManager = new EntityManager($connection);
+
+        $author = new EntityManagerDetachedReferenceAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new EntityManagerDetachedReferenceBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+
+        $uow = $entityManager->getActiveUnitOfWork();
+        $uow->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $uow->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+        $entityManager->detach($author);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("relation 'author' references detached entity");
+
+        $entityManager->flush();
     }
 
     public function testFindReturnsNull(): void
@@ -459,4 +505,25 @@ class EntityManagerTest extends TestCase {
         $this->assertStringStartsWith('SELECT custom_id, name FROM', $executedSql);
         $this->assertStringNotContainsString('SELECT *', $executedSql);
     }
+}
+
+#[Entity]
+class EntityManagerDetachedReferenceAuthor {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+}
+
+#[Entity]
+class EntityManagerDetachedReferenceBook {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $title;
+
+    #[ManyToOne(targetEntity: EntityManagerDetachedReferenceAuthor::class)]
+    public ?EntityManagerDetachedReferenceAuthor $author = null;
 }

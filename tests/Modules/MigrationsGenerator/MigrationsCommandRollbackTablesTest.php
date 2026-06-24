@@ -52,14 +52,13 @@ class MigrationsCommandRollbackTablesTest extends DatabaseTestCase {
             'pgsql' => '"',
         };
 
-        $updateSyntax = match ($databaseName) {
-            'mysql' => 'MODIFY',
-            'pgsql' => 'ALTER COLUMN',
-        };
-
         $intType = match ($databaseName) {
             'mysql' => 'INT',
             'pgsql' => 'INTEGER',
+        };
+        $modifyInt = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} {$intType} NOT NULL",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE {$intType}",
         };
 
         return [
@@ -84,7 +83,7 @@ class MigrationsCommandRollbackTablesTest extends DatabaseTestCase {
                 ],
             ],
             [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} {$intType} NOT NULL",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyInt}",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

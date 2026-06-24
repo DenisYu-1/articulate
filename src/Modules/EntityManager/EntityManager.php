@@ -147,6 +147,12 @@ class EntityManager {
 
         try {
             $unitOfWorks = $this->unitOfWorkRegistry->all();
+            foreach ($unitOfWorks as $unitOfWork) {
+                $unitOfWork->assertNoInvalidReferences(
+                    fn (object $entity): EntityState => $this->unitOfWorkRegistry->getEntityState($entity)
+                );
+            }
+
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($unitOfWorks);
             $this->changeSetExecutor->execute($aggregatedChanges);
             $this->changeSetExecutor->syncManagedManyToMany($unitOfWorks);

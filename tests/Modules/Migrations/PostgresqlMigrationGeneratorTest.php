@@ -3,7 +3,10 @@
 namespace Articulate\Tests\Modules\Migrations;
 
 use Articulate\Modules\Database\PostgresqlTypeMapper;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
+use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Migrations\Generator\PostgresqlMigrationGenerator;
 use Articulate\Tests\AbstractTestCase;
 
@@ -119,6 +122,94 @@ class PostgresqlMigrationGeneratorTest extends AbstractTestCase {
         $result = $this->callProtectedMethod('getModifyColumnSyntax', ['email', $column]);
 
         $this->assertEquals('ALTER COLUMN "email" TYPE VARCHAR(255)', $result);
+    }
+
+    public function testModifyDatetimeColumnUsesPostgresqlTypeSyntax(): void
+    {
+        $result = $this->generator->generate(new TableCompareResult(
+            name: 'categories_products',
+            operation: CompareResult::OPERATION_UPDATE,
+            columns: [
+                new ColumnCompareResult(
+                    name: 'assigned_at',
+                    operation: CompareResult::OPERATION_UPDATE,
+                    propertyData: new PropertiesData(type: 'datetime', isNullable: true),
+                    columnData: new PropertiesData(type: 'string', isNullable: true, length: 255),
+                ),
+            ],
+        ));
+
+        $this->assertEquals([
+            'ALTER TABLE "categories_products" ALTER COLUMN "assigned_at" TYPE TIMESTAMP',
+        ], $result);
+        $this->assertStringNotContainsString(
+            'ALTER COLUMN "assigned_at" TIMESTAMP',
+            implode(' ', $result)
+        );
+    }
+
+    public function testRollbackModifyDatetimeColumnUsesPostgresqlTypeSyntax(): void
+    {
+        $result = $this->generator->rollback(new TableCompareResult(
+            name: 'categories_products',
+            operation: CompareResult::OPERATION_UPDATE,
+            columns: [
+                new ColumnCompareResult(
+                    name: 'assigned_at',
+                    operation: CompareResult::OPERATION_UPDATE,
+                    propertyData: new PropertiesData(type: 'string', isNullable: true, length: 255),
+                    columnData: new PropertiesData(type: 'datetime', isNullable: true),
+                ),
+            ],
+        ));
+
+        $this->assertEquals([
+            'ALTER TABLE "categories_products" ALTER COLUMN "assigned_at" TYPE TIMESTAMP',
+        ], $result);
+        $this->assertStringNotContainsString(
+            'ALTER COLUMN "assigned_at" TIMESTAMP',
+            implode(' ', $result)
+        );
+    }
+
+    public function testModifyNullableAndDefaultOnlyChangesUseSeparatePostgresqlClauses(): void
+    {
+        $result = $this->generator->generate(new TableCompareResult(
+            name: 'users',
+            operation: CompareResult::OPERATION_UPDATE,
+            columns: [
+                new ColumnCompareResult(
+                    name: 'status',
+                    operation: CompareResult::OPERATION_UPDATE,
+                    propertyData: new PropertiesData(type: 'string', isNullable: false, defaultValue: 'active', length: 32),
+                    columnData: new PropertiesData(type: 'string', isNullable: true, defaultValue: null, length: 32),
+                ),
+            ],
+        ));
+
+        $this->assertEquals([
+            'ALTER TABLE "users" ALTER COLUMN "status" SET NOT NULL, ALTER COLUMN "status" SET DEFAULT \'active\'',
+        ], $result);
+    }
+
+    public function testModifyDropsNullableAndDefaultWithSeparatePostgresqlClauses(): void
+    {
+        $result = $this->generator->generate(new TableCompareResult(
+            name: 'users',
+            operation: CompareResult::OPERATION_UPDATE,
+            columns: [
+                new ColumnCompareResult(
+                    name: 'status',
+                    operation: CompareResult::OPERATION_UPDATE,
+                    propertyData: new PropertiesData(type: 'string', isNullable: true, defaultValue: null, length: 32),
+                    columnData: new PropertiesData(type: 'string', isNullable: false, defaultValue: 'active', length: 32),
+                ),
+            ],
+        ));
+
+        $this->assertEquals([
+            'ALTER TABLE "users" ALTER COLUMN "status" DROP NOT NULL, ALTER COLUMN "status" DROP DEFAULT',
+        ], $result);
     }
 
     public function testGetConcurrentIndexPrefixReturnsConcurrently(): void

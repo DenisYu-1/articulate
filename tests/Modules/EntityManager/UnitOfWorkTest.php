@@ -5,7 +5,11 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToMany;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Exceptions\ScheduleConflictException;
+use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\DeferredImplicitStrategy;
 use Articulate\Modules\EntityManager\EntityState;
 use Articulate\Modules\EntityManager\UnitOfWork;
@@ -133,8 +137,195 @@ class UnitOfWorkTest extends TestCase {
 
         $this->unitOfWork->clear();
 
-        $this->assertEquals(EntityState::NEW, $this->unitOfWork->getEntityState($entity));
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($entity));
         $this->assertNull($this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1));
+    }
+
+    public function testDetachMarksEntityDetachedAndRemovesItFromIdentityMap(): void
+    {
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+
+        $this->unitOfWork->registerManaged($entity, ['id' => 1, 'name' => 'test']);
+        $this->unitOfWork->detach($entity);
+
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($entity));
+        $this->assertNull($this->unitOfWork->tryGetById(UnitOfWorkTestEntity::class, 1));
+        $this->assertSame([], $this->unitOfWork->getManagedEntities());
+    }
+
+    public function testDetachUntrackedEntityKeepsItNew(): void
+    {
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+
+        $this->unitOfWork->detach($entity);
+
+        $this->assertEquals(EntityState::NEW, $this->unitOfWork->getEntityState($entity));
+    }
+
+    public function testPersistDetachedEntityThrows(): void
+    {
+        $entity = new UnitOfWorkTestEntity();
+        $entity->id = 1;
+        $entity->name = 'test';
+
+        $this->unitOfWork->registerManaged($entity, ['id' => 1, 'name' => 'test']);
+        $this->unitOfWork->detach($entity);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot persist detached entity');
+
+        $this->unitOfWork->persist($entity);
+    }
+
+    public function testDetachCascadesToInitializedSingleValuedRelation(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+
+        $this->unitOfWork->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+
+        $this->unitOfWork->detach($book);
+
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($book));
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($author));
+        $this->assertSame($author, $book->author);
+        $this->assertNull($this->unitOfWork->tryGetById(UnitOfWorkDetachBook::class, 10));
+        $this->assertNull($this->unitOfWork->tryGetById(UnitOfWorkDetachAuthor::class, 1));
+    }
+
+    public function testDetachCascadesToInitializedCollectionRelation(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+        $author->books = new Collection([$book]);
+
+        $this->unitOfWork->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+
+        $this->unitOfWork->detach($author);
+
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($author));
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($book));
+        $this->assertTrue($author->books->contains($book));
+    }
+
+    public function testDetachRelatedEntitiesHandlesCycles(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+        $author->books = new Collection([$book]);
+
+        $this->unitOfWork->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+
+        $this->unitOfWork->detach($book);
+
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($author));
+        $this->assertEquals(EntityState::DETACHED, $this->unitOfWork->getEntityState($book));
+        $this->assertSame([], $this->unitOfWork->getManagedEntities());
+    }
+
+    public function testDetachedOwningRelationReferenceIsRejected(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+
+        $this->unitOfWork->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+        $this->unitOfWork->detach($author);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("relation 'author' references detached entity");
+
+        $this->unitOfWork->assertNoInvalidReferences();
+    }
+
+    public function testNewOwningRelationReferenceWithIdIsRejected(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("relation 'author' references new entity");
+
+        $this->unitOfWork->assertNoInvalidReferences();
+    }
+
+    public function testManagedOwningRelationReferenceIsAccepted(): void
+    {
+        $author = new UnitOfWorkDetachAuthor();
+        $author->id = 1;
+        $author->name = 'Author';
+
+        $book = new UnitOfWorkDetachBook();
+        $book->id = 10;
+        $book->title = 'Book';
+        $book->author = $author;
+
+        $this->unitOfWork->registerManaged($author, ['id' => 1, 'name' => 'Author']);
+        $this->unitOfWork->registerManaged($book, ['id' => 10, 'title' => 'Book']);
+
+        $this->unitOfWork->assertNoInvalidReferences();
+
+        $this->assertTrue(true);
+    }
+
+    public function testDetachedOwningManyToManyReferenceIsRejected(): void
+    {
+        $tag = new UnitOfWorkDetachTag();
+        $tag->id = 1;
+        $tag->name = 'Tag';
+
+        $post = new UnitOfWorkDetachPost();
+        $post->id = 20;
+        $post->title = 'Post';
+        $post->tags = new Collection([$tag]);
+
+        $this->unitOfWork->registerManaged($tag, ['id' => 1, 'name' => 'Tag']);
+        $this->unitOfWork->registerManaged($post, ['id' => 20, 'title' => 'Post']);
+        $this->unitOfWork->detach($tag);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("relation 'tags' references detached entity");
+
+        $this->unitOfWork->assertNoInvalidReferences();
     }
 
     public function testComputeChangeSets(): void
@@ -411,4 +602,49 @@ class SharedTableEntityA {
 class SharedTableEntityB {
     #[PrimaryKey]
     public int $id;
+}
+
+#[Entity]
+class UnitOfWorkDetachAuthor {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+
+    #[OneToMany(targetEntity: UnitOfWorkDetachBook::class, ownedBy: 'author')]
+    public ?Collection $books = null;
+}
+
+#[Entity]
+class UnitOfWorkDetachBook {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $title;
+
+    #[ManyToOne(targetEntity: UnitOfWorkDetachAuthor::class)]
+    public ?UnitOfWorkDetachAuthor $author = null;
+}
+
+#[Entity]
+class UnitOfWorkDetachPost {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $title;
+
+    #[ManyToMany(targetEntity: UnitOfWorkDetachTag::class)]
+    public ?Collection $tags = null;
+}
+
+#[Entity]
+class UnitOfWorkDetachTag {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
 }

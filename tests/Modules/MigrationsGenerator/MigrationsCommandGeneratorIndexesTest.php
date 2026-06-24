@@ -108,7 +108,6 @@ class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
             'mysql' => ["ALTER TABLE {$quote}test_table{$quote} DROP INDEX {$quote}idx_test_table_id{$quote}, {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL"],
             'pgsql' => [
                 'DROP INDEX "idx_test_table_id"',
-                'ALTER TABLE "test_table" ALTER COLUMN "id" VARCHAR(255) NOT NULL',
             ],
         };
 

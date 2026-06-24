@@ -52,9 +52,17 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
             'pgsql' => '"',
         };
 
-        $updateSyntax = match ($databaseName) {
-            'mysql' => 'MODIFY',
-            'pgsql' => 'ALTER COLUMN',
+        $modifyString = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(255) NOT NULL",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(255), ALTER COLUMN {$quote}id{$quote} SET NOT NULL",
+        };
+        $modifyStringWithDefault = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(255), ALTER COLUMN {$quote}id{$quote} SET NOT NULL, ALTER COLUMN {$quote}id{$quote} SET DEFAULT 'test'",
+        };
+        $modifyStringLengthWithDefault = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT 'test'",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(254), ALTER COLUMN {$quote}id{$quote} SET NOT NULL, ALTER COLUMN {$quote}id{$quote} SET DEFAULT 'test'",
         };
 
         return [
@@ -75,7 +83,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyString}",
                 'params' => [
                     'id',
                     'update',
@@ -83,7 +91,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyStringWithDefault}",
                 'params' => [
                     'id',
                     'update',
@@ -91,7 +99,7 @@ class MigrationsCommandGeneratorColumnsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT 'test'",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyStringLengthWithDefault}",
                 'params' => [
                     'id',
                     'update',

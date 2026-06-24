@@ -84,6 +84,38 @@ class UnitOfWorkRegistry {
         }
     }
 
+    public function getEntityState(object $entity): EntityState
+    {
+        $hasDetachedState = false;
+        $hasRemovedState = false;
+
+        foreach ($this->unitOfWorks as $unitOfWork) {
+            $state = $unitOfWork->getEntityState($entity);
+
+            if ($state === EntityState::MANAGED) {
+                return EntityState::MANAGED;
+            }
+
+            if ($state === EntityState::REMOVED) {
+                $hasRemovedState = true;
+            }
+
+            if ($state === EntityState::DETACHED) {
+                $hasDetachedState = true;
+            }
+        }
+
+        if ($hasRemovedState) {
+            return EntityState::REMOVED;
+        }
+
+        if ($hasDetachedState) {
+            return EntityState::DETACHED;
+        }
+
+        return EntityState::NEW;
+    }
+
     private function createChangeTrackingStrategy(): ChangeTrackingStrategy
     {
         if ($this->usesDefaultChangeTrackingStrategy) {

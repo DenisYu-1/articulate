@@ -52,9 +52,9 @@ class MigrationsCommandGeneratorTablesTest extends DatabaseTestCase {
             'pgsql' => '"',
         };
 
-        $updateSyntax = match ($databaseName) {
-            'mysql' => 'MODIFY',
-            'pgsql' => 'ALTER COLUMN',
+        $modifyString = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(255) NOT NULL",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(255)",
         };
 
         return [
@@ -79,7 +79,7 @@ class MigrationsCommandGeneratorTablesTest extends DatabaseTestCase {
                 ],
             ],
             [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyString}",
                 'operation' => 'update',
                 'parameters' => [
                     'name' => 'id',

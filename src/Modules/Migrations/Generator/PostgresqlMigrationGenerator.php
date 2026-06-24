@@ -190,11 +190,11 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
     {
         $changes = [];
         foreach ($columns as $column) {
-            if ($isRollback) {
-                $changes[] = $this->generateRollbackColumnChange($column);
-            } else {
-                $changes[] = $this->generateForwardColumnChange($column);
-            }
+            $columnChanges = $isRollback
+                ? $this->generateRollbackColumnChange($column)
+                : $this->generateForwardColumnChange($column);
+
+            array_push($changes, ...$columnChanges);
         }
 
         return array_filter($changes); // Remove empty strings
@@ -203,46 +203,66 @@ class PostgresqlMigrationGenerator extends AbstractMigrationGenerator implements
     /**
      * Generates a forward column change (for migration up).
      */
-    private function generateForwardColumnChange(ColumnCompareResult $column): string
+    private function generateForwardColumnChange(ColumnCompareResult $column): array
     {
         if ($column->operation === CompareResult::OPERATION_DELETE) {
-            return 'DROP "' . $column->name . '"';
+            return ['DROP "' . $column->name . '"'];
         }
 
-        $parts = [];
         if ($column->operation === CompareResult::OPERATION_CREATE) {
-            $parts[] = 'ADD';
-        } else {
-            $parts[] = 'ALTER COLUMN';
+            return ['ADD ' . $this->columnDefinition($column->name, $column->propertyData)];
         }
 
-        $parts[] = $this->columnDefinition($column->name, $column->propertyData);
-
-        return implode(' ', $parts);
+        return $this->generateModifyColumnChanges($column, $column->propertyData);
     }
 
     /**
      * Generates a rollback column change (for migration down).
      */
-    private function generateRollbackColumnChange(ColumnCompareResult $column): string
+    private function generateRollbackColumnChange(ColumnCompareResult $column): array
     {
         if ($column->operation === CompareResult::OPERATION_CREATE) {
             // Undo ADD column -> DROP column
-            return 'DROP "' . $column->name . '"';
+            return ['DROP "' . $column->name . '"'];
         }
 
-        $columnParts = [];
         if ($column->operation === CompareResult::OPERATION_DELETE) {
             // Undo DROP column -> ADD column
-            $columnParts[] = 'ADD';
-        } else {
-            // Undo ALTER COLUMN -> ALTER COLUMN with original data
-            $columnParts[] = 'ALTER COLUMN';
+            return ['ADD ' . $this->columnDefinition($column->name, $column->columnData)];
         }
 
-        $columnParts[] = $this->columnDefinition($column->name, $column->columnData);
+        return $this->generateModifyColumnChanges($column, $column->columnData);
+    }
 
-        return implode(' ', $columnParts);
+    /**
+     * @return string[]
+     */
+    private function generateModifyColumnChanges(ColumnCompareResult $column, PropertiesData $targetData): array
+    {
+        $changes = [];
+
+        if (!$column->typeMatch || !$column->isLengthMatch) {
+            $changes[] = $this->getModifyColumnSyntax($column->name, $targetData);
+        }
+
+        if (!$column->isNullableMatch && $targetData->isNullable !== null) {
+            $changes[] = 'ALTER COLUMN "' . $column->name . '" ' . ($targetData->isNullable ? 'DROP NOT NULL' : 'SET NOT NULL');
+        }
+
+        if (!$column->isDefaultValueMatch) {
+            if ($targetData->defaultValue === null) {
+                $changes[] = 'ALTER COLUMN "' . $column->name . '" DROP DEFAULT';
+            } else {
+                $changes[] = 'ALTER COLUMN "' . $column->name . '" SET DEFAULT ' . $this->formatDefaultValue($targetData->defaultValue);
+            }
+        }
+
+        return $changes;
+    }
+
+    private function formatDefaultValue(string $defaultValue): string
+    {
+        return "'" . str_replace("'", "''", $defaultValue) . "'";
     }
 
     protected function generateAlterTableRollback(TableCompareResult $compareResult): string
