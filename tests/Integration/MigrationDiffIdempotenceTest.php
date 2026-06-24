@@ -13,6 +13,7 @@ use Articulate\Attributes\Relations\MappingTable;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Connection;
 use Articulate\Modules\Database\SchemaComparator\DatabaseSchemaComparator;
+use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\SchemaReaderFactory;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Tests\DatabaseTestCase;
@@ -125,7 +126,7 @@ class MigrationDiffIdempotenceTest extends DatabaseTestCase {
     }
 
     /**
-     * @return array<int, \Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult>
+     * @return array<int, TableCompareResult>
      */
     private function diff(Connection $connection): array
     {
