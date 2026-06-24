@@ -98,9 +98,11 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return '';
         }
 
-        $algorithm = $this->shouldUseOnlineDDL($compareResult) ? ' ALGORITHM=INPLACE' : '';
+        if ($this->shouldUseOnlineDDL($compareResult)) {
+            $alterParts[] = 'ALGORITHM=INPLACE';
+        }
 
-        return 'ALTER TABLE `' . $compareResult->name . '`' . $algorithm . ' ' . implode(', ', $alterParts);
+        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
     }
 
     /**

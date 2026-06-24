@@ -198,7 +198,7 @@ class MigrationsCommandGeneratorIndexesTest extends DatabaseTestCase {
         };
 
         $expected = match ($databaseName) {
-            'mysql' => ['ALTER TABLE `test_table` ALGORITHM=INPLACE ADD UNIQUE INDEX `idx_test_table_email` (`email`)'],
+            'mysql' => ['ALTER TABLE `test_table` ADD UNIQUE INDEX `idx_test_table_email` (`email`), ALGORITHM=INPLACE'],
             'pgsql' => ['CREATE UNIQUE INDEX CONCURRENTLY "idx_test_table_email" ON "test_table" ("email")'],
         };
 
