@@ -51,20 +51,26 @@ class SchemaNamingTest extends TestCase {
 
     public function testForeignKeyNameWithBasicNames(): void
     {
-        $result = $this->schemaNaming->foreignKeyName('users', 'profiles', 'user_id');
-        $this->assertSame('fk_users_profiles_user_id', $result);
+        $result = $this->schemaNaming->foreignKeyName('users', 'user_id');
+        $this->assertSame('fk_users_user_id', $result);
     }
 
     public function testForeignKeyNameWithUnderscoreNames(): void
     {
-        $result = $this->schemaNaming->foreignKeyName('user_profiles', 'user_permissions', 'profile_id');
-        $this->assertSame('fk_user_profiles_user_permissions_profile_id', $result);
+        $result = $this->schemaNaming->foreignKeyName('user_profiles', 'profile_id');
+        $this->assertSame('fk_user_profiles_profile_id', $result);
     }
 
     public function testForeignKeyNameWithLongNames(): void
     {
-        $result = $this->schemaNaming->foreignKeyName('shopping_cart_items', 'product_categories', 'category_id');
-        $this->assertSame('fk_shopping_cart_items_product_categories_category_id', $result);
+        $result = $this->schemaNaming->foreignKeyName('shopping_cart_items', 'category_id');
+        $this->assertSame('fk_shopping_cart_items_category_id', $result);
+    }
+
+    public function testForeignKeyNameWithTablePrefixedColumn(): void
+    {
+        $result = $this->schemaNaming->foreignKeyName('categories_products', 'products_id');
+        $this->assertSame('fk_categories_products_products_id', $result);
     }
 
     public function testMappingTableNameWithSimpleNames(): void
@@ -142,8 +148,8 @@ class SchemaNamingTest extends TestCase {
         $relationColumn = $this->schemaNaming->relationColumn('userProfile');
         $this->assertSame('user_profile_id', $relationColumn);
 
-        $fkName = $this->schemaNaming->foreignKeyName('users', 'user_profiles', $relationColumn);
-        $this->assertSame('fk_users_user_profiles_user_profile_id', $fkName);
+        $fkName = $this->schemaNaming->foreignKeyName('users', $relationColumn);
+        $this->assertSame('fk_users_user_profile_id', $fkName);
     }
 
     public function testIntegrationMappingTableAndRelations(): void

@@ -3,7 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionProperty;
-
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadataRegistry;
 
 class DeferredImplicitStrategy implements ChangeTrackingStrategy {
@@ -38,6 +38,12 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
             return []; // No original data to compare against
         }
 
+        // Uninitialized proxies have no loaded data — skip to avoid accidental lazy-load
+        // during flush and false positives from comparing against an empty snapshot.
+        if ($entity instanceof ProxyInterface && !$entity->isProxyInitialized()) {
+            return [];
+        }
+
         $originalData = $this->originalData[$oid];
         $currentData = $this->extractEntityData($entity);
 
@@ -46,7 +52,9 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
 
     private function extractEntityData(object $entity): array
     {
-        $entityClass = $entity::class;
+        $entityClass = $entity instanceof ProxyInterface
+            ? $entity->getProxyEntityClass()
+            : $entity::class;
         $metadata = $this->metadataRegistry->getMetadata($entityClass);
 
         $data = [];
@@ -68,8 +76,19 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
 
     private function getPropertyValue(object $entity, ReflectionProperty $property): mixed
     {
-        // Use metadata-driven property access instead of direct reflection
-        return $property->getValue($entity);
+        $value = $property->getValue($entity);
+
+        // Normalize enum values to their scalar representation so snapshot comparisons
+        // are DB-format-to-DB-format (avoids false positives when DB stores 'active' but
+        // the hydrated property holds the ProductStatus::Active enum object).
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        return $value;
     }
 
     public function clear(): void

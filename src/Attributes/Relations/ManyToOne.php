@@ -18,6 +18,8 @@ class ManyToOne implements RelationAttributeInterface {
 
     public readonly bool $lazy;
 
+    public readonly ?string $onDelete;
+
     public function __construct(
         ?string $targetEntity = null,
         ?string $referencedBy = null,
@@ -25,6 +27,7 @@ class ManyToOne implements RelationAttributeInterface {
         ?bool $nullable = null,
         bool $foreignKey = true,
         bool $lazy = false,
+        ?string $onDelete = null,
     ) {
         $this->targetEntity = $targetEntity;
         $this->referencedBy = $referencedBy;
@@ -32,6 +35,7 @@ class ManyToOne implements RelationAttributeInterface {
         $this->nullable = $nullable;
         $this->foreignKey = $foreignKey;
         $this->lazy = $lazy;
+        $this->onDelete = $onDelete;
     }
 
     public function getTargetEntity(): ?string

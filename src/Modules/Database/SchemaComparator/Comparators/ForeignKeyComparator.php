@@ -54,7 +54,7 @@ class ForeignKeyComparator {
                 continue;
             }
             $targetEntity = new ReflectionEntity($targetEntityClass);
-            $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+            $foreignKeyName = $this->schemaNaming->foreignKeyName($tableName, $columnName);
             $foreignKeyExists = isset($existingForeignKeys[$foreignKeyName]);
             if ($propertyData['foreignKeyRequired']) {
                 if (!$isNewTable && isset($createdColumnsWithForeignKeys[$columnName])) {
@@ -71,6 +71,7 @@ class ForeignKeyComparator {
                         $columnName,
                         $targetEntity->getTableName(),
                         $propertyData['referencedColumn'],
+                        $propertyData['relation']->getOnDelete(),
                     );
                 } else {
                     unset($foreignKeysToRemove[$foreignKeyName]);
@@ -130,13 +131,14 @@ class ForeignKeyComparator {
                     continue;
                 }
                 $targetEntity = new ReflectionEntity($targetEntityClass);
-                $fkName = $this->schemaNaming->foreignKeyName($tableName, $targetEntity->getTableName(), $columnName);
+                $fkName = $this->schemaNaming->foreignKeyName($tableName, $columnName);
                 $foreignKeysByName[$fkName] = new ForeignKeyCompareResult(
                     $fkName,
                     CompareResult::OPERATION_CREATE,
                     $columnName,
                     $targetEntity->getTableName(),
                     $data['referencedColumn'],
+                    $data['relation']->getOnDelete(),
                 );
                 $createdColumnsWithForeignKeys[$columnName] = true;
             }

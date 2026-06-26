@@ -18,10 +18,10 @@ class ColumnCompareResult extends CompareResult {
         public readonly ?PropertiesData $columnData,
     ) {
         parent::__construct($name, $operation);
-        $this->typeMatch = $this->propertyData->type === $this->columnData->type;
+        $this->typeMatch = ColumnComparisonNormalizer::typesMatch($this->propertyData, $this->columnData);
         $this->isNullableMatch = $this->propertyData->isNullable === $this->columnData->isNullable;
         $this->isDefaultValueMatch = $this->propertyData->defaultValue === $this->columnData->defaultValue;
-        $this->isLengthMatch = $this->propertyData->length === $this->columnData->length;
+        $this->isLengthMatch = ColumnComparisonNormalizer::lengthsMatch($this->propertyData, $this->columnData);
     }
 
     public function hasChanges(): bool

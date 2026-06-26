@@ -71,8 +71,8 @@ class MappingTableComparatorTest extends TestCase {
         // Should have foreign keys
         $this->assertCount(2, $result->foreignKeys);
         $fkNames = array_map(fn ($fk) => $fk->name, $result->foreignKeys);
-        $this->assertContains('fk_user_roles_users_user_id', $fkNames);
-        $this->assertContains('fk_user_roles_roles_role_id', $fkNames);
+        $this->assertContains('fk_user_roles_user_id', $fkNames);
+        $this->assertContains('fk_user_roles_role_id', $fkNames);
 
         // Should have primary columns
         $this->assertEquals(['user_id', 'role_id'], $result->primaryColumns);
@@ -139,12 +139,12 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_user_roles_users_user_id' => [
+                'fk_user_roles_user_id' => [
                     'column' => 'user_id',
                     'referencedTable' => 'users',
                     'referencedColumn' => 'id',
                 ],
-                'fk_user_roles_roles_role_id' => [
+                'fk_user_roles_role_id' => [
                     'column' => 'role_id',
                     'referencedTable' => 'roles',
                     'referencedColumn' => 'id',
@@ -197,12 +197,12 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_user_roles_users_user_id' => [
+                'fk_user_roles_user_id' => [
                     'column' => 'user_id',
                     'referencedTable' => 'users',
                     'referencedColumn' => 'id',
                 ],
-                'fk_user_roles_roles_role_id' => [
+                'fk_user_roles_role_id' => [
                     'column' => 'role_id',
                     'referencedTable' => 'roles',
                     'referencedColumn' => 'id',
@@ -251,12 +251,12 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_user_roles_users_user_id' => [
+                'fk_user_roles_user_id' => [
                     'column' => 'user_id',
                     'referencedTable' => 'users',
                     'referencedColumn' => 'id',
                 ],
-                'fk_user_roles_roles_role_id' => [
+                'fk_user_roles_role_id' => [
                     'column' => 'role_id',
                     'referencedTable' => 'roles',
                     'referencedColumn' => 'id',
@@ -303,12 +303,12 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_user_roles_users_user_id' => [
+                'fk_user_roles_user_id' => [
                     'column' => 'user_id',
                     'referencedTable' => 'users',
                     'referencedColumn' => 'id',
                 ],
-                'fk_user_roles_roles_role_id' => [
+                'fk_user_roles_role_id' => [
                     'column' => 'role_id',
                     'referencedTable' => 'roles',
                     'referencedColumn' => 'id',
@@ -358,7 +358,7 @@ class MappingTableComparatorTest extends TestCase {
 
         // Should have one foreign key to target table
         $this->assertCount(1, $result->foreignKeys);
-        $this->assertEquals('fk_taggables_tags_tag_id', $result->foreignKeys[0]->name);
+        $this->assertEquals('fk_taggables_tag_id', $result->foreignKeys[0]->name);
 
         // Should have one index
         $this->assertCount(1, $result->indexes);
@@ -435,7 +435,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_taggables_tags_tag_id' => [
+                'fk_taggables_tag_id' => [
                     'column' => 'tag_id',
                     'referencedTable' => 'tags',
                     'referencedColumn' => 'id',
@@ -495,7 +495,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_taggables_tags_tag_id' => [
+                'fk_taggables_tag_id' => [
                     'column' => 'tag_id',
                     'referencedTable' => 'tags',
                     'referencedColumn' => 'id',
@@ -513,6 +513,78 @@ class MappingTableComparatorTest extends TestCase {
         $result = $this->comparator->compareMorphToManyTable($definition, $existingTables);
 
         $this->assertNull($result);
+    }
+
+    public function testCompareMorphToManyTableKeepsForeignKeyBackedIndexAndDeletesExtraIndex(): void
+    {
+        $definition = [
+            'tableName' => 'taggables',
+            'morphName' => 'taggable',
+            'typeColumn' => 'taggable_type',
+            'idColumn' => 'taggable_id',
+            'targetColumn' => 'tag_id',
+            'targetTable' => 'tags',
+            'targetReferencedColumn' => 'id',
+            'extraProperties' => [],
+            'primaryColumns' => ['id'],
+            'relations' => [],
+        ];
+
+        $existingTables = ['taggables', 'tags'];
+
+        $this->databaseSchemaReader->method('getTableColumns')
+            ->willReturn([
+                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
+                (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+                (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
+            ]);
+
+        $this->databaseSchemaReader->method('getTableForeignKeys')
+            ->willReturn([
+                'fk_taggables_tag_id' => [
+                    'column' => 'tag_id',
+                    'referencedTable' => 'tags',
+                    'referencedColumn' => 'id',
+                ],
+            ]);
+
+        $this->databaseSchemaReader->method('getTableIndexes')
+            ->willReturn([
+                'PRIMARY' => [
+                    'columns' => ['id'],
+                    'unique' => true,
+                ],
+                'taggable_type_taggable_id_index' => [
+                    'columns' => ['taggable_type', 'taggable_id'],
+                    'unique' => false,
+                ],
+                'fk_taggables_tag_id' => [
+                    'columns' => ['tag_id'],
+                    'unique' => false,
+                ],
+                'legacy_extra_index' => [
+                    'columns' => ['taggable_type'],
+                    'unique' => false,
+                ],
+            ]);
+
+        $result = $this->comparator->compareMorphToManyTable($definition, $existingTables);
+
+        $this->assertInstanceOf(TableCompareResult::class, $result);
+        $this->assertEquals(CompareResult::OPERATION_UPDATE, $result->operation);
+        $this->assertEmpty($result->columns);
+        $this->assertEmpty($result->foreignKeys);
+
+        $this->assertCount(1, $result->indexes);
+        $this->assertEquals('legacy_extra_index', $result->indexes[0]->name);
+        $this->assertEquals(CompareResult::OPERATION_DELETE, $result->indexes[0]->operation);
+
+        $deletedIndexNames = array_map(
+            fn ($index) => $index->operation === CompareResult::OPERATION_DELETE ? $index->name : null,
+            $result->indexes
+        );
+        $this->assertNotContains('fk_taggables_tag_id', $deletedIndexNames);
     }
 
     public function testCompareMorphToManyTableHandlesColumnUpdates(): void
@@ -546,7 +618,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_taggables_tags_tag_id' => [
+                'fk_taggables_tag_id' => [
                     'column' => 'tag_id',
                     'referencedTable' => 'tags',
                     'referencedColumn' => 'id',
@@ -612,8 +684,8 @@ class MappingTableComparatorTest extends TestCase {
         // Should have 2 foreign keys to create
         $this->assertCount(2, $result->foreignKeys);
         $fkNames = array_map(fn ($fk) => $fk->name, $result->foreignKeys);
-        $this->assertContains('fk_user_roles_users_user_id', $fkNames);
-        $this->assertContains('fk_user_roles_roles_role_id', $fkNames);
+        $this->assertContains('fk_user_roles_user_id', $fkNames);
+        $this->assertContains('fk_user_roles_role_id', $fkNames);
         $this->assertContains(CompareResult::OPERATION_CREATE, array_map(fn ($fk) => $fk->operation, $result->foreignKeys));
     }
 
@@ -645,7 +717,7 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableForeignKeys')
             ->willReturn([
-                'fk_taggables_tags_tag_id' => [
+                'fk_taggables_tag_id' => [
                     'column' => 'tag_id',
                     'referencedTable' => 'tags',
                     'referencedColumn' => 'id',

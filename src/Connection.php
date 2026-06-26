@@ -19,7 +19,7 @@ class Connection {
         private readonly string $dsn,
         private readonly string $user,
         private readonly string $password,
-        private readonly ?QueryLoggerInterface $queryLogger = null,
+        private ?QueryLoggerInterface $queryLogger = null,
         bool $persistent = false,
     ) {
         $options = [
@@ -177,6 +177,11 @@ class Connection {
         if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $name)) {
             throw new InvalidArgumentException("Invalid savepoint name '{$name}'.");
         }
+    }
+
+    public function setQueryLogger(QueryLoggerInterface $queryLogger): void
+    {
+        $this->queryLogger = $queryLogger;
     }
 
     public function lastInsertId(?string $name = null): string|false

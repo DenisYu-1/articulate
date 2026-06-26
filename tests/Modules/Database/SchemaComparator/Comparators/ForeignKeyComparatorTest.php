@@ -77,7 +77,7 @@ class ForeignKeyComparatorTest extends TestCase {
 
     public function testDeleteForeignKey(): void
     {
-        $fkName = 'fk_source_table_test_entity_entity_id';
+        $fkName = 'fk_source_table_entity_id';
         $existingForeignKeys = [
             $fkName => [
                 'column' => 'entity_id',
@@ -104,7 +104,7 @@ class ForeignKeyComparatorTest extends TestCase {
     public function testNoChangeWhenForeignKeyMatches(): void
     {
         $relation = $this->createRelationStub();
-        $fkName = 'fk_source_table_test_entity_entity_id';
+        $fkName = 'fk_source_table_entity_id';
 
         $propertiesIndexed = [
             'entity_id' => $this->buildPropertyData(relation: $relation, foreignKeyRequired: true),

@@ -106,6 +106,7 @@ parameters:
       - Exceptions
       - Utils
       - Attributes
+      - Collection
       - QueryBuilder
       - Generators
       - Schema

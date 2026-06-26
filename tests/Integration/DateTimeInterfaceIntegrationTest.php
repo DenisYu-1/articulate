@@ -30,7 +30,8 @@ class DateTimeInterfaceIntegrationTest extends AbstractTestCase {
         $compareResult = $compareResults[0]; // Should be the only result
 
         // Generate the migration SQL
-        $sql = $generator->generate($compareResult);
+        $statements = $generator->generate($compareResult);
+        $sql = implode("\n", $statements);
 
         // Verify that all DateTime types map to DATETIME
         $this->assertTrue(strpos($sql, '`created_at` DATETIME NOT NULL') !== false, 'DateTime should map to DATETIME');
@@ -38,7 +39,9 @@ class DateTimeInterfaceIntegrationTest extends AbstractTestCase {
         $this->assertTrue(strpos($sql, '`published_at` DATETIME') !== false, 'DateTimeInterface should map to DATETIME');
 
         // Execute the migration to ensure it works
-        $connection->executeQuery($sql);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         // Verify the table was created with correct column types
         $columns = $connection->executeQuery('SHOW COLUMNS FROM `test_date_time_entity`')->fetchAll();
@@ -71,13 +74,16 @@ class DateTimeInterfaceIntegrationTest extends AbstractTestCase {
         $compareResults = iterator_to_array($comparator->compareAll([$entity]));
         $compareResult = $compareResults[0];
 
-        $sql = $generator->generate($compareResult);
+        $statements = $generator->generate($compareResult);
+        $sql = implode("\n", $statements);
 
         $this->assertStringContainsString('"created_at" TIMESTAMP NOT NULL', $sql);
         $this->assertStringContainsString('"updated_at" TIMESTAMP NOT NULL', $sql);
         $this->assertStringContainsString('"published_at" TIMESTAMP', $sql);
 
-        $connection->executeQuery($sql);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         $columns = $connection->executeQuery(
             "SELECT column_name, data_type FROM information_schema.columns

@@ -58,7 +58,7 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             [],
             [
                 new ForeignKeyCompareResult(
-                    name: (new SchemaNaming())->foreignKeyName('test_table', $relatedTableName, 'related_entity_id'),
+                    name: (new SchemaNaming())->foreignKeyName('test_table', 'related_entity_id'),
                     operation: 'create',
                     column: 'related_entity_id',
                     referencedTable: $relatedTableName,
@@ -70,8 +70,10 @@ class MigrationsCommandGeneratorDatabaseTest extends DatabaseTestCase {
             'mysql' => MigrationsGeneratorTestHelper::forMySql(),
             'pgsql' => MigrationsGeneratorTestHelper::forPostgresql(),
         };
-        $sql = $generator->generate($compareResult);
-        $connection->executeQuery($sql);
+        $statements = $generator->generate($compareResult);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         // Verify table and columns exist
         $verifyColumnsSql = match ($databaseName) {

@@ -3,13 +3,17 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 
+use Articulate\Collection\MappingItem;
 use Articulate\Exceptions\ReadOnlyEntityException;
 use Articulate\Exceptions\ScheduleConflictException;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Utils\ReflectionCache;
 
 class UnitOfWork implements EntityRegistrarInterface {
     private IdentityMap $identityMap;
@@ -18,8 +22,8 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     private EntityMetadataRegistry $metadataRegistry;
 
-    /** @var array<int, EntityState> */
-    private array $entityStates = [];
+    /** @var \WeakMap<object, EntityState> */
+    private \WeakMap $entityStates;
 
     /** @var array<int, object> */
     private array $scheduledInserts = [];
@@ -29,6 +33,9 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     /** @var array<int, object> */
     private array $scheduledDeletes = [];
+
+    /** @var array<int, object> Entities removed via soft-delete (UPDATE instead of DELETE) */
+    private array $scheduledSoftDeletes = [];
 
     /** @var array<int, object> */
     private array $entitiesByOid = [];
@@ -44,6 +51,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         ?EntityMetadataRegistry $metadataRegistry = null
     ) {
         $this->identityMap = new IdentityMap();
+        $this->entityStates = new \WeakMap();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
         $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
@@ -61,27 +69,28 @@ class UnitOfWork implements EntityRegistrarInterface {
         $oid = spl_object_id($entity);
         $state = $this->getEntityState($entity);
 
+        if ($state === EntityState::DETACHED) {
+            throw new \InvalidArgumentException(sprintf(
+                "Cannot persist detached entity '%s'. Load it again or create a new instance before persisting.",
+                $entity::class
+            ));
+        }
+
         if ($state === EntityState::NEW) {
             // Call prePersist callbacks for new entities
             $this->callbackManager->invokeCallbacks($entity, 'prePersist');
 
             $id = $this->extractEntityId($entity);
 
-            // If entity has an ID, it's likely already persisted
             if ($id !== null && $id !== '') {
                 $this->assertNoConflictingDelete($entity, $id);
-                $snapshot = $this->extractEntitySnapshot($entity);
-                $this->registerManaged($entity, $snapshot);
-                $this->entityStates[$oid] = EntityState::MANAGED;
-                $this->entitiesByOid[$oid] = $entity;
                 $this->explicitPersistOids[$oid] = true;
-            } else {
-                // New entity without ID - schedule for insert
-                $this->scheduledInserts[$oid] = $entity;
-                $this->entityStates[$oid] = EntityState::MANAGED;
-                $this->entitiesByOid[$oid] = $entity;
-                $this->changeTrackingStrategy->trackEntity($entity, []);
             }
+
+            $this->scheduledInserts[$oid] = $entity;
+            $this->entityStates[$entity] = EntityState::MANAGED;
+            $this->entitiesByOid[$oid] = $entity;
+            $this->changeTrackingStrategy->trackEntity($entity, []);
         } elseif ($state === EntityState::MANAGED) {
             // Call preUpdate callbacks for managed entities being updated
             $this->callbackManager->invokeCallbacks($entity, 'preUpdate');
@@ -108,9 +117,17 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->callbackManager->invokeCallbacks($entity, 'preRemove');
 
         if ($state === EntityState::MANAGED) {
-            $this->scheduledDeletes[$oid] = $entity;
-            $this->entityStates[$oid] = EntityState::REMOVED;
+            $softDeleteColumn = $this->getSoftDeleteColumn($entity);
 
+            if ($softDeleteColumn !== null) {
+                // Soft delete: set the delete field to now and schedule an UPDATE
+                $this->setSoftDeleteField($entity, $softDeleteColumn);
+                $this->scheduledSoftDeletes[$oid] = $entity;
+            } else {
+                $this->scheduledDeletes[$oid] = $entity;
+            }
+
+            $this->entityStates[$entity] = EntityState::REMOVED;
             unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
             unset($this->entitiesByOid[$oid]);
             $this->identityMap->remove($entity);
@@ -118,7 +135,7 @@ class UnitOfWork implements EntityRegistrarInterface {
             $this->removeSiblingEntities($entity);
         } elseif ($state === EntityState::NEW) {
             unset($this->scheduledInserts[$oid]);
-            unset($this->entityStates[$oid]);
+            unset($this->entityStates[$entity]);
             unset($this->entitiesByOid[$oid]);
         }
     }
@@ -127,10 +144,15 @@ class UnitOfWork implements EntityRegistrarInterface {
     {
         // Compute changes for all managed entities that are not scheduled for insert
         // (entities scheduled for insert don't have meaningful change tracking yet)
-        foreach ($this->entityStates as $oid => $state) {
+        foreach ($this->entityStates as $entity => $state) {
+            $oid = spl_object_id($entity);
             if ($state === EntityState::MANAGED && !isset($this->scheduledInserts[$oid])) {
-                $entity = $this->getEntityByOid($oid);
                 if ($entity && $this->hasChanges($entity)) {
+                    if (!isset($this->scheduledUpdates[$oid])) {
+                        // Detected dirty without an explicit persist() — invoke preUpdate now
+                        // so callbacks like `updatedAt = now` are included in the change set.
+                        $this->callbackManager->invokeCallbacks($entity, 'preUpdate');
+                    }
                     $this->scheduledUpdates[$oid] = $entity;
                 }
             }
@@ -145,7 +167,7 @@ class UnitOfWork implements EntityRegistrarInterface {
     /**
      * Gets all pending changes without executing them.
      *
-     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]}
+     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]}
      */
     public function getChangeSets(): array
     {
@@ -158,6 +180,7 @@ class UnitOfWork implements EntityRegistrarInterface {
                 array_values($this->scheduledUpdates)
             ),
             'deletes' => array_values($this->scheduledDeletes),
+            'softDeletes' => array_values($this->scheduledSoftDeletes),
         ];
     }
 
@@ -172,6 +195,7 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
+        $this->scheduledSoftDeletes = [];
         $this->explicitPersistOids = [];
     }
 
@@ -179,7 +203,7 @@ class UnitOfWork implements EntityRegistrarInterface {
      * Executes post-operation callbacks for the given changes.
      * This should be called after the changes have been successfully executed.
      *
-     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]} $changes
+     * @param array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]} $changes
      */
     public function executePostCallbacks(array $changes): void
     {
@@ -193,8 +217,13 @@ class UnitOfWork implements EntityRegistrarInterface {
             $this->callbackManager->invokeCallbacks($update['entity'], 'postUpdate');
         }
 
-        // Call postRemove for deleted entities
+        // Call postRemove for hard-deleted entities
         foreach ($changes['deletes'] as $entity) {
+            $this->callbackManager->invokeCallbacks($entity, 'postRemove');
+        }
+
+        // Call postRemove for soft-deleted entities
+        foreach ($changes['softDeletes'] as $entity) {
             $this->callbackManager->invokeCallbacks($entity, 'postRemove');
         }
     }
@@ -208,7 +237,7 @@ class UnitOfWork implements EntityRegistrarInterface {
             ? $entity->getProxyEntityClass()
             : null;
         $this->identityMap->add($entity, $id, $classForMap);
-        $this->entityStates[$oid] = EntityState::MANAGED;
+        $this->entityStates[$entity] = EntityState::MANAGED;
         $this->entitiesByOid[$oid] = $entity;
         $this->changeTrackingStrategy->trackEntity($entity, $data);
     }
@@ -220,9 +249,7 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     public function getEntityState(object $entity): EntityState
     {
-        $oid = spl_object_id($entity);
-
-        return $this->entityStates[$oid] ?? EntityState::NEW;
+        return $this->entityStates[$entity] ?? EntityState::NEW;
     }
 
     public function isInIdentityMap(object $entity): bool
@@ -248,26 +275,203 @@ class UnitOfWork implements EntityRegistrarInterface {
         return $this->scheduledUpdates;
     }
 
+    /**
+     * @return object[]
+     */
+    public function getManagedEntities(): array
+    {
+        return array_values($this->entitiesByOid);
+    }
+
+    public function assertNoInvalidReferences(?callable $stateResolver = null): void
+    {
+        foreach ($this->getManagedEntities() as $entity) {
+            $this->assertNoInvalidReferencesForEntity($entity, $stateResolver);
+        }
+    }
+
     public function detach(object $entity): void
+    {
+        $visited = [];
+        $this->detachGraph($entity, $visited);
+    }
+
+    private function detachGraph(object $entity, array &$visited): void
+    {
+        $oid = spl_object_id($entity);
+        if (isset($visited[$oid])) {
+            return;
+        }
+        $visited[$oid] = true;
+
+        $relatedEntities = $this->getInitializedRelatedEntities($entity);
+        $this->detachSingle($entity);
+
+        foreach ($relatedEntities as $relatedEntity) {
+            $this->detachGraph($relatedEntity, $visited);
+        }
+    }
+
+    private function detachSingle(object $entity): void
     {
         $oid = spl_object_id($entity);
 
+        if ($this->getEntityState($entity) === EntityState::NEW) {
+            return;
+        }
+
         $this->identityMap->remove($entity);
         $this->changeTrackingStrategy->untrackEntity($entity);
-        unset($this->entityStates[$oid], $this->entitiesByOid[$oid], $this->explicitPersistOids[$oid]);
-        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid], $this->scheduledDeletes[$oid]);
+        $this->entityStates[$entity] = EntityState::DETACHED;
+        unset($this->entitiesByOid[$oid], $this->explicitPersistOids[$oid]);
+        unset($this->scheduledInserts[$oid], $this->scheduledUpdates[$oid]);
+        unset($this->scheduledDeletes[$oid], $this->scheduledSoftDeletes[$oid]);
+    }
+
+    /**
+     * @return object[]
+     */
+    private function getInitializedRelatedEntities(object $entity): array
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        } catch (\InvalidArgumentException) {
+            return [];
+        }
+
+        $relatedEntities = [];
+
+        foreach ($metadata->getRelations() as $relation) {
+            $propertyName = $relation->getPropertyName();
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
+            $reflectionProperty->setAccessible(true);
+
+            if (!$reflectionProperty->isInitialized($entity)) {
+                continue;
+            }
+
+            $value = $reflectionProperty->getValue($entity);
+            foreach ($this->extractRelatedObjects($value) as $relatedEntity) {
+                $relatedEntities[spl_object_id($relatedEntity)] = $relatedEntity;
+            }
+        }
+
+        return array_values($relatedEntities);
+    }
+
+    private function assertNoInvalidReferencesForEntity(object $entity, ?callable $stateResolver): void
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+        } catch (\InvalidArgumentException) {
+            return;
+        }
+
+        foreach ($metadata->getRelations() as $relation) {
+            if (!$this->canWriteRelationReference($relation)) {
+                continue;
+            }
+
+            $propertyName = $relation->getPropertyName();
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
+            $reflectionProperty->setAccessible(true);
+
+            if (!$reflectionProperty->isInitialized($entity)) {
+                continue;
+            }
+
+            foreach ($this->extractRelatedObjects($reflectionProperty->getValue($entity)) as $relatedEntity) {
+                $relatedState = $stateResolver
+                    ? $stateResolver($relatedEntity)
+                    : $this->getEntityState($relatedEntity);
+                if ($relatedState === EntityState::MANAGED) {
+                    continue;
+                }
+
+                throw new \InvalidArgumentException(sprintf(
+                    "Cannot flush '%s': relation '%s' references %s entity '%s'.",
+                    $entity::class,
+                    $propertyName,
+                    strtolower($relatedState->name),
+                    $relatedEntity::class,
+                ));
+            }
+        }
+    }
+
+    private function canWriteRelationReference(object $relation): bool
+    {
+        if ($relation instanceof ReflectionManyToMany) {
+            return $relation->isOwningSide();
+        }
+
+        if (!$relation instanceof ReflectionRelation || !$relation->isOwningSide()) {
+            return false;
+        }
+
+        return $relation->isManyToOne()
+            || $relation->isOneToOne()
+            || $relation->isMorphTo();
+    }
+
+    /**
+     * @return object[]
+     */
+    private function extractRelatedObjects(mixed $value): array
+    {
+        if ($value === null) {
+            return [];
+        }
+
+        if ($value instanceof MappingItem) {
+            return [$value->entity];
+        }
+
+        if ($value instanceof LazyCollection && !$value->isInitialized()) {
+            return $this->extractRelatedObjects([
+                ...$value->getAddedItems(),
+                ...$value->getRemovedItems(),
+            ]);
+        }
+
+        if (is_object($value) && !$value instanceof \Traversable) {
+            return [$value];
+        }
+
+        if (!is_iterable($value)) {
+            return [];
+        }
+
+        $relatedObjects = [];
+        foreach ($value as $item) {
+            foreach ($this->extractRelatedObjects($item) as $relatedObject) {
+                $relatedObjects[spl_object_id($relatedObject)] = $relatedObject;
+            }
+        }
+
+        return array_values($relatedObjects);
     }
 
     public function clear(): void
     {
+        $trackedEntities = $this->entitiesByOid
+            + $this->scheduledInserts
+            + $this->scheduledUpdates
+            + $this->scheduledDeletes
+            + $this->scheduledSoftDeletes;
+
+        foreach ($trackedEntities as $entity) {
+            $this->changeTrackingStrategy->untrackEntity($entity);
+            $this->entityStates[$entity] = EntityState::DETACHED;
+        }
+
         $this->identityMap->clear();
-        $this->entityStates = [];
         $this->entitiesByOid = [];
         $this->explicitPersistOids = [];
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
-        $this->changeTrackingStrategy->clear();
+        $this->scheduledSoftDeletes = [];
     }
 
     private function assertNoConflictingDelete(object $entity, mixed $id): void
@@ -307,11 +511,6 @@ class UnitOfWork implements EntityRegistrarInterface {
         $changes = $this->changeTrackingStrategy->computeChangeSet($entity);
 
         return !empty($changes);
-    }
-
-    private function getEntityByOid(int $oid): ?object
-    {
-        return $this->entitiesByOid[$oid] ?? null;
     }
 
     private function extractEntityId(object $entity): mixed
@@ -363,7 +562,7 @@ class UnitOfWork implements EntityRegistrarInterface {
 
             $sibling = $this->entitiesByOid[$siblingOid];
 
-            if (($this->entityStates[$siblingOid] ?? EntityState::NEW) !== EntityState::MANAGED) {
+            if ($this->getEntityState($sibling) !== EntityState::MANAGED) {
                 continue;
             }
 
@@ -391,10 +590,42 @@ class UnitOfWork implements EntityRegistrarInterface {
                 ));
             }
 
-            $this->entityStates[$siblingOid] = EntityState::REMOVED;
+            $this->entityStates[$sibling] = EntityState::REMOVED;
             unset($this->scheduledInserts[$siblingOid], $this->scheduledUpdates[$siblingOid]);
             unset($this->entitiesByOid[$siblingOid]);
             $this->identityMap->remove($sibling);
+        }
+    }
+
+    private function getSoftDeleteColumn(object $entity): ?string
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+
+            return $metadata->isSoftDeleteable() ? $metadata->getSoftDeleteColumn() : null;
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    private function setSoftDeleteField(object $entity, string $columnName): void
+    {
+        try {
+            $metadata = $this->metadataRegistry->getMetadata($entity::class);
+            $fieldName = $metadata->getSoftDeleteField();
+
+            if ($fieldName === null) {
+                return;
+            }
+
+            foreach ($metadata->getProperties() as $property) {
+                if ($property->getColumnName() === $columnName) {
+                    $property->setValue($entity, new \DateTimeImmutable());
+
+                    return;
+                }
+            }
+        } catch (\InvalidArgumentException) {
         }
     }
 

@@ -17,6 +17,8 @@ class QueryBuilder {
 
     private ?HydratorInterface $hydrator;
 
+    private bool $hydratorExplicitlySet = false;
+
     private ?string $entityClass = null;
 
     private ?EntityMetadataRegistry $metadataRegistry;
@@ -623,9 +625,15 @@ class QueryBuilder {
         return $this;
     }
 
+    public function setResultCacheGeneration(int $generation): void
+    {
+        $this->resultCache->setGeneration($generation);
+    }
+
     public function setHydrator(?HydratorInterface $hydrator): self
     {
         $this->hydrator = $hydrator;
+        $this->hydratorExplicitlySet = true;
         $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $hydrator, $this->unitOfWork);
 
         return $this;
@@ -853,14 +861,17 @@ class QueryBuilder {
     {
         $targetClass = $entityClass ?? $this->entityClass;
 
-        // Don't hydrate when using aggregate functions
-        if ($this->hasAggregateFunction()) {
-            $targetClass = null;
+        // Bypass entity hydration for aggregates/partial selects unless hydrator was explicitly set.
+        // ObjectHydrator (default) requires full entity rows; custom hydrators (e.g. ScalarHydrator)
+        // should always be invoked regardless of select shape.
+        if (!$this->hydratorExplicitlySet) {
+            if ($this->hasAggregateFunction() || $this->hasSpecificColumnSelection()) {
+                $targetClass = null;
+            }
         }
 
-        // Don't hydrate when selecting specific columns (not SELECT *)
-        if ($this->hasSpecificColumnSelection()) {
-            $targetClass = null;
+        if ($targetClass !== null && $this->hydrator === null) {
+            throw new \LogicException('QueryBuilder requires a HydratorInterface to hydrate entity results.');
         }
 
         $sql = $this->getSQL();
@@ -878,6 +889,48 @@ class QueryBuilder {
             $this->groupBy,
             $this->having
         );
+    }
+
+    /**
+     * Iterate over all matching rows in chunks of $size using LIMIT/OFFSET pagination.
+     * Each iteration yields an array of up to $size results.
+     *
+     * @return \Generator<int, array<int, mixed>>
+     */
+    public function chunk(int $size): \Generator
+    {
+        if ($size <= 0) {
+            throw new InvalidArgumentException('Chunk size must be a positive integer.');
+        }
+
+        $savedLimit = $this->limit;
+        $savedOffset = $this->offset;
+
+        try {
+            $this->limit = $size;
+            $offset = 0;
+
+            while (true) {
+                $this->offset = $offset;
+                $results = $this->getResult();
+                $batch = is_array($results) ? $results : [];
+
+                if (empty($batch)) {
+                    break;
+                }
+
+                yield $batch;
+
+                if (count($batch) < $size) {
+                    break;
+                }
+
+                $offset += $size;
+            }
+        } finally {
+            $this->limit = $savedLimit;
+            $this->offset = $savedOffset;
+        }
     }
 
     public function getSingleResult(?string $entityClass = null): mixed

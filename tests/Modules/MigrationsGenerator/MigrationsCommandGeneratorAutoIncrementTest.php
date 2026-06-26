@@ -68,7 +68,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -140,7 +140,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
             "PRIMARY KEY ({$quote}id{$quote})" .
             ')';
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -188,7 +188,7 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
 
         $expected = "ALTER TABLE {$quote}products{$quote} ADD {$quote}sort_order{$quote} {$intType} {$updateSyntax} NOT NULL";
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 
     /**
@@ -226,6 +226,6 @@ class MigrationsCommandGeneratorAutoIncrementTest extends DatabaseTestCase {
 
         $expected = "ALTER TABLE {$quote}products{$quote} DROP {$quote}sort_order{$quote}";
 
-        $this->assertEquals($expected, $result);
+        $this->assertEquals([$expected], $result);
     }
 }

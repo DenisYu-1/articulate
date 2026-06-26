@@ -6,8 +6,8 @@ use Articulate\Attributes\Entity;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\ManyToOne;
 use Articulate\Attributes\Relations\OneToOne;
-use Articulate\Connection;
-use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\Modules\EntityManager\EntityDependencySorter;
+use Articulate\Schema\EntityMetadataRegistry;
 use PHPUnit\Framework\TestCase;
 
 // Mock entities for testing
@@ -45,15 +45,11 @@ class MockCart {
  * to respect foreign key constraints without requiring actual database connectivity.
  */
 class ForeignKeyOrderingTest extends TestCase {
-    private EntityManager $entityManager;
+    private EntityDependencySorter $dependencySorter;
 
     protected function setUp(): void
     {
-        // Create a mock connection
-        $connection = $this->createStub(Connection::class);
-
-        // Create EntityManager
-        $this->entityManager = new EntityManager($connection);
+        $this->dependencySorter = new EntityDependencySorter(new EntityMetadataRegistry());
     }
 
     public function testOrderEntitiesByDependenciesForInserts(): void
@@ -73,12 +69,7 @@ class ForeignKeyOrderingTest extends TestCase {
 
         $entities = [$phone, $user, $cart]; // Intentionally out of order
 
-        // Use reflection to access the private method
-        $reflection = new \ReflectionClass($this->entityManager);
-        $method = $reflection->getMethod('orderEntitiesByDependencies');
-        $method->setAccessible(true);
-
-        $ordered = $method->invoke($this->entityManager, $entities, 'insert');
+        $ordered = $this->dependencySorter->order($entities, 'insert');
 
         // Verify that User (parent) comes before Phone and Cart (children)
         $userIndex = array_search($user, $ordered, true);
@@ -101,12 +92,7 @@ class ForeignKeyOrderingTest extends TestCase {
 
         $entities = [$user, $phone]; // Intentionally out of order
 
-        // Use reflection to access the private method
-        $reflection = new \ReflectionClass($this->entityManager);
-        $method = $reflection->getMethod('orderEntitiesByDependencies');
-        $method->setAccessible(true);
-
-        $ordered = $method->invoke($this->entityManager, $entities, 'delete');
+        $ordered = $this->dependencySorter->order($entities, 'delete');
 
         // Verify that Phone (child) comes before User (parent)
         $userIndex = array_search($user, $ordered, true);
@@ -124,12 +110,7 @@ class ForeignKeyOrderingTest extends TestCase {
 
         $entities = [$user, $phone];
 
-        // Use reflection to access the private method
-        $reflection = new \ReflectionClass($this->entityManager);
-        $method = $reflection->getMethod('buildDependencyGraph');
-        $method->setAccessible(true);
-
-        $graph = $method->invoke($this->entityManager, $entities, 'insert');
+        $graph = $this->dependencySorter->buildDependencyGraph($entities, 'insert');
 
         // Phone should depend on User for inserts
         $this->assertArrayHasKey(MockPhone::class, $graph);
@@ -140,7 +121,7 @@ class ForeignKeyOrderingTest extends TestCase {
         $this->assertNotContains(MockPhone::class, $graph[MockUser::class]);
 
         // Test delete graph
-        $deleteGraph = $method->invoke($this->entityManager, $entities, 'delete');
+        $deleteGraph = $this->dependencySorter->buildDependencyGraph($entities, 'delete');
 
         // User should depend on Phone for deletes (children deleted first)
         $this->assertArrayHasKey(MockUser::class, $deleteGraph);
@@ -175,13 +156,7 @@ class ForeignKeyOrderingTest extends TestCase {
             'class@anonymous' => ['class@anonymous'], // A depends on B
         ];
 
-        // For simplicity, let's just test that the method exists and can be called
-        $reflection = new \ReflectionClass($this->entityManager);
-        $method = $reflection->getMethod('topologicalSort');
-        $method->setAccessible(true);
-
-        // This should not throw an exception
-        $result = $method->invoke($this->entityManager, $entities, $graph);
+        $result = $this->dependencySorter->topologicalSort($entities, $graph);
         $this->assertIsArray($result);
         $this->assertCount(3, $result);
     }

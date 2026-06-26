@@ -6,6 +6,16 @@ use Articulate\Exceptions\UpdateConflictException;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 
+/**
+ * Rejects flushes where two different entity classes map to the same DB row and both have pending updates.
+ * Use this when bounded-context writes must never silently overwrite each other.
+ *
+ * Usage:
+ *   $em->setUpdateConflictResolutionStrategy(new ThrowOnUpdateConflictStrategy());
+ *   // Now flush() throws UpdateConflictException instead of merging conflicting updates.
+ *
+ * @see MergeUpdateConflictResolutionStrategy for the default "last write wins" strategy
+ */
 class ThrowOnUpdateConflictStrategy implements UpdateConflictResolutionStrategy {
     public function resolve(array $updates, EntityMetadataRegistry $metadataRegistry): array
     {

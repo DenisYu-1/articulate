@@ -36,7 +36,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
             };
 
             $this->assertEquals(
-                $case['query'],
+                [$case['query']],
                 $generator->generate($tableCompareResult),
                 "Failed for database: {$databaseName}"
             );
@@ -53,9 +53,17 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
             'pgsql' => '"',
         };
 
-        $updateSyntax = match ($databaseName) {
-            'mysql' => 'MODIFY',
-            'pgsql' => 'ALTER COLUMN',
+        $modifyString = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(255) NOT NULL",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(255), ALTER COLUMN {$quote}id{$quote} SET NOT NULL",
+        };
+        $modifyStringWithDefault = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(255), ALTER COLUMN {$quote}id{$quote} SET NOT NULL, ALTER COLUMN {$quote}id{$quote} SET DEFAULT 'test'",
+        };
+        $modifyStringLengthWithDefault = match ($databaseName) {
+            'mysql' => "MODIFY {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT 'test'",
+            'pgsql' => "ALTER COLUMN {$quote}id{$quote} TYPE VARCHAR(254), ALTER COLUMN {$quote}id{$quote} SET NOT NULL, ALTER COLUMN {$quote}id{$quote} SET DEFAULT 'test'",
         };
 
         return [
@@ -76,7 +84,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyString}",
                 'params' => [
                     'id',
                     'update',
@@ -84,7 +92,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(255) NOT NULL DEFAULT 'test'",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyStringWithDefault}",
                 'params' => [
                     'id',
                     'update',
@@ -92,7 +100,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
                     new PropertiesData(),
                 ],
             ], [
-                'query' => "ALTER TABLE {$quote}test_table{$quote} {$updateSyntax} {$quote}id{$quote} VARCHAR(254) NOT NULL DEFAULT 'test'",
+                'query' => "ALTER TABLE {$quote}test_table{$quote} {$modifyStringLengthWithDefault}",
                 'params' => [
                     'id',
                     'update',
@@ -149,7 +157,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL, ADD CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote})";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -194,7 +202,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} ADD {$quote}related_entity_id{$quote} {$intType} NOT NULL";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -239,7 +247,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -291,7 +299,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "ALTER TABLE {$quote}test_table{$quote} DROP {$fkKeyword} {$quote}fk_test_table_related_entity_related_entity_id{$quote}, DROP {$quote}related_entity_id{$quote}";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->generate($tableCompareResult),
             "Failed for database: {$databaseName}"
         );
@@ -343,7 +351,7 @@ class MigrationsCommandGeneratorRelationsTest extends DatabaseTestCase {
         $expected = "CREATE TABLE {$quote}test_table{$quote} ({$quote}related_entity_id{$quote} {$intType} NOT NULL, CONSTRAINT {$quote}fk_test_table_related_entity_related_entity_id{$quote} FOREIGN KEY ({$quote}related_entity_id{$quote}) REFERENCES {$quote}related_entity{$quote}({$quote}id{$quote}))";
 
         $this->assertEquals(
-            $expected,
+            [$expected],
             $generator->rollback($tableCompareResult),
             "Failed for database: {$databaseName}"
         );

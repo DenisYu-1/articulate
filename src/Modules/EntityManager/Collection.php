@@ -16,9 +16,16 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
 
     protected bool $isDirty = false;
 
+    /** @var object[] Items added since last markClean() — will be INSERTed on M2M sync */
+    protected array $addedItems = [];
+
+    /** @var object[] Items removed since last markClean() — will be DELETEd on M2M sync */
+    protected array $removedItems = [];
+
     public function __construct(array $items = [])
     {
         $this->items = $items;
+        $this->addedItems = $items;
     }
 
     /**
@@ -27,6 +34,7 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
     public function add(object $item): self
     {
         $this->items[] = $item;
+        $this->addedItems[] = $item;
         $this->isDirty = true;
 
         return $this;
@@ -40,8 +48,15 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
         $index = array_search($item, $this->items, true);
         if ($index !== false) {
             unset($this->items[$index]);
-            $this->items = array_values($this->items); // Re-index
+            $this->items = array_values($this->items);
             $this->isDirty = true;
+
+            $addedIdx = array_search($item, $this->addedItems, true);
+            if ($addedIdx !== false) {
+                array_splice($this->addedItems, $addedIdx, 1);
+            } else {
+                $this->removedItems[] = $item;
+            }
         }
 
         return $this;
@@ -60,6 +75,14 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
      */
     public function clear(): self
     {
+        foreach ($this->items as $item) {
+            $addedIdx = array_search($item, $this->addedItems, true);
+            if ($addedIdx !== false) {
+                array_splice($this->addedItems, $addedIdx, 1);
+            } else {
+                $this->removedItems[] = $item;
+            }
+        }
         $this->items = [];
         $this->isDirty = true;
 
@@ -79,17 +102,31 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
      */
     public function isDirty(): bool
     {
-        return $this->isDirty;
+        return $this->isDirty || !empty($this->addedItems) || !empty($this->removedItems);
     }
 
     /**
-     * Mark the collection as clean.
+     * Mark the collection as clean (call after DB load or after flush).
      */
     public function markClean(): self
     {
         $this->isDirty = false;
+        $this->addedItems = [];
+        $this->removedItems = [];
 
         return $this;
+    }
+
+    /** @return object[] Items added since last markClean() */
+    public function getAddedItems(): array
+    {
+        return $this->addedItems;
+    }
+
+    /** @return object[] Items removed since last markClean() */
+    public function getRemovedItems(): array
+    {
+        return $this->removedItems;
     }
 
     /**
@@ -158,18 +195,18 @@ class Collection implements ArrayAccess, Countable, IteratorAggregate {
     public function offsetSet(mixed $offset, mixed $value): void
     {
         if ($offset === null) {
-            $this->items[] = $value;
+            $this->add($value);
         } else {
             $this->items[$offset] = $value;
+            $this->isDirty = true;
         }
-        $this->isDirty = true;
     }
 
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->items[$offset]);
-        $this->items = array_values($this->items); // Re-index
-        $this->isDirty = true;
+        if (array_key_exists($offset, $this->items)) {
+            $this->remove($this->items[$offset]);
+        }
     }
 
     // Countable implementation

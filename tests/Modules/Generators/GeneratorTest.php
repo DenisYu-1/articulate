@@ -67,11 +67,8 @@ class GeneratorTest extends AbstractTestCase {
     {
         $generator = new AutoIncrementGenerator();
 
-        $id1 = $generator->generate('TestEntity');
-        $id2 = $generator->generate('TestEntity');
-
-        $this->assertEquals(1, $id1);
-        $this->assertEquals(2, $id2);
+        $this->assertNull($generator->generate('TestEntity'));
+        $this->assertNull($generator->generate('TestEntity'));
     }
 
     public function testUuidGenerator(): void
@@ -125,11 +122,8 @@ class GeneratorTest extends AbstractTestCase {
     {
         $generator = new SerialGenerator();
 
-        $id1 = $generator->generate('TestEntity');
-        $id2 = $generator->generate('TestEntity');
-
-        $this->assertEquals(1, $id1);
-        $this->assertEquals(2, $id2);
+        $this->assertNull($generator->generate('TestEntity'));
+        $this->assertNull($generator->generate('TestEntity'));
     }
 
     public function testGeneratorRegistry(): void

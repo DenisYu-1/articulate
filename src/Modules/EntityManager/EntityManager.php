@@ -3,26 +3,18 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
-use Articulate\Exceptions\EntityNotFoundException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
-use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
 use Articulate\Utils\TypeRegistry;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Log\LoggerInterface;
 
 class EntityManager {
     private Connection $connection;
-
-    /** @var UnitOfWork[] */
-    private array $unitOfWorks = [];
-
-    private UnitOfWork $activeUnitOfWork;
-
-    private ChangeTrackingStrategy $changeTrackingStrategy;
 
     private HydratorInterface $hydrator;
 
@@ -36,23 +28,25 @@ class EntityManager {
 
     private ChangeAggregator $changeAggregator;
 
-    private QueryExecutor $queryExecutor;
-
     private ?Proxy\ProxyManager $proxyManager = null;
 
     private ?RepositoryFactoryInterface $repositoryFactory = null;
 
     private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy;
 
-    private ?CacheItemPoolInterface $resultCache = null;
-
-    private ?CacheItemPoolInterface $statementCache = null;
-
-    private ?SecondLevelCache $secondLevelCache = null;
-
-    private TypeRegistry $typeRegistry;
-
     private RelationshipLoader $relationshipLoader;
+
+    private UnitOfWorkRegistry $unitOfWorkRegistry;
+
+    private EntityCacheCoordinator $cacheCoordinator;
+
+    private EntityDependencySorter $dependencySorter;
+
+    private ChangeSetExecutor $changeSetExecutor;
+
+    private EntityReadService $readService;
+
+    private EntityRefreshService $refreshService;
 
     public function __construct(
         Connection $connection,
@@ -67,25 +61,30 @@ class EntityManager {
         ?CacheItemPoolInterface $statementCache = null,
         ?CacheItemPoolInterface $secondLevelCache = null,
         int $secondLevelCacheTtl = 3600,
+        ?LoggerInterface $logger = null,
     ) {
         $this->connection = $connection;
         $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
 
         // Create default change tracking strategy with metadata registry
-        $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
+        $usesDefaultChangeTrackingStrategy = $changeTrackingStrategy === null;
+        $changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
 
         // Initialize callback manager
         $this->callbackManager = new LifecycleCallbackManager();
 
         // Initialize change aggregator and query executor
         $this->updateConflictResolutionStrategy = $updateConflictResolutionStrategy ?? new MergeUpdateConflictResolutionStrategy();
-        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy);
-        $this->queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
+        $this->changeAggregator = new ChangeAggregator($this->metadataRegistry, $this->updateConflictResolutionStrategy, $logger);
+        $queryExecutor = $queryExecutor ?? new QueryExecutor($this->connection, $this->generatorRegistry);
 
-        $initialUow = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
-        $this->unitOfWorks[] = $initialUow;
-        $this->activeUnitOfWork = $initialUow;
+        $this->unitOfWorkRegistry = new UnitOfWorkRegistry(
+            $changeTrackingStrategy,
+            $usesDefaultChangeTrackingStrategy,
+            $this->callbackManager,
+            $this->metadataRegistry,
+        );
 
         $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
 
@@ -96,31 +95,46 @@ class EntityManager {
             $proxyGenerator
         );
 
-        $this->typeRegistry = new TypeRegistry();
+        $typeRegistry = new TypeRegistry();
 
-        $this->hydrator = $hydrator ?? new ObjectHydrator($initialUow, $this->relationshipLoader, $this->callbackManager, $this->typeRegistry);
+        $this->hydrator = $hydrator ?? new ObjectHydrator(new ActiveUnitOfWorkRegistrar($this), $this->relationshipLoader, $this->callbackManager, $typeRegistry);
 
-        $this->resultCache = $resultCache;
-        $this->statementCache = $statementCache;
         $this->repositoryFactory = $repositoryFactory;
 
-        $secondLevelCachePool = $secondLevelCache ?? $resultCache;
-        if ($secondLevelCachePool !== null) {
-            $this->secondLevelCache = new SecondLevelCache($secondLevelCachePool, $secondLevelCacheTtl);
-        }
-
         $this->filters = new FilterCollection();
+        $this->cacheCoordinator = new EntityCacheCoordinator($resultCache, $this->metadataRegistry, $secondLevelCache, $secondLevelCacheTtl);
+        $this->dependencySorter = new EntityDependencySorter($this->metadataRegistry);
+        $this->changeSetExecutor = new ChangeSetExecutor($queryExecutor, $this->metadataRegistry, $this->dependencySorter);
+        $this->readService = new EntityReadService(
+            $this->connection,
+            $this->hydrator,
+            $this->metadataRegistry,
+            $this->unitOfWorkRegistry,
+            $this->cacheCoordinator,
+            $this->filters,
+            $resultCache,
+            $statementCache,
+            $this->proxyManager,
+        );
+        $this->refreshService = new EntityRefreshService(
+            $this->connection,
+            $this->hydrator,
+            $this->metadataRegistry,
+            $this->unitOfWorkRegistry,
+            $this->readService,
+            $typeRegistry,
+        );
     }
 
     // Persistence operations
     public function persist(object $entity): void
     {
-        $this->getActiveUnitOfWork()->persist($entity);
+        $this->unitOfWorkRegistry->active()->persist($entity);
     }
 
     public function remove(object $entity): void
     {
-        $this->getActiveUnitOfWork()->remove($entity);
+        $this->unitOfWorkRegistry->active()->remove($entity);
     }
 
     public function flush(): void
@@ -132,15 +146,24 @@ class EntityManager {
         }
 
         try {
-            $aggregatedChanges = $this->changeAggregator->aggregateChanges($this->unitOfWorks);
-            $this->executeChanges($aggregatedChanges);
-            $this->invalidateSecondLevelCache($aggregatedChanges);
+            $unitOfWorks = $this->unitOfWorkRegistry->all();
+            foreach ($unitOfWorks as $unitOfWork) {
+                $unitOfWork->assertNoInvalidReferences(
+                    fn (object $entity): EntityState => $this->unitOfWorkRegistry->getEntityState($entity)
+                );
+            }
 
-            foreach ($this->unitOfWorks as $unitOfWork) {
+            $aggregatedChanges = $this->changeAggregator->aggregateChanges($unitOfWorks);
+            $this->changeSetExecutor->execute($aggregatedChanges);
+            $this->changeSetExecutor->syncManagedManyToMany($unitOfWorks);
+            $this->cacheCoordinator->invalidateSecondLevelCache($aggregatedChanges);
+            $this->cacheCoordinator->incrementQueryCacheGeneration();
+
+            foreach ($unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
             }
 
-            foreach ($this->unitOfWorks as $unitOfWork) {
+            foreach ($unitOfWorks as $unitOfWork) {
                 $unitOfWork->clearChanges();
             }
 
@@ -158,289 +181,18 @@ class EntityManager {
 
     public function clear(): void
     {
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->clear();
-        }
+        $this->unitOfWorkRegistry->clearAll();
     }
 
     public function detach(object $entity): void
     {
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $unitOfWork->detach($entity);
-        }
+        $this->unitOfWorkRegistry->detachFromAll($entity);
     }
 
     public function flushAndClear(): void
     {
         $this->flush();
         $this->clear();
-    }
-
-    private function invalidateSecondLevelCache(array $changes): void
-    {
-        if ($this->secondLevelCache === null) {
-            return;
-        }
-
-        foreach ($changes['updates'] as $update) {
-            if (!isset($update['entity'])) {
-                continue;
-            }
-
-            $this->evictEntityFromSecondLevelCache($update['entity']);
-        }
-
-        foreach ($changes['deletes'] as $entity) {
-            $this->evictEntityFromSecondLevelCache($entity);
-        }
-    }
-
-    /**
-     * Evict the entity and all sibling entity classes (same table) from the second-level cache.
-     * This prevents stale reads when multiple entity classes map to the same row.
-     */
-    private function evictEntityFromSecondLevelCache(object $entity): void
-    {
-        $entityClass = $entity instanceof Proxy\ProxyInterface
-            ? $entity->getProxyEntityClass()
-            : $entity::class;
-        $id = $this->extractEntityIdForCache($entity, $entityClass);
-
-        if ($id === null) {
-            return;
-        }
-
-        $tableName = $this->metadataRegistry->getTableName($entityClass);
-        $siblingClasses = $this->metadataRegistry->getClassesByTable($tableName);
-
-        if (empty($siblingClasses)) {
-            $this->secondLevelCache->evict($entityClass, $id);
-
-            return;
-        }
-
-        foreach ($siblingClasses as $class) {
-            $this->secondLevelCache->evict($class, $id);
-        }
-    }
-
-    private function extractEntityIdForCache(object $entity, string $entityClass): mixed
-    {
-        if ($entity instanceof Proxy\ProxyInterface) {
-            return $entity->getProxyIdentifier();
-        }
-
-        $metadata = $this->metadataRegistry->getMetadata($entityClass);
-        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
-
-        if (empty($primaryKeyColumns)) {
-            return null;
-        }
-
-        $propertyName = $metadata->getPropertyNameForColumn($primaryKeyColumns[0]);
-
-        if ($propertyName === null) {
-            return null;
-        }
-
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
-        $reflectionProperty->setAccessible(true);
-
-        return $reflectionProperty->getValue($entity);
-    }
-
-    /**
-     * Execute aggregated changes in proper order respecting foreign key constraints.
-     *
-     * @param array{inserts: object[], updates: array<int, array{entity: object, changes: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[]} $changes
-     */
-    private function executeChanges(array $changes): void
-    {
-        // Execute inserts in dependency order (parents before children)
-        $orderedInserts = $this->orderEntitiesByDependencies($changes['inserts'], 'insert');
-        foreach ($orderedInserts as $entity) {
-            $this->queryExecutor->executeInsert($entity);
-        }
-
-        // Execute updates (order doesn't matter for foreign key constraints)
-        foreach ($changes['updates'] as $update) {
-            if (isset($update['table'])) {
-                $this->queryExecutor->executeUpdateByTable(
-                    tableName: $update['table'],
-                    columnChanges: $update['set'],
-                    whereClause: $update['where'],
-                    whereValues: $update['whereValues'],
-                );
-
-                continue;
-            }
-
-            $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
-        }
-
-        // Execute deletes in reverse dependency order (children before parents)
-        $orderedDeletes = $this->orderEntitiesByDependencies($changes['deletes'], 'delete');
-        foreach ($orderedDeletes as $entity) {
-            $this->queryExecutor->executeDelete($entity);
-        }
-    }
-
-    /**
-     * Order entities by their foreign key dependencies.
-     *
-     * For inserts: parents before children
-     * For deletes: children before parents
-     *
-     * @param object[] $entities
-     * @param string $operation 'insert' or 'delete'
-     * @return object[]
-     */
-    private function orderEntitiesByDependencies(array $entities, string $operation): array
-    {
-        if (empty($entities)) {
-            return $entities;
-        }
-
-        // Build dependency graph
-        $graph = $this->buildDependencyGraph($entities, $operation);
-
-        // Perform topological sort
-        return $this->topologicalSort($entities, $graph);
-    }
-
-    /**
-     * Build a dependency graph for the given entities.
-     *
-     * @param object[] $entities
-     * @param string $operation 'insert' or 'delete'
-     * @return array<string, string[]> Entity class => array of entities it depends on
-     */
-    private function buildDependencyGraph(array $entities, string $operation): array
-    {
-        $graph = [];
-
-        // Group entities by class for easier lookup
-        $entitiesByClass = [];
-        foreach ($entities as $entity) {
-            $entitiesByClass[$entity::class][] = $entity;
-        }
-
-        // Initialize graph for all entity classes
-        foreach (array_keys($entitiesByClass) as $entityClass) {
-            $graph[$entityClass] = [];
-        }
-
-        foreach ($entities as $entity) {
-            $entityClass = $entity::class;
-
-            // Get entity metadata
-            $metadata = $this->metadataRegistry->getMetadata($entityClass);
-
-            foreach ($metadata->getColumnRelations() as $relation) {
-                $targetClass = $relation->getTargetEntity();
-
-                // Only consider relationships to entities that are also being operated on
-                if ($targetClass === null || !isset($entitiesByClass[$targetClass])) {
-                    continue;
-                }
-
-                if ($operation === 'insert') {
-                    // For inserts: entities with relationships that require foreign keys depend on their targets
-                    // (children must be inserted after parents)
-                    if ($relation->isForeignKeyRequired()) {
-                        $graph[$entityClass][] = $targetClass;
-                    }
-                } elseif ($operation === 'delete') {
-                    // For deletes: target entities depend on entities that reference them
-                    // (parents must be deleted after children)
-                    if ($relation->isForeignKeyRequired()) {
-                        $graph[$targetClass][] = $entityClass;
-                    }
-                }
-            }
-        }
-
-        // Remove duplicates
-        foreach ($graph as $class => $dependencies) {
-            $graph[$class] = array_unique($dependencies);
-        }
-
-        return $graph;
-    }
-
-    /**
-     * Perform topological sort on entities based on dependency graph.
-     *
-     * @param object[] $entities
-     * @param array<string, string[]> $graph
-     * @return object[]
-     */
-    private function topologicalSort(array $entities, array $graph): array
-    {
-        $result = [];
-        $visited = [];
-        $visiting = [];
-
-        // Group entities by class
-        $entitiesByClass = [];
-        foreach ($entities as $entity) {
-            $entitiesByClass[$entity::class][] = $entity;
-        }
-
-        // Helper function for DFS topological sort
-        $visit = function ($class) use (&$visit, &$result, &$visited, &$visiting, $graph, $entitiesByClass) {
-            if (isset($visited[$class])) {
-                return;
-            }
-
-            if (isset($visiting[$class])) {
-                throw new \RuntimeException(sprintf('Circular dependency detected for entity class %s', $class));
-            }
-
-            $visiting[$class] = true;
-
-            // Visit dependencies first
-            if (isset($graph[$class])) {
-                foreach ($graph[$class] as $dependency) {
-                    $visit($dependency);
-                }
-            }
-
-            $visiting[$class] = false;
-            $visited[$class] = true;
-
-            // Add all entities of this class to result
-            if (isset($entitiesByClass[$class])) {
-                $result = array_merge($result, $entitiesByClass[$class]);
-            }
-        };
-
-        // Visit all classes
-        foreach (array_keys($entitiesByClass) as $class) {
-            $visit($class);
-        }
-
-        return $result;
-    }
-
-    /**
-     * Resolve all columns needed for entity hydration, including morph columns.
-     *
-     * @param EntityMetadata $metadata
-     * @return string[]
-     */
-    private function getSelectColumnsForEntity(EntityMetadata $metadata): array
-    {
-        $columnNames = $metadata->getColumnNames();
-
-        foreach ($metadata->getColumnRelations() as $relation) {
-            if ($relation->isMorphTo()) {
-                $columnNames[] = $relation->getMorphTypeColumnName();
-                $columnNames[] = $relation->getMorphIdColumnName();
-            }
-        }
-
-        return $columnNames;
     }
 
     // Retrieval operations
@@ -450,65 +202,7 @@ class EntityManager {
      */
     public function find(string $class, mixed $id, array $with = []): ?object
     {
-        if (!empty($with)) {
-            $this->validateWith($class, $with);
-        }
-
-        // Check identity maps of all unit of works first
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $entity = $unitOfWork->tryGetById($class, $id);
-            if ($entity) {
-                return $entity;
-            }
-        }
-
-        // Check second-level cache before hitting the database
-        if ($this->secondLevelCache !== null) {
-            $cachedData = $this->secondLevelCache->get($class, $id);
-            if ($cachedData !== null) {
-                return $this->hydrator->hydrate($class, $cachedData, null, $with);
-            }
-        }
-
-        // Query database for the entity
-        $metadata = $this->metadataRegistry->getMetadata($class);
-        $tableName = $metadata->getTableName();
-        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
-
-        // For now, assume single primary key
-        if (empty($primaryKeyColumns)) {
-            return null;
-        }
-
-        $primaryKeyColumn = $primaryKeyColumns[0];
-
-        // Build and execute query directly to get raw data
-        $columnNames = $this->getSelectColumnsForEntity($metadata);
-
-        $qb = $this->createQueryBuilder($class)
-            ->select(...$columnNames)
-            ->from($tableName)
-            ->where($primaryKeyColumn, $id)
-            ->limit(1);
-
-        $sql = $qb->getSQL();
-        $params = $qb->getParameters();
-        $statement = $this->connection->executeQuery($sql, $params);
-        $rawResults = $statement->fetchAll();
-
-        if (empty($rawResults)) {
-            return null;
-        }
-
-        $rawData = $rawResults[0];
-
-        if ($this->secondLevelCache !== null) {
-            $this->secondLevelCache->set($class, $id, $rawData);
-        }
-
-        $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
-
-        return $entity;
+        return $this->readService->find($class, $id, $with);
     }
 
     /**
@@ -517,158 +211,48 @@ class EntityManager {
      */
     public function findAll(string $class, array $with = []): array
     {
-        if (!empty($with)) {
-            $this->validateWith($class, $with);
-        }
-
-        // Get entity metadata
-        $metadata = $this->metadataRegistry->getMetadata($class);
-        $tableName = $metadata->getTableName();
-
-        // Build and execute query to get all records
-        $qb = $this->createQueryBuilder($class)
-            ->select(...$this->getSelectColumnsForEntity($metadata))
-            ->from($tableName);
-
-        $sql = $qb->getSQL();
-        $params = $qb->getParameters();
-        $statement = $this->connection->executeQuery($sql, $params);
-        $rawResults = $statement->fetchAll();
-
-        if (empty($rawResults)) {
-            return [];
-        }
-
-        $entities = [];
-
-        // Hydrate each entity and register in unit of work
-        foreach ($rawResults as $rawData) {
-            $entity = $this->hydrator->hydrate($class, $rawData, null, $with);
-            $this->getActiveUnitOfWork()->registerManaged($entity, $rawData);
-            $entities[] = $entity;
-        }
-
-        return $entities;
+        return $this->readService->findAll($class, $with);
     }
 
     /**
-     * @param string[] $with
-     * @throws InvalidArgumentException on unknown relation name
-     */
-    private function validateWith(string $class, array $with): void
-    {
-        $metadata = $this->metadataRegistry->getMetadata($class);
-        $knownRelations = array_keys($metadata->getRelations());
-
-        foreach ($with as $name) {
-            if (!in_array($name, $knownRelations, true)) {
-                throw new InvalidArgumentException(
-                    "Relation '$name' not found on entity $class. Known relations: " . implode(', ', $knownRelations)
-                );
-            }
-        }
-    }
-
-    /**
-     * Create a lazy proxy for an inverse-side single entity relation (e.g., inverse OneToOne).
-     * The supplied closure receives the uninitialized ProxyInterface and is responsible for
-     * loading and copying entity data into it, then calling $proxy->markProxyInitialized().
+     * Creates an unregistered lazy proxy with a custom loader closure.
+     * The proxy is NOT added to the identity map or UnitOfWork — the caller owns its lifecycle.
+     * The closure receives the uninitialized ProxyInterface and must load and copy entity data
+     * into it, then call $proxy->markProxyInitialized().
+     *
+     * Use for inverse-side relations (e.g., inverse OneToOne) where the ORM cannot auto-load
+     * by a simple ID lookup.
+     *
+     * @see getReference() for a managed proxy loaded by ID and registered in the identity map
      */
     public function createLazyReference(string $class, \Closure $loader): object
     {
-        if ($this->proxyManager === null) {
-            throw new \RuntimeException('Proxy manager is not available');
-        }
-
-        return $this->proxyManager->createProxyWithCustomLoader($class, $loader);
+        return $this->readService->createLazyReference($class, $loader);
     }
 
+    /**
+     * Returns a managed identity-map proxy for the given class and ID.
+     * If the entity is already loaded in any active UnitOfWork, that instance is returned.
+     * Otherwise a lazy proxy is created, registered as MANAGED, and returned without hitting the DB.
+     * Use this when you need a reference to associate as a FK without loading the full entity.
+     *
+     * @see createLazyReference() for an unregistered proxy with a custom loader closure
+     */
     public function getReference(string $class, mixed $id): object
     {
-        // Check identity maps of all unit of works first
-        foreach ($this->unitOfWorks as $unitOfWork) {
-            $entity = $unitOfWork->tryGetById($class, $id);
-            if ($entity) {
-                return $entity;
-            }
-        }
-
-        // Create a proxy for lazy loading
-        if ($this->proxyManager === null) {
-            throw new \RuntimeException('Proxy manager is not available');
-        }
-
-        $proxy = $this->proxyManager->createProxy($class, $id);
-
-        // Register the proxy as managed in the unit of work
-        // Note: We pass empty array for original data since we haven't loaded it yet
-        $this->getActiveUnitOfWork()->registerManaged($proxy, []);
-
-        return $proxy;
+        return $this->readService->getReference($class, $id);
     }
 
+    /**
+     * Reloads an entity's properties from the database, overwriting in-memory state.
+     * Throws EntityNotFoundException if the row no longer exists.
+     * This is the inverse of find(): find() returns null on miss, refresh() throws.
+     *
+     * @throws \RuntimeException if the entity has no primary key value or the row is missing
+     */
     public function refresh(object $entity): void
     {
-        // Get entity class name (handle proxies)
-        $entityClass = $entity instanceof Proxy\ProxyInterface
-            ? $entity->getProxyEntityClass()
-            : $entity::class;
-
-        // Get entity metadata
-        $metadata = $this->metadataRegistry->getMetadata($entityClass);
-        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
-
-        if (empty($primaryKeyColumns)) {
-            throw new \RuntimeException("Entity {$entityClass} has no primary key");
-        }
-
-        // For now, assume single primary key
-        $primaryKeyColumn = $primaryKeyColumns[0];
-        $propertyName = $metadata->getPropertyNameForColumn($primaryKeyColumn);
-
-        if (!$propertyName) {
-            throw new \RuntimeException("Cannot determine primary key property for entity {$entityClass}");
-        }
-
-        // Get the entity's ID
-        $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
-        $reflectionProperty->setAccessible(true);
-        $id = $reflectionProperty->getValue($entity);
-
-        if ($id === null) {
-            throw new \RuntimeException("Entity {$entityClass} has null primary key value");
-        }
-
-        // Query database for fresh data
-        $tableName = $metadata->getTableName();
-        $qb = $this->createQueryBuilder($entityClass)
-            ->select(...$metadata->getColumnNames())
-            ->from($tableName)
-            ->where($primaryKeyColumn, $id)
-            ->limit(1);
-
-        $sql = $qb->getSQL();
-        $params = $qb->getParameters();
-        $statement = $this->connection->executeQuery($sql, $params);
-        $rawResults = $statement->fetchAll();
-
-        if (empty($rawResults)) {
-            throw EntityNotFoundException::notFound($entityClass, $id);
-        }
-
-        $freshData = $rawResults[0];
-
-        // If it's a proxy, initialize it with fresh data
-        if ($entity instanceof Proxy\ProxyInterface && !$entity->isProxyInitialized()) {
-            $this->hydrator->hydrate($entityClass, $freshData, $entity);
-            $entity->markProxyInitialized();
-        } else {
-            // For regular entities, update properties with fresh data
-            $this->updateEntityProperties($entity, $freshData, $metadata);
-        }
-
-        // Update the unit of work's original data to reflect the fresh state
-        $this->getActiveUnitOfWork()->registerManaged($entity, $freshData);
+        $this->refreshService->refresh($entity);
     }
 
     // Transaction management
@@ -706,41 +290,33 @@ class EntityManager {
     // Unit of Work access
     public function getActiveUnitOfWork(): UnitOfWork
     {
-        return $this->activeUnitOfWork;
+        return $this->unitOfWorkRegistry->active();
     }
 
-    // Create new unit of work, mostly for scopes
+    /**
+     * Creates a new UnitOfWork scoped to this EntityManager and registers it for flush.
+     * Use when a bounded sub-operation needs its own identity map and change set,
+     * but should commit as part of the next flush() call together with other UoWs.
+     *
+     * Example — isolated write scope:
+     *   $scope = $em->createUnitOfWork();
+     *   $em->setActiveUnitOfWork($scope);
+     *   $em->persist($entity); // tracked in $scope
+     *   $em->flush();          // flushes all registered UoWs, including $scope
+     */
     public function createUnitOfWork(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->changeTrackingStrategy, $this->callbackManager, $this->metadataRegistry);
-        $this->unitOfWorks[] = $unitOfWork;
-
-        return $unitOfWork;
+        return $this->unitOfWorkRegistry->create();
     }
 
     public function setActiveUnitOfWork(UnitOfWork $unitOfWork): void
     {
-        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
-            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
-        }
-
-        $this->activeUnitOfWork = $unitOfWork;
+        $this->unitOfWorkRegistry->setActive($unitOfWork);
     }
 
     public function removeUnitOfWork(UnitOfWork $unitOfWork): void
     {
-        if (!in_array($unitOfWork, $this->unitOfWorks, strict: true)) {
-            throw new InvalidArgumentException('UnitOfWork does not belong to this EntityManager.');
-        }
-
-        if ($unitOfWork === $this->activeUnitOfWork) {
-            throw new InvalidArgumentException('Cannot remove the active UnitOfWork. Set a different active UnitOfWork first.');
-        }
-
-        $unitOfWork->clear();
-        $this->unitOfWorks = array_values(
-            array_filter($this->unitOfWorks, fn ($uow) => $uow !== $unitOfWork)
-        );
+        $this->unitOfWorkRegistry->remove($unitOfWork);
     }
 
     public function setUpdateConflictResolutionStrategy(UpdateConflictResolutionStrategy $updateConflictResolutionStrategy): void
@@ -761,14 +337,7 @@ class EntityManager {
 
     public function createQueryBuilder(?string $entityClass = null): QueryBuilder
     {
-        $qb = new QueryBuilder($this->connection, $this->hydrator, $this->metadataRegistry, $this->resultCache, $this->filters, $this->statementCache);
-        $qb->setUnitOfWork($this->getActiveUnitOfWork());
-
-        if ($entityClass) {
-            $qb->setEntityClass($entityClass);
-        }
-
-        return $qb;
+        return $this->readService->createQueryBuilder($entityClass);
     }
 
     // Hydrator access (for advanced customization)
@@ -780,6 +349,8 @@ class EntityManager {
     public function setHydrator(HydratorInterface $hydrator): void
     {
         $this->hydrator = $hydrator;
+        $this->readService->setHydrator($hydrator);
+        $this->refreshService->setHydrator($hydrator);
     }
 
     /**
@@ -838,28 +409,5 @@ class EntityManager {
         }
 
         return $this->repositoryFactory->getRepository($entityClass);
-    }
-
-    /**
-     * Update entity properties with fresh data from database.
-     */
-    private function updateEntityProperties(object $entity, array $data, EntityMetadata $metadata): void
-    {
-        foreach ($metadata->getProperties() as $propertyName => $property) {
-            $columnName = $property->getColumnName();
-            if (array_key_exists($columnName, $data)) {
-                $value = $data[$columnName];
-                $converter = $this->typeRegistry->getConverter($property->getType());
-                if ($converter) {
-                    $phpValue = $converter->convertToPHP($value);
-                } else {
-                    $phpValue = $value; // Basic conversion - most types don't need special handling
-                }
-
-                $reflectionProperty = new \ReflectionProperty($entity, $propertyName);
-                $reflectionProperty->setAccessible(true);
-                $reflectionProperty->setValue($entity, $phpValue);
-            }
-        }
     }
 }

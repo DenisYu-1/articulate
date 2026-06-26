@@ -33,7 +33,8 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $compareResult = $compareResults[0]; // Should be the only result
 
         // Generate the migration SQL
-        $sql = $generator->generate($compareResult);
+        $statements = $generator->generate($compareResult);
+        $sql = implode("\n", $statements);
 
         // Should be a CREATE TABLE since we dropped the existing table
         $this->assertStringStartsWith('CREATE TABLE', $sql, 'Should generate CREATE TABLE for new table');
@@ -47,7 +48,9 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $this->assertTrue(strpos($sql, '`name` VARCHAR(255) NOT NULL') !== false, 'name should map to VARCHAR(255) NOT NULL');
 
         // Execute the migration to ensure it works
-        $connection->executeQuery($sql);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         // Verify the table was created with correct column types
         $columns = $connection->executeQuery('SHOW COLUMNS FROM `test_bool_entity`')->fetchAll();
@@ -80,7 +83,8 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $compareResults = iterator_to_array($comparator->compareAll([$entity]));
         $compareResult = $compareResults[0];
 
-        $sql = $generator->generate($compareResult);
+        $statements = $generator->generate($compareResult);
+        $sql = implode("\n", $statements);
 
         $this->assertStringStartsWith('CREATE TABLE', $sql);
         $this->assertStringContainsString('"is_active" BOOLEAN NOT NULL', $sql);
@@ -88,7 +92,9 @@ class TypeMappingIntegrationTest extends AbstractTestCase {
         $this->assertStringContainsString('"id" INTEGER NOT NULL', $sql);
         $this->assertStringContainsString('"name" VARCHAR(255) NOT NULL', $sql);
 
-        $connection->executeQuery($sql);
+        foreach ($statements as $statement) {
+            $connection->executeQuery($statement);
+        }
 
         $columns = $connection->executeQuery(
             "SELECT column_name, data_type FROM information_schema.columns

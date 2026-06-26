@@ -3,10 +3,13 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Reflection\ReflectionManyToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Collection\MappingCollection;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
+use Articulate\Utils\ReflectionCache;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**
@@ -17,8 +20,15 @@ use ReflectionProperty as NativeReflectionProperty;
  * or change tracking.
  */
 class QueryExecutor {
-    /** @var ReflectionEntity[] */
+    /**
+     * @var ReflectionEntity[]
+     * Static cache keyed by entity class name. Bounded by the number of distinct entity classes
+     * in the process — safe for long-running processes (FPM, Swoole, CLI daemons).
+     */
     private static array $reflectionEntityCache = [];
+
+    /** @var EntityMetadata[] */
+    private array $entityMetadataCache = [];
 
     public function __construct(
         private Connection $connection,
@@ -52,6 +62,7 @@ class QueryExecutor {
         $columns = [];
         $placeholders = [];
         $values = [];
+        $pkColumnName = null;
 
         foreach ($properties as $property) {
             $columnName = $property->getColumnName();
@@ -60,10 +71,12 @@ class QueryExecutor {
             // Get the value from the entity
             $reflectionProperty = new NativeReflectionProperty($entity, $fieldName);
             $reflectionProperty->setAccessible(true);
-            $value = $reflectionProperty->getValue($entity);
+            $value = $reflectionProperty->isInitialized($entity) ? $reflectionProperty->getValue($entity) : null;
 
             // Skip primary key columns with null values (they should be auto-generated)
             if ($property->isPrimaryKey() && $value === null) {
+                $pkColumnName = $columnName;
+
                 continue;
             }
 
@@ -75,7 +88,7 @@ class QueryExecutor {
 
             $columns[] = $columnName;
             $placeholders[] = '?';
-            $values[] = $value;
+            $values[] = $this->normalizeForDatabase($value);
         }
 
         // Handle MorphTo relationships
@@ -101,6 +114,24 @@ class QueryExecutor {
                 }
                 $this->setEntityId($entity, $generatedId);
             }
+        }
+
+        $dbAssignedId = $preGeneratedId === null && ($id === null || $id === '');
+
+        if ($dbAssignedId && $pkColumnName !== null && $this->connection->getDriverName() === 'pgsql') {
+            $sql = sprintf(
+                'INSERT INTO %s (%s) VALUES (%s) RETURNING %s',
+                $tableName,
+                implode(', ', $columns),
+                implode(', ', $placeholders),
+                $pkColumnName
+            );
+            $stmt = $this->connection->executeQuery($sql, $values);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            $lastId = (int) $row[$pkColumnName];
+            $this->setEntityId($entity, $lastId);
+
+            return $lastId;
         }
 
         $sql = sprintf(
@@ -145,24 +176,23 @@ class QueryExecutor {
         $setParts = [];
         $values = [];
 
-        foreach ($changes as $propertyName => $newValue) {
-            // Find the property metadata
+        foreach ($changes as $columnName => $newValue) {
+            // Find the property metadata by column name (changes are keyed by column name)
             $property = null;
             foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $prop) {
-                if ($prop->getFieldName() === $propertyName) {
+                if ($prop instanceof ReflectionProperty && $prop->getColumnName() === $columnName) {
                     $property = $prop;
 
                     break;
                 }
             }
 
-            if ($property === null || !($property instanceof ReflectionProperty)) {
+            if ($property === null) {
                 continue; // Skip if property not found or is a relation
             }
 
-            $columnName = $property->getColumnName();
             $setParts[] = "{$columnName} = ?";
-            $values[] = $newValue;
+            $values[] = $this->normalizeForDatabase($newValue);
         }
 
         if (empty($setParts)) {
@@ -343,7 +373,7 @@ class QueryExecutor {
         if ($primaryKeyProperty !== null) {
             $primaryKeyProperty->setAccessible(true);
 
-            return $primaryKeyProperty->getValue($entity);
+            return $primaryKeyProperty->isInitialized($entity) ? $primaryKeyProperty->getValue($entity) : null;
         }
 
         return null;
@@ -356,14 +386,14 @@ class QueryExecutor {
         // First try to find primary key from entity metadata
         foreach (iterator_to_array($reflectionEntity->getEntityFieldsProperties()) as $property) {
             if ($property instanceof ReflectionProperty && $property->isPrimaryKey()) {
-                return new NativeReflectionProperty($entity, $property->getFieldName());
+                return ReflectionCache::getProperty($entity::class, $property->getFieldName());
             }
         }
 
         // Treat 'id' property as implicit primary key
-        $reflection = new \ReflectionClass($entity);
+        $reflection = ReflectionCache::getClass($entity::class);
         if ($reflection->hasProperty('id')) {
-            return $reflection->getProperty('id');
+            return ReflectionCache::getProperty($entity::class, 'id');
         }
 
         return null;
@@ -374,13 +404,13 @@ class QueryExecutor {
      */
     private function addMorphToColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
-                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
                 $reflectionProperty->setAccessible(true);
                 $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -407,13 +437,13 @@ class QueryExecutor {
      */
     private function addMorphToChanges(object $entity, array &$setParts, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if ($relation->isMorphTo()) {
                 // Get the relationship value
                 $propertyName = $relation->getPropertyName();
-                $reflectionProperty = new NativeReflectionProperty($entity, $propertyName);
+                $reflectionProperty = ReflectionCache::getProperty($entity::class, $propertyName);
                 $reflectionProperty->setAccessible(true);
                 $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -437,14 +467,14 @@ class QueryExecutor {
 
     private function addManyToOneColumns(object $entity, array &$columns, array &$placeholders, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }
 
-            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $relation->getPropertyName());
             $reflectionProperty->setAccessible(true);
             $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -460,14 +490,14 @@ class QueryExecutor {
 
     private function addManyToOneChanges(object $entity, array &$setParts, array &$values): void
     {
-        $entityMetadata = new EntityMetadata($entity::class);
+        $entityMetadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($entityMetadata->getColumnRelations() as $relation) {
             if (!$relation->isOwningSide() || !$relation->isForeignKeyRequired() || $relation->isMorphTo()) {
                 continue;
             }
 
-            $reflectionProperty = new NativeReflectionProperty($entity, $relation->getPropertyName());
+            $reflectionProperty = ReflectionCache::getProperty($entity::class, $relation->getPropertyName());
             $reflectionProperty->setAccessible(true);
             $relatedEntity = $reflectionProperty->getValue($entity);
 
@@ -504,7 +534,7 @@ class QueryExecutor {
 
             $reflectionProperty = new NativeReflectionProperty($entity, $fieldName);
             $reflectionProperty->setAccessible(true);
-            $value = $reflectionProperty->getValue($entity);
+            $value = $reflectionProperty->isInitialized($entity) ? $reflectionProperty->getValue($entity) : null;
 
             if ($property->isPrimaryKey() && $value === null) {
                 continue;
@@ -516,12 +546,28 @@ class QueryExecutor {
 
             $columns[] = $columnName;
             $placeholders[] = '?';
-            $values[] = $value;
+            $values[] = $this->normalizeForDatabase($value);
         }
 
         $this->addMorphToColumns($entity, $columns, $placeholders, $values);
 
         return ['columns' => $columns, 'values' => $values];
+    }
+
+    /**
+     * Convert a PHP value to its database-bindable scalar representation.
+     * Backed enums → backing value; pure enums → case name; everything else pass-through.
+     */
+    private function normalizeForDatabase(mixed $value): mixed
+    {
+        if ($value instanceof \BackedEnum) {
+            return $value->value;
+        }
+        if ($value instanceof \UnitEnum) {
+            return $value->name;
+        }
+
+        return $value;
     }
 
     /**
@@ -534,5 +580,195 @@ class QueryExecutor {
         [$clause, $values] = $this->buildWhereClause($entity);
 
         return ['clause' => $clause, 'values' => $values];
+    }
+
+    /**
+     * Sync owning-side M2M pivot rows for an entity using granular INSERT/UPDATE/DELETE.
+     *
+     * MappingCollection: three-pass diff — DELETE removed items, INSERT new items, UPDATE dirty pivot.
+     * Plain Collection:  DELETE-all then INSERT-all (no pivot data to diff).
+     *
+     * @param bool $dirtyOnly Skip collections that haven't changed since last flush
+     */
+    public function syncManyToMany(object $entity, bool $dirtyOnly = false): void
+    {
+        $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
+
+        foreach ($metadata->getRelations() as $propName => $relation) {
+            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+                continue;
+            }
+
+            $entityProp = ReflectionCache::getProperty($entity::class, $propName);
+            $entityProp->setAccessible(true);
+
+            if (!$entityProp->isInitialized($entity)) {
+                continue;
+            }
+
+            $value = $entityProp->getValue($entity);
+
+            if ($value === null || is_array($value)) {
+                continue;
+            }
+
+            if ($dirtyOnly && !$value->isDirty()) {
+                continue;
+            }
+
+            [, $ownerPkValues] = $this->buildWhereClause($entity);
+            $ownerPk = $ownerPkValues[0];
+
+            $pivotTable = $relation->getPivotTableName();
+            $foreignKey = $relation->getForeignPivotKey();
+            $relatedKey = $relation->getRelatedPivotKey();
+
+            if ($value instanceof MappingCollection) {
+                $this->syncMappingCollection(
+                    $value,
+                    $pivotTable,
+                    $foreignKey,
+                    $relatedKey,
+                    $ownerPk,
+                    $relation
+                );
+            } else {
+                $this->syncPlainCollection($value, $pivotTable, $foreignKey, $relatedKey, $ownerPk);
+            }
+
+            $value->markClean();
+        }
+    }
+
+    private function syncMappingCollection(
+        MappingCollection $collection,
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        mixed $ownerPk,
+        ReflectionManyToMany $relation,
+    ): void {
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
+        $createdAtCol = null;
+        $updatedAtCol = null;
+        foreach ($relation->getExtraProperties() as $extraProp) {
+            if ($extraProp->createdAt) {
+                $createdAtCol = $extraProp->name;
+            }
+            if ($extraProp->updatedAt) {
+                $updatedAtCol = $extraProp->name;
+            }
+        }
+
+        // 1. DELETE removed items
+        foreach ($collection->getRemovedItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+            $this->connection->executeQuery(
+                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+
+        // 2. INSERT new items
+        $autoTimestampCols = array_filter([$createdAtCol, $updatedAtCol]);
+        foreach ($collection->getNewItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+
+            $pivotData = array_diff_key($item->pivot(), array_flip($autoTimestampCols));
+            $columns = array_merge([$foreignKey, $relatedKey], array_keys($pivotData));
+            $values = array_merge([$ownerPk, $relatedPkValues[0]], array_values($pivotData));
+
+            if ($createdAtCol !== null) {
+                $columns[] = $createdAtCol;
+                $values[] = $now;
+            }
+            if ($updatedAtCol !== null) {
+                $columns[] = $updatedAtCol;
+                $values[] = $now;
+            }
+
+            $this->connection->executeQuery(
+                sprintf(
+                    'INSERT INTO %s (%s) VALUES (%s)',
+                    $pivotTable,
+                    implode(', ', $columns),
+                    implode(', ', array_fill(0, count($values), '?'))
+                ),
+                $values
+            );
+        }
+
+        // 3. UPDATE dirty pivot items (only changed columns + updatedAt)
+        foreach ($collection->getDirtyItems() as $item) {
+            [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+
+            $changes = array_diff_key($item->getPivotChanges(), array_flip(array_filter([$createdAtCol])));
+            if ($updatedAtCol !== null) {
+                $changes[$updatedAtCol] = $now;
+            }
+
+            if (empty($changes)) {
+                continue;
+            }
+
+            $setParts = array_map(fn (string $col) => "{$col} = ?", array_keys($changes));
+            $this->connection->executeQuery(
+                sprintf(
+                    'UPDATE %s SET %s WHERE %s = ? AND %s = ?',
+                    $pivotTable,
+                    implode(', ', $setParts),
+                    $foreignKey,
+                    $relatedKey
+                ),
+                [...array_values($changes), $ownerPk, $relatedPkValues[0]]
+            );
+        }
+    }
+
+    private function syncPlainCollection(
+        Collection $collection,
+        string $pivotTable,
+        string $foreignKey,
+        string $relatedKey,
+        mixed $ownerPk,
+    ): void {
+        foreach ($collection->getRemovedItems() as $entity) {
+            [, $relatedPkValues] = $this->buildWhereClause($entity);
+            $this->connection->executeQuery(
+                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+
+        foreach ($collection->getAddedItems() as $entity) {
+            [, $relatedPkValues] = $this->buildWhereClause($entity);
+            $this->connection->executeQuery(
+                "INSERT INTO {$pivotTable} ({$foreignKey}, {$relatedKey}) VALUES (?, ?)",
+                [$ownerPk, $relatedPkValues[0]]
+            );
+        }
+    }
+
+    /**
+     * Delete all owning-side pivot rows for an entity before its row is deleted.
+     * Prevents FK violations when there is no CASCADE DELETE on the pivot table.
+     */
+    public function deletePivotRows(object $entity): void
+    {
+        $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
+
+        foreach ($metadata->getRelations() as $relation) {
+            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+                continue;
+            }
+
+            [, $ownerPkValues] = $this->buildWhereClause($entity);
+
+            $this->connection->executeQuery(
+                sprintf('DELETE FROM %s WHERE %s = ?', $relation->getPivotTableName(), $relation->getForeignPivotKey()),
+                [$ownerPkValues[0]]
+            );
+        }
     }
 }

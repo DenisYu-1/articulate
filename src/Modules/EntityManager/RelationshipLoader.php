@@ -3,8 +3,11 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
+use Articulate\Collection\MappingItem;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use ReflectionProperty;
@@ -114,6 +117,14 @@ class RelationshipLoader {
             return $this->loadManyToMany($entity, $relation);
         }
 
+        if ($relation instanceof ReflectionMorphToMany) {
+            return $this->loadMorphToMany($entity, $relation);
+        }
+
+        if ($relation instanceof ReflectionMorphedByMany) {
+            return $this->loadMorphedByMany($entity, $relation);
+        }
+
         if (!($relation instanceof ReflectionRelation)) {
             return null;
         }
@@ -217,7 +228,6 @@ class RelationshipLoader {
      */
     private function loadManyToMany(object $entity, ReflectionRelation|ReflectionManyToMany $relation): array
     {
-        // For ManyToMany, we need to query through a pivot table
         $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
         $primaryKeyValue = $this->getPrimaryKeyValue($entity, $entityMetadata);
 
@@ -225,11 +235,12 @@ class RelationshipLoader {
         $foreignKey = $relation->getForeignPivotKey();
         $relatedKey = $relation->getRelatedPivotKey();
 
-        // Query the pivot table to get related IDs
-        $pivotQb = $this->entityManager->createQueryBuilder()
-            ->select($relatedKey)
-            ->from($pivotTable)
-            ->where($foreignKey, $primaryKeyValue);
+        $usePivotData = $relation instanceof ReflectionManyToMany && $relation->isMappingCollectionType();
+
+        $pivotQb = $this->entityManager->createQueryBuilder()->from($pivotTable)->where($foreignKey, $primaryKeyValue);
+        if (!$usePivotData) {
+            $pivotQb->select($relatedKey);
+        }
 
         $pivotResults = $pivotQb->getResult();
         $relatedIds = array_column($pivotResults, $relatedKey);
@@ -238,15 +249,86 @@ class RelationshipLoader {
             return [];
         }
 
-        // Query for the actual related entities
         $targetEntity = $relation->getTargetEntity();
         $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
         $targetPrimaryKey = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
 
-        $qb = $this->entityManager->createQueryBuilder($targetEntity)
-            ->where("$targetPrimaryKey IN (" . str_repeat('?,', count($relatedIds) - 1) . '?)', $relatedIds);
+        $entities = $this->entityManager->createQueryBuilder($targetEntity)
+            ->whereIn($targetPrimaryKey, $relatedIds)
+            ->getResult($targetEntity);
 
-        return $qb->getResult($targetEntity);
+        if (!$usePivotData) {
+            return $entities;
+        }
+
+        $entityMap = [];
+        foreach ($entities as $e) {
+            $entityMap[(string) $this->getPrimaryKeyValue($e, $targetMetadata)] = $e;
+        }
+
+        $items = [];
+        foreach ($pivotResults as $pivotRow) {
+            $id = (string) $pivotRow[$relatedKey];
+            if (isset($entityMap[$id])) {
+                $items[] = MappingItem::fromDatabase($entityMap[$id], $pivotRow);
+            }
+        }
+
+        return $items;
+    }
+
+    private function loadMorphToMany(object $entity, ReflectionMorphToMany $relation): array
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $ownerPK = $this->getPrimaryKeyValue($entity, $entityMetadata);
+
+        $pivotResults = $this->entityManager->createQueryBuilder()
+            ->select($relation->getTargetJoinColumn())
+            ->from($relation->getTableName())
+            ->where($relation->getTypeColumn(), $entity::class)
+            ->where($relation->getOwnerJoinColumn(), $ownerPK)
+            ->getResult();
+
+        $targetIds = array_column($pivotResults, $relation->getTargetJoinColumn());
+
+        if (empty($targetIds)) {
+            return [];
+        }
+
+        $targetEntity = $relation->getTargetEntity();
+        $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetPK = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
+
+        return $this->entityManager->createQueryBuilder($targetEntity)
+            ->whereIn($targetPK, $targetIds)
+            ->getResult($targetEntity);
+    }
+
+    private function loadMorphedByMany(object $entity, ReflectionMorphedByMany $relation): array
+    {
+        $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
+        $ownerPK = $this->getPrimaryKeyValue($entity, $entityMetadata);
+        $targetEntity = $relation->getTargetEntity();
+
+        $pivotResults = $this->entityManager->createQueryBuilder()
+            ->select($relation->getOwnerJoinColumn())
+            ->from($relation->getTableName())
+            ->where($relation->getTypeColumn(), $targetEntity)
+            ->where($relation->getTargetJoinColumn(), $ownerPK)
+            ->getResult();
+
+        $morphIds = array_column($pivotResults, $relation->getOwnerJoinColumn());
+
+        if (empty($morphIds)) {
+            return [];
+        }
+
+        $targetMetadata = $this->metadataRegistry->getMetadata($targetEntity);
+        $targetPK = $targetMetadata->getPrimaryKeyColumns()[0] ?? 'id';
+
+        return $this->entityManager->createQueryBuilder($targetEntity)
+            ->whereIn($targetPK, $morphIds)
+            ->getResult($targetEntity);
     }
 
     /**

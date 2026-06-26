@@ -69,6 +69,9 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
     private function canCombineUpdate(EntityMetadata $metadata): bool
     {
         foreach ($metadata->getColumnRelations() as $relation) {
+            // MorphTo stores two columns (type + id) that must change atomically.
+            // Merging them as independent column changes across UoWs risks writing
+            // a mismatched type/id pair, so entities with morph relations cannot be combined.
             if ($relation->isMorphTo()) {
                 return false;
             }
@@ -130,20 +133,18 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
     }
 
     /**
-     * @param array<string, mixed> $changes
+     * @param array<string, mixed> $changes  Changes keyed by column name
      * @return array<string, mixed>
      */
     private function mapChangesToColumns(array $changes, EntityMetadata $metadata): array
     {
         $columnChanges = [];
 
-        foreach ($changes as $propertyName => $value) {
-            $columnName = $metadata->getColumnName($propertyName);
-            if ($columnName === null) {
-                continue;
+        foreach ($changes as $columnName => $value) {
+            // Changes are already keyed by column name; validate the column is known.
+            if ($metadata->getPropertyNameForColumn($columnName) !== null) {
+                $columnChanges[$columnName] = $value;
             }
-
-            $columnChanges[$columnName] = $value;
         }
 
         return $columnChanges;

@@ -2,8 +2,10 @@
 
 namespace Articulate\Modules\Database\SchemaComparator\Comparators;
 
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Exceptions\EmptyPropertiesListException;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnComparisonNormalizer;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\ForeignKeyCompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\IndexCompareResult;
@@ -11,6 +13,8 @@ use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use Articulate\Modules\Database\SchemaComparator\Models\TableCompareResult;
 use Articulate\Modules\Database\SchemaReader\DatabaseSchemaReaderInterface;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\ReflectionCache;
+use ReflectionNamedType;
 
 class MappingTableComparator {
     public function __construct(
@@ -149,9 +153,9 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_UPDATE,
                 $property,
-                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
-            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+            if ($result->hasChanges()) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
                 $columnsCompareResults[] = $result;
             }
@@ -163,7 +167,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -184,12 +188,12 @@ class MappingTableComparator {
     ): array {
         $foreignKeysByName = [];
         $desiredForeignKeys = [
-            $this->schemaNaming->foreignKeyName($tableName, $definition['ownerTable'], $definition['ownerJoinColumn']) => [
+            $this->schemaNaming->foreignKeyName($tableName, $definition['ownerJoinColumn']) => [
                 'column' => $definition['ownerJoinColumn'],
                 'referencedTable' => $definition['ownerTable'],
                 'referencedColumn' => $definition['ownerReferencedColumn'],
             ],
-            $this->schemaNaming->foreignKeyName($tableName, $definition['targetTable'], $definition['targetJoinColumn']) => [
+            $this->schemaNaming->foreignKeyName($tableName, $definition['targetJoinColumn']) => [
                 'column' => $definition['targetJoinColumn'],
                 'referencedTable' => $definition['targetTable'],
                 'referencedColumn' => $definition['targetReferencedColumn'],
@@ -300,7 +304,7 @@ class MappingTableComparator {
         $requiredProperties['id'] = new PropertiesData('int', false, null, null);
         // Add morph columns
         $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
-        $requiredProperties[$definition['idColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
+        $requiredProperties[$definition['idColumn']] = $this->resolveMorphIdColumnType($definition);
         $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
         // Add extra properties
         foreach ($definition['extraProperties'] as $extra) {
@@ -328,7 +332,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_UPDATE,
                 $property,
-                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
             if ($result->hasChanges()) {
                 $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
@@ -342,7 +346,7 @@ class MappingTableComparator {
                 $name,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData($column->type, $column->isNullable, $column->defaultValue, $column->length),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -356,7 +360,7 @@ class MappingTableComparator {
         ];
 
         foreach ($requiredForeignKeys as $column => $target) {
-            $fkName = $this->schemaNaming->foreignKeyName($tableName, $target['table'], $column);
+            $fkName = $this->schemaNaming->foreignKeyName($tableName, $column);
             unset($foreignKeysToRemove[$fkName]);
             if (!isset($existingForeignKeys[$fkName])) {
                 $operation = $operation ?? CompareResult::OPERATION_UPDATE;
@@ -405,8 +409,12 @@ class MappingTableComparator {
         }
 
         foreach ($indexesToRemove as $indexName => $_) {
-            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
             $existingIndex = $existingIndexes[$indexName] ?? [];
+            if ($this->indexComparator->shouldSkipIndexDeletion($indexName, $existingIndex, $definition['primaryColumns'], $existingForeignKeys)) {
+                continue;
+            }
+
+            $operation = $operation ?? CompareResult::OPERATION_UPDATE;
             $indexCompareResults[] = new IndexCompareResult(
                 $indexName,
                 CompareResult::OPERATION_DELETE,
@@ -431,5 +439,23 @@ class MappingTableComparator {
             array_values($foreignKeysByName),
             $definition['primaryColumns'],
         );
+    }
+
+    private function resolveMorphIdColumnType(array $definition): PropertiesData
+    {
+        foreach ($definition['relations'] as $relation) {
+            $rClass = ReflectionCache::getClass($relation->getDeclaringClassName());
+            foreach ($rClass->getProperties() as $property) {
+                if (empty($property->getAttributes(PrimaryKey::class))) {
+                    continue;
+                }
+                $type = $property->getType();
+                if ($type instanceof ReflectionNamedType && $type->getName() === 'string') {
+                    return new PropertiesData('string', false, null, 36, isForeignKey: true);
+                }
+            }
+        }
+
+        return new PropertiesData('int', false, null, null, isForeignKey: true);
     }
 }

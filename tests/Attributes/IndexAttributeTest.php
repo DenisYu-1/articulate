@@ -7,6 +7,8 @@ use Articulate\Attributes\Indexes\Index;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
+use Articulate\Attributes\Relations\ManyToOne;
+use InvalidArgumentException;
 use PHPUnit\Framework\TestCase;
 
 class IndexAttributeTest extends TestCase {
@@ -218,14 +220,45 @@ class IndexAttributeTest extends TestCase {
         $this->assertEquals(['custom_column_name'], $columns);
     }
 
-    public function testResolveColumnsWithoutPropertyAttribute(): void
+    public function testResolveColumnsWithManyToOneRelation(): void
+    {
+        $index = new Index(['order']);
+        $reflectionEntity = new ReflectionEntity(TestIndexOrderItemEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['order_id'], $columns);
+    }
+
+    public function testResolveColumnsWithMixedRelationAndScalarProperty(): void
+    {
+        $index = new Index(['customer', 'status']);
+        $reflectionEntity = new ReflectionEntity(TestIndexOrderEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['customer_id', 'status'], $columns);
+    }
+
+    public function testResolveColumnsHonorsExplicitRelationColumn(): void
+    {
+        $index = new Index(['warehouse']);
+        $reflectionEntity = new ReflectionEntity(TestIndexOrderEntity::class);
+
+        $columns = $index->resolveColumns($reflectionEntity);
+
+        $this->assertEquals(['fulfillment_warehouse_id'], $columns);
+    }
+
+    public function testResolveColumnsWithUnknownPropertyFailsLoudly(): void
     {
         $index = new Index(['noPropertyAttribute']);
         $reflectionEntity = new ReflectionEntity(TestIndexEntity::class);
 
-        $columns = $index->resolveColumns($reflectionEntity);
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Index references unmapped property "noPropertyAttribute"');
 
-        $this->assertEmpty($columns);
+        $index->resolveColumns($reflectionEntity);
     }
 }
 
@@ -250,4 +283,44 @@ class TestIndexEntity {
 
     // Property without Property attribute
     public string $noPropertyAttribute;
+}
+
+#[Entity]
+class TestIndexOrderItemEntity {
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
+
+    #[ManyToOne(targetEntity: TestIndexOrderEntity::class, referencedBy: 'items', column: 'order_id', nullable: false)]
+    public ?TestIndexOrderEntity $order = null;
+}
+
+#[Entity]
+class TestIndexOrderEntity {
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
+
+    #[ManyToOne(targetEntity: TestIndexCustomerEntity::class, column: 'customer_id', nullable: false)]
+    public ?TestIndexCustomerEntity $customer = null;
+
+    #[ManyToOne(targetEntity: TestIndexWarehouseEntity::class, column: 'fulfillment_warehouse_id')]
+    public ?TestIndexWarehouseEntity $warehouse = null;
+
+    #[Property(maxLength: 32)]
+    public string $status = 'open';
+}
+
+#[Entity]
+class TestIndexCustomerEntity {
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
+}
+
+#[Entity]
+class TestIndexWarehouseEntity {
+    #[PrimaryKey]
+    #[Property]
+    public int $id;
 }

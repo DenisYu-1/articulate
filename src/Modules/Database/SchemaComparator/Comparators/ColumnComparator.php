@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareReport;
 use Articulate\Modules\Database\SchemaComparator\Models\ColumnCompareResult;
+use Articulate\Modules\Database\SchemaComparator\Models\ColumnComparisonNormalizer;
 use Articulate\Modules\Database\SchemaComparator\Models\CompareResult;
 use Articulate\Modules\Database\SchemaComparator\Models\PropertiesData;
 use RuntimeException;
@@ -83,16 +84,15 @@ class ColumnComparator {
                     $data['nullable'],
                     $data['default'],
                     $data['length'],
-                    isForeignKey: $data['foreignKeyRequired'],
+                    $data['generatorType'],
+                    $data['sequence'],
+                    $data['isPrimaryKey'],
+                    $data['isAutoIncrement'],
+                    $data['foreignKeyRequired'],
                 ),
-                new PropertiesData(
-                    $column->type,
-                    $column->isNullable,
-                    $column->defaultValue,
-                    $column->length,
-                ),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
-            if (!$result->typeMatch || !$result->isNullableMatch || !$result->isDefaultValueMatch || !$result->isLengthMatch) {
+            if ($result->hasChanges()) {
                 $results[] = $result;
             }
         }
@@ -103,12 +103,7 @@ class ColumnComparator {
                 $columnName,
                 CompareResult::OPERATION_DELETE,
                 new PropertiesData(),
-                new PropertiesData(
-                    $column->type,
-                    $column->isNullable,
-                    $column->defaultValue,
-                    $column->length,
-                ),
+                ColumnComparisonNormalizer::fromDatabaseColumn($column),
             );
         }
 
@@ -168,9 +163,11 @@ class ColumnComparator {
      */
     private function buildColumnProperties(ReflectionProperty|ReflectionRelation $property): array
     {
+        $isPrimaryKey = $property instanceof ReflectionProperty && $property->isPrimaryKey();
+
         return [
             'type' => $this->normalizeTypeName($property->getType()),
-            'nullable' => $property->isNullable(),
+            'nullable' => $isPrimaryKey ? false : $property->isNullable(),
             'default' => $property->getDefaultValue(),
             'length' => $property->getLength(),
             'relation' => $property instanceof ReflectionRelation ? $property : null,
@@ -178,8 +175,10 @@ class ColumnComparator {
             'referencedColumn' => $property instanceof ReflectionRelation ? $property->getReferencedColumnName() : null,
             'generatorType' => $property instanceof ReflectionProperty ? $property->getGeneratorType() : null,
             'sequence' => $property instanceof ReflectionProperty ? $property->getSequence() : null,
-            'isPrimaryKey' => $property instanceof ReflectionProperty ? $property->isPrimaryKey() : false,
+            'isPrimaryKey' => $isPrimaryKey,
             'isAutoIncrement' => $property instanceof ReflectionProperty ? $property->isAutoIncrement() : false,
+            'propertyName' => $property instanceof ReflectionRelation ? $property->getPropertyName() : $property->getFieldName(),
+            'declaringClass' => $property->getDeclaringClassName(),
         ];
     }
 
@@ -205,11 +204,23 @@ class ColumnComparator {
     private function validateRelationConflicts(array $incoming, array $existing, string $columnName, string $tableName): void
     {
         if (($incoming['relation'] !== null) !== ($existing['relation'] !== null)) {
+            [$scalarSide, $relationSide] = $incoming['relation'] !== null
+                ? [$existing, $incoming]
+                : [$incoming, $existing];
+
+            $targetEntity = $relationSide['relation']->getTargetEntity();
+            $relationDescription = $targetEntity !== null
+                ? sprintf('%s::$%s maps it as a relation to %s', $relationSide['declaringClass'], $relationSide['propertyName'], $targetEntity)
+                : sprintf('%s::$%s maps it as a relation', $relationSide['declaringClass'], $relationSide['propertyName']);
+
             throw new RuntimeException(
                 sprintf(
-                    'Column "%s" on table "%s" conflicts between relation and scalar definitions',
+                    'Invalid duplicate mapping for column "%s" on table "%s": %s::$%s maps it as a scalar #[Property], while %s. Relation-owned foreign key columns must not also be mapped as scalar properties. Remove the scalar property, or remove the relation and keep scalar FK access only.',
                     $columnName,
                     $tableName,
+                    $scalarSide['declaringClass'],
+                    $scalarSide['propertyName'],
+                    $relationDescription,
                 ),
             );
         }

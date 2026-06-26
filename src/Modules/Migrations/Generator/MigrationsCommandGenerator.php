@@ -28,12 +28,18 @@ class MigrationsCommandGenerator {
         };
     }
 
-    public function generate(TableCompareResult $compareResult): string
+    /**
+     * @return string[]
+     */
+    public function generate(TableCompareResult $compareResult): array
     {
         return $this->strategy->generate($compareResult);
     }
 
-    public function rollback(TableCompareResult $compareResult): string
+    /**
+     * @return string[]
+     */
+    public function rollback(TableCompareResult $compareResult): array
     {
         return $this->strategy->rollback($compareResult);
     }

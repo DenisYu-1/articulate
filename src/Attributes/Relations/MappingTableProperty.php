@@ -9,6 +9,8 @@ class MappingTableProperty {
         public readonly bool $nullable = false,
         public readonly ?int $length = null,
         public readonly ?string $defaultValue = null,
+        public readonly bool $createdAt = false,
+        public readonly bool $updatedAt = false,
     ) {
     }
 }

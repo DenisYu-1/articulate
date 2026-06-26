@@ -47,6 +47,7 @@ class ChangeAggregatorTest extends TestCase {
             'inserts' => [],
             'updates' => [],
             'deletes' => [],
+            'softDeletes' => [],
         ], $result);
     }
 
@@ -106,6 +107,7 @@ class ChangeAggregatorTest extends TestCase {
             'inserts' => [],
             'updates' => [],
             'deletes' => [],
+            'softDeletes' => [],
         ], $result);
     }
 

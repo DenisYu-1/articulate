@@ -225,6 +225,126 @@ class ExecutionStrategiesTest extends TestCase {
             rmdir($baseDir);
         }
     }
+
+    public function testRollbackStrategyExecutesMatchingMigrationFileInDirectory(): void
+    {
+        $suffix = str_replace('.', '', uniqid('', true));
+        $namespace = 'Articulate\\Tests\\Generated\\Rollback' . $suffix;
+        $className = 'MigrationExecutes' . $suffix;
+        $fullClassName = $namespace . '\\' . $className;
+
+        $tempDir = sys_get_temp_dir() . '/articulate_rollback_exec_' . uniqid();
+        mkdir($tempDir);
+        file_put_contents($tempDir . '/Ignored.txt', '<?php // ignored');
+        $migrationFile = $tempDir . '/' . $className . '.php';
+        file_put_contents($migrationFile, <<<PHP
+<?php
+
+namespace {$namespace};
+
+use Articulate\Modules\Migrations\Generator\BaseMigration;
+
+class {$className} extends BaseMigration {
+    protected function up(): void
+    {
+    }
+
+    protected function down(): void
+    {
+    }
+}
+PHP);
+
+        $strategy = new RollbackExecutionStrategy($this->connection);
+
+        $statement = $this->createStub(\PDOStatement::class);
+        $statement->method('fetch')->willReturn(['name' => $fullClassName]);
+
+        $this->connection->expects($this->exactly(2))
+            ->method('executeQuery')
+            ->with($this->callback(function (string $sql) use ($fullClassName): bool {
+                static $calls = 0;
+                $calls++;
+
+                if ($calls === 1) {
+                    $this->assertSame('SELECT name FROM migrations ORDER BY id DESC LIMIT 1', $sql);
+                } else {
+                    $this->assertSame('DELETE FROM migrations WHERE name = ?', $sql);
+                }
+
+                return true;
+            }), $this->anything())
+            ->willReturnOnConsecutiveCalls($statement, $this->createStub(\PDOStatement::class));
+
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('inTransaction')->willReturn(true);
+        $this->connection->expects($this->once())->method('commit');
+        $this->connection->expects($this->never())->method('rollbackTransaction');
+        $this->io->expects($this->once())
+            ->method('success')
+            ->with("Migration {$fullClassName} rolled back successfully.");
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            $result = $strategy->execute($this->io, [], $iterator, $tempDir);
+
+            $this->assertEquals(0, $result);
+        } finally {
+            unlink($migrationFile);
+            unlink($tempDir . '/Ignored.txt');
+            rmdir($tempDir);
+        }
+    }
+
+    public function testRollbackStrategyFailsWhenMatchingClassIsNotMigration(): void
+    {
+        $suffix = str_replace('.', '', uniqid('', true));
+        $namespace = 'Articulate\\Tests\\Generated\\RollbackInvalid' . $suffix;
+        $className = 'MigrationInvalid' . $suffix;
+        $fullClassName = $namespace . '\\' . $className;
+
+        $tempDir = sys_get_temp_dir() . '/articulate_rollback_invalid_' . uniqid();
+        mkdir($tempDir);
+        $migrationFile = $tempDir . '/' . $className . '.php';
+        file_put_contents($migrationFile, <<<PHP
+<?php
+
+namespace {$namespace};
+
+class {$className} {
+}
+PHP);
+
+        $strategy = new RollbackExecutionStrategy($this->connection);
+
+        $statement = $this->createStub(\PDOStatement::class);
+        $statement->method('fetch')->willReturn(['name' => $fullClassName]);
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->with('SELECT name FROM migrations ORDER BY id DESC LIMIT 1')
+            ->willReturn($statement);
+
+        $this->io->expects($this->once())
+            ->method('warning')
+            ->with("Class {$fullClassName} is not a valid migration");
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator($tempDir, \RecursiveDirectoryIterator::SKIP_DOTS)
+            );
+
+            $result = $strategy->execute($this->io, [], $iterator, $tempDir);
+
+            $this->assertEquals(1, $result);
+        } finally {
+            unlink($migrationFile);
+            rmdir($tempDir);
+        }
+    }
 }
 
 // Mock migration class for testing

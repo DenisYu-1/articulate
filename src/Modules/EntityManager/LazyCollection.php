@@ -45,19 +45,23 @@ class LazyCollection extends Collection {
 
         $this->items = ($this->loader)();
 
-        // replay buffered removals
+        $effectiveRemovals = [];
         foreach ($this->pendingRemovals as $item) {
             $idx = array_search($item, $this->items, true);
             if ($idx !== false) {
                 unset($this->items[$idx]);
+                $effectiveRemovals[] = $item;
             }
         }
         $this->items = array_values($this->items);
 
-        // replay buffered additions
         foreach ($this->pendingAdditions as $item) {
             $this->items[] = $item;
         }
+
+        // Promote to parent tracking so getAddedItems()/getRemovedItems() work post-init
+        $this->addedItems = $this->pendingAdditions;
+        $this->removedItems = $effectiveRemovals;
 
         $this->pendingAdditions = [];
         $this->pendingRemovals = [];
@@ -121,6 +125,33 @@ class LazyCollection extends Collection {
         }
 
         parent::remove($item);
+
+        return $this;
+    }
+
+    public function getAddedItems(): array
+    {
+        if (!$this->initialized) {
+            return $this->pendingAdditions;
+        }
+
+        return parent::getAddedItems();
+    }
+
+    public function getRemovedItems(): array
+    {
+        if (!$this->initialized) {
+            return $this->pendingRemovals;
+        }
+
+        return parent::getRemovedItems();
+    }
+
+    public function markClean(): self
+    {
+        parent::markClean();
+        $this->pendingAdditions = [];
+        $this->pendingRemovals = [];
 
         return $this;
     }

@@ -6,6 +6,7 @@ use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\ReflectionCache;
 use ReflectionNamedType;
 use RuntimeException;
 
@@ -78,9 +79,13 @@ class ReflectionMorphedByMany implements RelationInterface {
 
     public function getTargetJoinColumn(): string
     {
-        $targetEntity = new ReflectionEntity($this->getTargetEntity());
+        if ($this->attribute->targetIdColumn !== null) {
+            return $this->attribute->targetIdColumn;
+        }
+        // Column points to the declaring entity (e.g., Tag), not the target/morphable entity
+        $shortName = ReflectionCache::getClass($this->getDeclaringClassName())->getShortName();
 
-        return $this->schemaNaming->relationColumn($targetEntity->getTableName());
+        return $this->schemaNaming->relationColumn($shortName);
     }
 
     public function getTypeColumn(): string

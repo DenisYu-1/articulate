@@ -86,15 +86,16 @@ class QueryResultExecutor {
     private function hydrateResults(array $rawResults, ?string $entityClass): mixed
     {
         if ($entityClass && $this->hydrator) {
-            $entities = array_map(
-                fn ($row) => $this->hydrator->hydrate($entityClass, $row),
-                $rawResults
-            );
+            $entities = [];
 
-            if ($this->unitOfWork) {
-                foreach ($entities as $entity) {
-                    $this->unitOfWork->registerManaged($entity, []);
+            foreach ($rawResults as $row) {
+                $entity = $this->hydrator->hydrate($entityClass, $row);
+
+                if ($this->unitOfWork && is_object($entity)) {
+                    $this->unitOfWork->registerManaged($entity, $row);
                 }
+
+                $entities[] = $entity;
             }
 
             return $entities;

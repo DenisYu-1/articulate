@@ -33,6 +33,10 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return 'TEXT'; // fallback for unknown types
         }
 
+        if ($propertyData->databaseType !== null) {
+            return strtoupper($propertyData->databaseType);
+        }
+
         $dbType = $this->typeRegistry->getDatabaseType($propertyData->type);
 
         // Handle string types with length
@@ -94,9 +98,11 @@ class MySqlMigrationGenerator extends AbstractMigrationGenerator implements Migr
             return '';
         }
 
-        $algorithm = $this->shouldUseOnlineDDL($compareResult) ? ' ALGORITHM=INPLACE' : '';
+        if ($this->shouldUseOnlineDDL($compareResult)) {
+            $alterParts[] = 'ALGORITHM=INPLACE';
+        }
 
-        return 'ALTER TABLE `' . $compareResult->name . '`' . $algorithm . ' ' . implode(', ', $alterParts);
+        return 'ALTER TABLE `' . $compareResult->name . '` ' . implode(', ', $alterParts);
     }
 
     /**

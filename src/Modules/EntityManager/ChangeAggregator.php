@@ -3,6 +3,7 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Schema\EntityMetadataRegistry;
+use Psr\Log\LoggerInterface;
 
 /**
  * Aggregates and optimizes changes from multiple UnitOfWorks.
@@ -12,12 +13,13 @@ use Articulate\Schema\EntityMetadataRegistry;
  * compatible operations.
  */
 class ChangeAggregator {
-    /** @var array<string, array{insert?: object[], update?: array{entity: object, changes: array}[], delete?: object[]}> */
+    /** @var array<string, array{insert?: object[], update?: array{entity: object, changes: array}[], delete?: object[], softDelete?: object[]}> */
     private array $aggregatedChanges = [];
 
     public function __construct(
         private readonly EntityMetadataRegistry $metadataRegistry,
         private UpdateConflictResolutionStrategy $updateConflictResolutionStrategy,
+        private readonly ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -25,7 +27,7 @@ class ChangeAggregator {
      * Aggregates changes from multiple UnitOfWorks into an optimized execution plan.
      *
      * @param UnitOfWork[] $unitOfWorks
-     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[]}
+     * @return array{inserts: object[], updates: array{entity: object, changes: array}[], deletes: object[], softDeletes: object[]}
      */
     public function aggregateChanges(array $unitOfWorks): array
     {
@@ -44,6 +46,7 @@ class ChangeAggregator {
                 $this->metadataRegistry,
             ),
             'deletes' => $deletes,
+            'softDeletes' => $this->optimizeSoftDeletes(),
         ];
     }
 
@@ -73,6 +76,11 @@ class ChangeAggregator {
         foreach ($changeSets['deletes'] as $entity) {
             $class = $entity::class;
             $this->aggregatedChanges[$class]['delete'][] = $entity;
+        }
+
+        foreach ($changeSets['softDeletes'] as $entity) {
+            $class = $entity::class;
+            $this->aggregatedChanges[$class]['softDelete'][] = $entity;
         }
     }
 
@@ -122,6 +130,13 @@ class ChangeAggregator {
                 }
 
                 // Merge changes - later changes override earlier ones
+                $overwritten = array_keys(array_intersect_key($updatesByEntity[$entityId]['changes'], $update['changes']));
+                if (!empty($overwritten)) {
+                    $this->logger?->debug('ChangeAggregator: overlapping changes for entity {entity}, overwriting keys: {keys}', [
+                        'entity' => $entityId,
+                        'keys' => implode(', ', $overwritten),
+                    ]);
+                }
                 $updatesByEntity[$entityId]['changes'] = array_merge(
                     $updatesByEntity[$entityId]['changes'],
                     $update['changes']
@@ -171,6 +186,22 @@ class ChangeAggregator {
         }
 
         return $deletes;
+    }
+
+    /**
+     * @return object[]
+     */
+    private function optimizeSoftDeletes(): array
+    {
+        $softDeletes = [];
+
+        foreach ($this->aggregatedChanges as $classChanges) {
+            if (isset($classChanges['softDelete'])) {
+                $softDeletes = array_merge($softDeletes, $classChanges['softDelete']);
+            }
+        }
+
+        return $softDeletes;
     }
 
     /**

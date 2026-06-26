@@ -6,4 +6,5 @@ enum EntityState {
     case NEW;      // Entity created but not yet persisted
     case MANAGED;  // Entity loaded from or persisted to database
     case REMOVED;  // Entity marked for deletion
+    case DETACHED; // Entity is no longer tracked by a UnitOfWork
 }

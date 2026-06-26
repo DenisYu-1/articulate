@@ -32,12 +32,12 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
                     numeric_precision,
                     numeric_scale
                 FROM information_schema.columns
-                WHERE table_name = $1
+                WHERE table_name = :table
                   AND table_schema = current_schema()
                 ORDER BY ordinal_position
             ';
 
-            $stmt = $this->connection->executeQuery($query, [$tableName]);
+            $stmt = $this->connection->executeQuery($query, ['table' => $tableName]);
             $typeRegistry = new PostgresqlTypeMapper();
 
             foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $columnInfo) {
@@ -90,13 +90,13 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
             JOIN pg_class c ON c.relname = i.indexname
             JOIN pg_index ix ON ix.indexrelid = c.oid
             JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = ANY(ix.indkey)
-            WHERE i.tablename = $1
+            WHERE i.tablename = :table
               AND i.schemaname = current_schema()
               AND NOT ix.indisprimary
             ORDER BY i.indexname, a.attnum
         ';
 
-        $statement = $this->connection->executeQuery($query, [$tableName]);
+        $statement = $this->connection->executeQuery($query, ['table' => $tableName]);
         $results = $statement->fetchAll(PDO::FETCH_ASSOC);
 
         $indexes = [];
@@ -135,11 +135,11 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
               ON ccu.constraint_name = tc.constraint_name
               AND ccu.table_schema = tc.table_schema
             WHERE tc.constraint_type = \'FOREIGN KEY\'
-              AND tc.table_name = $1
+              AND tc.table_name = :table
               AND tc.table_schema = current_schema()
         ';
 
-        $statement = $this->connection->executeQuery($query, [$tableName]);
+        $statement = $this->connection->executeQuery($query, ['table' => $tableName]);
         $rows = $statement->fetchAll(PDO::FETCH_ASSOC);
 
         $foreignKeys = [];
@@ -197,7 +197,7 @@ class PostgresqlSchemaReader implements DatabaseSchemaReaderInterface {
         // Add length/precision information where available
         if ($columnInfo['character_maximum_length']) {
             $type .= '(' . $columnInfo['character_maximum_length'] . ')';
-        } elseif ($columnInfo['numeric_precision']) {
+        } elseif ($columnInfo['numeric_precision'] && in_array(strtoupper($type), ['NUMERIC', 'DECIMAL'], true)) {
             $precision = $columnInfo['numeric_precision'];
             $scale = $columnInfo['numeric_scale'] ?? 0;
             $type .= "({$precision},{$scale})";

@@ -2,11 +2,11 @@
 
 namespace Articulate\Attributes\Indexes;
 
-use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Attributes\Reflection\ReflectionRelation;
 use Attribute;
-use ReflectionAttribute;
+use InvalidArgumentException;
 
 #[Attribute(Attribute::TARGET_CLASS | Attribute::IS_REPEATABLE)]
 class Index {
@@ -25,16 +25,25 @@ class Index {
         $this->columns = [];
 
         foreach ($this->fields as $propertyName) {
-            $property = $entity->getProperty($propertyName);
+            foreach ($entity->getEntityProperties() as $property) {
+                if ($property instanceof ReflectionProperty && $property->getFieldName() === $propertyName) {
+                    $this->columns[] = $property->getColumnName();
 
-            /** @var ReflectionAttribute<Property>[] $attributes */
-            $attributes = $property->getAttributes(Property::class);
-            if (!empty($attributes)) {
-                /** @var Property $entityProperty */
-                $entityProperty = $attributes[0]->newInstance();
-                $reflectionProperty = new ReflectionProperty($entityProperty, $property);
-                $this->columns[] = $reflectionProperty->getColumnName();
+                    continue 2;
+                }
+
+                if ($property instanceof ReflectionRelation && $property->getPropertyName() === $propertyName) {
+                    $this->columns[] = $property->getColumnName();
+
+                    continue 2;
+                }
             }
+
+            throw new InvalidArgumentException(sprintf(
+                'Index references unmapped property "%s" on entity "%s".',
+                $propertyName,
+                $entity->getName(),
+            ));
         }
 
         return $this->columns;

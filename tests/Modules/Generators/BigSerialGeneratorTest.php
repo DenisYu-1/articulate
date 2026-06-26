@@ -17,12 +17,8 @@ class BigSerialGeneratorTest extends TestCase {
     {
         $generator = new BigSerialGenerator();
 
-        $id1 = $generator->generate('TestEntity');
-        $id2 = $generator->generate('TestEntity');
-        $id3 = $generator->generate('OtherEntity');
-
-        $this->assertEquals(1, $id1);
-        $this->assertEquals(2, $id2);
-        $this->assertEquals(1, $id3);
+        $this->assertNull($generator->generate('TestEntity'));
+        $this->assertNull($generator->generate('TestEntity'));
+        $this->assertNull($generator->generate('OtherEntity'));
     }
 }

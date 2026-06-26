@@ -14,7 +14,7 @@ class TypeMapperTest extends TestCase {
         $mapper = new MySqlTypeMapper();
 
         $this->assertSame('INT', $mapper->getDatabaseType('int'));
-        $this->assertSame('FLOAT', $mapper->getDatabaseType('float'));
+        $this->assertSame('DOUBLE', $mapper->getDatabaseType('float'));
         $this->assertSame('VARCHAR(255)', $mapper->getDatabaseType('string'));
         $this->assertSame('TINYINT(1)', $mapper->getDatabaseType('bool'));
         $this->assertSame('TEXT', $mapper->getDatabaseType('mixed'));
