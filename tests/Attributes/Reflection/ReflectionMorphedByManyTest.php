@@ -2,8 +2,11 @@
 
 namespace Articulate\Tests\Attributes\Reflection;
 
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
 use Articulate\Attributes\Relations\MappingTable;
+use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\MorphedByMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
@@ -12,6 +15,7 @@ use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestEntity;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyPost;
 use Articulate\Tests\Modules\DatabaseSchemaComparator\TestEntities\TestPolymorphicManyToManyTag;
 use ReflectionProperty;
+use RuntimeException;
 
 class ReflectionMorphedByManyTest extends AbstractTestCase {
     /** @var MappingCollection<int, TestEntity> */
@@ -172,6 +176,22 @@ class ReflectionMorphedByManyTest extends AbstractTestCase {
         $this->assertEquals([], $reflection->getExtraProperties());
     }
 
+    public function testGetExtraPropertiesWithMappingTable()
+    {
+        $schemaNaming = new SchemaNaming();
+        $mappingTableProperty = new MappingTableProperty('position', 'int');
+        $mappingTable = new MappingTable('custom_mapping_table', [$mappingTableProperty]);
+        $attribute = new MorphedByMany(
+            TestEntity::class,
+            'taggable',
+            mappingTable: $mappingTable
+        );
+
+        $reflection = new ReflectionMorphedByMany($attribute, $this->reflectionProperty, $schemaNaming);
+
+        $this->assertSame([$mappingTableProperty], $reflection->getExtraProperties());
+    }
+
     public function testGetTargetPrimaryColumn()
     {
         $schemaNaming = new SchemaNaming();
@@ -249,4 +269,96 @@ class ReflectionMorphedByManyTest extends AbstractTestCase {
 
         $this->assertEquals('taggable', $reflection->getMorphName());
     }
+
+    public function testGetTargetPrimaryColumnUsesFirstNonDefaultPrimaryKey()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphedByMany(
+            TestMorphedByManyNonDefaultPrimaryTarget::class,
+            'taggable'
+        );
+        $property = new ReflectionProperty(TestMorphedByManyNonDefaultPrimaryOwner::class, 'targets');
+        $reflection = new ReflectionMorphedByMany($attribute, $property, $schemaNaming);
+
+        $this->assertSame('code', $reflection->getTargetPrimaryColumn());
+    }
+
+    public function testGetOwnerPrimaryColumnUsesFirstNonDefaultPrimaryKey()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphedByMany(
+            TestMorphedByManyNonDefaultPrimaryTarget::class,
+            'taggable'
+        );
+        $property = new ReflectionProperty(TestMorphedByManyNonDefaultPrimaryOwner::class, 'targets');
+        $reflection = new ReflectionMorphedByMany($attribute, $property, $schemaNaming);
+
+        $this->assertSame('owner_code', $reflection->getOwnerPrimaryColumn());
+    }
+
+    public function testGetTargetEntityRejectsInvalidBuiltinCollectionType()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphedByMany(TestEntity::class, 'taggable');
+        $property = new ReflectionProperty(TestMorphedByManyInvalidBuiltinOwner::class, 'targets');
+        $reflection = new ReflectionMorphedByMany($attribute, $property, $schemaNaming);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Morphed-by-many property must be iterable collection');
+
+        $reflection->getTargetEntity();
+    }
+
+    public function testGetTargetEntityRejectsInvalidClassCollectionType()
+    {
+        $schemaNaming = new SchemaNaming();
+        $attribute = new MorphedByMany(TestEntity::class, 'taggable');
+        $property = new ReflectionProperty(TestMorphedByManyInvalidClassOwner::class, 'targets');
+        $reflection = new ReflectionMorphedByMany($attribute, $property, $schemaNaming);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Morphed-by-many property must be array, iterable, or MappingCollection');
+
+        $reflection->getTargetEntity();
+    }
+}
+
+#[Entity]
+class TestMorphedByManyNonDefaultPrimaryTarget {
+    #[PrimaryKey]
+    public int $tenant_id;
+
+    #[PrimaryKey]
+    public string $code;
+}
+
+#[Entity]
+class TestMorphedByManyNonDefaultPrimaryOwner {
+    #[PrimaryKey]
+    public string $owner_code;
+
+    #[PrimaryKey]
+    public int $owner_tenant_id;
+
+    /** @var MappingCollection<int, TestMorphedByManyNonDefaultPrimaryTarget> */
+    #[MorphedByMany(TestMorphedByManyNonDefaultPrimaryTarget::class, 'taggable')]
+    public MappingCollection $targets;
+}
+
+#[Entity]
+class TestMorphedByManyInvalidBuiltinOwner {
+    #[PrimaryKey]
+    public int $id;
+
+    #[MorphedByMany(TestEntity::class, 'taggable')]
+    public string $targets;
+}
+
+#[Entity]
+class TestMorphedByManyInvalidClassOwner {
+    #[PrimaryKey]
+    public int $id;
+
+    #[MorphedByMany(TestEntity::class, 'taggable')]
+    public \stdClass $targets;
 }
