@@ -1,0 +1,155 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, for example v0.1.2'
+        required: true
+        type: string
+      target:
+        description: 'Branch, tag, or SHA to release from'
+        required: true
+        default: 'main'
+        type: string
+      prerelease:
+        description: 'Mark this release as a prerelease'
+        required: true
+        default: false
+        type: boolean
+      generate_notes:
+        description: 'Generate release notes from merged pull requests and commits'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release ${{ github.event.inputs.version }}
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+      DATABASE_HOST: 127.0.0.1
+      DATABASE_HOST_PGSQL: ${{ vars.DATABASE_HOST_PGSQL }}
+      DATABASE_USER: ${{ vars.DATABASE_USER }}
+      DATABASE_NAME: ${{ vars.DATABASE_NAME }}
+      VERSION: ${{ github.event.inputs.version }}
+      TARGET: ${{ github.event.inputs.target }}
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+          MYSQL_DATABASE: ${{ vars.DATABASE_NAME }}
+          MYSQL_USER: ${{ vars.DATABASE_USER }}
+          MYSQL_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      pgsql:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ vars.DATABASE_NAME }}
+          POSTGRES_USER: ${{ vars.DATABASE_USER }}
+          POSTGRES_PASSWORD: ${{ env.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 3
+
+    steps:
+      - name: Validate release version
+        run: |
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Version must look like v1.2.3 or v1.2.3-rc.1."
+            exit 1
+          fi
+
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.target }}
+          fetch-depth: 0
+
+      - name: Ensure tag does not exist
+        run: |
+          if git rev-parse "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists locally."
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists on origin."
+            exit 1
+          fi
+
+      - name: Create .env file
+        run: |
+          cat > .env << EOF
+          DATABASE_HOST=${{ env.DATABASE_HOST }}
+          DATABASE_HOST_PGSQL=${{ env.DATABASE_HOST_PGSQL }}
+          DATABASE_USER=${{ env.DATABASE_USER }}
+          DATABASE_PASSWORD=${{ env.DATABASE_PASSWORD }}
+          DATABASE_NAME=${{ env.DATABASE_NAME }}
+          EOF
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo, pdo_mysql, pdo_pgsql
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+
+      - name: Security audit
+        run: composer audit --no-dev
+
+      - name: Run release checks
+        run: composer qa
+
+      - name: Configure Git
+        run: |
+          git config user.email "action@github.com"
+          git config user.name "GitHub Action"
+
+      - name: Create and push release tag
+        run: |
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GENERATE_NOTES: ${{ github.event.inputs.generate_notes }}
+          PRERELEASE: ${{ github.event.inputs.prerelease }}
+        run: |
+          args=(
+            "$VERSION"
+            --title "$VERSION"
+            --verify-tag
+          )
+
+          if [[ "$GENERATE_NOTES" == "true" ]]; then
+            args+=(--generate-notes)
+          else
+            args+=(--notes "Release $VERSION")
+          fi
+
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+
+          gh release create "${args[@]}"
