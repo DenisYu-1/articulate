@@ -24,6 +24,9 @@ class ObjectHydrator implements HydratorInterface {
 
     private TypeRegistry $typeRegistry;
 
+    /** @var array<string, true> Classes currently being hydrated (cycle guard) */
+    private array $hydrating = [];
+
     public function __construct(
         private readonly EntityRegistrarInterface $entityRegistrar,
         ?RelationshipLoader $relationshipLoader = null,
@@ -223,6 +226,9 @@ class ObjectHydrator implements HydratorInterface {
         $metadata = $this->relationshipLoader->getMetadataRegistry()->getMetadata($entity::class);
         $em = null;
 
+        $entityClass = $entity::class;
+        $this->hydrating[$entityClass] = true;
+        try {
         foreach ($metadata->getRelations() as $relationName => $relation) {
             $prop = ReflectionCache::getProperty($entity::class, $relationName);
             $prop->setAccessible(true);
@@ -243,7 +249,11 @@ class ObjectHydrator implements HydratorInterface {
 
             $isMappingCollectionType = $relation instanceof ReflectionManyToMany && $relation->isMappingCollectionType();
 
-            if (!$relation->isLazy() || in_array($relationName, $with, true) || $isMappingCollectionType) {
+            // If the target entity is already being hydrated up the call stack, force lazy to break the cycle.
+            $targetEntity = $relation->getTargetEntity();
+            $cycleDetected = $targetEntity !== null && isset($this->hydrating[$targetEntity]);
+
+            if (!$cycleDetected && (!$relation->isLazy() || in_array($relationName, $with, true) || $isMappingCollectionType)) {
                 // Eager: load relation immediately.
                 // MappingCollection-typed properties always load eagerly — LazyCollection can't satisfy their type.
                 $relatedData = $this->relationshipLoader->load($entity, $relation, $data);
@@ -300,6 +310,9 @@ class ObjectHydrator implements HydratorInterface {
                 );
                 $prop->setValue($entity, $proxy);
             }
+        }
+        } finally {
+            unset($this->hydrating[$entityClass]);
         }
     }
 
