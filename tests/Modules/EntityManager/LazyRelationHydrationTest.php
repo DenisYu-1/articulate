@@ -93,6 +93,26 @@ class LazyHydrationArticle {
     public ?Collection $tags = null;
 }
 
+// ── Entity with bare-array default on collection relation ─────────────────────
+
+#[Entity(tableName: 'array_default_items')]
+class ArrayDefaultItem {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public ?string $name = null;
+}
+
+#[Entity(tableName: 'array_default_owners')]
+class ArrayDefaultOwner {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[OneToMany(targetEntity: ArrayDefaultItem::class, ownedBy: 'owner')]
+    public array|Collection $items = [];
+}
+
 // ── Eager counterparts (lazy: false, default) ─────────────────────────────────
 
 #[Entity(tableName: 'eager_hydration_authors')]
@@ -415,5 +435,30 @@ class LazyRelationHydrationTest extends TestCase {
         $this->assertInstanceOf(Collection::class, $entity->posts);
         $this->assertNotInstanceOf(LazyCollection::class, $entity->posts);
         $this->assertSame(1, $entity->posts->count());
+    }
+
+    // ─── Array default [] must not block collection hydration ─────────────────
+
+    #[AllowMockObjectsWithoutExpectations]
+    public function testEagerCollectionRelationWrapsArrayDefault(): void
+    {
+        [$hydrator, $loader] = $this->buildHydrator();
+
+        $item = new ArrayDefaultItem();
+        $item->id = 1;
+
+        $loader->expects($this->once())
+            ->method('load')
+            ->willReturn([$item]);
+
+        /** @var ArrayDefaultOwner $entity */
+        $entity = $hydrator->hydrate(ArrayDefaultOwner::class, ['id' => 1]);
+
+        $this->assertInstanceOf(
+            Collection::class,
+            $entity->items,
+            'OneToMany with array|Collection $items = [] default must be wrapped in Collection after hydration',
+        );
+        $this->assertSame(1, $entity->items->count());
     }
 }
