@@ -41,6 +41,10 @@ class WhereClauseBuilder {
             $operator = $operatorOrValue;
         }
 
+        if ($value === null) {
+            return $this->whereNull($columnOrCallback);
+        }
+
         $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
         $this->where[] = [
             'operator' => 'AND',
@@ -78,6 +82,10 @@ class WhereClauseBuilder {
             $operator = '=';
         } else {
             $operator = $operatorOrValue;
+        }
+
+        if ($value === null) {
+            return $this->orWhereNull($columnOrCallback);
         }
 
         $condition = $this->buildConditionFromOperator($columnOrCallback, $operator, $value);
@@ -142,6 +150,18 @@ class WhereClauseBuilder {
     {
         $this->where[] = [
             'operator' => 'AND',
+            'condition' => "{$column} IS NULL",
+            'params' => [],
+            'group' => null,
+        ];
+
+        return $this;
+    }
+
+    public function orWhereNull(string $column): self
+    {
+        $this->where[] = [
+            'operator' => 'OR',
             'condition' => "{$column} IS NULL",
             'params' => [],
             'group' => null,

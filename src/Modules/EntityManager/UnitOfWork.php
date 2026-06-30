@@ -11,6 +11,7 @@ use Articulate\Collection\MappingItem;
 use Articulate\Exceptions\ReadOnlyEntityException;
 use Articulate\Exceptions\ScheduleConflictException;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
+use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Utils\ReflectionCache;
@@ -45,16 +46,20 @@ class UnitOfWork implements EntityRegistrarInterface {
 
     private LifecycleCallbackManager $callbackManager;
 
+    private GeneratorRegistry $generatorRegistry;
+
     public function __construct(
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?LifecycleCallbackManager $callbackManager = null,
-        ?EntityMetadataRegistry $metadataRegistry = null
+        ?EntityMetadataRegistry $metadataRegistry = null,
+        ?GeneratorRegistry $generatorRegistry = null,
     ) {
         $this->identityMap = new IdentityMap();
         $this->entityStates = new \WeakMap();
         $this->metadataRegistry = $metadataRegistry ?? new EntityMetadataRegistry();
         $this->changeTrackingStrategy = $changeTrackingStrategy ?? new DeferredImplicitStrategy($this->metadataRegistry);
         $this->callbackManager = $callbackManager ?? new LifecycleCallbackManager();
+        $this->generatorRegistry = $generatorRegistry ?? new GeneratorRegistry();
     }
 
     public function persist(object $entity): void
@@ -77,6 +82,8 @@ class UnitOfWork implements EntityRegistrarInterface {
         }
 
         if ($state === EntityState::NEW) {
+            $this->preGenerateId($entity);
+
             // Call prePersist callbacks for new entities
             $this->callbackManager->invokeCallbacks($entity, 'prePersist');
 
@@ -472,6 +479,38 @@ class UnitOfWork implements EntityRegistrarInterface {
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];
         $this->scheduledSoftDeletes = [];
+    }
+
+    private function preGenerateId(object $entity): void
+    {
+        $reflectionEntity = new ReflectionEntity($entity::class);
+
+        foreach ($reflectionEntity->getEntityFieldsProperties() as $property) {
+            if (!($property instanceof ArticulateReflectionProperty) || !$property->isPrimaryKey()) {
+                continue;
+            }
+
+            $generatorType = $property->getGeneratorType();
+            if ($generatorType === null) {
+                break;
+            }
+
+            $nativeProp = ReflectionCache::getProperty($entity::class, $property->getFieldName());
+            if ($nativeProp->isInitialized($entity) && $nativeProp->getValue($entity) !== null) {
+                break;
+            }
+
+            $id = $this->generatorRegistry->getGenerator($generatorType)->generate(
+                $entity::class,
+                $property->getGeneratorOptions() ?? []
+            );
+
+            if ($id !== null) {
+                $nativeProp->setValue($entity, $id);
+            }
+
+            break;
+        }
     }
 
     private function assertNoConflictingDelete(object $entity, mixed $id): void

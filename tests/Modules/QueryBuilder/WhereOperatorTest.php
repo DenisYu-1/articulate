@@ -83,6 +83,29 @@ class WhereOperatorTest extends TestCase {
         $this->assertSame($expectedParams, $qb->getParameters());
     }
 
+    public function testWhereNullValueProducesIsNull(): void
+    {
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->where('deleted_at', null);
+
+        $this->assertSame('SELECT * FROM users WHERE deleted_at IS NULL', $qb->getSQL());
+        $this->assertSame([], $qb->getParameters());
+    }
+
+    public function testOrWhereNullValueProducesIsNull(): void
+    {
+        $qb = $this->qb
+            ->select('*')
+            ->from('users')
+            ->where('status', 'active')
+            ->orWhere('deleted_at', null);
+
+        $this->assertSame('SELECT * FROM users WHERE status = ? OR deleted_at IS NULL', $qb->getSQL());
+        $this->assertSame(['active'], $qb->getParameters());
+    }
+
     public function testInvalidOperatorThrows(): void
     {
         $this->expectException(InvalidArgumentException::class);
