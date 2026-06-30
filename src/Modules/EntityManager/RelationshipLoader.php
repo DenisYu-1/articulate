@@ -130,7 +130,7 @@ class RelationshipLoader {
         }
 
         if ($relation->isOneToOne()) {
-            return $this->loadOneToOne($entity, $relation);
+            return $this->loadOneToOne($entity, $relation, $data);
         }
 
         if ($relation->isOneToMany()) {
@@ -138,7 +138,7 @@ class RelationshipLoader {
         }
 
         if ($relation->isManyToOne()) {
-            return $this->loadManyToOne($entity, $relation);
+            return $this->loadManyToOne($entity, $relation, $data);
         }
 
         if ($relation->isManyToMany()) {
@@ -164,9 +164,9 @@ class RelationshipLoader {
     /**
      * Load a OneToOne relationship.
      */
-    private function loadOneToOne(object $entity, ReflectionRelation $relation): ?object
+    private function loadOneToOne(object $entity, ReflectionRelation $relation, array $data = []): ?object
     {
-        $foreignKeyValue = $this->getForeignKeyValue($entity, $relation);
+        $foreignKeyValue = $this->getForeignKeyValue($entity, $relation, $data);
         if ($foreignKeyValue === null) {
             return null;
         }
@@ -213,9 +213,9 @@ class RelationshipLoader {
     /**
      * Load a ManyToOne relationship.
      */
-    private function loadManyToOne(object $entity, ReflectionRelation $relation): ?object
+    private function loadManyToOne(object $entity, ReflectionRelation $relation, array $data = []): ?object
     {
-        $foreignKeyValue = $this->getForeignKeyValue($entity, $relation);
+        $foreignKeyValue = $this->getForeignKeyValue($entity, $relation, $data);
         if ($foreignKeyValue === null) {
             return null;
         }
@@ -403,26 +403,61 @@ class RelationshipLoader {
     /**
      * Get the foreign key value from the entity for the given relationship.
      */
-    private function getForeignKeyValue(object $entity, ReflectionRelation $relation): mixed
+    private function getForeignKeyValue(object $entity, ReflectionRelation $relation, array $data = []): mixed
     {
         $columnName = $relation->getColumnName();
         if (!$columnName) {
             return null;
         }
 
-        // Get the property name for this column
         $entityMetadata = $this->metadataRegistry->getMetadata($entity::class);
         $propertyName = $entityMetadata->getPropertyNameForColumn($columnName);
 
-        if (!$propertyName) {
+        if ($propertyName) {
+            $reflectionProperty = new ReflectionProperty($entity, $propertyName);
+            $reflectionProperty->setAccessible(true);
+
+            return $reflectionProperty->getValue($entity);
+        }
+
+        // Fallback 1: FK value present in raw DB row passed during hydration.
+        if (array_key_exists($columnName, $data)) {
+            return $data[$columnName];
+        }
+
+        // Fallback 2: related object already in memory — read its PK.
+        foreach ($entityMetadata->getColumnRelations() as $colRelation) {
+            if ($colRelation->getColumnName() !== $columnName) {
+                continue;
+            }
+
+            $relProp = new ReflectionProperty($entity, $colRelation->getPropertyName());
+            $relProp->setAccessible(true);
+            $relatedObject = $relProp->getValue($entity);
+
+            if ($relatedObject !== null) {
+                $targetMeta = $this->metadataRegistry->getMetadata($relatedObject::class);
+
+                return $this->getPrimaryKeyValue($relatedObject, $targetMeta);
+            }
+
+            break;
+        }
+
+        // Fallback 3: DB read of the FK column from the owning row.
+        $pkValue = $this->getPrimaryKeyValue($entity, $entityMetadata);
+        if ($pkValue === null) {
             return null;
         }
 
-        // Get the value from the entity
-        $reflectionProperty = new ReflectionProperty($entity, $propertyName);
-        $reflectionProperty->setAccessible(true);
+        $pkColumn = $entityMetadata->getPrimaryKeyColumns()[0];
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select($columnName)
+            ->from($entityMetadata->getTableName())
+            ->where($pkColumn, $pkValue)
+            ->getResult();
 
-        return $reflectionProperty->getValue($entity);
+        return $rows[0][$columnName] ?? null;
     }
 
     /**
