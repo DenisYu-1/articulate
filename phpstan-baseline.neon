@@ -4141,6 +4141,12 @@ parameters:
 			path: tests/Modules/EntityManager/ManyToManyPivotTest.php
 
 		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 2
+			path: tests/Modules/EntityManager/ManyToManyWriteTest.php
+
+		-
 			message: '#^Match arm comparison between ''pgsql'' and ''pgsql'' is always true\.$#'
 			identifier: match.alwaysTrue
 			count: 1

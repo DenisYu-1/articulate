@@ -633,7 +633,7 @@ class QueryExecutor {
                     $relation
                 );
             } else {
-                $this->syncPlainCollection($value, $pivotTable, $foreignKey, $relatedKey, $ownerPk);
+                $this->syncPlainCollection($value, $pivotTable, $foreignKey, $relatedKey, $ownerPk, $relation);
             }
 
             $value->markClean();
@@ -649,17 +649,7 @@ class QueryExecutor {
         ReflectionManyToMany $relation,
     ): void {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-
-        $createdAtCol = null;
-        $updatedAtCol = null;
-        foreach ($relation->getExtraProperties() as $extraProp) {
-            if ($extraProp->createdAt) {
-                $createdAtCol = $extraProp->name;
-            }
-            if ($extraProp->updatedAt) {
-                $updatedAtCol = $extraProp->name;
-            }
-        }
+        [$createdAtCol, $updatedAtCol] = $this->resolveTimestampColumns($relation);
 
         // 1. DELETE removed items
         foreach ($collection->getRemovedItems() as $item) {
@@ -732,7 +722,11 @@ class QueryExecutor {
         string $foreignKey,
         string $relatedKey,
         mixed $ownerPk,
+        ReflectionManyToMany $relation,
     ): void {
+        [$createdAtCol, $updatedAtCol] = $this->resolveTimestampColumns($relation);
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
         foreach ($collection->getRemovedItems() as $entity) {
             [, $relatedPkValues] = $this->buildWhereClause($entity);
             $this->connection->executeQuery(
@@ -743,11 +737,46 @@ class QueryExecutor {
 
         foreach ($collection->getAddedItems() as $entity) {
             [, $relatedPkValues] = $this->buildWhereClause($entity);
+
+            $columns = [$foreignKey, $relatedKey];
+            $values = [$ownerPk, $relatedPkValues[0]];
+
+            if ($createdAtCol !== null) {
+                $columns[] = $createdAtCol;
+                $values[] = $now;
+            }
+            if ($updatedAtCol !== null) {
+                $columns[] = $updatedAtCol;
+                $values[] = $now;
+            }
+
             $this->connection->executeQuery(
-                "INSERT INTO {$pivotTable} ({$foreignKey}, {$relatedKey}) VALUES (?, ?)",
-                [$ownerPk, $relatedPkValues[0]]
+                sprintf(
+                    'INSERT INTO %s (%s) VALUES (%s)',
+                    $pivotTable,
+                    implode(', ', $columns),
+                    implode(', ', array_fill(0, count($values), '?'))
+                ),
+                $values
             );
         }
+    }
+
+    /** @return array{?string, ?string} [$createdAtCol, $updatedAtCol] */
+    private function resolveTimestampColumns(ReflectionManyToMany $relation): array
+    {
+        $createdAtCol = null;
+        $updatedAtCol = null;
+        foreach ($relation->getExtraProperties() as $extraProp) {
+            if ($extraProp->createdAt) {
+                $createdAtCol = $extraProp->name;
+            }
+            if ($extraProp->updatedAt) {
+                $updatedAtCol = $extraProp->name;
+            }
+        }
+
+        return [$createdAtCol, $updatedAtCol];
     }
 
     /**
