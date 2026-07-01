@@ -8,6 +8,7 @@ use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Collection\MappingItem;
+use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use ReflectionProperty;
@@ -436,7 +437,11 @@ class RelationshipLoader {
             $relatedObject = $relProp->getValue($entity);
 
             if ($relatedObject !== null) {
-                $targetMeta = $this->metadataRegistry->getMetadata($relatedObject::class);
+                if ($relatedObject instanceof ProxyInterface) {
+                    return $relatedObject->getProxyIdentifier();
+                }
+
+                $targetMeta = $this->metadataRegistry->getMetadata($colRelation->getTargetEntity());
 
                 return $this->getPrimaryKeyValue($relatedObject, $targetMeta);
             }
@@ -445,6 +450,12 @@ class RelationshipLoader {
         }
 
         // Fallback 3: DB read of the FK column from the owning row.
+        // Only a genuine last resort for entities constructed in code (never hydrated).
+        // During hydration $data is non-empty and Fallback 1 should have caught it.
+        if ($data !== []) {
+            return null;
+        }
+
         $pkValue = $this->getPrimaryKeyValue($entity, $entityMetadata);
         if ($pkValue === null) {
             return null;

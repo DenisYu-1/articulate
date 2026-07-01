@@ -80,6 +80,23 @@ class ProxyGenerator {
         $proxy = new $proxyClassName();
         $proxy->_initializeProxy($entityClass, $identifier, $initializer, $proxyManager);
 
+        // Also set the PK PHP property so direct access (e.g. $proxy->id) returns the identifier
+        // without triggering a DB load. The proxy otherwise stores it only in $_identifier.
+        if ($identifier !== null) {
+            try {
+                $metadata = $this->metadataRegistry->getMetadata($entityClass);
+                $pkColumns = $metadata->getPrimaryKeyColumns();
+                $pkProp = !empty($pkColumns) ? $metadata->getPropertyNameForColumn($pkColumns[0]) : null;
+                if ($pkProp !== null) {
+                    $rp = new \ReflectionProperty($entityClass, $pkProp);
+                    $rp->setAccessible(true);
+                    $rp->setValue($proxy, $identifier);
+                }
+            } catch (\Throwable) {
+                // Metadata unavailable — identifier still accessible via getProxyIdentifier()
+            }
+        }
+
         return $proxy;
     }
 

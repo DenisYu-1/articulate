@@ -8,6 +8,7 @@ use Articulate\Attributes\Property;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
+use Articulate\QueryLogger\QueryLoggerInterface;
 use Articulate\Tests\AbstractTestCase;
 use Exception;
 
@@ -20,7 +21,7 @@ class FkOnlyTarget {
     public string $label = '';
 }
 
-// Owning side: FK column declared via #[OneToOne(column:)] only — no #[Property(name:'target_id')].
+// Owning side: FK column declared via #[OneToOne(column:)] only, lazy load.
 #[Entity(tableName: 'fk_only_owners')]
 class FkOnlyOwner {
     #[PrimaryKey]
@@ -30,6 +31,19 @@ class FkOnlyOwner {
     public string $name = 'owner';
 
     #[OneToOne(targetEntity: FkOnlyTarget::class, column: 'target_id', lazy: true)]
+    public ?FkOnlyTarget $target = null;
+}
+
+// Owning side: FK column declared via #[OneToOne(column:)] only, eager load.
+#[Entity(tableName: 'fk_only_owners')]
+class FkOnlyOwnerEager {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name = 'owner';
+
+    #[OneToOne(targetEntity: FkOnlyTarget::class, column: 'target_id', lazy: false)]
     public ?FkOnlyTarget $target = null;
 }
 
@@ -95,8 +109,6 @@ class OneToOneFkColumnOnlyTest extends AbstractTestCase {
             /** @var FkOnlyOwner $reloaded */
             $reloaded = $em->find(FkOnlyOwner::class, $ownerId);
             $this->assertInstanceOf(FkOnlyOwner::class, $reloaded);
-            // lazy — not eagerly loaded
-            $this->assertNull($reloaded->target);
 
             $loaded = $em->loadRelation($reloaded, 'target');
 
@@ -129,6 +141,52 @@ class OneToOneFkColumnOnlyTest extends AbstractTestCase {
             $loaded = $em->loadRelation($reloaded, 'target');
 
             $this->assertNull($loaded);
+        });
+    }
+
+    /**
+     * Eager OneToOne with FK-only column must cost exactly 2 queries:
+     * one for the owner row, one for the target row — no extra FK lookup SELECT.
+     */
+    public function testEagerOneToOneDoesNotIssueExtraFkLookupQuery(): void
+    {
+        $this->runTestForAllDatabases(function (Connection $connection, string $databaseName) {
+            $em = new EntityManager($connection);
+
+            $target = new FkOnlyTarget();
+            $target->label = 'eager-target';
+
+            $owner = new FkOnlyOwnerEager();
+            $owner->target = $target;
+
+            $em->persist($target);
+            $em->persist($owner);
+            $em->flush();
+
+            $ownerId = $owner->id;
+            $targetId = $target->id;
+            $em->clear();
+
+            $logger = new class implements QueryLoggerInterface {
+                public int $count = 0;
+                public function log(string $sql, array $parameters, float $durationMs): void {
+                    $this->count++;
+                }
+            };
+            $connection->setQueryLogger($logger);
+
+            /** @var FkOnlyOwnerEager $reloaded */
+            $reloaded = $em->find(FkOnlyOwnerEager::class, $ownerId);
+
+            $this->assertSame(2, $logger->count, 'Expected exactly 2 queries (owner row + target row)');
+            $this->assertInstanceOf(FkOnlyOwnerEager::class, $reloaded);
+            $this->assertInstanceOf(FkOnlyTarget::class, $reloaded->target);
+            $this->assertSame($targetId, $reloaded->target->id);
+            $this->assertSame('eager-target', $reloaded->target->label);
+
+            $connection->setQueryLogger(new class implements QueryLoggerInterface {
+                public function log(string $sql, array $parameters, float $durationMs): void {}
+            });
         });
     }
 
