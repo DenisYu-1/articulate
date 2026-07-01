@@ -13,6 +13,7 @@ use Articulate\Collection\MappingItem;
 use Articulate\Modules\EntityManager\Collection;
 use Articulate\Modules\EntityManager\EntityManager;
 use Articulate\Tests\DatabaseTestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 // ── Fixture entities ──────────────────────────────────────────────────────────
@@ -61,6 +62,33 @@ class WriteTestTag {
 
     #[Property]
     public string $name;
+}
+
+#[Entity(tableName: 'pt_roles')]
+class PlainTimestampRole {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $label;
+}
+
+#[Entity(tableName: 'pt_users')]
+class PlainTimestampUser {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+
+    #[ManyToMany(
+        targetEntity: PlainTimestampRole::class,
+        mappingTable: new MappingTable(
+            name: 'pt_user_roles',
+            properties: [new MappingTableProperty(name: 'created_at', createdAt: true)]
+        )
+    )]
+    public ?Collection $roles = null;
 }
 
 // ── Test class ────────────────────────────────────────────────────────────────
@@ -335,5 +363,47 @@ class ManyToManyWriteTest extends DatabaseTestCase {
         $rows = $this->pivotRows('wt_user_tags');
         $this->assertCount(1, $rows);
         $this->assertSame($tag2->id, (int) $rows[0]['wt_tags_id']);
+    }
+
+    #[DataProvider('databaseProvider')]
+    #[Group('database')]
+    public function testPlainCollectionWithCreatedAtFillsTimestamp(string $databaseName): void
+    {
+        $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
+        $this->cleanUpTables(['pt_user_roles', 'pt_users', 'pt_roles']);
+
+        $idCol = match ($databaseName) {
+            'mysql' => 'INT PRIMARY KEY AUTO_INCREMENT',
+            'pgsql' => 'SERIAL PRIMARY KEY',
+        };
+        $tsCol = match ($databaseName) {
+            'mysql' => 'DATETIME NOT NULL',
+            'pgsql' => 'TIMESTAMP NOT NULL',
+        };
+
+        $this->currentConnection->executeQuery("CREATE TABLE pt_users (id {$idCol}, name VARCHAR(255) NOT NULL)");
+        $this->currentConnection->executeQuery("CREATE TABLE pt_roles (id {$idCol}, label VARCHAR(255) NOT NULL)");
+        $this->currentConnection->executeQuery(
+            "CREATE TABLE pt_user_roles (pt_users_id INT NOT NULL, pt_roles_id INT NOT NULL, created_at {$tsCol})"
+        );
+
+        $em = new EntityManager($this->currentConnection);
+
+        $role = new PlainTimestampRole();
+        $role->label = 'admin';
+
+        $user = new PlainTimestampUser();
+        $user->name = 'Ivan';
+        $user->roles = new Collection([$role]);
+
+        $em->persist($role);
+        $em->persist($user);
+        $em->flush();
+
+        $rows = $this->currentConnection->executeQuery('SELECT * FROM pt_user_roles')->fetchAll();
+        $this->assertCount(1, $rows);
+        $this->assertSame($user->id, (int) $rows[0]['pt_users_id']);
+        $this->assertSame($role->id, (int) $rows[0]['pt_roles_id']);
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/', $rows[0]['created_at']);
     }
 }
