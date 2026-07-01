@@ -167,9 +167,11 @@ class OneToOneFkColumnOnlyTest extends AbstractTestCase {
             $targetId = $target->id;
             $em->clear();
 
-            $logger = new class implements QueryLoggerInterface {
+            $logger = new class() implements QueryLoggerInterface {
                 public int $count = 0;
-                public function log(string $sql, array $parameters, float $durationMs): void {
+
+                public function log(string $sql, array $parameters, float $durationMs): void
+                {
                     $this->count++;
                 }
             };
@@ -184,8 +186,10 @@ class OneToOneFkColumnOnlyTest extends AbstractTestCase {
             $this->assertSame($targetId, $reloaded->target->id);
             $this->assertSame('eager-target', $reloaded->target->label);
 
-            $connection->setQueryLogger(new class implements QueryLoggerInterface {
-                public function log(string $sql, array $parameters, float $durationMs): void {}
+            $connection->setQueryLogger(new class() implements QueryLoggerInterface {
+                public function log(string $sql, array $parameters, float $durationMs): void
+                {
+                }
             });
         });
     }
