@@ -242,8 +242,8 @@ class ObjectHydrator implements HydratorInterface {
 
             if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
                 $existing = $prop->getValue($entity);
-                // For collection relations, skip if already a Collection or a pre-initialized array (caller owns it).
-                if (!$isCollectionRelation || $existing instanceof Collection || is_array($existing)) {
+                // For collection relations, skip only if already a proper Collection — not a bare array default.
+                if (!$isCollectionRelation || $existing instanceof Collection) {
                     continue;
                 }
             }

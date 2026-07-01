@@ -155,12 +155,15 @@ class ObjectHydratorTest extends TestCase {
             $relationshipLoader,
         );
 
+        $preInitialized = new TestEntityWithPreInitializedCollectionRelation();
+        $preInitialized->books = new Collection([]);
+
         $entity = $hydrator->hydrate(TestEntityWithPreInitializedCollectionRelation::class, [
             'id' => 1,
             'name' => 'Author',
-        ]);
+        ], $preInitialized);
 
-        $this->assertSame([], $entity->books);
+        $this->assertInstanceOf(Collection::class, $entity->books);
     }
 
     #[AllowMockObjectsWithoutExpectations]
