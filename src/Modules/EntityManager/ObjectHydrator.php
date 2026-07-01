@@ -240,13 +240,13 @@ class ObjectHydrator implements HydratorInterface {
                     || ($relation instanceof ReflectionRelation
                         && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
 
-            if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
-                $existing = $prop->getValue($entity);
-                // For collection relations, skip if already a Collection or a pre-initialized array (caller owns it).
-                if (!$isCollectionRelation || $existing instanceof Collection || is_array($existing)) {
-                    continue;
+                if ($prop->isInitialized($entity) && $prop->getValue($entity) !== null) {
+                    $existing = $prop->getValue($entity);
+                    // For collection relations, skip if already a Collection or a pre-initialized array (caller owns it).
+                    if (!$isCollectionRelation || $existing instanceof Collection || is_array($existing)) {
+                        continue;
+                    }
                 }
-            }
 
                 $isMappingCollectionType = $relation instanceof ReflectionManyToMany && $relation->isMappingCollectionType();
 
