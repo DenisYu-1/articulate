@@ -51,8 +51,8 @@ class EagerCycleDetectionTest extends TestCase {
     public function testMutualEagerManyToManyDoesNotOverflowStack(): void
     {
         $unitOfWork = $this->createStub(UnitOfWork::class);
-        $em         = $this->createStub(EntityManager::class);
-        $loader     = $this->createMock(RelationshipLoader::class);
+        $em = $this->createStub(EntityManager::class);
+        $loader = $this->createMock(RelationshipLoader::class);
 
         $loader->method('getMetadataRegistry')->willReturn($this->registry);
         $loader->method('getEntityManager')->willReturn($em);
@@ -65,9 +65,11 @@ class EagerCycleDetectionTest extends TestCase {
         $loader->method('load')
             ->willReturnCallback(static function (object $entity) use ($hydrator): array {
                 if ($entity instanceof CycleAlpha) {
-                    $beta     = $hydrator->hydrate(CycleBeta::class, ['id' => 10]);
+                    $beta = $hydrator->hydrate(CycleBeta::class, ['id' => 10]);
+
                     return [$beta];
                 }
+
                 // Should never be reached eagerly for CycleBeta → cycle guard blocks it.
                 return [];
             });
