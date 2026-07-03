@@ -32,9 +32,6 @@ class QueryExecutor {
     /** @var EntityMetadata[] */
     private array $entityMetadataCache = [];
 
-    /** @var array<string, bool> */
-    private array $pivotHasIdColumnCache = [];
-
     public function __construct(
         private Connection $connection,
         private GeneratorRegistry $generatorRegistry
@@ -711,7 +708,6 @@ class QueryExecutor {
             }
             $columns = array_merge($columns, array_keys($pivotData));
             $values = array_merge($values, array_values($pivotData));
-            $this->appendMorphTechnicalId($pivotTable, $columns, $values, $typeColumn);
 
             if ($createdAtCol !== null) {
                 $columns[] = $createdAtCol;
@@ -802,7 +798,6 @@ class QueryExecutor {
                 $columns[] = $typeColumn;
                 $values[] = $typeValue;
             }
-            $this->appendMorphTechnicalId($pivotTable, $columns, $values, $typeColumn);
 
             if ($createdAtCol !== null) {
                 $columns[] = $createdAtCol;
@@ -823,40 +818,6 @@ class QueryExecutor {
                 $values
             );
         }
-    }
-
-    private function appendMorphTechnicalId(string $pivotTable, array &$columns, array &$values, ?string $typeColumn): void
-    {
-        if ($typeColumn === null || in_array('id', $columns, true) || !$this->pivotHasIdColumn($pivotTable)) {
-            return;
-        }
-
-        $result = $this->connection->executeQuery("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM {$pivotTable}")->fetch();
-        $columns[] = 'id';
-        $values[] = (int) ($result['next_id'] ?? 1);
-    }
-
-    private function pivotHasIdColumn(string $pivotTable): bool
-    {
-        $driver = $this->connection->getDriverName();
-        $cacheKey = $driver . ':' . $pivotTable;
-        if (array_key_exists($cacheKey, $this->pivotHasIdColumnCache)) {
-            return $this->pivotHasIdColumnCache[$cacheKey];
-        }
-
-        $sql = match ($driver) {
-            Connection::MYSQL => "SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = 'id' LIMIT 1",
-            Connection::PGSQL => "SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = ? AND column_name = 'id' LIMIT 1",
-            default => null,
-        };
-
-        if ($sql === null) {
-            return $this->pivotHasIdColumnCache[$cacheKey] = false;
-        }
-
-        $row = $this->connection->executeQuery($sql, [$pivotTable])->fetch();
-
-        return $this->pivotHasIdColumnCache[$cacheKey] = $row !== false;
     }
 
     /** @return array{?string, ?string} [$createdAtCol, $updatedAtCol] */

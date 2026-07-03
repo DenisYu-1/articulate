@@ -336,7 +336,7 @@ class MappingTableComparatorTest extends TestCase {
             'targetTable' => 'tags',
             'targetReferencedColumn' => 'id',
             'extraProperties' => [],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -348,10 +348,10 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertEquals('taggables', $result->name);
         $this->assertEquals(CompareResult::OPERATION_CREATE, $result->operation);
 
-        // Should have columns: id, taggable_type, taggable_id, tag_id
-        $this->assertCount(4, $result->columns);
+        // Should have columns: taggable_type, taggable_id, tag_id
+        $this->assertCount(3, $result->columns);
         $columnNames = array_map(fn ($col) => $col->name, $result->columns);
-        $this->assertContains('id', $columnNames);
+        $this->assertNotContains('id', $columnNames);
         $this->assertContains('taggable_type', $columnNames);
         $this->assertContains('taggable_id', $columnNames);
         $this->assertContains('tag_id', $columnNames);
@@ -365,7 +365,7 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertEquals('taggable_type_taggable_id_index', $result->indexes[0]->name);
 
         // Should have primary columns
-        $this->assertEquals(['id'], $result->primaryColumns);
+        $this->assertEquals(['taggable_type', 'taggable_id', 'tag_id'], $result->primaryColumns);
     }
 
     public function testCompareMorphToManyTableCreatesNewTableWithExtraProperties(): void
@@ -382,7 +382,7 @@ class MappingTableComparatorTest extends TestCase {
                 new MappingTableProperty('notes', 'text', true, null, null),
                 new MappingTableProperty('priority', 'int', false, null, 0),
             ],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['commentable_type', 'commentable_id', 'comment_id'],
             'relations' => [],
         ];
 
@@ -393,10 +393,10 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertInstanceOf(TableCompareResult::class, $result);
         $this->assertEquals(CompareResult::OPERATION_CREATE, $result->operation);
 
-        // Should have 6 columns: id, type, id, target, notes, priority
-        $this->assertCount(6, $result->columns);
+        // Should have 5 columns: type, id, target, notes, priority
+        $this->assertCount(5, $result->columns);
         $columnNames = array_map(fn ($col) => $col->name, $result->columns);
-        $this->assertContains('id', $columnNames);
+        $this->assertNotContains('id', $columnNames);
         $this->assertContains('commentable_type', $columnNames);
         $this->assertContains('commentable_id', $columnNames);
         $this->assertContains('comment_id', $columnNames);
@@ -404,7 +404,7 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertContains('priority', $columnNames);
     }
 
-    public function testCompareMorphToManyTableCreatesAutoIncrementTechnicalIdForCompositePrimaryKey(): void
+    public function testCompareMorphToManyTableDoesNotCreateTechnicalIdForCompositePrimaryKey(): void
     {
         $definition = [
             'tableName' => 'taggables',
@@ -430,13 +430,10 @@ class MappingTableComparatorTest extends TestCase {
             }
         }
 
-        $this->assertNotNull($idColumn);
-        $this->assertTrue($idColumn->propertyData->isAutoIncrement);
+        $this->assertNull($idColumn);
         $this->assertEquals(['taggable_type', 'taggable_id', 'tag_id'], $result->primaryColumns);
-        $this->assertCount(2, $result->indexes);
-        $this->assertEquals('id_index', $result->indexes[0]->name);
-        $this->assertEquals(['id'], $result->indexes[0]->columns);
-        $this->assertEquals('taggable_type_taggable_id_index', $result->indexes[1]->name);
+        $this->assertCount(1, $result->indexes);
+        $this->assertEquals('taggable_type_taggable_id_index', $result->indexes[0]->name);
     }
 
     public function testCompareMorphToManyTableUpdatesExistingTable(): void
@@ -452,7 +449,7 @@ class MappingTableComparatorTest extends TestCase {
             'extraProperties' => [
                 new MappingTableProperty('created_at', 'datetime', true, null, null),
             ],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -461,7 +458,6 @@ class MappingTableComparatorTest extends TestCase {
         // Mock existing table structure
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
                 (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
@@ -513,7 +509,7 @@ class MappingTableComparatorTest extends TestCase {
             'targetTable' => 'tags',
             'targetReferencedColumn' => 'id',
             'extraProperties' => [],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -522,7 +518,6 @@ class MappingTableComparatorTest extends TestCase {
         // Mock existing table that matches definition exactly
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
                 (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
@@ -561,7 +556,7 @@ class MappingTableComparatorTest extends TestCase {
             'targetTable' => 'tags',
             'targetReferencedColumn' => 'id',
             'extraProperties' => [],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -569,7 +564,6 @@ class MappingTableComparatorTest extends TestCase {
 
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
                 (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
@@ -587,7 +581,7 @@ class MappingTableComparatorTest extends TestCase {
         $this->databaseSchemaReader->method('getTableIndexes')
             ->willReturn([
                 'PRIMARY' => [
-                    'columns' => ['id'],
+                    'columns' => ['taggable_type', 'taggable_id', 'tag_id'],
                     'unique' => true,
                 ],
                 'taggable_type_taggable_id_index' => [
@@ -635,7 +629,7 @@ class MappingTableComparatorTest extends TestCase {
             'extraProperties' => [
                 new MappingTableProperty('created_at', 'datetime', false, null, null), // created_at - not nullable
             ],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -644,7 +638,6 @@ class MappingTableComparatorTest extends TestCase {
         // Mock existing table with nullable created_at
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
                 (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
@@ -735,7 +728,7 @@ class MappingTableComparatorTest extends TestCase {
             'targetTable' => 'tags',
             'targetReferencedColumn' => 'id',
             'extraProperties' => [],
-            'primaryColumns' => ['id'],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
             'relations' => [],
         ];
 
@@ -744,7 +737,6 @@ class MappingTableComparatorTest extends TestCase {
         // Mock existing table missing the morph index
         $this->databaseSchemaReader->method('getTableColumns')
             ->willReturn([
-                (object) ['name' => 'id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'taggable_type', 'type' => 'string', 'isNullable' => false, 'defaultValue' => null, 'length' => 255],
                 (object) ['name' => 'taggable_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],
                 (object) ['name' => 'tag_id', 'type' => 'int', 'isNullable' => false, 'defaultValue' => null, 'length' => null],

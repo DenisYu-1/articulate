@@ -169,6 +169,53 @@ $em->persist($loginUser); // throws
 
 Useful for processing large datasets, complex business operations spanning multiple contexts, and long-running processes with varying entity lifecycles.
 
+### Polymorphic Many-To-Many Relations
+
+Use `MorphToMany` / `MorphedByMany` when several entity types share one pivot table, such as tagging orders and customers through `taggables`.
+
+```php
+use Articulate\Attributes\Relations\MorphedByMany;
+use Articulate\Attributes\Relations\MorphToMany;
+use Articulate\Attributes\Relations\MorphTypeRegistry;
+use Articulate\Modules\EntityManager\Collection;
+
+MorphTypeRegistry::register(TaggableOrder::class, 'order');
+MorphTypeRegistry::register(TaggableCustomer::class, 'customer');
+
+#[Entity(tableName: 'orders')]
+class TaggableOrder
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[MorphToMany(targetEntity: Tag::class, name: 'taggable', targetIdColumn: 'tag_id')]
+    public Collection $tags;
+}
+
+#[Entity(tableName: 'tags')]
+class Tag
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[MorphedByMany(targetEntity: TaggableOrder::class, name: 'taggable', targetIdColumn: 'tag_id')]
+    public array $orders;
+}
+
+$order->tags->add($tag);
+$em->flush(); // inserts into taggables using taggable_type = 'order'
+```
+
+The pivot table uses `{name}_type`, `{name}_id`, and the target id column:
+
+```sql
+taggables(taggable_type, taggable_id, tag_id)
+```
+
+Registered morph aliases are used for owning and inverse relation loading. If no alias is registered, Articulate falls back to storing and loading the full entity class name.
+
+When Articulate generates a polymorphic pivot schema, it uses the composite key (`taggable_type`, `taggable_id`, `tag_id`) as the relation identity. A separate technical `id` column is not required for collection loading or persistence.
+
 ## Type Mapping System
 
 Built-in mappings: `bool` ↔ `TINYINT(1)`, `int` ↔ `INT`, `float` ↔ `FLOAT`, `string` ↔ `VARCHAR(255)`, `DateTimeInterface` ↔ `DATETIME`.

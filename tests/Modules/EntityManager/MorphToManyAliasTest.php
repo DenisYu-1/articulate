@@ -59,7 +59,6 @@ class MorphToManyAliasTest extends DatabaseTestCase {
         );
         $this->currentConnection->executeQuery(
             'CREATE TABLE taggables (
-                id INT NOT NULL,
                 tag_id INT NOT NULL,
                 taggable_type VARCHAR(255) NOT NULL,
                 taggable_id INT NOT NULL,
@@ -135,7 +134,6 @@ class MorphToManyAliasTest extends DatabaseTestCase {
         $rows = $this->currentConnection->executeQuery('SELECT * FROM taggables')->fetchAll();
 
         $this->assertCount(1, $rows);
-        $this->assertSame(1, (int) $rows[0]['id']);
         $this->assertSame($tag->id, (int) $rows[0]['tag_id']);
         $this->assertSame('post', $rows[0]['taggable_type']);
         $this->assertSame($post->id, (int) $rows[0]['taggable_id']);
@@ -149,8 +147,8 @@ class MorphToManyAliasTest extends DatabaseTestCase {
         $this->currentConnection->executeQuery('INSERT INTO mtm_alias_tags (name) VALUES (?)', ['Tag']);
         $tagId = (int) $this->currentConnection->executeQuery('SELECT LAST_INSERT_ID() as id')->fetch()['id'];
         $this->currentConnection->executeQuery(
-            'INSERT INTO taggables (id, tag_id, taggable_type, taggable_id) VALUES (?, ?, ?, ?)',
-            [1, $tagId, $type, $postId]
+            'INSERT INTO taggables (tag_id, taggable_type, taggable_id) VALUES (?, ?, ?)',
+            [$tagId, $type, $postId]
         );
 
         $post = new MorphAliasPost();
