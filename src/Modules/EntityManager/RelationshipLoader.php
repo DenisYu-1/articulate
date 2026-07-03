@@ -7,6 +7,7 @@ use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
+use Articulate\Attributes\Relations\MorphTypeRegistry;
 use Articulate\Collection\MappingItem;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadata;
@@ -286,7 +287,7 @@ class RelationshipLoader {
         $pivotResults = $this->entityManager->createQueryBuilder()
             ->select($relation->getTargetJoinColumn())
             ->from($relation->getTableName())
-            ->where($relation->getTypeColumn(), $entity::class)
+            ->where($relation->getTypeColumn(), MorphTypeRegistry::getAlias($entity::class))
             ->where($relation->getOwnerJoinColumn(), $ownerPK)
             ->getResult();
 
@@ -314,7 +315,7 @@ class RelationshipLoader {
         $pivotResults = $this->entityManager->createQueryBuilder()
             ->select($relation->getOwnerJoinColumn())
             ->from($relation->getTableName())
-            ->where($relation->getTypeColumn(), $targetEntity)
+            ->where($relation->getTypeColumn(), MorphTypeRegistry::getAlias($targetEntity))
             ->where($relation->getTargetJoinColumn(), $ownerPK)
             ->getResult();
 

@@ -5,6 +5,8 @@ namespace Articulate\Modules\EntityManager;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphedByMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty as ArticulateReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Collection\MappingCollection;
@@ -236,7 +238,9 @@ class ObjectHydrator implements HydratorInterface {
 
                 // ── Determine whether this relation is a collection type ───────────
                 $isManyToMany = $relation instanceof ReflectionManyToMany;
+                $isMorphManyToMany = $relation instanceof ReflectionMorphToMany || $relation instanceof ReflectionMorphedByMany;
                 $isCollectionRelation = $isManyToMany
+                    || $isMorphManyToMany
                     || ($relation instanceof ReflectionRelation
                         && ($relation->isOneToMany() || $relation->isManyToMany() || $relation->isMorphMany()));
 
@@ -261,8 +265,11 @@ class ObjectHydrator implements HydratorInterface {
                     if (is_array($relatedData)) {
                         if ($isMappingCollectionType) {
                             $relatedData = new MappingCollection($relatedData);
-                        } elseif ($isManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany())) {
-                            $relatedData = (new Collection($relatedData))->markClean();
+                        } elseif ($isManyToMany || $isMorphManyToMany || ($relation instanceof ReflectionRelation && $relation->isOneToMany())) {
+                            $propertyType = $prop->getType();
+                            if (!$propertyType instanceof ReflectionNamedType || $propertyType->getName() !== 'array') {
+                                $relatedData = (new Collection($relatedData))->markClean();
+                            }
                         }
                     }
                     $prop->setValue($entity, $relatedData);
@@ -274,6 +281,13 @@ class ObjectHydrator implements HydratorInterface {
                 $em ??= $this->relationshipLoader->getEntityManager();
 
                 if ($isCollectionRelation) {
+                    $propertyType = $prop->getType();
+                    if ($propertyType instanceof ReflectionNamedType && $propertyType->getName() === 'array') {
+                        $prop->setValue($entity, []);
+
+                        continue;
+                    }
+
                     // Collection — wrap in a LazyCollection with optional COUNT optimisation.
                     $loader = fn () => $this->relationshipLoader->load($entity, $relation);
                     $countLoader = ($isManyToMany
