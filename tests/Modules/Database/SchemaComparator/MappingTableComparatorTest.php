@@ -404,6 +404,41 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertContains('priority', $columnNames);
     }
 
+    public function testCompareMorphToManyTableCreatesAutoIncrementTechnicalIdForCompositePrimaryKey(): void
+    {
+        $definition = [
+            'tableName' => 'taggables',
+            'morphName' => 'taggable',
+            'typeColumn' => 'taggable_type',
+            'idColumn' => 'taggable_id',
+            'targetColumn' => 'tag_id',
+            'targetTable' => 'tags',
+            'targetReferencedColumn' => 'id',
+            'extraProperties' => [],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
+            'relations' => [],
+        ];
+
+        $result = $this->comparator->compareMorphToManyTable($definition, ['tags']);
+
+        $this->assertInstanceOf(TableCompareResult::class, $result);
+        $idColumn = null;
+        foreach ($result->columns as $column) {
+            if ($column->name === 'id') {
+                $idColumn = $column;
+                break;
+            }
+        }
+
+        $this->assertNotNull($idColumn);
+        $this->assertTrue($idColumn->propertyData->isAutoIncrement);
+        $this->assertEquals(['taggable_type', 'taggable_id', 'tag_id'], $result->primaryColumns);
+        $this->assertCount(2, $result->indexes);
+        $this->assertEquals('id_index', $result->indexes[0]->name);
+        $this->assertEquals(['id'], $result->indexes[0]->columns);
+        $this->assertEquals('taggable_type_taggable_id_index', $result->indexes[1]->name);
+    }
+
     public function testCompareMorphToManyTableUpdatesExistingTable(): void
     {
         $definition = [

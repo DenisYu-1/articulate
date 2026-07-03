@@ -300,8 +300,8 @@ class MappingTableComparator {
         }
 
         $requiredProperties = [];
-        // Add ID column (auto-increment primary key)
-        $requiredProperties['id'] = new PropertiesData('int', false, null, null);
+        // Add technical ID column. The morph identity remains the composite primary key.
+        $requiredProperties['id'] = new PropertiesData('int', false, null, null, isAutoIncrement: true);
         // Add morph columns
         $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
         $requiredProperties[$definition['idColumn']] = $this->resolveMorphIdColumnType($definition);
@@ -394,6 +394,15 @@ class MappingTableComparator {
                 'unique' => false,
             ],
         ];
+        if (!in_array('id', $definition['primaryColumns'], true)) {
+            $requiredIndexes = [
+                'id_index' => [
+                    'columns' => ['id'],
+                    'unique' => false,
+                ],
+                ...$requiredIndexes,
+            ];
+        }
 
         foreach ($requiredIndexes as $indexName => $indexDef) {
             unset($indexesToRemove[$indexName]);
