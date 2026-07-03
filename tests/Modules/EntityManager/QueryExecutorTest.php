@@ -7,6 +7,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\QueryExecutor;
+use Articulate\Modules\Generators\GeneratorInterface;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use PHPUnit\Framework\TestCase;
 
@@ -24,6 +25,15 @@ class QueryExecutorTestEntity {
 
 #[Entity]
 class QueryExecutorTestEntityWithoutId {
+    #[Property]
+    public string $name;
+}
+
+#[Entity]
+class QueryExecutorUuidEntity {
+    #[PrimaryKey(generator: 'uuid_v4')]
+    public ?string $id = null;
+
     #[Property]
     public string $name;
 }
@@ -59,6 +69,35 @@ class QueryExecutorTest extends TestCase {
         $result = $this->queryExecutor->executeInsert($entity);
 
         $this->assertEquals(1, $result);
+    }
+
+    public function testExecuteInsertGeneratesAndAssignsUuidId(): void
+    {
+        $generatedId = '4f123ec8-f1b7-4956-9f08-6dfb89d9014f';
+        $generator = $this->createStub(GeneratorInterface::class);
+        $generator->method('generate')->willReturn($generatedId);
+
+        $this->generatorRegistry = $this->createMock(GeneratorRegistry::class);
+        $this->generatorRegistry->expects($this->once())
+            ->method('getGenerator')
+            ->with('uuid_v4')
+            ->willReturn($generator);
+        $this->queryExecutor = new QueryExecutor($this->connection, $this->generatorRegistry);
+
+        $entity = new QueryExecutorUuidEntity();
+        $entity->name = 'Generated Entity';
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->with(
+                $this->stringContains('INSERT INTO'),
+                $this->equalTo(['Generated Entity', $generatedId])
+            );
+
+        $result = $this->queryExecutor->executeInsert($entity);
+
+        $this->assertSame($generatedId, $result);
+        $this->assertSame($generatedId, $entity->id);
     }
 
     public function testExecuteInsertWithNullValues(): void

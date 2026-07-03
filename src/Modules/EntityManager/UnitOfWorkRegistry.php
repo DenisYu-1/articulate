@@ -2,7 +2,6 @@
 
 namespace Articulate\Modules\EntityManager;
 
-use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadataRegistry;
 use InvalidArgumentException;
 
@@ -19,9 +18,8 @@ class UnitOfWorkRegistry {
         private readonly bool $usesDefaultChangeTrackingStrategy,
         private readonly LifecycleCallbackManager $callbackManager,
         private readonly EntityMetadataRegistry $metadataRegistry,
-        private readonly GeneratorRegistry $generatorRegistry = new GeneratorRegistry(),
     ) {
-        $initialUow = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry, $this->generatorRegistry);
+        $initialUow = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $initialUow;
         $this->activeUnitOfWork = $initialUow;
     }
@@ -41,7 +39,7 @@ class UnitOfWorkRegistry {
 
     public function create(): UnitOfWork
     {
-        $unitOfWork = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry, $this->generatorRegistry);
+        $unitOfWork = new UnitOfWork($this->createChangeTrackingStrategy(), $this->callbackManager, $this->metadataRegistry);
         $this->unitOfWorks[] = $unitOfWork;
 
         return $unitOfWork;

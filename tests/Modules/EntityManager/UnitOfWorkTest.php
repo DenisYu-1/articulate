@@ -25,6 +25,15 @@ class UnitOfWorkTestEntity {
     public string $name;
 }
 
+#[Entity]
+class UnitOfWorkUuidEntity {
+    #[PrimaryKey(generator: 'uuid_v4')]
+    public ?string $id = null;
+
+    #[Property]
+    public string $name;
+}
+
 class UnitOfWorkTest extends TestCase {
     private UnitOfWork $unitOfWork;
 
@@ -51,6 +60,18 @@ class UnitOfWorkTest extends TestCase {
         $this->unitOfWork->persist($entity);
 
         $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
+    }
+
+    public function testPersistDoesNotPreGenerateUuidId(): void
+    {
+        $entity = new UnitOfWorkUuidEntity();
+        $entity->name = 'Generated later';
+
+        $this->unitOfWork->persist($entity);
+
+        $this->assertNull($entity->id);
+        $this->assertEquals(EntityState::MANAGED, $this->unitOfWork->getEntityState($entity));
+        $this->assertContains($entity, $this->unitOfWork->getChangeSets()['inserts']);
     }
 
     public function testPersistAlreadyManagedEntity(): void

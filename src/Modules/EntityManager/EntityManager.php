@@ -84,7 +84,6 @@ class EntityManager {
             $usesDefaultChangeTrackingStrategy,
             $this->callbackManager,
             $this->metadataRegistry,
-            $this->generatorRegistry,
         );
 
         $this->relationshipLoader = new RelationshipLoader($this, $this->metadataRegistry);
