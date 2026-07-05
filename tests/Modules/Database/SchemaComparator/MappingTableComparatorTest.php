@@ -426,6 +426,7 @@ class MappingTableComparatorTest extends TestCase {
         foreach ($result->columns as $column) {
             if ($column->name === 'id') {
                 $idColumn = $column;
+
                 break;
             }
         }
