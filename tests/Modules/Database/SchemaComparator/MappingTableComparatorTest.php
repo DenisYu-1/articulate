@@ -348,10 +348,10 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertEquals('taggables', $result->name);
         $this->assertEquals(CompareResult::OPERATION_CREATE, $result->operation);
 
-        // Should have columns: taggable_type, taggable_id, tag_id
-        $this->assertCount(3, $result->columns);
+        // Should have columns: taggable_type, taggable_id, tag_id, id
+        $this->assertCount(4, $result->columns);
         $columnNames = array_map(fn ($col) => $col->name, $result->columns);
-        $this->assertNotContains('id', $columnNames);
+        $this->assertContains('id', $columnNames);
         $this->assertContains('taggable_type', $columnNames);
         $this->assertContains('taggable_id', $columnNames);
         $this->assertContains('tag_id', $columnNames);
@@ -393,10 +393,10 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertInstanceOf(TableCompareResult::class, $result);
         $this->assertEquals(CompareResult::OPERATION_CREATE, $result->operation);
 
-        // Should have 5 columns: type, id, target, notes, priority
-        $this->assertCount(5, $result->columns);
+        // Should have 6 columns: type, morph id, target, id, notes, priority
+        $this->assertCount(6, $result->columns);
         $columnNames = array_map(fn ($col) => $col->name, $result->columns);
-        $this->assertNotContains('id', $columnNames);
+        $this->assertContains('id', $columnNames);
         $this->assertContains('commentable_type', $columnNames);
         $this->assertContains('commentable_id', $columnNames);
         $this->assertContains('comment_id', $columnNames);
@@ -404,7 +404,7 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertContains('priority', $columnNames);
     }
 
-    public function testCompareMorphToManyTableDoesNotCreateTechnicalIdForCompositePrimaryKey(): void
+    public function testCompareMorphToManyTableCreatesTechnicalIdWithoutChangingCompositePrimaryKey(): void
     {
         $definition = [
             'tableName' => 'taggables',
@@ -430,7 +430,8 @@ class MappingTableComparatorTest extends TestCase {
             }
         }
 
-        $this->assertNull($idColumn);
+        $this->assertNotNull($idColumn);
+        $this->assertEquals(CompareResult::OPERATION_CREATE, $idColumn->operation);
         $this->assertEquals(['taggable_type', 'taggable_id', 'tag_id'], $result->primaryColumns);
         $this->assertCount(1, $result->indexes);
         $this->assertEquals('taggable_type_taggable_id_index', $result->indexes[0]->name);
