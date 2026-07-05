@@ -4,7 +4,9 @@ namespace Articulate\Modules\EntityManager;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Attributes\Reflection\ReflectionManyToMany;
+use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Reflection\ReflectionProperty;
+use Articulate\Attributes\Relations\MorphTypeRegistry;
 use Articulate\Collection\MappingCollection;
 use Articulate\Connection;
 use Articulate\Modules\Generators\GeneratorRegistry;
@@ -595,7 +597,10 @@ class QueryExecutor {
         $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($metadata->getRelations() as $propName => $relation) {
-            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+            if (
+                (!$relation instanceof ReflectionManyToMany && !$relation instanceof ReflectionMorphToMany)
+                || !$relation->isOwningSide()
+            ) {
                 continue;
             }
 
@@ -619,9 +624,19 @@ class QueryExecutor {
             [, $ownerPkValues] = $this->buildWhereClause($entity);
             $ownerPk = $ownerPkValues[0];
 
-            $pivotTable = $relation->getPivotTableName();
-            $foreignKey = $relation->getForeignPivotKey();
-            $relatedKey = $relation->getRelatedPivotKey();
+            $isMorphToMany = $relation instanceof ReflectionMorphToMany;
+
+            $pivotTable = $isMorphToMany
+                ? $relation->getTableName()
+                : $relation->getPivotTableName();
+            $foreignKey = $isMorphToMany
+                ? $relation->getOwnerJoinColumn()
+                : $relation->getForeignPivotKey();
+            $relatedKey = $isMorphToMany
+                ? $relation->getTargetJoinColumn()
+                : $relation->getRelatedPivotKey();
+            $typeColumn = $isMorphToMany ? $relation->getTypeColumn() : null;
+            $typeValue = $isMorphToMany ? MorphTypeRegistry::getAlias($entity::class) : null;
 
             if ($value instanceof MappingCollection) {
                 $this->syncMappingCollection(
@@ -630,10 +645,21 @@ class QueryExecutor {
                     $foreignKey,
                     $relatedKey,
                     $ownerPk,
-                    $relation
+                    $relation,
+                    $typeColumn,
+                    $typeValue
                 );
             } else {
-                $this->syncPlainCollection($value, $pivotTable, $foreignKey, $relatedKey, $ownerPk);
+                $this->syncPlainCollection(
+                    $value,
+                    $pivotTable,
+                    $foreignKey,
+                    $relatedKey,
+                    $ownerPk,
+                    $relation,
+                    $typeColumn,
+                    $typeValue
+                );
             }
 
             $value->markClean();
@@ -646,27 +672,25 @@ class QueryExecutor {
         string $foreignKey,
         string $relatedKey,
         mixed $ownerPk,
-        ReflectionManyToMany $relation,
+        ReflectionManyToMany|ReflectionMorphToMany $relation,
+        ?string $typeColumn = null,
+        ?string $typeValue = null,
     ): void {
         $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
-
-        $createdAtCol = null;
-        $updatedAtCol = null;
-        foreach ($relation->getExtraProperties() as $extraProp) {
-            if ($extraProp->createdAt) {
-                $createdAtCol = $extraProp->name;
-            }
-            if ($extraProp->updatedAt) {
-                $updatedAtCol = $extraProp->name;
-            }
-        }
+        [$createdAtCol, $updatedAtCol] = $this->resolveTimestampColumns($relation);
 
         // 1. DELETE removed items
         foreach ($collection->getRemovedItems() as $item) {
             [, $relatedPkValues] = $this->buildWhereClause($item->entity);
+            $whereParts = ["{$foreignKey} = ?", "{$relatedKey} = ?"];
+            $whereValues = [$ownerPk, $relatedPkValues[0]];
+            if ($typeColumn !== null) {
+                $whereParts[] = "{$typeColumn} = ?";
+                $whereValues[] = $typeValue;
+            }
             $this->connection->executeQuery(
-                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
-                [$ownerPk, $relatedPkValues[0]]
+                "DELETE FROM {$pivotTable} WHERE " . implode(' AND ', $whereParts),
+                $whereValues
             );
         }
 
@@ -676,8 +700,14 @@ class QueryExecutor {
             [, $relatedPkValues] = $this->buildWhereClause($item->entity);
 
             $pivotData = array_diff_key($item->pivot(), array_flip($autoTimestampCols));
-            $columns = array_merge([$foreignKey, $relatedKey], array_keys($pivotData));
-            $values = array_merge([$ownerPk, $relatedPkValues[0]], array_values($pivotData));
+            $columns = [$foreignKey, $relatedKey];
+            $values = [$ownerPk, $relatedPkValues[0]];
+            if ($typeColumn !== null) {
+                $columns[] = $typeColumn;
+                $values[] = $typeValue;
+            }
+            $columns = array_merge($columns, array_keys($pivotData));
+            $values = array_merge($values, array_values($pivotData));
 
             if ($createdAtCol !== null) {
                 $columns[] = $createdAtCol;
@@ -713,15 +743,21 @@ class QueryExecutor {
             }
 
             $setParts = array_map(fn (string $col) => "{$col} = ?", array_keys($changes));
+            $whereParts = ["$foreignKey = ?", "$relatedKey = ?"];
+            $whereValues = [$ownerPk, $relatedPkValues[0]];
+            if ($typeColumn !== null) {
+                $whereParts[] = "$typeColumn = ?";
+                $whereValues[] = $typeValue;
+            }
+
             $this->connection->executeQuery(
                 sprintf(
-                    'UPDATE %s SET %s WHERE %s = ? AND %s = ?',
+                    'UPDATE %s SET %s WHERE %s',
                     $pivotTable,
                     implode(', ', $setParts),
-                    $foreignKey,
-                    $relatedKey
+                    implode(' AND ', $whereParts)
                 ),
-                [...array_values($changes), $ownerPk, $relatedPkValues[0]]
+                [...array_values($changes), ...$whereValues]
             );
         }
     }
@@ -732,22 +768,73 @@ class QueryExecutor {
         string $foreignKey,
         string $relatedKey,
         mixed $ownerPk,
+        ReflectionManyToMany|ReflectionMorphToMany $relation,
+        ?string $typeColumn = null,
+        ?string $typeValue = null,
     ): void {
+        [$createdAtCol, $updatedAtCol] = $this->resolveTimestampColumns($relation);
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+
         foreach ($collection->getRemovedItems() as $entity) {
             [, $relatedPkValues] = $this->buildWhereClause($entity);
+            $whereParts = ["$foreignKey = ?", "$relatedKey = ?"];
+            $whereValues = [$ownerPk, $relatedPkValues[0]];
+            if ($typeColumn !== null) {
+                $whereParts[] = "$typeColumn = ?";
+                $whereValues[] = $typeValue;
+            }
             $this->connection->executeQuery(
-                "DELETE FROM {$pivotTable} WHERE {$foreignKey} = ? AND {$relatedKey} = ?",
-                [$ownerPk, $relatedPkValues[0]]
+                "DELETE FROM {$pivotTable} WHERE " . implode(' AND ', $whereParts),
+                $whereValues
             );
         }
 
         foreach ($collection->getAddedItems() as $entity) {
             [, $relatedPkValues] = $this->buildWhereClause($entity);
+
+            $columns = [$foreignKey, $relatedKey];
+            $values = [$ownerPk, $relatedPkValues[0]];
+            if ($typeColumn !== null) {
+                $columns[] = $typeColumn;
+                $values[] = $typeValue;
+            }
+
+            if ($createdAtCol !== null) {
+                $columns[] = $createdAtCol;
+                $values[] = $now;
+            }
+            if ($updatedAtCol !== null) {
+                $columns[] = $updatedAtCol;
+                $values[] = $now;
+            }
+
             $this->connection->executeQuery(
-                "INSERT INTO {$pivotTable} ({$foreignKey}, {$relatedKey}) VALUES (?, ?)",
-                [$ownerPk, $relatedPkValues[0]]
+                sprintf(
+                    'INSERT INTO %s (%s) VALUES (%s)',
+                    $pivotTable,
+                    implode(', ', $columns),
+                    implode(', ', array_fill(0, count($values), '?'))
+                ),
+                $values
             );
         }
+    }
+
+    /** @return array{?string, ?string} [$createdAtCol, $updatedAtCol] */
+    private function resolveTimestampColumns(ReflectionManyToMany|ReflectionMorphToMany $relation): array
+    {
+        $createdAtCol = null;
+        $updatedAtCol = null;
+        foreach ($relation->getExtraProperties() as $extraProp) {
+            if ($extraProp->createdAt) {
+                $createdAtCol = $extraProp->name;
+            }
+            if ($extraProp->updatedAt) {
+                $updatedAtCol = $extraProp->name;
+            }
+        }
+
+        return [$createdAtCol, $updatedAtCol];
     }
 
     /**
@@ -759,11 +846,28 @@ class QueryExecutor {
         $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         foreach ($metadata->getRelations() as $relation) {
-            if (!$relation instanceof ReflectionManyToMany || !$relation->isOwningSide()) {
+            if (
+                (!$relation instanceof ReflectionManyToMany && !$relation instanceof ReflectionMorphToMany)
+                || !$relation->isOwningSide()
+            ) {
                 continue;
             }
 
             [, $ownerPkValues] = $this->buildWhereClause($entity);
+
+            if ($relation instanceof ReflectionMorphToMany) {
+                $this->connection->executeQuery(
+                    sprintf(
+                        'DELETE FROM %s WHERE %s = ? AND %s = ?',
+                        $relation->getTableName(),
+                        $relation->getOwnerJoinColumn(),
+                        $relation->getTypeColumn()
+                    ),
+                    [$ownerPkValues[0], MorphTypeRegistry::getAlias($entity::class)]
+                );
+
+                continue;
+            }
 
             $this->connection->executeQuery(
                 sprintf('DELETE FROM %s WHERE %s = ?', $relation->getPivotTableName(), $relation->getForeignPivotKey()),

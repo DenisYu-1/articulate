@@ -48,7 +48,7 @@ class UnitOfWork implements EntityRegistrarInterface {
     public function __construct(
         ?ChangeTrackingStrategy $changeTrackingStrategy = null,
         ?LifecycleCallbackManager $callbackManager = null,
-        ?EntityMetadataRegistry $metadataRegistry = null
+        ?EntityMetadataRegistry $metadataRegistry = null,
     ) {
         $this->identityMap = new IdentityMap();
         $this->entityStates = new \WeakMap();

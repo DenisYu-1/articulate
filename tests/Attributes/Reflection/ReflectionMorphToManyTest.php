@@ -7,6 +7,7 @@ use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\Reflection\ReflectionMorphToMany;
 use Articulate\Attributes\Relations\MappingTable;
+use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Collection\MappingCollection;
 use Articulate\Tests\AbstractTestCase;
@@ -160,16 +161,15 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
     public function testGetExtraPropertiesWithMappingTable(): void
     {
-        // This test ensures null-safe access when mapping table is not configured
         $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
-        $mappingTable = new MappingTable(name: 'custom_table');
+        $mappingTableProperty = new MappingTableProperty('position', 'int');
+        $mappingTable = new MappingTable(name: 'custom_table', properties: [$mappingTableProperty]);
         $attribute = new MorphToMany(TestTagEntity::class, 'taggable', mappingTable: $mappingTable);
         $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
 
         $extraProperties = $reflection->getExtraProperties();
 
-        // Should return empty array when mappingTable exists but has no properties
-        $this->assertEquals([], $extraProperties);
+        $this->assertSame([$mappingTableProperty], $extraProperties);
     }
 
     public function testGetTargetPrimaryColumnWithEntityHavingMultiplePrimaryKeys(): void
@@ -196,6 +196,53 @@ class ReflectionMorphToManyTest extends AbstractTestCase {
 
         // Should return the first primary key column
         $this->assertEquals('id', $primaryColumn);
+    }
+
+    public function testGetTargetPrimaryColumnUsesFirstNonDefaultPrimaryKey(): void
+    {
+        $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
+        $attribute = new MorphToMany(TestEntityWithNonDefaultPrimaryKeys::class, 'taggable');
+        $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
+
+        $this->assertSame('code', $reflection->getTargetPrimaryColumn());
+    }
+
+    public function testGetOwnerPrimaryColumnUsesFirstNonDefaultPrimaryKey(): void
+    {
+        $reflectionProperty = new \ReflectionProperty(TestEntityWithNonDefaultPrimaryKeys::class, 'tags');
+        $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
+        $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
+
+        $this->assertSame('code', $reflection->getOwnerPrimaryColumn());
+    }
+
+    public function testConstructorResolvesDefaultColumnNames(): void
+    {
+        $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
+        $attribute = new MorphToMany(TestTagEntity::class, 'taggable');
+        $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
+
+        $this->assertSame('taggable_type', $reflection->getTypeColumn());
+        $this->assertSame('taggable_id', $reflection->getOwnerJoinColumn());
+        $this->assertSame('test_tag_entity_id', $attribute->getTargetIdColumn());
+    }
+
+    public function testConstructorKeepsCustomColumnNames(): void
+    {
+        $reflectionProperty = new \ReflectionProperty(TestEntityWithMorphToManyValid::class, 'tags');
+        $attribute = new MorphToMany(
+            TestTagEntity::class,
+            'taggable',
+            typeColumn: 'custom_type',
+            idColumn: 'custom_owner_id',
+            targetIdColumn: 'custom_target_id',
+        );
+        $reflection = new ReflectionMorphToMany($attribute, $reflectionProperty);
+
+        $this->assertSame('custom_type', $reflection->getTypeColumn());
+        $this->assertSame('custom_owner_id', $reflection->getOwnerJoinColumn());
+        $this->assertSame('custom_target_id', $reflection->getTargetJoinColumn());
+        $this->assertSame('custom_target_id', $attribute->getTargetIdColumn());
     }
 }
 
@@ -300,6 +347,18 @@ class TestEntityWithMultiplePrimaryKeys {
 
     #[Property]
     public string $name;
+
+    #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
+    public array $tags;
+}
+
+#[Entity]
+class TestEntityWithNonDefaultPrimaryKeys {
+    #[PrimaryKey]
+    public int $tenant_id;
+
+    #[PrimaryKey]
+    public string $code;
 
     #[MorphToMany(targetEntity: TestTagEntity::class, name: 'taggable')]
     public array $tags;

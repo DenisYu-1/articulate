@@ -278,77 +278,23 @@ class MappingTableComparator {
     public function compareMorphToManyTable(array $definition, array $existingTables): ?TableCompareResult
     {
         $tableName = $definition['tableName'];
-        $operation = null;
-
-        $columnsIndexed = [];
-        $existingForeignKeys = [];
-        $foreignKeysToRemove = [];
-        $existingIndexes = [];
-        $indexesToRemove = [];
-
-        if (!in_array($tableName, $existingTables, true)) {
-            $operation = TableCompareResult::OPERATION_CREATE;
-        } else {
-            $existingColumns = $this->databaseSchemaReader->getTableColumns($tableName);
-            foreach ($existingColumns as $column) {
-                $columnsIndexed[$column->name] = $column;
-            }
-            $existingForeignKeys = $this->databaseSchemaReader->getTableForeignKeys($tableName);
-            $foreignKeysToRemove = array_fill_keys(array_keys($existingForeignKeys), true);
-            $existingIndexes = $this->indexComparator->removePrimaryIndex($this->databaseSchemaReader->getTableIndexes($tableName));
-            $indexesToRemove = array_fill_keys(array_keys($existingIndexes), true);
-        }
+        [$operation, $columnsIndexed, $existingForeignKeys, $foreignKeysToRemove, $existingIndexes, $indexesToRemove] =
+            $this->initializeMappingTableState($tableName, $existingTables);
 
         $requiredProperties = [];
-        // Add ID column (auto-increment primary key)
-        $requiredProperties['id'] = new PropertiesData('int', false, null, null);
         // Add morph columns
         $requiredProperties[$definition['typeColumn']] = new PropertiesData('string', false, null, 255);
         $requiredProperties[$definition['idColumn']] = $this->resolveMorphIdColumnType($definition);
         $requiredProperties[$definition['targetColumn']] = new PropertiesData('int', false, null, null, isForeignKey: true);
+        if ($operation === TableCompareResult::OPERATION_CREATE || isset($columnsIndexed['id'])) {
+            $requiredProperties['id'] = new PropertiesData('int', false);
+        }
         // Add extra properties
         foreach ($definition['extraProperties'] as $extra) {
             $requiredProperties[$extra->name] = new PropertiesData($extra->type, $extra->nullable, $extra->defaultValue, $extra->length);
         }
 
-        $columnsCompareResults = [];
-        $columnsToDelete = array_diff_key($columnsIndexed, $requiredProperties);
-        $columnsToCreate = array_diff_key($requiredProperties, $columnsIndexed);
-        $columnsToUpdate = array_intersect_key($requiredProperties, $columnsIndexed);
-
-        foreach ($columnsToCreate as $name => $property) {
-            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
-            $columnsCompareResults[] = new ColumnCompareResult(
-                $name,
-                CompareResult::OPERATION_CREATE,
-                $property,
-                new PropertiesData(),
-            );
-        }
-
-        foreach ($columnsToUpdate as $name => $property) {
-            $column = $columnsIndexed[$name];
-            $result = new ColumnCompareResult(
-                $name,
-                CompareResult::OPERATION_UPDATE,
-                $property,
-                ColumnComparisonNormalizer::fromDatabaseColumn($column),
-            );
-            if ($result->hasChanges()) {
-                $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
-                $columnsCompareResults[] = $result;
-            }
-        }
-
-        foreach ($columnsToDelete as $name => $column) {
-            $operation = $operation ?? TableCompareResult::OPERATION_UPDATE;
-            $columnsCompareResults[] = new ColumnCompareResult(
-                $name,
-                CompareResult::OPERATION_DELETE,
-                new PropertiesData(),
-                ColumnComparisonNormalizer::fromDatabaseColumn($column),
-            );
-        }
+        $columnsCompareResults = $this->compareColumnsForMapping($requiredProperties, $columnsIndexed, $operation);
 
         // Handle foreign keys - only create FK to target table for polymorphic relationships
         $foreignKeysByName = [];

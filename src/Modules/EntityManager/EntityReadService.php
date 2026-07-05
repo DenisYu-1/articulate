@@ -197,6 +197,10 @@ class EntityReadService {
             if ($relation->isMorphTo()) {
                 $columnNames[] = $relation->getMorphTypeColumnName();
                 $columnNames[] = $relation->getMorphIdColumnName();
+            } elseif (!$relation->isLazy() && $relation->isOwningSide() && $relation->getColumnName() !== null && !in_array($relation->getColumnName(), $columnNames, true)) {
+                // Include FK column for eager owning-side relations so Fallback 1 in getForeignKeyValue
+                // can resolve the FK from the already-fetched row without an extra SELECT.
+                $columnNames[] = $relation->getColumnName();
             }
         }
 
