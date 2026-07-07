@@ -5,9 +5,10 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
+use Articulate\Modules\EntityManager\UnitOfWork;
+use Articulate\Modules\EntityManager\UnitOfWorkRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Schema\EntityMetadataRegistry;
-use Articulate\Schema\EntityRegistrarInterface;
 use Articulate\Schema\HydratorInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -55,7 +56,9 @@ class QueryBuilder {
 
     private array $groupBy = [];
 
-    private ?EntityRegistrarInterface $unitOfWork = null;
+    private ?UnitOfWorkRegistry $unitOfWorkRegistry = null;
+
+    private ?UnitOfWork $unitOfWork = null;
 
     private bool $lockForUpdate = false;
 
@@ -92,7 +95,7 @@ class QueryBuilder {
         $this->cursorCodec = new CursorCodec();
         $this->filters = $filters ?? new FilterCollection();
         $this->cursorPaginationHandler = new CursorPaginationHandler($this->cursorCodec, $metadataRegistry);
-        $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null);
+        $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null, null, $metadataRegistry);
         $this->dmlHandler = new DmlOperationHandler($metadataRegistry);
         $this->whereBuilder = new WhereClauseBuilder(
             fn () => $this->createSubQueryBuilder(),
@@ -634,7 +637,14 @@ class QueryBuilder {
     {
         $this->hydrator = $hydrator;
         $this->hydratorExplicitlySet = true;
-        $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $hydrator, $this->unitOfWork);
+        $this->resultExecutor = new QueryResultExecutor(
+            $this->connection,
+            $this->resultCache,
+            $hydrator,
+            $this->unitOfWorkRegistry,
+            $this->unitOfWork,
+            $this->metadataRegistry
+        );
 
         return $this;
     }
@@ -647,10 +657,34 @@ class QueryBuilder {
     /**
      * Set the UnitOfWork that will manage entities retrieved by this query.
      */
-    public function setUnitOfWork(?EntityRegistrarInterface $unitOfWork): self
+    public function setUnitOfWork(?UnitOfWork $unitOfWork): self
     {
+        $this->unitOfWorkRegistry = null;
         $this->unitOfWork = $unitOfWork;
-        $this->resultExecutor = new QueryResultExecutor($this->connection, $this->resultCache, $this->hydrator, $unitOfWork);
+        $this->resultExecutor = new QueryResultExecutor(
+            $this->connection,
+            $this->resultCache,
+            $this->hydrator,
+            null,
+            $unitOfWork,
+            $this->metadataRegistry
+        );
+
+        return $this;
+    }
+
+    public function setUnitOfWorkRegistry(UnitOfWorkRegistry $unitOfWorkRegistry): self
+    {
+        $this->unitOfWorkRegistry = $unitOfWorkRegistry;
+        $this->unitOfWork = null;
+        $this->resultExecutor = new QueryResultExecutor(
+            $this->connection,
+            $this->resultCache,
+            $this->hydrator,
+            $unitOfWorkRegistry,
+            null,
+            $this->metadataRegistry
+        );
 
         return $this;
     }

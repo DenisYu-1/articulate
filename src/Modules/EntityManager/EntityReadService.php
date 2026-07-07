@@ -131,7 +131,7 @@ class EntityReadService {
             $this->filters,
             $this->statementCache,
         );
-        $qb->setUnitOfWork($this->unitOfWorkRegistry->active());
+        $qb->setUnitOfWorkRegistry($this->unitOfWorkRegistry);
         $qb->setResultCacheGeneration($this->cacheCoordinator->readQueryCacheGeneration());
 
         if ($entityClass) {

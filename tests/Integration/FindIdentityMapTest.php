@@ -112,4 +112,35 @@ class FindIdentityMapTest extends AbstractTestCase {
         $this->assertNotNull($second);
         $this->assertSame($first, $second, 'find() must return the same object instance (identity map)');
     }
+
+    #[DataProvider('databaseProvider')]
+    public function testQueryBuilderReturnsManagedInstance(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $em = new EntityManager($connection);
+
+        $user = new FindIdentityMapUser();
+        $user->name = 'Carol';
+
+        $em->persist($user);
+        $em->flush();
+
+        $id = $user->id;
+        $this->assertNotNull($id);
+
+        $managed = $em->find(FindIdentityMapUser::class, $id);
+        $this->assertNotNull($managed);
+        $this->assertSame($managed, $em->find(FindIdentityMapUser::class, $id));
+
+        $managed->name = 'Updated In Memory';
+
+        $results = $em->createQueryBuilder(FindIdentityMapUser::class)
+            ->where('id', $id)
+            ->getResult();
+
+        $this->assertIsArray($results);
+        $this->assertCount(1, $results);
+        $this->assertSame($managed, $results[0]);
+        $this->assertSame('Updated In Memory', $results[0]->name);
+    }
 }
