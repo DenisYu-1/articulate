@@ -2,8 +2,8 @@
 
 namespace Articulate\Modules\EntityManager;
 
-use Articulate\Schema\ManagedEntityStoreInterface;
 use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\ManagedEntityStoreInterface;
 use InvalidArgumentException;
 
 class UnitOfWorkRegistry implements ManagedEntityStoreInterface {
