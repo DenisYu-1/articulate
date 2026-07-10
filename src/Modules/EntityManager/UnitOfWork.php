@@ -12,10 +12,10 @@ use Articulate\Exceptions\ReadOnlyEntityException;
 use Articulate\Exceptions\ScheduleConflictException;
 use Articulate\Modules\EntityManager\Proxy\ProxyInterface;
 use Articulate\Schema\EntityMetadataRegistry;
-use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 use Articulate\Utils\ReflectionCache;
 
-class UnitOfWork implements EntityRegistrarInterface {
+class UnitOfWork implements ManagedEntityStoreInterface {
     private IdentityMap $identityMap;
 
     private ChangeTrackingStrategy $changeTrackingStrategy;

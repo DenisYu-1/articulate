@@ -2,10 +2,11 @@
 
 namespace Articulate\Modules\EntityManager;
 
+use Articulate\Schema\ManagedEntityStoreInterface;
 use Articulate\Schema\EntityMetadataRegistry;
 use InvalidArgumentException;
 
-class UnitOfWorkRegistry {
+class UnitOfWorkRegistry implements ManagedEntityStoreInterface {
     /** @var UnitOfWork[] */
     private array $unitOfWorks = [];
 
@@ -35,6 +36,11 @@ class UnitOfWorkRegistry {
     public function active(): UnitOfWork
     {
         return $this->activeUnitOfWork;
+    }
+
+    public function registerManaged(object $entity, array $rawData): void
+    {
+        $this->activeUnitOfWork->registerManaged($entity, $rawData);
     }
 
     public function create(): UnitOfWork
@@ -114,6 +120,18 @@ class UnitOfWorkRegistry {
         }
 
         return EntityState::NEW;
+    }
+
+    public function tryGetById(string $class, mixed $id): ?object
+    {
+        foreach ($this->unitOfWorks as $unitOfWork) {
+            $entity = $unitOfWork->tryGetById($class, $id);
+            if ($entity !== null) {
+                return $entity;
+            }
+        }
+
+        return null;
     }
 
     private function createChangeTrackingStrategy(): ChangeTrackingStrategy

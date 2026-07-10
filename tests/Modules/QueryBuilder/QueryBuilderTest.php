@@ -5,7 +5,6 @@ namespace Articulate\Tests\Modules\QueryBuilder;
 use Articulate\Attributes\Entity;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\EntityManager;
-use Articulate\Modules\EntityManager\UnitOfWork;
 use Articulate\Modules\QueryBuilder\QueryBuilder;
 use Articulate\Modules\Repository\Criteria\AndCriteria;
 use Articulate\Modules\Repository\Criteria\EqualsCriteria;
@@ -13,6 +12,7 @@ use Articulate\Modules\Repository\Criteria\GreaterThanCriteria;
 use Articulate\Modules\Repository\Criteria\LessThanCriteria;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 use Articulate\Tests\DatabaseTestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -441,21 +441,21 @@ class QueryBuilderTest extends DatabaseTestCase {
     }
 
     #[DataProvider('databaseProvider')]
-    public function testSetUnitOfWork(string $databaseName): void
+    public function testSetManagedEntityStore(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
 
-        $unitOfWork = $this->createStub(UnitOfWork::class);
+        $managedEntityStore = $this->createStub(ManagedEntityStoreInterface::class);
         $qb = new QueryBuilder($this->connection);
 
-        $result = $qb->setUnitOfWork($unitOfWork);
+        $result = $qb->setManagedEntityStore($managedEntityStore);
 
         $this->assertSame($qb, $result); // Should return self for chaining
     }
 
     #[DataProvider('databaseProvider')]
-    public function testGetResultWithHydrationAndUnitOfWork(string $databaseName): void
+    public function testGetResultWithHydrationAndManagedEntityStore(string $databaseName): void
     {
         $this->setCurrentDatabase($this->getConnection($databaseName), $databaseName);
         $this->connection = $this->getCurrentConnection();
@@ -475,13 +475,14 @@ class QueryBuilderTest extends DatabaseTestCase {
                 return $entity;
             });
 
-        $unitOfWork = $this->createMock(UnitOfWork::class);
-        $unitOfWork->expects($this->exactly(2))
+        $managedEntityStore = $this->createMock(ManagedEntityStoreInterface::class);
+        $managedEntityStore->expects($this->exactly(2))
             ->method('registerManaged')
             ->with($this->isInstanceOf(EntityManagerTestEntity::class), $this->isArray());
+        $managedEntityStore->method('tryGetById')->willReturn(null);
 
         $qb = new QueryBuilder($this->connection, $hydrator);
-        $qb->setUnitOfWork($unitOfWork);
+        $qb->setManagedEntityStore($managedEntityStore);
         $qb->setEntityClass(EntityManagerTestEntity::class);
 
         $result = $qb->select('*')->from('test_users')->getResult();

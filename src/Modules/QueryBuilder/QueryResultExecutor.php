@@ -4,19 +4,17 @@ namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Modules\EntityManager\UnitOfWorkRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 
 class QueryResultExecutor {
     public function __construct(
         private readonly Connection $connection,
         private readonly QueryResultCache $resultCache,
         private readonly ?HydratorInterface $hydrator = null,
-        private readonly ?UnitOfWorkRegistry $unitOfWorkRegistry = null,
-        private readonly ?UnitOfWork $unitOfWork = null,
+        private readonly ?ManagedEntityStoreInterface $managedEntityStore = null,
         private readonly ?EntityMetadataRegistry $metadataRegistry = null,
     ) {
     }
@@ -92,7 +90,7 @@ class QueryResultExecutor {
     {
         if ($entityClass && $this->hydrator) {
             $metadata = null;
-            if (($this->unitOfWorkRegistry !== null || $this->unitOfWork !== null) && $this->metadataRegistry !== null) {
+            if ($this->managedEntityStore !== null && $this->metadataRegistry !== null) {
                 try {
                     $metadata = $this->metadataRegistry->getMetadata($entityClass);
                 } catch (\InvalidArgumentException) {
@@ -114,12 +112,8 @@ class QueryResultExecutor {
 
                 $entity = $this->hydrator->hydrate($entityClass, $row);
 
-                if (is_object($entity)) {
-                    if ($this->unitOfWorkRegistry !== null) {
-                        $this->unitOfWorkRegistry->active()->registerManaged($entity, $row);
-                    } elseif ($this->unitOfWork !== null) {
-                        $this->unitOfWork->registerManaged($entity, $row);
-                    }
+                if (is_object($entity) && $this->managedEntityStore !== null) {
+                    $this->managedEntityStore->registerManaged($entity, $row);
                 }
 
                 $entities[] = $entity;
@@ -152,18 +146,7 @@ class QueryResultExecutor {
             $id = array_values($id)[0];
         }
 
-        if ($this->unitOfWorkRegistry !== null) {
-            foreach ($this->unitOfWorkRegistry->all() as $unitOfWork) {
-                $entity = $unitOfWork->tryGetById($entityClass, $id);
-                if ($entity !== null) {
-                    return $entity;
-                }
-            }
-
-            return null;
-        }
-
-        return $this->unitOfWork?->tryGetById($entityClass, $id);
+        return $this->managedEntityStore?->tryGetById($entityClass, $id);
     }
 
     private function expandInPlaceholders(string $sql, array $params): array

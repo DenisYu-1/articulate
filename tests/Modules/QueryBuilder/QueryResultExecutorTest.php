@@ -2,10 +2,16 @@
 
 namespace Articulate\Tests\Modules\QueryBuilder;
 
+use Articulate\Attributes\Entity;
+use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Property;
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
 use Articulate\Modules\QueryBuilder\QueryResultCache;
 use Articulate\Modules\QueryBuilder\QueryResultExecutor;
+use Articulate\Schema\EntityMetadataRegistry;
+use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 use PDOStatement;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
@@ -190,4 +196,102 @@ class QueryResultExecutorTest extends TestCase {
         $this->assertSame($rows, $firstResult);
         $this->assertSame($rows, $secondResult);
     }
+
+    public function testReusesManagedEntityInsteadOfHydratingAgain(): void
+    {
+        $managedEntity = new QueryResultExecutorTestEntity();
+        $managedEntity->id = 1;
+        $managedEntity->name = 'Alice';
+
+        $hydrator = $this->createMock(HydratorInterface::class);
+        $hydrator->expects($this->never())->method('hydrate');
+
+        $managedEntityStore = $this->createMock(ManagedEntityStoreInterface::class);
+        $managedEntityStore->expects($this->once())
+            ->method('tryGetById')
+            ->with(QueryResultExecutorTestEntity::class, 1)
+            ->willReturn($managedEntity);
+        $managedEntityStore->expects($this->never())->method('registerManaged');
+
+        $this->stubQueryReturning([['id' => 1, 'name' => 'Alice']]);
+
+        $executor = new QueryResultExecutor(
+            $this->connection,
+            $this->resultCache,
+            $hydrator,
+            $managedEntityStore,
+            new EntityMetadataRegistry()
+        );
+
+        $result = $executor->execute(
+            'SELECT id, name FROM query_result_executor_test_entities',
+            [],
+            QueryResultExecutorTestEntity::class,
+            false,
+            false,
+            null,
+            null,
+            [],
+            [],
+            []
+        );
+
+        $this->assertSame([$managedEntity], $result);
+    }
+
+    public function testRegistersHydratedEntityInManagedEntityStore(): void
+    {
+        $hydratedEntity = new QueryResultExecutorTestEntity();
+        $hydratedEntity->id = 2;
+        $hydratedEntity->name = 'Bob';
+
+        $hydrator = $this->createMock(HydratorInterface::class);
+        $hydrator->expects($this->once())
+            ->method('hydrate')
+            ->with(QueryResultExecutorTestEntity::class, ['id' => 2, 'name' => 'Bob'])
+            ->willReturn($hydratedEntity);
+
+        $managedEntityStore = $this->createMock(ManagedEntityStoreInterface::class);
+        $managedEntityStore->expects($this->once())
+            ->method('tryGetById')
+            ->with(QueryResultExecutorTestEntity::class, 2)
+            ->willReturn(null);
+        $managedEntityStore->expects($this->once())
+            ->method('registerManaged')
+            ->with($hydratedEntity, ['id' => 2, 'name' => 'Bob']);
+
+        $this->stubQueryReturning([['id' => 2, 'name' => 'Bob']]);
+
+        $executor = new QueryResultExecutor(
+            $this->connection,
+            $this->resultCache,
+            $hydrator,
+            $managedEntityStore,
+            new EntityMetadataRegistry()
+        );
+
+        $result = $executor->execute(
+            'SELECT id, name FROM query_result_executor_test_entities',
+            [],
+            QueryResultExecutorTestEntity::class,
+            false,
+            false,
+            null,
+            null,
+            [],
+            [],
+            []
+        );
+
+        $this->assertSame([$hydratedEntity], $result);
+    }
+}
+
+#[Entity]
+class QueryResultExecutorTestEntity {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
 }

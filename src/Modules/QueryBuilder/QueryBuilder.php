@@ -5,11 +5,10 @@ namespace Articulate\Modules\QueryBuilder;
 use Articulate\Connection;
 use Articulate\Exceptions\CursorPaginationException;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Modules\EntityManager\UnitOfWork;
-use Articulate\Modules\EntityManager\UnitOfWorkRegistry;
 use Articulate\Modules\QueryBuilder\Filter\FilterCollection;
 use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 use InvalidArgumentException;
 use Psr\Cache\CacheItemPoolInterface;
 
@@ -56,9 +55,7 @@ class QueryBuilder {
 
     private array $groupBy = [];
 
-    private ?UnitOfWorkRegistry $unitOfWorkRegistry = null;
-
-    private ?UnitOfWork $unitOfWork = null;
+    private ?ManagedEntityStoreInterface $managedEntityStore = null;
 
     private bool $lockForUpdate = false;
 
@@ -95,7 +92,7 @@ class QueryBuilder {
         $this->cursorCodec = new CursorCodec();
         $this->filters = $filters ?? new FilterCollection();
         $this->cursorPaginationHandler = new CursorPaginationHandler($this->cursorCodec, $metadataRegistry);
-        $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null, null, $metadataRegistry);
+        $this->resultExecutor = new QueryResultExecutor($connection, $this->resultCache, $hydrator, null, $metadataRegistry);
         $this->dmlHandler = new DmlOperationHandler($metadataRegistry);
         $this->whereBuilder = new WhereClauseBuilder(
             fn () => $this->createSubQueryBuilder(),
@@ -641,8 +638,7 @@ class QueryBuilder {
             $this->connection,
             $this->resultCache,
             $hydrator,
-            $this->unitOfWorkRegistry,
-            $this->unitOfWork,
+            $this->managedEntityStore,
             $this->metadataRegistry
         );
 
@@ -655,34 +651,16 @@ class QueryBuilder {
     }
 
     /**
-     * Set the UnitOfWork that will manage entities retrieved by this query.
+     * Set the store that will reuse and register managed entities for this query.
      */
-    public function setUnitOfWork(?UnitOfWork $unitOfWork): self
+    public function setManagedEntityStore(?ManagedEntityStoreInterface $managedEntityStore): self
     {
-        $this->unitOfWorkRegistry = null;
-        $this->unitOfWork = $unitOfWork;
+        $this->managedEntityStore = $managedEntityStore;
         $this->resultExecutor = new QueryResultExecutor(
             $this->connection,
             $this->resultCache,
             $this->hydrator,
-            null,
-            $unitOfWork,
-            $this->metadataRegistry
-        );
-
-        return $this;
-    }
-
-    public function setUnitOfWorkRegistry(UnitOfWorkRegistry $unitOfWorkRegistry): self
-    {
-        $this->unitOfWorkRegistry = $unitOfWorkRegistry;
-        $this->unitOfWork = null;
-        $this->resultExecutor = new QueryResultExecutor(
-            $this->connection,
-            $this->resultCache,
-            $this->hydrator,
-            $unitOfWorkRegistry,
-            null,
+            $managedEntityStore,
             $this->metadataRegistry
         );
 
