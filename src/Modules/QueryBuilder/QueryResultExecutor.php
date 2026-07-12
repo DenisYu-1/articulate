@@ -4,15 +4,18 @@ namespace Articulate\Modules\QueryBuilder;
 
 use Articulate\Connection;
 use Articulate\Exceptions\TransactionRequiredException;
-use Articulate\Schema\EntityRegistrarInterface;
+use Articulate\Schema\EntityMetadata;
+use Articulate\Schema\EntityMetadataRegistry;
 use Articulate\Schema\HydratorInterface;
+use Articulate\Schema\ManagedEntityStoreInterface;
 
 class QueryResultExecutor {
     public function __construct(
         private readonly Connection $connection,
         private readonly QueryResultCache $resultCache,
         private readonly ?HydratorInterface $hydrator = null,
-        private readonly ?EntityRegistrarInterface $unitOfWork = null
+        private readonly ?ManagedEntityStoreInterface $managedEntityStore = null,
+        private readonly ?EntityMetadataRegistry $metadataRegistry = null,
     ) {
     }
 
@@ -86,13 +89,31 @@ class QueryResultExecutor {
     private function hydrateResults(array $rawResults, ?string $entityClass): mixed
     {
         if ($entityClass && $this->hydrator) {
+            $metadata = null;
+            if ($this->managedEntityStore !== null && $this->metadataRegistry !== null) {
+                try {
+                    $metadata = $this->metadataRegistry->getMetadata($entityClass);
+                } catch (\InvalidArgumentException) {
+                    $metadata = null;
+                }
+            }
+
             $entities = [];
 
             foreach ($rawResults as $row) {
+                if ($metadata !== null) {
+                    $managedEntity = $this->getManagedEntity($entityClass, $metadata, $row);
+                    if ($managedEntity !== null) {
+                        $entities[] = $managedEntity;
+
+                        continue;
+                    }
+                }
+
                 $entity = $this->hydrator->hydrate($entityClass, $row);
 
-                if ($this->unitOfWork && is_object($entity)) {
-                    $this->unitOfWork->registerManaged($entity, $row);
+                if (is_object($entity) && $this->managedEntityStore !== null) {
+                    $this->managedEntityStore->registerManaged($entity, $row);
                 }
 
                 $entities[] = $entity;
@@ -102,6 +123,30 @@ class QueryResultExecutor {
         }
 
         return $rawResults;
+    }
+
+    private function getManagedEntity(string $entityClass, EntityMetadata $metadata, array $row): ?object
+    {
+        $primaryKeyColumns = $metadata->getPrimaryKeyColumns();
+
+        if (empty($primaryKeyColumns)) {
+            return null;
+        }
+
+        $id = [];
+        foreach ($primaryKeyColumns as $columnName) {
+            if (!array_key_exists($columnName, $row)) {
+                return null;
+            }
+
+            $id[$columnName] = $row[$columnName];
+        }
+
+        if (count($id) === 1) {
+            $id = array_values($id)[0];
+        }
+
+        return $this->managedEntityStore?->tryGetById($entityClass, $id);
     }
 
     private function expandInPlaceholders(string $sql, array $params): array
