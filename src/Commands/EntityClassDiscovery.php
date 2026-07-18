@@ -9,6 +9,8 @@ use RecursiveIteratorIterator;
 class EntityClassDiscovery {
     private const array DEFAULT_PATHS = ['src/Entities', 'src/Entity'];
 
+    private const array NAME_TOKEN_TYPES = [T_STRING, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE];
+
     /**
      * @param array<int, string>|null $entitiesPath
      * @return list<ReflectionEntity>
@@ -45,16 +47,101 @@ class EntityClassDiscovery {
             if ($contents === false) {
                 continue;
             }
-            if (preg_match('/namespace\s+(.+?);/', $contents, $namespaceMatches) &&
-                preg_match('/class\s+(\w+)/', $contents, $classMatches)) {
-                $classNames[] = $namespaceMatches[1] . '\\' . $classMatches[1];
+            foreach ($this->extractClassNames($contents) as $className) {
+                $classNames[] = $className;
             }
         }
 
-        return array_values(array_filter(
-            array_map(fn (string $className) => new ReflectionEntity($className), $classNames),
-            fn (ReflectionEntity $entity) => $entity->isEntity()
-        ));
+        $entities = [];
+        foreach ($classNames as $className) {
+            if (!class_exists($className)) {
+                continue;
+            }
+            $entity = new ReflectionEntity($className);
+            if ($entity->isEntity()) {
+                $entities[] = $entity;
+            }
+        }
+
+        return $entities;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function extractClassNames(string $contents): array
+    {
+        $namespace = '';
+        $classNames = [];
+        $tokens = token_get_all($contents);
+
+        foreach ($tokens as $i => $token) {
+            if (!is_array($token)) {
+                continue;
+            }
+
+            if ($token[0] === T_NAMESPACE) {
+                $namespace = $this->readNamespaceName($tokens, $i + 1);
+
+                continue;
+            }
+
+            if ($token[0] === T_CLASS && !$this->isAnonymousClass($tokens, $i)) {
+                $name = $this->nextNameToken($tokens, $i + 1);
+                if ($name !== null) {
+                    $classNames[] = ltrim($namespace . '\\' . $name, '\\');
+                }
+            }
+        }
+
+        return $classNames;
+    }
+
+    /**
+     * @param array<int, mixed> $tokens
+     */
+    private function readNamespaceName(array $tokens, int $start): string
+    {
+        $name = '';
+        for ($i = $start; $i < count($tokens); $i++) {
+            $token = $tokens[$i];
+            if ($token === ';' || $token === '{') {
+                break;
+            }
+            if (is_array($token) && in_array($token[0], self::NAME_TOKEN_TYPES, true)) {
+                $name .= $token[1];
+            }
+        }
+
+        return $name;
+    }
+
+    /**
+     * @param array<int, mixed> $tokens
+     */
+    private function nextNameToken(array $tokens, int $start): ?string
+    {
+        for ($i = $start; $i < count($tokens); $i++) {
+            $token = $tokens[$i];
+            if (is_array($token) && $token[0] === T_WHITESPACE) {
+                continue;
+            }
+            if (is_array($token) && $token[0] === T_STRING) {
+                return $token[1];
+            }
+
+            return null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, mixed> $tokens
+     */
+    private function isAnonymousClass(array $tokens, int $classTokenIndex): bool
+    {
+        return $this->nextNameToken($tokens, $classTokenIndex + 1) === null;
     }
 
     /**

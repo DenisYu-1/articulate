@@ -33,6 +33,8 @@ class WarmMetadataCacheCommand extends Command {
 
         $entities = $this->entityClassDiscovery->discover($this->entitiesPath);
 
+        $this->metadataRegistry->clearAll();
+
         foreach ($entities as $entity) {
             $this->metadataRegistry->getMetadata($entity->getName());
         }

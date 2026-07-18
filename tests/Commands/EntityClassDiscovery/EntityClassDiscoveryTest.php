@@ -112,4 +112,118 @@ PHP);
         $this->assertCount(1, $entities);
         $this->assertSame($entityClass, $entities[0]->getName());
     }
+
+    public function testDiscoversMultipleEntityClassesDeclaredInOneFile(): void
+    {
+        $dir = $this->tempDir . '/multi';
+        mkdir($dir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $path = $dir . '/Multi.php';
+        file_put_contents($path, <<<PHP
+<?php
+
+namespace {$namespace};
+
+#[\\Articulate\\Attributes\\Entity]
+class FirstInFile {
+}
+
+#[\\Articulate\\Attributes\\Entity]
+class SecondInFile {
+}
+PHP);
+        require_once $path;
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
+        sort($classNames);
+        $expected = [$namespace . '\\FirstInFile', $namespace . '\\SecondInFile'];
+        sort($expected);
+
+        $this->assertSame($expected, $classNames);
+    }
+
+    public function testIgnoresAnonymousClassesAndStillFindsTheNamedEntityInTheSameFile(): void
+    {
+        $dir = $this->tempDir . '/anon';
+        mkdir($dir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $path = $dir . '/WithAnonymous.php';
+        file_put_contents($path, <<<PHP
+<?php
+
+namespace {$namespace};
+
+\$anonymous = new class {
+    public int \$value = 1;
+};
+
+#[\\Articulate\\Attributes\\Entity]
+class NamedEntity {
+}
+PHP);
+        require_once $path;
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $this->assertCount(1, $entities);
+        $this->assertSame($namespace . '\\NamedEntity', $entities[0]->getName());
+    }
+
+    public function testIgnoresClassNamesMentionedInCommentsOrDocblocksBeforeTheRealDeclaration(): void
+    {
+        $dir = $this->tempDir . '/comment';
+        mkdir($dir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $path = $dir . '/Commented.php';
+        file_put_contents($path, <<<PHP
+<?php
+
+namespace {$namespace};
+
+// Not a real declaration: class DecoyOne {}
+/**
+ * See also class DecoyTwo for context.
+ */
+#[\\Articulate\\Attributes\\Entity]
+class RealEntity {
+}
+PHP);
+        require_once $path;
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $this->assertCount(1, $entities);
+        $this->assertSame($namespace . '\\RealEntity', $entities[0]->getName());
+    }
+
+    public function testSkipsClassesThatWereNeverLoadedWithoutThrowing(): void
+    {
+        $dir = $this->tempDir . '/unloaded';
+        mkdir($dir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+
+        // Written but deliberately never require_once'd, and not reachable by any
+        // autoloader, so the class never actually gets declared.
+        file_put_contents($dir . '/NeverLoaded.php', <<<PHP
+<?php
+
+namespace {$namespace};
+
+#[\\Articulate\\Attributes\\Entity]
+class NeverLoaded {
+}
+PHP);
+        $loadedEntity = $this->writeFixtureClass($dir, 'Loaded.php', $namespace, 'Loaded', true);
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
+        $this->assertSame([$loadedEntity], $classNames);
+    }
 }
