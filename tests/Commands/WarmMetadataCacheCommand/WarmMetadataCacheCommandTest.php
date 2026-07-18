@@ -79,12 +79,46 @@ PHP);
                 return $this->createStub(EntityMetadata::class);
             });
 
-        $command = new WarmMetadataCacheCommand($metadataRegistry, $entitiesPath);
+        $command = new WarmMetadataCacheCommand($metadataRegistry, [$entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
         sort($warmedClasses);
         $expected = [$entityClass, $nestedEntityClass];
+        sort($expected);
+
+        $this->assertSame(0, $statusCode);
+        $this->assertSame($expected, $warmedClasses);
+        $this->assertStringContainsString('Warmed metadata cache for 2 entities.', $commandTester->getDisplay());
+    }
+
+    public function testWarmsMetadataForEntitiesAcrossMultipleConfiguredDirectories(): void
+    {
+        $firstPath = $this->tempDir . '/warm_first';
+        $secondPath = $this->tempDir . '/warm_second';
+        mkdir($firstPath, 0777, true);
+        mkdir($secondPath, 0777, true);
+
+        $suffix = str_replace('.', '', uniqid('', true));
+        $firstEntityClass = $this->writeFixtureClass($firstPath, 'FirstEntity.php', 'Articulate\\Tests\\Generated\\WarmMulti' . $suffix, 'FirstEntity', true);
+        $secondEntityClass = $this->writeFixtureClass($secondPath, 'SecondEntity.php', 'Articulate\\Tests\\Generated\\WarmMulti' . $suffix, 'SecondEntity', true);
+
+        $warmedClasses = [];
+        $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
+        $metadataRegistry->expects($this->exactly(2))
+            ->method('getMetadata')
+            ->willReturnCallback(function (string $entityClass) use (&$warmedClasses) {
+                $warmedClasses[] = $entityClass;
+
+                return $this->createStub(EntityMetadata::class);
+            });
+
+        $command = new WarmMetadataCacheCommand($metadataRegistry, [$firstPath, $secondPath]);
+        $commandTester = new CommandTester($command);
+        $statusCode = $commandTester->execute([]);
+
+        sort($warmedClasses);
+        $expected = [$firstEntityClass, $secondEntityClass];
         sort($expected);
 
         $this->assertSame(0, $statusCode);
@@ -100,7 +134,7 @@ PHP);
         $metadataRegistry = $this->createMock(EntityMetadataRegistry::class);
         $metadataRegistry->expects($this->never())->method('getMetadata');
 
-        $command = new WarmMetadataCacheCommand($metadataRegistry, $entitiesPath);
+        $command = new WarmMetadataCacheCommand($metadataRegistry, [$entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
@@ -112,7 +146,7 @@ PHP);
     {
         $metadataRegistry = $this->createStub(EntityMetadataRegistry::class);
 
-        $command = new WarmMetadataCacheCommand($metadataRegistry, '/nonexistent/path/that/does/not/exist');
+        $command = new WarmMetadataCacheCommand($metadataRegistry, ['/nonexistent/path/that/does/not/exist']);
         $commandTester = new CommandTester($command);
 
         $this->expectException(\RuntimeException::class);
