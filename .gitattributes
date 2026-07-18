@@ -16,3 +16,4 @@
 /docker-compose.yml export-ignore
 /.mcp.json export-ignore
 /skills-lock.json export-ignore
+/CLAUDE.md export-ignore
