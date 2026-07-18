@@ -18,6 +18,25 @@ class ReflectionMorphedByMany implements RelationInterface {
     ) {
     }
 
+    /** @return array{attribute: MorphedByMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} */
+    public function __serialize(): array
+    {
+        return [
+            'attribute' => $this->attribute,
+            'declaringClass' => $this->property->class,
+            'propertyName' => $this->property->getName(),
+            'schemaNaming' => $this->schemaNaming,
+        ];
+    }
+
+    /** @param array{attribute: MorphedByMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} $data */
+    public function __unserialize(array $data): void
+    {
+        $this->attribute = $data['attribute'];
+        $this->property = ReflectionCache::getProperty($data['declaringClass'], $data['propertyName']);
+        $this->schemaNaming = $data['schemaNaming'];
+    }
+
     public function getTargetEntity(): ?string
     {
         if ($this->attribute->getTargetEntity()) {

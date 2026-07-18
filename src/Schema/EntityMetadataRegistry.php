@@ -2,6 +2,8 @@
 
 namespace Articulate\Schema;
 
+use Psr\Cache\CacheItemPoolInterface;
+
 /**
  * Registry for caching and accessing entity metadata.
  */
@@ -12,20 +14,64 @@ class EntityMetadataRegistry {
     /** @var array<string, list<string>> table name → entity class list */
     private array $tableIndex = [];
 
+    public function __construct(
+        private readonly ?CacheItemPoolInterface $cache = null,
+    ) {
+    }
+
     /**
      * Get metadata for an entity class.
      */
     public function getMetadata(string $entityClass): EntityMetadata
     {
         if (!isset($this->metadataCache[$entityClass])) {
-            $this->metadataCache[$entityClass] = new EntityMetadata($entityClass);
-            $table = $this->metadataCache[$entityClass]->getTableName();
+            $metadata = $this->loadFromCacheOrCompute($entityClass);
+            $this->metadataCache[$entityClass] = $metadata;
+            $table = $metadata->getTableName();
             if (!in_array($entityClass, $this->tableIndex[$table] ?? [], true)) {
                 $this->tableIndex[$table][] = $entityClass;
             }
         }
 
         return $this->metadataCache[$entityClass];
+    }
+
+    /**
+     * Reads a computed EntityMetadata from the pool if present, otherwise
+     * computes it and persists it. Metadata doesn't change at runtime, so
+     * entries never expire on their own — mapping changes require an explicit
+     * clearMetadata()/clearAll() call. Cache faults never break resolution.
+     */
+    private function loadFromCacheOrCompute(string $entityClass): EntityMetadata
+    {
+        if ($this->cache === null) {
+            return new EntityMetadata($entityClass);
+        }
+
+        try {
+            $item = $this->cache->getItem($this->cacheKey($entityClass));
+            if ($item->isHit()) {
+                return $item->get();
+            }
+        } catch (\Throwable) {
+            return new EntityMetadata($entityClass);
+        }
+
+        $metadata = new EntityMetadata($entityClass);
+
+        try {
+            $item->set($metadata);
+            $this->cache->save($item);
+        } catch (\Throwable) {
+            // Cache failure never breaks metadata resolution.
+        }
+
+        return $metadata;
+    }
+
+    private function cacheKey(string $entityClass): string
+    {
+        return 'metadata_' . str_replace('\\', '_', $entityClass);
     }
 
     /**
@@ -59,6 +105,12 @@ class EntityMetadataRegistry {
             );
         }
         unset($this->metadataCache[$entityClass]);
+
+        try {
+            $this->cache?->deleteItem($this->cacheKey($entityClass));
+        } catch (\Throwable) {
+            // Cache failure never breaks metadata invalidation.
+        }
     }
 
     /**
@@ -68,6 +120,12 @@ class EntityMetadataRegistry {
     {
         $this->metadataCache = [];
         $this->tableIndex = [];
+
+        try {
+            $this->cache?->clear();
+        } catch (\Throwable) {
+            // Cache failure never breaks metadata invalidation.
+        }
     }
 
     /**

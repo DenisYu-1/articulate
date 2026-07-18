@@ -37,6 +37,55 @@ class EntityMetadata {
     }
 
     /**
+     * ReflectionEntity extends the native, non-serializable \ReflectionClass —
+     * store the derived, plain metadata instead and skip loadMetadata() on wakeup.
+     *
+     * @return array{
+     *     entityClass: class-string,
+     *     tableName: ?string,
+     *     repositoryClass: ?string,
+     *     properties: array<string, ReflectionProperty>,
+     *     relations: array<string, RelationInterface>,
+     *     primaryKeyColumns: array<int, string>,
+     *     softDeleteable: ?SoftDeleteable,
+     * }
+     */
+    public function __serialize(): array
+    {
+        return [
+            'entityClass' => $this->reflectionEntity->getName(),
+            'tableName' => $this->tableName,
+            'repositoryClass' => $this->repositoryClass,
+            'properties' => $this->properties,
+            'relations' => $this->relations,
+            'primaryKeyColumns' => $this->primaryKeyColumns,
+            'softDeleteable' => $this->softDeleteable,
+        ];
+    }
+
+    /**
+     * @param array{
+     *     entityClass: class-string,
+     *     tableName: ?string,
+     *     repositoryClass: ?string,
+     *     properties: array<string, ReflectionProperty>,
+     *     relations: array<string, RelationInterface>,
+     *     primaryKeyColumns: array<int, string>,
+     *     softDeleteable: ?SoftDeleteable,
+     * } $data
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->reflectionEntity = new ReflectionEntity($data['entityClass']);
+        $this->tableName = $data['tableName'];
+        $this->repositoryClass = $data['repositoryClass'];
+        $this->properties = $data['properties'];
+        $this->relations = $data['relations'];
+        $this->primaryKeyColumns = $data['primaryKeyColumns'];
+        $this->softDeleteable = $data['softDeleteable'];
+    }
+
+    /**
      * Load all metadata from the entity class.
      */
     private function loadMetadata(): void

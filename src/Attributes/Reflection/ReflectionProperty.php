@@ -3,6 +3,7 @@
 namespace Articulate\Attributes\Reflection;
 
 use Articulate\Attributes\Property;
+use Articulate\Utils\ReflectionCache;
 use Articulate\Utils\StringUtils;
 use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
@@ -17,6 +18,58 @@ class ReflectionProperty implements PropertyInterface {
         private readonly ?string $sequence = null,
         private readonly ?array $generatorOptions = null,
     ) {
+    }
+
+    /**
+     * Native \ReflectionProperty is not serializable — store the derived,
+     * plain data and the (class, property) pair needed to cheaply rebuild it.
+     *
+     * @return array{
+     *     entityProperty: Property,
+     *     declaringClass: class-string,
+     *     propertyName: string,
+     *     autoIncrement: bool,
+     *     primaryKey: bool,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     generatorOptions: ?array<string, mixed>,
+     * }
+     */
+    public function __serialize(): array
+    {
+        return [
+            'entityProperty' => $this->entityProperty,
+            'declaringClass' => $this->property->class,
+            'propertyName' => $this->property->getName(),
+            'autoIncrement' => $this->autoIncrement,
+            'primaryKey' => $this->primaryKey,
+            'generatorType' => $this->generatorType,
+            'sequence' => $this->sequence,
+            'generatorOptions' => $this->generatorOptions,
+        ];
+    }
+
+    /**
+     * @param array{
+     *     entityProperty: Property,
+     *     declaringClass: class-string,
+     *     propertyName: string,
+     *     autoIncrement: bool,
+     *     primaryKey: bool,
+     *     generatorType: ?string,
+     *     sequence: ?string,
+     *     generatorOptions: ?array<string, mixed>,
+     * } $data
+     */
+    public function __unserialize(array $data): void
+    {
+        $this->entityProperty = $data['entityProperty'];
+        $this->property = ReflectionCache::getProperty($data['declaringClass'], $data['propertyName']);
+        $this->autoIncrement = $data['autoIncrement'];
+        $this->primaryKey = $data['primaryKey'];
+        $this->generatorType = $data['generatorType'];
+        $this->sequence = $data['sequence'];
+        $this->generatorOptions = $data['generatorOptions'];
     }
 
     public function getFieldName(): string
