@@ -167,7 +167,7 @@ Contract — read before relying on it:
 - **No TTL, no auto-invalidation.** Metadata doesn't change at runtime, so entries never expire on their own. Editing entity attributes requires an explicit `EntityMetadataRegistry::clearMetadata()`/`clearAll()` call (which evicts from the pool too) — typically as a deploy step. Forgetting this serves stale mapping data, same footgun class as second-level cache staleness above.
 - **Cache faults never break resolution.** A pool read/write failure falls back to computing metadata directly — consistent with every other cache in this codebase.
 - **`ReflectionProperty`/`ReflectionRelation`/`ReflectionManyToMany`/`ReflectionMorphToMany`/`ReflectionMorphedByMany`/`EntityMetadata` implement `__serialize`/`__unserialize`.** They hold native, non-serializable `\ReflectionClass`/`\ReflectionProperty` objects; serialization stores the derived plain data instead and rebuilds the native reflection handle cheaply via `ReflectionCache` on wakeup — no re-parsing of attributes on a cache hit.
-- **`articulate:warm-metadata-cache` command** (`src/Commands/WarmMetadataCacheCommand.php`) scans an entities directory (same discovery pattern as `articulate:validate`) and populates the pool ahead of time, e.g. as part of a deploy.
+- **`articulate:warm-metadata-cache` command** (`src/Commands/WarmMetadataCacheCommand.php`) scans one or more entities directories via `EntityClassDiscovery` (shared with `articulate:validate` and `articulate:diff` — `$entitiesPath` takes an `array<string>` of directories, or `null` to fall back to `src/Entities`/`src/Entity`) and populates the pool ahead of time, e.g. as part of a deploy.
 
 ### Enum Properties
 
