@@ -227,7 +227,7 @@ PHP;
             $this->initCommand,
             $this->migrationsPath,
             $schemaComparator,
-            $entitiesDir
+            [$entitiesDir]
         );
 
         $commandTester = new CommandTester($command);
@@ -267,7 +267,7 @@ PHP;
             $this->initCommand,
             $this->migrationsPath,
             $schemaComparator,
-            $this->tempDir . '/entities',
+            [$this->tempDir . '/entities'],
         );
 
         $commandTester = new CommandTester($command);
@@ -296,7 +296,7 @@ PHP;
             $this->initCommand,
             $this->migrationsPath,
             $schemaComparator,
-            $entitiesDir
+            [$entitiesDir]
         );
 
         $this->expectException(DatabaseSchemaException::class);
@@ -489,7 +489,7 @@ PHP;
             $this->initCommand,
             $this->migrationsPath,
             $schemaComparator,
-            $entitiesDir
+            [$entitiesDir]
         );
 
         $commandTester = new CommandTester($command);
