@@ -66,7 +66,7 @@ PHP);
         $schemaComparator = $this->createStub(DatabaseSchemaComparator::class);
         $schemaComparator->method('compareAll')->willReturn([]);
 
-        $command = new ValidateCommand($schemaComparator, $this->entitiesPath);
+        $command = new ValidateCommand($schemaComparator, [$this->entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
@@ -81,7 +81,7 @@ PHP);
         $schemaComparator = $this->createStub(DatabaseSchemaComparator::class);
         $schemaComparator->method('compareAll')->willReturn([$compareResult]);
 
-        $command = new ValidateCommand($schemaComparator, $this->entitiesPath);
+        $command = new ValidateCommand($schemaComparator, [$this->entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
@@ -115,7 +115,7 @@ PHP);
             }))
             ->willReturn([]);
 
-        $command = new ValidateCommand($schemaComparator, $entitiesPath);
+        $command = new ValidateCommand($schemaComparator, [$entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
@@ -131,7 +131,7 @@ PHP);
         $schemaComparator = $this->createStub(DatabaseSchemaComparator::class);
         $schemaComparator->method('compareAll')->willReturn([$compareResult]);
 
-        $command = new ValidateCommand($schemaComparator, $this->entitiesPath);
+        $command = new ValidateCommand($schemaComparator, [$this->entitiesPath]);
         $commandTester = new CommandTester($command);
         $statusCode = $commandTester->execute([]);
 
@@ -144,7 +144,7 @@ PHP);
     {
         $schemaComparator = $this->createStub(DatabaseSchemaComparator::class);
 
-        $command = new ValidateCommand($schemaComparator, '/nonexistent/path/that/does/not/exist');
+        $command = new ValidateCommand($schemaComparator, ['/nonexistent/path/that/does/not/exist']);
         $commandTester = new CommandTester($command);
 
         $this->expectException(\RuntimeException::class);

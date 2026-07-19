@@ -36,7 +36,8 @@
         "symfony/console": "^8.0",
         "symfony/uid": "^8.0",
         "psr/cache": "^3.0",
-        "psr/log": "^3.0"
+        "psr/log": "^3.0",
+        "ext-pdo": "*"
     },
     "scripts": {
         "cs:check": "php-cs-fixer fix --dry-run --diff --allow-risky=yes",

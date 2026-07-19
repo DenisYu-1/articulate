@@ -31,5 +31,7 @@ class EntityManagerOptions {
 
     public int $secondLevelCacheTtl = 3600;
 
+    public ?CacheItemPoolInterface $metadataCache = null;
+
     public ?LoggerInterface $logger = null;
 }

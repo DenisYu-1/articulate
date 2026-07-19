@@ -118,7 +118,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath,
+            [$this->entitiesPath],
             'Test\Migrations'
         );
 
@@ -169,7 +169,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $entitiesPath
+            [$entitiesPath]
         );
 
         $commandTester = new CommandTester($command);
@@ -192,7 +192,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath,
+            [$this->entitiesPath],
             'Test\Migrations'
         );
 
@@ -240,7 +240,7 @@ PHP);
             $this->schemaComparator,
             $commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath,
+            [$this->entitiesPath],
             'Test\Migrations'
         );
 
@@ -276,7 +276,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath
+            [$this->entitiesPath]
         );
 
         $commandTester = new CommandTester($command);
@@ -307,7 +307,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $customPath
+            [$customPath]
         );
 
         $commandTester = new CommandTester($command);
@@ -366,7 +366,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath
+            [$this->entitiesPath]
         );
 
         $commandTester = new CommandTester($command);
@@ -401,7 +401,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            '/nonexistent/path'
+            ['/nonexistent/path']
         );
 
         $commandTester = new CommandTester($command);
@@ -424,7 +424,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath
+            [$this->entitiesPath]
         );
 
         $commandTester = new CommandTester($command);
@@ -446,7 +446,7 @@ PHP);
             $this->schemaComparator,
             $this->commandGenerator,
             $this->migrationsPath,
-            $this->entitiesPath
+            [$this->entitiesPath]
         );
 
         $this->assertEquals('articulate:diff', $command->getName());

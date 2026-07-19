@@ -73,7 +73,7 @@ Articulate is a context-bounded ORM for domain-driven PHP applications. PHP 8.4+
 | Attributes | `src/Attributes/` | All PHP attributes + reflection wrappers (ReflectionEntity, ReflectionProperty, ReflectionRelation) |
 | Schema | `src/Schema/` | EntityMetadata, EntityMetadataRegistry, naming conventions |
 | Utils | `src/Utils/` | TypeRegistry, type converters (bool↔TINYINT, DateTime↔DATETIME, etc.) |
-| Commands | `src/Commands/` | Symfony Console: DiffCommand, InitCommand, MigrateCommand |
+| Commands | `src/Commands/` | Symfony Console: DiffCommand, InitCommand, MigrateCommand, ValidateCommand, WarmMetadataCacheCommand |
 
 ### Architectural Boundaries
 
@@ -158,6 +158,16 @@ Contract — read before relying on it:
 - **Sibling-class eviction is automatic within one `EntityManager`.** When `flush()` writes or deletes a row, the cache is evicted for every entity class mapped to the same table that the registry has seen in this session (via `EntityMetadataRegistry::getClassesByTable`). Example: deleting `Customer(id=1)` also evicts the `CustomerSummary(id=1)` entry. Classes never loaded in the session are not evicted — cross-`EntityManager` staleness still applies.
 - **Caches the root row only, not relations.** A cache hit returns a shallow hydrate; relations still lazy-load on access (consistent with a cold `find()`).
 - **IDs must be scalar, `Stringable`, or a composite array.** Keys are type-tagged so `1` (int) and `"1"` (string) never collide; non-`Stringable` objects throw (caught upstream → caching silently disabled for that ID).
+
+### Metadata Cache
+
+`EntityMetadataRegistry` builds `EntityMetadata` (property/relation/attribute reflection) once per class and keeps it in memory — but that in-memory cache dies with the process. Pass `metadataCache:` (a PSR-6 `CacheItemPoolInterface`) via `EntityManagerOptions`/`EntityManagerFactory::create()` to persist it (Redis, APCu, a filesystem adapter, whatever pool you bring) so a fresh process reads pre-computed metadata instead of re-walking reflection and attributes.
+
+Contract — read before relying on it:
+- **No TTL, no auto-invalidation.** Metadata doesn't change at runtime, so entries never expire on their own. Editing entity attributes requires an explicit `EntityMetadataRegistry::clearMetadata()`/`clearAll()` call (which evicts from the pool too) — typically as a deploy step. Forgetting this serves stale mapping data, same footgun class as second-level cache staleness above.
+- **Cache faults never break resolution.** A pool read/write failure falls back to computing metadata directly — consistent with every other cache in this codebase.
+- **`ReflectionProperty`/`ReflectionRelation`/`ReflectionManyToMany`/`ReflectionMorphToMany`/`ReflectionMorphedByMany`/`EntityMetadata` implement `__serialize`/`__unserialize`.** They hold native, non-serializable `\ReflectionClass`/`\ReflectionProperty` objects; serialization stores the derived plain data instead and rebuilds the native reflection handle cheaply via `ReflectionCache` on wakeup — no re-parsing of attributes on a cache hit.
+- **`articulate:warm-metadata-cache` command** (`src/Commands/WarmMetadataCacheCommand.php`) scans one or more entities directories via `EntityClassDiscovery` (shared with `articulate:validate` and `articulate:diff` — `$entitiesPath` takes an `array<string>` of directories, or `null` to fall back to `src/Entities`/`src/Entity`) and populates the pool ahead of time, e.g. as part of a deploy.
 
 ### Enum Properties
 

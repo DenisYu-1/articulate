@@ -6,6 +6,7 @@ use Articulate\Attributes\Relations\ManyToMany;
 use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Collection\MappingCollection;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\ReflectionCache;
 use Exception;
 use ReflectionNamedType;
 use RuntimeException;
@@ -16,6 +17,25 @@ class ReflectionManyToMany implements RelationInterface {
         private readonly \ReflectionProperty $property,
         private readonly SchemaNaming $schemaNaming = new SchemaNaming(),
     ) {
+    }
+
+    /** @return array{attribute: ManyToMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} */
+    public function __serialize(): array
+    {
+        return [
+            'attribute' => $this->attribute,
+            'declaringClass' => $this->property->class,
+            'propertyName' => $this->property->getName(),
+            'schemaNaming' => $this->schemaNaming,
+        ];
+    }
+
+    /** @param array{attribute: ManyToMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} $data */
+    public function __unserialize(array $data): void
+    {
+        $this->attribute = $data['attribute'];
+        $this->property = ReflectionCache::getProperty($data['declaringClass'], $data['propertyName']);
+        $this->schemaNaming = $data['schemaNaming'];
     }
 
     public function getTargetEntity(): ?string

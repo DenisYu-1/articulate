@@ -72,7 +72,7 @@ PHP);
             $schemaComparator,
             new MigrationsCommandGenerator($mockConnection),
             $this->migrationsPath,
-            $this->entitiesPath,
+            [$this->entitiesPath],
         );
 
         $commandTester = new CommandTester($command);

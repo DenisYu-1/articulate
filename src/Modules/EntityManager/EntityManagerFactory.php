@@ -3,18 +3,21 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Connection;
+use Articulate\Schema\EntityMetadataRegistry;
 
 class EntityManagerFactory {
     public static function create(
         Connection $connection,
         EntityManagerOptions $options = new EntityManagerOptions(),
     ): EntityManager {
+        $metadataRegistry = $options->metadataRegistry ?? new EntityMetadataRegistry($options->metadataCache);
+
         return new EntityManager(
             $connection,
             $options->changeTrackingStrategy,
             $options->hydrator,
             $options->generatorRegistry,
-            $options->metadataRegistry,
+            $metadataRegistry,
             $options->queryExecutor,
             $options->updateConflictResolutionStrategy,
             $options->resultCache,

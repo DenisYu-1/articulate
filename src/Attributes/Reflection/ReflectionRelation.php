@@ -11,6 +11,7 @@ use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\Relations\RelationAttributeInterface;
 use Articulate\Schema\SchemaNaming;
+use Articulate\Utils\ReflectionCache;
 use ReflectionNamedType;
 use ReflectionProperty as BaseReflectionProperty;
 use RuntimeException;
@@ -25,6 +26,32 @@ class ReflectionRelation implements PropertyInterface, RelationInterface {
         if (method_exists($this->entityProperty, 'resolveColumnNames')) {
             $this->entityProperty->resolveColumnNames($this->property->getName());
         }
+    }
+
+    /**
+     * Native \ReflectionProperty is not serializable — store the derived,
+     * plain data and the (class, property) pair needed to cheaply rebuild it.
+     * resolveColumnNames() already ran (and mutated entityProperty) before
+     * first serialization, so it does not need to run again on wakeup.
+     *
+     * @return array{entityProperty: RelationAttributeInterface, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming}
+     */
+    public function __serialize(): array
+    {
+        return [
+            'entityProperty' => $this->entityProperty,
+            'declaringClass' => $this->property->class,
+            'propertyName' => $this->property->getName(),
+            'schemaNaming' => $this->schemaNaming,
+        ];
+    }
+
+    /** @param array{entityProperty: RelationAttributeInterface, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} $data */
+    public function __unserialize(array $data): void
+    {
+        $this->entityProperty = $data['entityProperty'];
+        $this->property = ReflectionCache::getProperty($data['declaringClass'], $data['propertyName']);
+        $this->schemaNaming = $data['schemaNaming'];
     }
 
     public function getTargetEntity(): ?string

@@ -20,6 +20,30 @@ class ReflectionMorphToMany implements RelationInterface {
         $this->attribute->resolveColumnNames($property->getName(), $targetEntity->getTableName());
     }
 
+    /**
+     * resolveColumnNames() already ran (and mutated attribute) before first
+     * serialization, so it does not need to run again on wakeup.
+     *
+     * @return array{attribute: MorphToMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming}
+     */
+    public function __serialize(): array
+    {
+        return [
+            'attribute' => $this->attribute,
+            'declaringClass' => $this->property->class,
+            'propertyName' => $this->property->getName(),
+            'schemaNaming' => $this->schemaNaming,
+        ];
+    }
+
+    /** @param array{attribute: MorphToMany, declaringClass: class-string, propertyName: string, schemaNaming: SchemaNaming} $data */
+    public function __unserialize(array $data): void
+    {
+        $this->attribute = $data['attribute'];
+        $this->property = ReflectionCache::getProperty($data['declaringClass'], $data['propertyName']);
+        $this->schemaNaming = $data['schemaNaming'];
+    }
+
     public function getTargetEntity(): ?string
     {
         if ($this->attribute->getTargetEntity()) {
