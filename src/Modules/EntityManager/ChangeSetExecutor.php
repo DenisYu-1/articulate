@@ -13,7 +13,7 @@ class ChangeSetExecutor {
     }
 
     /**
-     * @param array{inserts: object[], updates: array<int, array{entity?: object, changes?: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[], softDeletes: object[]} $changes
+     * @param array{inserts: object[], updates: array<int, array{entity?: object, changes?: array, table?: string, set?: array, where?: string, whereValues?: array, versionBumpColumns?: string[]}>, deletes: object[], softDeletes: object[]} $changes
      */
     public function execute(array $changes): void
     {
@@ -34,6 +34,7 @@ class ChangeSetExecutor {
                     columnChanges: $update['set'],
                     whereClause: $update['where'],
                     whereValues: $update['whereValues'],
+                    versionBumpColumns: $update['versionBumpColumns'] ?? [],
                 );
 
                 continue;
@@ -81,11 +82,26 @@ class ChangeSetExecutor {
 
         $where = $this->queryExecutor->buildEntityWhereClause($entity);
 
+        $versionCheckColumns = [];
+        foreach ($metadata->getCheckedVersionColumns() as $checkedColumn) {
+            $propertyName = $metadata->getPropertyNameForColumn($checkedColumn);
+            $property = $propertyName !== null ? $metadata->getProperty($propertyName) : null;
+            $versionCheckColumns[$checkedColumn] = $property?->getValue($entity);
+        }
+
         $this->queryExecutor->executeUpdateByTable(
             $metadata->getTableName(),
             [$softDeleteColumn => (new \DateTimeImmutable())->format('Y-m-d H:i:s')],
             $where['clause'],
             $where['values'],
+            $metadata->getVersionColumns(),
+            $versionCheckColumns,
         );
+
+        foreach ($versionCheckColumns as $checkedColumn => $originalValue) {
+            $propertyName = $metadata->getPropertyNameForColumn($checkedColumn);
+            $property = $propertyName !== null ? $metadata->getProperty($propertyName) : null;
+            $property?->setValue($entity, $originalValue + 1);
+        }
     }
 }

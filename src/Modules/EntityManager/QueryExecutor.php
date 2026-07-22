@@ -9,6 +9,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Relations\MorphTypeRegistry;
 use Articulate\Collection\MappingCollection;
 use Articulate\Connection;
+use Articulate\Exceptions\OptimisticLockException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Utils\ReflectionCache;
@@ -173,6 +174,7 @@ class QueryExecutor {
 
         $reflectionEntity = $this->getReflectionEntity($entity::class);
         $tableName = $reflectionEntity->getTableName();
+        $metadata = $this->entityMetadataCache[$entity::class] ??= new EntityMetadata($entity::class);
 
         // Prepare SET clause from changes
         $setParts = [];
@@ -207,8 +209,24 @@ class QueryExecutor {
         // Handle ManyToOne and owning OneToOne relationships
         $this->addManyToOneChanges($entity, $setParts, $values);
 
+        // Optimistic-lock bump: server-side increment, no bound parameter needed.
+        foreach ($metadata->getVersionColumns() as $versionColumn) {
+            $setParts[] = "{$versionColumn} = {$versionColumn} + 1";
+        }
+
         // Prepare WHERE clause - try primary key first, then fall back to 'id' property
         [$whereClause, $whereValues] = $this->buildWhereClause($entity);
+
+        // Optimistic-lock check: only #[Version] (never #[VersionAware]) columns are checked,
+        // bound to the entity's currently-tracked value (kept in sync with the DB by the
+        // in-memory rebump below and by UnitOfWork::clearChanges() refreshing the snapshot).
+        $checkedVersionColumns = $metadata->getCheckedVersionColumns();
+        $originalVersionValues = [];
+        foreach ($checkedVersionColumns as $checkedColumn) {
+            $originalVersionValues[$checkedColumn] = $this->getVersionColumnValue($metadata, $entity, $checkedColumn);
+            $whereClause .= " AND {$checkedColumn} = ?";
+            $whereValues[] = $originalVersionValues[$checkedColumn];
+        }
 
         // Combine all parameters
         $allValues = array_merge($values, $whereValues);
@@ -221,7 +239,13 @@ class QueryExecutor {
             $whereClause
         );
 
-        $this->connection->executeQuery($sql, $allValues);
+        $statement = $this->connection->executeQuery($sql, $allValues);
+
+        $this->assertVersionCheckSucceeded($statement, $tableName, $checkedVersionColumns);
+
+        foreach ($checkedVersionColumns as $checkedColumn) {
+            $this->setVersionColumnValue($metadata, $entity, $checkedColumn, $originalVersionValues[$checkedColumn] + 1);
+        }
     }
 
     /**
@@ -229,10 +253,18 @@ class QueryExecutor {
      *
      * @param array<string, mixed> $columnChanges
      * @param array<int, mixed> $whereValues
+     * @param string[] $versionBumpColumns Columns to bump (SET col = col + 1), never checked
+     * @param array<string, mixed> $versionCheckColumns Columns to check (WHERE col = ?), keyed by column name → expected original value
      */
-    public function executeUpdateByTable(string $tableName, array $columnChanges, string $whereClause, array $whereValues): void
-    {
-        if (empty($columnChanges)) {
+    public function executeUpdateByTable(
+        string $tableName,
+        array $columnChanges,
+        string $whereClause,
+        array $whereValues,
+        array $versionBumpColumns = [],
+        array $versionCheckColumns = [],
+    ): void {
+        if (empty($columnChanges) && empty($versionBumpColumns)) {
             return;
         }
 
@@ -241,6 +273,15 @@ class QueryExecutor {
         foreach ($columnChanges as $columnName => $value) {
             $setParts[] = "{$columnName} = ?";
             $values[] = $value;
+        }
+
+        foreach ($versionBumpColumns as $versionColumn) {
+            $setParts[] = "{$versionColumn} = {$versionColumn} + 1";
+        }
+
+        foreach ($versionCheckColumns as $checkedColumn => $originalValue) {
+            $whereClause .= " AND {$checkedColumn} = ?";
+            $whereValues[] = $originalValue;
         }
 
         $allValues = array_merge($values, $whereValues);
@@ -252,7 +293,40 @@ class QueryExecutor {
             $whereClause
         );
 
-        $this->connection->executeQuery($sql, $allValues);
+        $statement = $this->connection->executeQuery($sql, $allValues);
+
+        $this->assertVersionCheckSucceeded($statement, $tableName, array_keys($versionCheckColumns));
+    }
+
+    /**
+     * @param string[] $checkedVersionColumns
+     */
+    private function assertVersionCheckSucceeded(\PDOStatement $statement, string $tableName, array $checkedVersionColumns): void
+    {
+        if (empty($checkedVersionColumns) || $statement->rowCount() > 0) {
+            return;
+        }
+
+        throw new OptimisticLockException(sprintf(
+            'Optimistic lock failed updating "%s": row not found or version mismatch on %s.',
+            $tableName,
+            implode(', ', $checkedVersionColumns)
+        ));
+    }
+
+    private function getVersionColumnValue(EntityMetadata $metadata, object $entity, string $columnName): mixed
+    {
+        $propertyName = $metadata->getPropertyNameForColumn($columnName);
+        $property = $propertyName !== null ? $metadata->getProperty($propertyName) : null;
+
+        return $property?->getValue($entity);
+    }
+
+    private function setVersionColumnValue(EntityMetadata $metadata, object $entity, string $columnName, mixed $value): void
+    {
+        $propertyName = $metadata->getPropertyNameForColumn($columnName);
+        $property = $propertyName !== null ? $metadata->getProperty($propertyName) : null;
+        $property?->setValue($entity, $value);
     }
 
     /**

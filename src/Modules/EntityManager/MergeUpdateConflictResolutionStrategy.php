@@ -36,8 +36,9 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
 
             [$whereClause, $whereValues, $identityKey] = $identity;
             $columnChanges = $this->mapChangesToColumns($update['changes'], $metadata);
+            $versionBumpColumns = $metadata->getVersionColumns();
 
-            if ($columnChanges === []) {
+            if ($columnChanges === [] && $versionBumpColumns === []) {
                 $result[] = $update;
 
                 continue;
@@ -54,6 +55,7 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
                     'set' => $columnChanges,
                     'where' => $whereClause,
                     'whereValues' => $whereValues,
+                    'versionBumpColumns' => $versionBumpColumns,
                 ];
 
                 continue;
@@ -61,6 +63,13 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
 
             $index = $combinedIndexes[$groupKey];
             $result[$index]['set'] = array_merge($result[$index]['set'], $columnChanges);
+            // Two siblings may both bump the same raw column (design explicitly allows this) —
+            // dedupe by column name, else array_merge would emit "col = col + 1" twice and
+            // double-increment it in a single flush.
+            $result[$index]['versionBumpColumns'] = array_values(array_unique(array_merge(
+                $result[$index]['versionBumpColumns'],
+                $versionBumpColumns
+            )));
         }
 
         return $result;
@@ -68,6 +77,13 @@ class MergeUpdateConflictResolutionStrategy implements UpdateConflictResolutionS
 
     private function canCombineUpdate(EntityMetadata $metadata): bool
     {
+        // A #[Version]-checking entity's WHERE version = ? check and rowCount()-based
+        // conflict detection must run on its own entity-bound UPDATE — combining it
+        // into a table-scoped merge would silently drop that guarantee.
+        if ($metadata->getCheckedVersionColumns() !== []) {
+            return false;
+        }
+
         foreach ($metadata->getColumnRelations() as $relation) {
             // MorphTo stores two columns (type + id) that must change atomically.
             // Merging them as independent column changes across UoWs risks writing

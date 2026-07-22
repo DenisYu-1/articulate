@@ -161,6 +161,51 @@ $em->persist($loginUser); // throws
 
 `ReadOnlyEntityException` is thrown at `persist()` and `remove()` — before any SQL is built.
 
+### Optimistic Locking
+
+A naive optimistic lock (version tied to one entity class) breaks under context-bounded entities: if only one sibling class bumps/checks the version column, another sibling can silently overwrite changes undetected. Articulate's optimistic locking is fully explicit, per-class, from that class's own attributes only:
+
+- `#[Version]` — property-level, no args. This class's canonical version column: hydrated as a normal `int` property, bumped (`version = version + 1`) **and** checked (`WHERE version = ?`, against the tracked value) on every `UPDATE` through this class.
+- `#[VersionAware(['column', ...])]` — class-level. Declares raw column names (typically a sibling's `#[Version]` column) that this class bumps on `UPDATE` but never checks. Use it when a class legitimately writes through a versioned table but shouldn't take on lost-update detection it can't reason about (e.g. a lightweight title-only edit path on a billing entity).
+- No attribute at all on a class mapping a versioned table means that class touches no version columns — a real gap, and `articulate:validate` errors on it rather than silently tolerating it.
+
+```php
+#[Entity(tableName: 'invoices')]
+class Invoice
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    #[Version]
+    public int $version = 0;
+}
+
+#[Entity(tableName: 'invoices')]
+#[VersionAware(['version'])]
+class InvoiceTitleEdit
+{
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $title;
+}
+
+$invoice = $em->find(Invoice::class, 1);
+$invoice->version; // 3
+
+// Someone else updates and commits first — the row's version is now 4.
+
+$invoice->total = 100;
+$em->persist($invoice);
+$em->flush(); // throws OptimisticLockException: WHERE version = 3 matched 0 rows
+```
+
+A column may appear in at most one of a class's own `#[Version]` property or its own `#[VersionAware]` list — declaring both throws at metadata-build time. `#[Version]` properties must be typed `int`; a migration-generated column for one gets `DEFAULT 0` automatically. `OptimisticLockException` doesn't distinguish a stale version from a deleted row — both are "zero rows matched."
+
+Run `articulate:validate` to catch coverage gaps: every entity class mapping a versioned table must account for every `#[Version]` column on that table, either as its own `#[Version]` property or listed in its own `#[VersionAware]`. It also flags a `#[VersionAware]` column with no canonical `#[Version]` owner in the group, and reports (as info, not an error) when a table has more than one distinct `#[Version]` column across its entity classes.
+
 ### Memory-Efficient Unit of Work
 
 - Clear entities from memory that are no longer needed within specific operations
