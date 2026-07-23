@@ -350,4 +350,34 @@ class LazyCollectionTest extends TestCase {
         $col = new LazyCollection(fn () => []);
         $this->assertFalse($col->isDirty());
     }
+
+    // ── offsetSet guard-clause mutation killers ───────────────────────────────
+
+    public function testOffsetSetWithNonNullOffsetTriggersInitialization(): void
+    {
+        $item = new LazyCollectionItem(99);
+        $col = new LazyCollection(fn () => []);
+
+        $this->assertFalse($col->isInitialized());
+
+        $col[5] = $item; // numeric offset — must trigger init, not buffer
+
+        $this->assertTrue($col->isInitialized(), 'Setting a non-null offset must initialize the collection');
+        $this->assertSame($item, $col[5]);
+    }
+
+    public function testOffsetSetWithNullOffsetDoesNotInitializeBeforeFirstLoad(): void
+    {
+        $loaderCalled = false;
+        $col = new LazyCollection(function () use (&$loaderCalled) {
+            $loaderCalled = true;
+
+            return [];
+        });
+
+        $col[] = new LazyCollectionItem(1); // null offset
+
+        $this->assertFalse($loaderCalled, 'null-offset append must not trigger the loader');
+        $this->assertFalse($col->isInitialized());
+    }
 }

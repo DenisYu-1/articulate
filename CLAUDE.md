@@ -169,6 +169,19 @@ Contract — read before relying on it:
 - **`ReflectionProperty`/`ReflectionRelation`/`ReflectionManyToMany`/`ReflectionMorphToMany`/`ReflectionMorphedByMany`/`EntityMetadata` implement `__serialize`/`__unserialize`.** They hold native, non-serializable `\ReflectionClass`/`\ReflectionProperty` objects; serialization stores the derived plain data instead and rebuilds the native reflection handle cheaply via `ReflectionCache` on wakeup — no re-parsing of attributes on a cache hit.
 - **`articulate:warm-metadata-cache` command** (`src/Commands/WarmMetadataCacheCommand.php`) scans one or more entities directories via `EntityClassDiscovery` (shared with `articulate:validate` and `articulate:diff` — `$entitiesPath` takes an `array<string>` of directories, or `null` to fall back to `src/Entities`/`src/Entity`) and populates the pool ahead of time, e.g. as part of a deploy.
 
+### Optimistic Locking
+
+Bump/check is fully explicit, per-class, from that class's own attributes only — no cross-sibling discovery at runtime, no table-wide lookup on every flush. `#[Version]` (property-level, no args) is a class's canonical version column: hydrated as a normal `int` property, bumped (`version = version + 1`) **and** checked (`WHERE version = ?`, against the tracked value) on every `UPDATE` through that class. `#[VersionAware(['column', ...])]` (class-level) declares raw column names a class bumps on `UPDATE` but never checks — for a sibling that legitimately writes through a versioned table without taking on lost-update detection it can't reason about.
+
+Contract — read before relying on it:
+- **No attribute at all on a class mapping a versioned table is a real gap, not silently tolerated.** That class's writes are invisible to a checking sibling's lost-update detection. `articulate:validate` errors on it.
+- **A column may appear in at most one of a class's own `#[Version]` property or its own `#[VersionAware]` list.** Declaring both throws `\InvalidArgumentException` at metadata-build time.
+- **`#[Version]` properties must be typed `int`**, enforced at metadata-build time. A migration-generated column for one gets `DEFAULT 0` automatically, matching the property's own zero-value default.
+- **Runtime is table-lookup-free.** `QueryExecutor` resolves bump/check entirely from the acting entity's own `EntityMetadata::getVersionColumns()`/`getCheckedVersionColumns()` — no `EntityMetadataRegistry` dependency at flush time.
+- **`OptimisticLockException` doesn't distinguish a stale version from a deleted row** — both surface as "zero rows matched", same conflation as Doctrine's equivalent.
+- **A `#[Version]`-checking entity's update is never combined by `MergeUpdateConflictResolutionStrategy`** — it always goes through the entity-bound path where the check is honored. Bump-only (`#[VersionAware]`) entities remain combinable; their bump columns are deduped by column name across contributing siblings so two siblings bumping the same column in one flush increment it exactly once, not twice.
+- **`articulate:validate`** groups entities by table and flags: a class not accounting for every `#[Version]` column on its table (error), a `#[VersionAware]` column with no canonical `#[Version]` owner in the group (error), and more than one distinct `#[Version]` column across a table's group (info, not an error).
+
 ### Enum Properties
 
 Backed enums persist their backing value, pure enums their case name. `TypeRegistry` maps int-backed enums → `INT`, everything else → `VARCHAR(255)`, and lazily builds an `EnumTypeConverter` per enum class (nullable `?Enum` handled too). No registration needed — just type the property with the enum.

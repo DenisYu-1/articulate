@@ -192,6 +192,13 @@ class UnitOfWork implements ManagedEntityStoreInterface {
         foreach ($this->scheduledInserts as $entity) {
             $this->changeTrackingStrategy->refreshSnapshot($entity);
         }
+        // Refresh updates too: an UPDATE may have server-side-bumped a #[Version]
+        // column beyond what the client set, so the pre-update snapshot no longer
+        // matches. Without this, the next computeChangeSet() would see the bumped
+        // property as a spurious dirty column and double-apply the increment.
+        foreach ($this->scheduledUpdates as $entity) {
+            $this->changeTrackingStrategy->refreshSnapshot($entity);
+        }
         $this->scheduledInserts = [];
         $this->scheduledUpdates = [];
         $this->scheduledDeletes = [];

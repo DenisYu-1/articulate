@@ -10,6 +10,7 @@ use Articulate\Attributes\Reflection\ReflectionProperty;
 use Articulate\Attributes\Reflection\ReflectionRelation;
 use Articulate\Attributes\Reflection\RelationInterface;
 use Articulate\Attributes\SoftDeleteable;
+use Articulate\Attributes\VersionAware;
 
 /**
  * Entity metadata containing all information about an entity class
@@ -30,6 +31,10 @@ class EntityMetadata {
 
     private ?SoftDeleteable $softDeleteable = null;
 
+    private ?ReflectionProperty $versionProperty = null;
+
+    private ?VersionAware $versionAware = null;
+
     public function __construct(string $entityClass)
     {
         $this->reflectionEntity = new ReflectionEntity($entityClass);
@@ -48,6 +53,8 @@ class EntityMetadata {
      *     relations: array<string, RelationInterface>,
      *     primaryKeyColumns: array<int, string>,
      *     softDeleteable: ?SoftDeleteable,
+     *     versionProperty: ?ReflectionProperty,
+     *     versionAware: ?VersionAware,
      * }
      */
     public function __serialize(): array
@@ -60,6 +67,8 @@ class EntityMetadata {
             'relations' => $this->relations,
             'primaryKeyColumns' => $this->primaryKeyColumns,
             'softDeleteable' => $this->softDeleteable,
+            'versionProperty' => $this->versionProperty,
+            'versionAware' => $this->versionAware,
         ];
     }
 
@@ -72,6 +81,8 @@ class EntityMetadata {
      *     relations: array<string, RelationInterface>,
      *     primaryKeyColumns: array<int, string>,
      *     softDeleteable: ?SoftDeleteable,
+     *     versionProperty: ?ReflectionProperty,
+     *     versionAware: ?VersionAware,
      * } $data
      */
     public function __unserialize(array $data): void
@@ -83,6 +94,8 @@ class EntityMetadata {
         $this->relations = $data['relations'];
         $this->primaryKeyColumns = $data['primaryKeyColumns'];
         $this->softDeleteable = $data['softDeleteable'];
+        $this->versionProperty = $data['versionProperty'];
+        $this->versionAware = $data['versionAware'];
     }
 
     /**
@@ -145,6 +158,21 @@ class EntityMetadata {
 
         // Load soft-delete configuration
         $this->softDeleteable = $this->reflectionEntity->getSoftDeleteableAttribute();
+
+        // Load optimistic-locking configuration
+        $this->versionProperty = $this->reflectionEntity->getVersionProperty();
+        $this->versionAware = $this->reflectionEntity->getVersionAwareAttribute();
+
+        if (
+            $this->versionProperty !== null && $this->versionAware !== null
+            && in_array($this->versionProperty->getColumnName(), $this->versionAware->columns, true)
+        ) {
+            throw new \InvalidArgumentException(sprintf(
+                'Class "%s" declares column "%s" as both its own #[Version] property and in its own #[VersionAware] list.',
+                $this->reflectionEntity->getName(),
+                $this->versionProperty->getColumnName(),
+            ));
+        }
     }
 
     /**
@@ -301,5 +329,37 @@ class EntityMetadata {
     public function getSoftDeleteField(): ?string
     {
         return $this->softDeleteable?->fieldName;
+    }
+
+    /**
+     * Full SET-clause bump list for this class: its own #[Version] column
+     * (if any) plus its own #[VersionAware] columns.
+     *
+     * @return string[]
+     */
+    public function getVersionColumns(): array
+    {
+        $columns = [];
+
+        if ($this->versionProperty !== null) {
+            $columns[] = $this->versionProperty->getColumnName();
+        }
+
+        if ($this->versionAware !== null) {
+            $columns = array_merge($columns, $this->versionAware->columns);
+        }
+
+        return array_values(array_unique($columns));
+    }
+
+    /**
+     * WHERE-clause check list for this class: just its own #[Version]
+     * property's column, if any.
+     *
+     * @return string[]
+     */
+    public function getCheckedVersionColumns(): array
+    {
+        return $this->versionProperty !== null ? [$this->versionProperty->getColumnName()] : [];
     }
 }

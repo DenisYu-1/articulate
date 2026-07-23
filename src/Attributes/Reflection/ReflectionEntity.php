@@ -16,10 +16,13 @@ use Articulate\Attributes\Relations\MorphToMany;
 use Articulate\Attributes\Relations\OneToMany;
 use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Attributes\SoftDeleteable;
+use Articulate\Attributes\Version;
+use Articulate\Attributes\VersionAware;
 use Articulate\Schema\SchemaNaming;
 use Articulate\Utils\StringUtils;
 use ReflectionAttribute;
 use ReflectionClass;
+use ReflectionNamedType;
 
 class ReflectionEntity extends ReflectionClass {
     public function __construct(
@@ -94,6 +97,12 @@ class ReflectionEntity extends ReflectionClass {
 
         $propertyAttribute = $this->resolvePropertyAttribute($entityProperty, $primaryKeyProperty);
         $isPrimaryKey = $this->determineIsPrimaryKey($primaryKeyProperty, $propertyAttribute);
+
+        // A freshly-inserted entity's in-memory #[Version] property starts at 0 (like any
+        // un-set int property), so the migration-generated column default must match.
+        if ($propertyAttribute->defaultValue === null && !empty($property->getAttributes(Version::class))) {
+            $propertyAttribute->defaultValue = '0';
+        }
 
         [$generatorType, $sequence, $generatorOptions] = $this->extractGeneratorInfo($primaryKeyProperty, $propertyAttribute, $isPrimaryKey);
 
@@ -421,6 +430,65 @@ class ReflectionEntity extends ReflectionClass {
         }
 
         $attributes = $this->getAttributes(SoftDeleteable::class);
+        if (empty($attributes)) {
+            return null;
+        }
+
+        return $attributes[0]->newInstance();
+    }
+
+    /**
+     * Finds this class's own #[Version] property, if any.
+     */
+    public function getVersionProperty(): ?ReflectionProperty
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        foreach ($this->getProperties() as $property) {
+            $versionAttributes = $property->getAttributes(Version::class);
+            if (empty($versionAttributes)) {
+                continue;
+            }
+
+            $type = $property->getType();
+            if (!$type instanceof ReflectionNamedType || $type->getName() !== 'int') {
+                throw new \InvalidArgumentException(sprintf(
+                    '#[Version] property "%s::%s" must be typed int.',
+                    $this->getName(),
+                    $property->getName(),
+                ));
+            }
+
+            $propertyAttributes = $property->getAttributes(Property::class, ReflectionAttribute::IS_INSTANCEOF);
+            $propertyInstance = !empty($propertyAttributes)
+                ? $propertyAttributes[0]->newInstance()
+                : new Property();
+
+            $primaryKeyAttributes = $property->getAttributes(PrimaryKey::class);
+
+            return new ReflectionProperty(
+                $propertyInstance,
+                $property,
+                !empty($property->getAttributes(AutoIncrement::class)),
+                !empty($primaryKeyAttributes),
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * This class's own #[VersionAware] declaration, if any.
+     */
+    public function getVersionAwareAttribute(): ?VersionAware
+    {
+        if (!$this->isEntity()) {
+            return null;
+        }
+
+        $attributes = $this->getAttributes(VersionAware::class);
         if (empty($attributes)) {
             return null;
         }
