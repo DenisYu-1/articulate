@@ -197,7 +197,7 @@ class ForeignKeyOrderingTest extends TestCase {
         $ordered = $this->dependencySorter->order([$parent, $child], 'insert');
 
         $parentIndex = array_search($parent, $ordered, true);
-        $childIndex  = array_search($child, $ordered, true);
+        $childIndex = array_search($child, $ordered, true);
 
         // Without a FK constraint no dependency is injected, so the topological
         // sort preserves the original iteration order: parent before child.
