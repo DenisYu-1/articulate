@@ -91,6 +91,7 @@ class RelationValidatorsTest extends TestCase {
         foreach ($entity->getEntityRelationProperties() as $rel) {
             if ($rel instanceof ReflectionRelation && $rel->isOneToMany()) {
                 $oneToManyRelation = $rel;
+
                 break;
             }
         }
@@ -108,6 +109,7 @@ class RelationValidatorsTest extends TestCase {
         foreach ($entity->getEntityRelationProperties() as $rel) {
             if ($rel instanceof ReflectionRelation && $rel->isManyToOne()) {
                 $manyToOneRelation = $rel;
+
                 break;
             }
         }
@@ -120,17 +122,45 @@ class RelationValidatorsTest extends TestCase {
 
     public function testPolymorphicValidatorReturnsEarlyForNonReflectionRelation(): void
     {
-        $nonReflectionRelation = new class implements RelationInterface {
-            public function getTargetEntity(): ?string { return null; }
-            public function getDeclaringClassName(): string { return self::class; }
-            public function isOwningSide(): bool { return true; }
-            public function getMappedBy(): ?string { return null; }
-            public function getInversedBy(): ?string { return null; }
-            public function getPropertyName(): string { return 'stub'; }
-            public function isLazy(): bool { return false; }
+        $nonReflectionRelation = new class() implements RelationInterface {
+            public function getTargetEntity(): ?string
+            {
+                return null;
+            }
+
+            public function getDeclaringClassName(): string
+            {
+                return self::class;
+            }
+
+            public function isOwningSide(): bool
+            {
+                return true;
+            }
+
+            public function getMappedBy(): ?string
+            {
+                return null;
+            }
+
+            public function getInversedBy(): ?string
+            {
+                return null;
+            }
+
+            public function getPropertyName(): string
+            {
+                return 'stub';
+            }
+
+            public function isLazy(): bool
+            {
+                return false;
+            }
         };
 
         $validator = new PolymorphicRelationValidator();
         $validator->validate($nonReflectionRelation); // must not throw/error
         $this->assertSame(PolymorphicRelationValidator::class, $validator::class);
-    }}
+    }
+}
