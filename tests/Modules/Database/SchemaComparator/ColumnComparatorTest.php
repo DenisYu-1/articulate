@@ -1257,6 +1257,146 @@ class ColumnComparatorTest extends TestCase {
         $this->assertEquals('id', $result['user_id']['referencedColumn']);
         $this->assertEquals($existing, $result['user_id']['relation']);
     }
+
+    // ── mergeColumnProperties mutation killers ────────────────────────────────
+
+    /**
+     * Call the private mergeColumnProperties via reflection.
+     *
+     * @param array<string, mixed> $incoming
+     * @param array<string, mixed> $existing
+     * @return array<string, mixed>
+     */
+    private function mergeProps(array $incoming, array $existing): array
+    {
+        $m = new \ReflectionMethod(ColumnComparator::class, 'mergeColumnProperties');
+        $m->setAccessible(true);
+
+        return $m->invoke($this->comparator, $incoming, $existing);
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function makeProps(array $overrides = []): array
+    {
+        return array_merge([
+            'type' => 'string',
+            'nullable' => false,
+            'default' => null,
+            'length' => 255,
+            'relation' => null,
+            'foreignKeyRequired' => false,
+            'referencedColumn' => null,
+            'generatorType' => null,
+            'sequence' => null,
+            'isPrimaryKey' => false,
+            'isAutoIncrement' => false,
+            'propertyName' => 'name',
+            'declaringClass' => 'SomeClass',
+        ], $overrides);
+    }
+
+    /**
+     * Line 256: `'nullable' => $existing['nullable'] || $incoming['nullable']`
+     * Mutation: `!$existing['nullable'] || $incoming['nullable']` — flips existing.
+     * When existing=true and incoming=false the result must still be true.
+     */
+    public function testMergeColumnPropertiesNullableUsesOrLogic(): void
+    {
+        $existing = $this->makeProps(['nullable' => true]);
+        $incoming = $this->makeProps(['nullable' => false]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['nullable'], 'nullable must be true when existing is true (|| not !existing||incoming)');
+    }
+
+    /**
+     * Also verify the symmetric case: incoming=true wins even when existing=false.
+     */
+    public function testMergeColumnPropertiesNullableIncomingTrueWins(): void
+    {
+        $existing = $this->makeProps(['nullable' => false]);
+        $incoming = $this->makeProps(['nullable' => true]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['nullable']);
+    }
+
+    /**
+     * Line 260: `'foreignKeyRequired' => $existing['foreignKeyRequired'] || $incoming['foreignKeyRequired']`
+     * Mutation: `&&` — with && the result would be false when only one side is true.
+     */
+    public function testMergeColumnPropertiesForeignKeyRequiredUsesOrLogic(): void
+    {
+        $existing = $this->makeProps(['foreignKeyRequired' => true]);
+        $incoming = $this->makeProps(['foreignKeyRequired' => false]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['foreignKeyRequired'], 'foreignKeyRequired must be true when existing is true');
+    }
+
+    public function testMergeColumnPropertiesForeignKeyRequiredIncomingTrueWins(): void
+    {
+        $existing = $this->makeProps(['foreignKeyRequired' => false]);
+        $incoming = $this->makeProps(['foreignKeyRequired' => true]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['foreignKeyRequired']);
+    }
+
+    /**
+     * Line 264: `'isPrimaryKey' => $existing['isPrimaryKey'] || $incoming['isPrimaryKey']`
+     * Various negation mutations may flip this.
+     */
+    public function testMergeColumnPropertiesIsPrimaryKeyUsesOrLogic(): void
+    {
+        $existing = $this->makeProps(['isPrimaryKey' => true]);
+        $incoming = $this->makeProps(['isPrimaryKey' => false]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['isPrimaryKey'], 'isPrimaryKey must be true when existing is true');
+    }
+
+    public function testMergeColumnPropertiesIsPrimaryKeyIncomingTrueWins(): void
+    {
+        $existing = $this->makeProps(['isPrimaryKey' => false]);
+        $incoming = $this->makeProps(['isPrimaryKey' => true]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['isPrimaryKey']);
+    }
+
+    /**
+     * Line 265: `'isAutoIncrement' => $existing['isAutoIncrement'] || $incoming['isAutoIncrement']`
+     * Mutation: `&&`.
+     */
+    public function testMergeColumnPropertiesIsAutoIncrementUsesOrLogic(): void
+    {
+        $existing = $this->makeProps(['isAutoIncrement' => true]);
+        $incoming = $this->makeProps(['isAutoIncrement' => false]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['isAutoIncrement'], 'isAutoIncrement must be true when existing is true');
+    }
+
+    public function testMergeColumnPropertiesIsAutoIncrementIncomingTrueWins(): void
+    {
+        $existing = $this->makeProps(['isAutoIncrement' => false]);
+        $incoming = $this->makeProps(['isAutoIncrement' => true]);
+
+        $result = $this->mergeProps($incoming, $existing);
+
+        $this->assertTrue($result['isAutoIncrement']);
+    }
 }
 
 // Fixture entity classes — defined in same file to avoid PSR-4 one-class-per-file constraint
