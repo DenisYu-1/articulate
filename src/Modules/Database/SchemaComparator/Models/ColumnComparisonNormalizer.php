@@ -109,7 +109,7 @@ class ColumnComparisonNormalizer {
         return self::normalizeType($data) === 'varchar';
     }
 
-    private static function effectiveLength(PropertiesData $data): ?int
+    private static function effectiveLength(PropertiesData $data): int
     {
         return $data->length ?? self::DEFAULT_STRING_LENGTH;
     }

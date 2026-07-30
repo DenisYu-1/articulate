@@ -93,7 +93,7 @@ class EntityDependencySorter {
             }
 
             if (isset($visiting[$class])) {
-                $chain = implode(' → ', array_keys(array_filter($visiting))) . ' → ' . $class;
+                $chain = implode(' → ', array_keys($visiting)) . ' → ' . $class;
 
                 throw new \RuntimeException("Circular dependency detected: {$chain}. Check your entity FK relationships.");
             }

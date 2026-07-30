@@ -169,7 +169,25 @@ parameters:
 			path: src/Collection/MappingItem.php
 
 		-
+			message: '#^Method Articulate\\Collection\\MappingItem\:\:fromDatabase\(\) has parameter \$pivot with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Collection/MappingItem.php
+
+		-
 			message: '#^Method Articulate\\Collection\\MappingItem\:\:pivot\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Collection/MappingItem.php
+
+		-
+			message: '#^Property Articulate\\Collection\\MappingItem\:\:\$originalPivot type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Collection/MappingItem.php
+
+		-
+			message: '#^Property Articulate\\Collection\\MappingItem\:\:\$pivot type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Collection/MappingItem.php
@@ -655,6 +673,12 @@ parameters:
 			path: src/Modules/EntityManager/ChangeAggregator.php
 
 		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\ChangeSetExecutor\:\:execute\(\) has parameter \$changes with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 3
+			path: src/Modules/EntityManager/ChangeSetExecutor.php
+
+		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\ChangeTrackingStrategy\:\:computeChangeSet\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -751,28 +775,34 @@ parameters:
 			path: src/Modules/EntityManager/DeferredImplicitStrategy.php
 
 		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\EntityCacheCoordinator\:\:getSecondLevelCacheData\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/EntityCacheCoordinator.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\EntityCacheCoordinator\:\:setSecondLevelCacheData\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/EntityCacheCoordinator.php
+
+		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\EntityManager\:\:createCollection\(\) has parameter \$items with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/EntityManager/EntityManager.php
 
 		-
-			message: '#^Method Articulate\\Modules\\EntityManager\\EntityManager\:\:executeChanges\(\) has parameter \$changes with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 3
-			path: src/Modules/EntityManager/EntityManager.php
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: src/Modules/EntityManager/EntityReadService.php
 
 		-
-			message: '#^Method Articulate\\Modules\\EntityManager\\EntityManager\:\:invalidateSecondLevelCache\(\) has parameter \$changes with no value type specified in iterable type array\.$#'
+			message: '#^Method Articulate\\Modules\\EntityManager\\EntityRefreshService\:\:updateEntityProperties\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: src/Modules/EntityManager/EntityManager.php
-
-		-
-			message: '#^Method Articulate\\Modules\\EntityManager\\EntityManager\:\:updateEntityProperties\(\) has parameter \$data with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/EntityManager/EntityManager.php
+			path: src/Modules/EntityManager/EntityRefreshService.php
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\LazyCollection\:\:getIterator\(\) return type with generic class ArrayIterator does not specify its types\: TKey, TValue$#'
@@ -815,30 +845,6 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/EntityManager/MergeUpdateConflictResolutionStrategy.php
-
-		-
-			message: '#^If condition is always false\.$#'
-			identifier: if.alwaysFalse
-			count: 1
-			path: src/Modules/EntityManager/ObjectHydrator.php
-
-		-
-			message: '#^Instanceof between Articulate\\Attributes\\Reflection\\ReflectionRelation and Articulate\\Attributes\\Reflection\\ReflectionManyToMany will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 2
-			path: src/Modules/EntityManager/ObjectHydrator.php
-
-		-
-			message: '#^Instanceof between Articulate\\Attributes\\Reflection\\ReflectionRelation and Articulate\\Attributes\\Reflection\\ReflectionRelation will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 4
-			path: src/Modules/EntityManager/ObjectHydrator.php
-
-		-
-			message: '#^Left side of \|\| is always false\.$#'
-			identifier: booleanOr.leftAlwaysFalse
-			count: 3
-			path: src/Modules/EntityManager/ObjectHydrator.php
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\ObjectHydrator\:\:extract\(\) return type has no value type specified in iterable type array\.$#'
@@ -891,18 +897,6 @@ parameters:
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\ObjectHydrator\:\:registerEntity\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
-			count: 1
-			path: src/Modules/EntityManager/ObjectHydrator.php
-
-		-
-			message: '#^Result of && is always false\.$#'
-			identifier: booleanAnd.alwaysFalse
-			count: 1
-			path: src/Modules/EntityManager/ObjectHydrator.php
-
-		-
-			message: '#^Right side of \|\| is always false\.$#'
-			identifier: booleanOr.rightAlwaysFalse
 			count: 1
 			path: src/Modules/EntityManager/ObjectHydrator.php
 
@@ -1069,52 +1063,10 @@ parameters:
 			path: src/Modules/EntityManager/QueryExecutor.php
 
 		-
-			message: '#^Instanceof between Articulate\\Attributes\\Reflection\\ReflectionRelation and Articulate\\Attributes\\Reflection\\ReflectionManyToMany will always evaluate to false\.$#'
-			identifier: instanceof.alwaysFalse
-			count: 2
-			path: src/Modules/EntityManager/QueryExecutor.php
-
-		-
-			message: '#^Result of \|\| is always true\.$#'
-			identifier: booleanOr.alwaysTrue
-			count: 2
-			path: src/Modules/EntityManager/QueryExecutor.php
-
-		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
-			count: 2
-			path: src/Modules/EntityManager/QueryExecutor.php
-
-		-
-			message: '#^Method Articulate\\Modules\\EntityManager\\QueryExecutor\:\:syncMappingCollection\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: src/Modules/EntityManager/QueryExecutor.php
-
-		-
-			message: '#^Method Articulate\\Modules\\EntityManager\\QueryExecutor\:\:syncPlainCollection\(\) is unused\.$#'
-			identifier: method.unused
-			count: 1
-			path: src/Modules/EntityManager/QueryExecutor.php
-
-		-
-			message: '#^Property Articulate\\Collection\\MappingItem\:\:\$pivot type has no value type specified in iterable type array\.$#'
+			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:getForeignKeyValue\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: src/Collection/MappingItem.php
-
-		-
-			message: '#^Property Articulate\\Collection\\MappingItem\:\:\$originalPivot type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Collection/MappingItem.php
-
-		-
-			message: '#^Method Articulate\\Collection\\MappingItem\:\:fromDatabase\(\) has parameter \$pivot with no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
-			count: 1
-			path: src/Collection/MappingItem.php
+			path: src/Modules/EntityManager/RelationshipLoader.php
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:load\(\) has parameter \$data with no value type specified in iterable type array\.$#'
@@ -1124,6 +1076,12 @@ parameters:
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadManyToMany\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/RelationshipLoader.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadManyToOne\(\) has parameter \$data with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/EntityManager/RelationshipLoader.php
@@ -1171,6 +1129,12 @@ parameters:
 			path: src/Modules/EntityManager/RelationshipLoader.php
 
 		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\RelationshipLoader\:\:loadOneToOne\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/RelationshipLoader.php
+
+		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\ScalarHydrator\:\:extract\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1213,6 +1177,18 @@ parameters:
 			path: src/Modules/EntityManager/ThrowOnUpdateConflictStrategy.php
 
 		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/Modules/EntityManager/UnitOfWork.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\UnitOfWork\:\:detachGraph\(\) has parameter \$visited with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/UnitOfWork.php
+
+		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\UnitOfWork\:\:executePostCallbacks\(\) has parameter \$changes with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -1247,6 +1223,12 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/EntityManager/UnitOfWork.php
+
+		-
+			message: '#^Method Articulate\\Modules\\EntityManager\\UnitOfWorkRegistry\:\:registerManaged\(\) has parameter \$rawData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/EntityManager/UnitOfWorkRegistry.php
 
 		-
 			message: '#^Method Articulate\\Modules\\EntityManager\\UpdateConflictResolutionStrategy\:\:resolve\(\) has parameter \$updates with no value type specified in iterable type array\.$#'
@@ -1391,6 +1373,18 @@ parameters:
 			identifier: missingType.return
 			count: 1
 			path: src/Modules/Migrations/Generator/BaseMigration.php
+
+		-
+			message: '#^Method Articulate\\Modules\\Migrations\\Generator\\PostgresqlMigrationGenerator\:\:generateForwardColumnChange\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/Migrations/Generator/PostgresqlMigrationGenerator.php
+
+		-
+			message: '#^Method Articulate\\Modules\\Migrations\\Generator\\PostgresqlMigrationGenerator\:\:generateRollbackColumnChange\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/Migrations/Generator/PostgresqlMigrationGenerator.php
 
 		-
 			message: '#^Method Articulate\\Modules\\QueryBuilder\\Cursor\:\:__construct\(\) has parameter \$values with no value type specified in iterable type array\.$#'
@@ -1784,6 +1778,12 @@ parameters:
 
 		-
 			message: '#^Method Articulate\\Modules\\QueryBuilder\\QueryResultExecutor\:\:expandInPlaceholders\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Modules/QueryBuilder/QueryResultExecutor.php
+
+		-
+			message: '#^Method Articulate\\Modules\\QueryBuilder\\QueryResultExecutor\:\:getManagedEntity\(\) has parameter \$row with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: src/Modules/QueryBuilder/QueryResultExecutor.php
@@ -2917,6 +2917,12 @@ parameters:
 			path: tests/Attributes/Reflection/ReflectionMorphToManyTest.php
 
 		-
+			message: '#^Property Articulate\\Tests\\Attributes\\Reflection\\TestEntityWithNonDefaultPrimaryKeys\:\:\$tags type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphToManyTest.php
+
+		-
 			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetAttribute\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -2924,6 +2930,12 @@ parameters:
 
 		-
 			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetDeclaringClassName\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetExtraPropertiesWithMappingTable\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
 			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
@@ -2965,6 +2977,12 @@ parameters:
 			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
 
 		-
+			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetOwnerPrimaryColumnUsesFirstNonDefaultPrimaryKey\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
+
+		-
 			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetPrimaryColumns\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -2989,6 +3007,18 @@ parameters:
 			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
 
 		-
+			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetTargetEntityRejectsInvalidBuiltinCollectionType\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetTargetEntityRejectsInvalidClassCollectionType\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
+
+		-
 			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetTargetEntityWithExplicitTarget\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -3002,6 +3032,12 @@ parameters:
 
 		-
 			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetTargetPrimaryColumn\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Attributes\\Reflection\\ReflectionMorphedByManyTest\:\:testGetTargetPrimaryColumnUsesFirstNonDefaultPrimaryKey\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
 			path: tests/Attributes/Reflection/ReflectionMorphedByManyTest.php
@@ -3115,6 +3151,12 @@ parameters:
 			path: tests/Collection/MappingCollectionTest.php
 
 		-
+			message: '#^Call to new Articulate\\Collection\\MappingCollection\(\) on a separate line has no effect\.$#'
+			identifier: new.resultUnused
+			count: 1
+			path: tests/Collection/MappingCollectionTest.php
+
+		-
 			message: '#^Parameter \#1 \$items of class Articulate\\Collection\\MappingCollection constructor expects iterable\<Articulate\\Collection\\MappingItem\>, array\<int, stdClass\> given\.$#'
 			identifier: argument.type
 			count: 1
@@ -3129,7 +3171,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\DatabaseSchemaComparator\:\:method\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 8
 			path: tests/Commands/DiffCommand/DiffCommandTest.php
 
 		-
@@ -3187,52 +3229,28 @@ parameters:
 			path: tests/ExampleMultiDatabaseTest.php
 
 		-
-			message: '#^Parameter \#1 \$haystack of function strpos expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/Integration/DateTimeInterfaceIntegrationTest.php
-
-		-
-			message: '#^Parameter \#1 \$sql of method Articulate\\Connection\:\:executeQuery\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: tests/Integration/DateTimeInterfaceIntegrationTest.php
-
-		-
-			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/Integration/DateTimeInterfaceIntegrationTest.php
-
-		-
-			message: '#^Parameter \#1 \$sql of method Articulate\\Connection\:\:executeQuery\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
 			count: 1
-			path: tests/Integration/ForeignKeyTypeMigrationTest.php
+			path: tests/Integration/MigrationDiffIdempotenceTest.php
 
 		-
-			message: '#^Parameter \#1 \$haystack of function strpos expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 4
-			path: tests/Integration/TypeMappingIntegrationTest.php
+			message: '#^Property Articulate\\Tests\\Integration\\IdempotenceCategory\:\:\$products type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Integration/MigrationDiffIdempotenceTest.php
 
 		-
-			message: '#^Parameter \#1 \$sql of method Articulate\\Connection\:\:executeQuery\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: tests/Integration/TypeMappingIntegrationTest.php
+			message: '#^Property Articulate\\Tests\\Integration\\IdempotenceProduct\:\:\$tags type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Integration/MigrationDiffIdempotenceTest.php
 
 		-
-			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 4
-			path: tests/Integration/TypeMappingIntegrationTest.php
-
-		-
-			message: '#^Parameter \#2 \$string of method PHPUnit\\Framework\\Assert\:\:assertStringStartsWith\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: tests/Integration/TypeMappingIntegrationTest.php
+			message: '#^Property Articulate\\Tests\\Integration\\IdempotenceTag\:\:\$products type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Integration/MigrationDiffIdempotenceTest.php
 
 		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsString\(\) with string will always evaluate to true\.$#'
@@ -3259,6 +3277,18 @@ parameters:
 			path: tests/Modules/Database/SchemaComparator/ColumnComparatorTest.php
 
 		-
+			message: '#^Method Articulate\\Tests\\Modules\\Database\\SchemaComparator\\ColumnCompareResultTest\:\:equivalentDateTimeProvider\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Database/SchemaComparator/ColumnCompareResultTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Modules\\Database\\SchemaComparator\\ColumnCompareResultTest\:\:equivalentVarcharProvider\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/Database/SchemaComparator/ColumnCompareResultTest.php
+
+		-
 			message: '#^Method Articulate\\Tests\\Modules\\Database\\SchemaComparator\\Comparators\\ForeignKeyComparatorTest\:\:buildPropertyData\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -3273,7 +3303,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaReader\\DatabaseSchemaReaderInterface\:\:method\(\)\.$#'
 			identifier: method.notFound
-			count: 27
+			count: 30
 			path: tests/Modules/Database/SchemaComparator/MappingTableComparatorTest.php
 
 		-
@@ -3327,7 +3357,13 @@ parameters:
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\Comparators\\EntityTableComparator\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 6
+			count: 7
+			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
+
+		-
+			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\Comparators\\EntityTableComparator\:\:method\(\)\.$#'
+			identifier: method.notFound
+			count: 3
 			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
 
 		-
@@ -3337,21 +3373,45 @@ parameters:
 			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
 
 		-
+			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\Comparators\\MappingTableComparator\:\:method\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
+
+		-
 			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\RelationDefinitionCollector\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 24
+			count: 25
+			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
+
+		-
+			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaComparator\\RelationDefinitionCollector\:\:method\(\)\.$#'
+			identifier: method.notFound
+			count: 8
 			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
 
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaReader\\DatabaseSchemaReaderInterface\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 9
+			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
+
+		-
+			message: '#^Call to an undefined method Articulate\\Modules\\Database\\SchemaReader\\DatabaseSchemaReaderInterface\:\:method\(\)\.$#'
+			identifier: method.notFound
+			count: 5
 			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
 
 		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsIterable\(\) with iterable\<Articulate\\Modules\\Database\\SchemaComparator\\Models\\TableCompareResult\> will always evaluate to true\.$#'
 			identifier: method.alreadyNarrowedType
 			count: 1
+			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 3
 			path: tests/Modules/Database/SchemaComparator/SchemaComparisonCoordinatorTest.php
 
 		-
@@ -3763,12 +3823,6 @@ parameters:
 			path: tests/Modules/DatabaseSchemaComparator/ManyToManyTest.php
 
 		-
-			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Modules/DatabaseSchemaComparator/ManyToManyTest.php
-
-		-
 			message: '#^Method Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\PolymorphicManyToManyIntegrationTest\:\:testPolymorphicManyToManyRelationsEndToEnd\(\) has no return type specified\.$#'
 			identifier: missingType.return
 			count: 1
@@ -3819,12 +3873,6 @@ parameters:
 		-
 			message: '#^Method Articulate\\Tests\\Modules\\DatabaseSchemaComparator\\SharedTableTest\:\:testRelationColumnMergedNullableWithForeignKey\(\) has no return type specified\.$#'
 			identifier: missingType.return
-			count: 1
-			path: tests/Modules/DatabaseSchemaComparator/SharedTableTest.php
-
-		-
-			message: '#^Parameter \#2 \$haystack of method PHPUnit\\Framework\\Assert\:\:assertStringContainsString\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
 			count: 1
 			path: tests/Modules/DatabaseSchemaComparator/SharedTableTest.php
 
@@ -4039,6 +4087,18 @@ parameters:
 			path: tests/Modules/EntityManager/EagerLoadOverrideTest.php
 
 		-
+			message: '#^Method Articulate\\Tests\\Modules\\EntityManager\\EntityCacheCoordinatorArrayPool\:\:getItems\(\) return type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/EntityCacheCoordinatorTest.php
+
+		-
+			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\EntityCacheCoordinatorArrayPool\:\:\$items \(array\<string, Articulate\\Tests\\Modules\\EntityManager\\EntityCacheCoordinatorArrayItem\>\) does not accept array\<string, Psr\\Cache\\CacheItemInterface\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: tests/Modules/EntityManager/EntityCacheCoordinatorTest.php
+
+		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<object\> will always evaluate to true\.$#'
 			identifier: method.alreadyNarrowedType
 			count: 1
@@ -4063,10 +4123,22 @@ parameters:
 			path: tests/Modules/EntityManager/EntityPersistenceTest.php
 
 		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<object\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Modules/EntityManager/ForeignKeyOrderingTest.php
+
+		-
 			message: '#^Call to an undefined method ReflectionType\:\:getName\(\)\.$#'
 			identifier: method.notFound
 			count: 3
 			path: tests/Modules/EntityManager/HydratorInterfaceTest.php
+
+		-
+			message: '#^Call to new Articulate\\Modules\\EntityManager\\LazyCollection\(\) on a separate line has no effect\.$#'
+			identifier: new.resultUnused
+			count: 1
+			path: tests/Modules/EntityManager/LazyCollectionTest.php
 
 		-
 			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\LazyFlagSource\:\:\$eagerM2m type has no value type specified in iterable type array\.$#'
@@ -4095,6 +4167,18 @@ parameters:
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\EntityManager\\Collection\:\:isInitialized\(\)\.$#'
 			identifier: method.notFound
+			count: 1
+			path: tests/Modules/EntityManager/LazyRelationHydrationTest.php
+
+		-
+			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\ArrayDefaultOwner\:\:\$items type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/LazyRelationHydrationTest.php
+
+		-
+			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\ArrayDefaultOwner\:\:\$items type has no value type specified in iterable type array\|Articulate\\Modules\\EntityManager\\Collection\.$#'
+			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/EntityManager/LazyRelationHydrationTest.php
 
@@ -4153,6 +4237,18 @@ parameters:
 			path: tests/Modules/EntityManager/MissingRequiredFieldTest.php
 
 		-
+			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\MorphAliasPost\:\:\$tags type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/MorphToManyAliasTest.php
+
+		-
+			message: '#^Property Articulate\\Tests\\Modules\\EntityManager\\MorphAliasTag\:\:\$posts type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/MorphToManyAliasTest.php
+
+		-
 			message: '#^Method Articulate\\Tests\\Modules\\EntityManager\\MultipleUnitOfWorkTest\:\:databaseProvider\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
@@ -4181,6 +4277,24 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: tests/Modules/EntityManager/ObjectHydratorTest.php
+
+		-
+			message: '#^Match arm comparison between ''pgsql'' and ''pgsql'' is always true\.$#'
+			identifier: match.alwaysTrue
+			count: 1
+			path: tests/Modules/EntityManager/OneToOneFkColumnOnlyTest.php
+
+		-
+			message: '#^Method Articulate\\QueryLogger\\QueryLoggerInterface@anonymous/tests/Modules/EntityManager/OneToOneFkColumnOnlyTest\.php\:170\:\:log\(\) has parameter \$parameters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/OneToOneFkColumnOnlyTest.php
+
+		-
+			message: '#^Method Articulate\\QueryLogger\\QueryLoggerInterface@anonymous/tests/Modules/EntityManager/OneToOneFkColumnOnlyTest\.php\:189\:\:log\(\) has parameter \$parameters with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/EntityManager/OneToOneFkColumnOnlyTest.php
 
 		-
 			message: '#^Call to an undefined method Articulate\\Modules\\EntityManager\\UnitOfWork\:\:expects\(\)\.$#'
@@ -4311,7 +4425,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Articulate\\Connection\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 11
 			path: tests/Modules/EntityManager/QueryExecutorTest.php
 
 		-
@@ -4413,7 +4527,7 @@ parameters:
 		-
 			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
 			identifier: method.alreadyNarrowedType
-			count: 2
+			count: 3
 			path: tests/Modules/EntityManager/UnitOfWorkTest.php
 
 		-
@@ -4435,15 +4549,21 @@ parameters:
 			path: tests/Modules/Migrations/BaseMigrationTest.php
 
 		-
+			message: '#^Anonymous function has an unused use \$fullClassName\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: tests/Modules/Migrations/ExecutionStrategiesTest.php
+
+		-
 			message: '#^Call to an undefined method Articulate\\Connection\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 3
+			count: 9
 			path: tests/Modules/Migrations/ExecutionStrategiesTest.php
 
 		-
 			message: '#^Call to an undefined method Symfony\\Component\\Console\\Style\\SymfonyStyle\:\:expects\(\)\.$#'
 			identifier: method.notFound
-			count: 8
+			count: 10
 			path: tests/Modules/Migrations/ExecutionStrategiesTest.php
 
 		-
@@ -4473,7 +4593,7 @@ parameters:
 		-
 			message: '#^Match expression does not handle remaining value\: string$#'
 			identifier: match.unhandled
-			count: 5
+			count: 7
 			path: tests/Modules/MigrationsGenerator/MigrationsCommandGeneratorColumnsTest.php
 
 		-
@@ -4489,15 +4609,9 @@ parameters:
 			path: tests/Modules/MigrationsGenerator/MigrationsCommandGeneratorDatabaseTest.php
 
 		-
-			message: '#^Parameter \#1 \$sql of method Articulate\\Connection\:\:executeQuery\(\) expects string, array\<string\> given\.$#'
-			identifier: argument.type
-			count: 1
-			path: tests/Modules/MigrationsGenerator/MigrationsCommandGeneratorDatabaseTest.php
-
-		-
 			message: '#^Match expression does not handle remaining value\: string$#'
 			identifier: match.unhandled
-			count: 12
+			count: 16
 			path: tests/Modules/MigrationsGenerator/MigrationsCommandGeneratorIndexesTest.php
 
 		-
@@ -4533,7 +4647,7 @@ parameters:
 		-
 			message: '#^Match expression does not handle remaining value\: string$#'
 			identifier: match.unhandled
-			count: 18
+			count: 20
 			path: tests/Modules/MigrationsGenerator/MigrationsCommandGeneratorRelationsTest.php
 
 		-
@@ -4603,6 +4717,18 @@ parameters:
 			path: tests/Modules/QueryBuilder/QueryBuilderTest.php
 
 		-
+			message: '#^Method Articulate\\Tests\\Modules\\QueryBuilder\\QueryResultInvalidationCache\:\:getItems\(\) return type has no value type specified in iterable type iterable\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/QueryBuilder/QueryResultCacheInvalidationTest.php
+
+		-
+			message: '#^Property Articulate\\Tests\\Modules\\QueryBuilder\\QueryResultInvalidationCache\:\:\$items \(array\<string, Articulate\\Tests\\Modules\\QueryBuilder\\QueryResultInvalidationCacheItem\>\) does not accept array\<string, Psr\\Cache\\CacheItemInterface\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: tests/Modules/QueryBuilder/QueryResultCacheInvalidationTest.php
+
+		-
 			message: '#^Call to an undefined method Articulate\\Connection\:\:method\(\)\.$#'
 			identifier: method.notFound
 			count: 5
@@ -4625,6 +4751,18 @@ parameters:
 			identifier: notIdentical.alwaysFalse
 			count: 1
 			path: tests/Modules/QueryBuilder/QueryResultExecutorTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Modules\\QueryBuilder\\WhereOperatorTest\:\:testFluentWhereOperators\(\) has parameter \$expectedParams with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/QueryBuilder/WhereOperatorTest.php
+
+		-
+			message: '#^Method Articulate\\Tests\\Modules\\QueryBuilder\\WhereOperatorTest\:\:testRawConditionDetectionKeepsConditionVerbatim\(\) has parameter \$expectedParams with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Modules/QueryBuilder/WhereOperatorTest.php
 
 		-
 			message: '#^Call to function is_object\(\) with object will always evaluate to true\.$#'

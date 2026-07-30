@@ -210,7 +210,7 @@ class EntityMetadata {
 
     /**
      * Get all relation metadata.
-     * @return array<string, ReflectionRelation>
+     * @return array<string, RelationInterface>
      */
     public function getRelations(): array
     {

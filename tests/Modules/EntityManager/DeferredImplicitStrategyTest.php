@@ -21,6 +21,15 @@ class TestChangeTrackingEntity {
     public ?int $age = null;
 }
 
+#[Entity]
+class TestChangeTrackingDateTimeEntity {
+    #[Property]
+    public int $id;
+
+    #[Property]
+    public \DateTime $createdAt;
+}
+
 class DeferredImplicitStrategyTest extends TestCase {
     private DeferredImplicitStrategy $strategy;
 
@@ -74,6 +83,25 @@ class DeferredImplicitStrategyTest extends TestCase {
         $changes = $this->strategy->computeChangeSet($entity);
 
         $this->assertEquals(['name' => 'modified'], $changes);
+    }
+
+    public function testComputeChangeSetWithEqualDateTimeIsNotDirty(): void
+    {
+        $entity = new TestChangeTrackingDateTimeEntity();
+        $entity->id = 1;
+        $entity->createdAt = new \DateTime('2026-01-01 00:00:00');
+
+        // Same instant, different object instance — should NOT be flagged as changed.
+        $originalData = [
+            'id' => 1,
+            'created_at' => new \DateTime('2026-01-01 00:00:00'),
+        ];
+
+        $this->strategy->trackEntity($entity, $originalData);
+
+        $changes = $this->strategy->computeChangeSet($entity);
+
+        $this->assertEmpty($changes, 'Reassigning a DateTime with an equal value but different instance should not be dirty');
     }
 
     public function testComputeChangeSetWithMultipleChanges(): void

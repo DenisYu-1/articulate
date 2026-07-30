@@ -103,12 +103,22 @@ class DeferredImplicitStrategy implements ChangeTrackingStrategy {
         // Compare current data with original data
         // Both arrays should have column names as keys
         foreach ($current as $column => $value) {
-            // Check if the column exists in original data and if the value has changed
-            if (!array_key_exists($column, $original) || $original[$column] !== $value) {
+            if (!array_key_exists($column, $original) || !$this->isSameValue($original[$column], $value)) {
                 $changes[$column] = $value;
             }
         }
 
         return $changes;
+    }
+
+    private function isSameValue(mixed $original, mixed $current): bool
+    {
+        // Objects (DateTime, UUID/Point value objects, ...) rarely keep identity across
+        // reassignment; compare by value here, keep === for scalars to avoid type-juggling.
+        if (is_object($original) && is_object($current)) {
+            return $original == $current;
+        }
+
+        return $original === $current;
     }
 }
