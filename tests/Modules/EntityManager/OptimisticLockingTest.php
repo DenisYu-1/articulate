@@ -4,6 +4,7 @@ namespace Articulate\Tests\Modules\EntityManager;
 
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
+use Articulate\Attributes\Lifecycle\PostUpdate;
 use Articulate\Attributes\Property;
 use Articulate\Attributes\SoftDeleteable;
 use Articulate\Attributes\Version;
@@ -38,6 +39,27 @@ class OptimisticLockCheckedSibling {
     #[Property]
     #[Version]
     public int $version = 0;
+}
+
+#[Entity(tableName: 'ol_accounts')]
+class OptimisticLockPostUpdateAccount {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name = '';
+
+    #[Property]
+    #[Version]
+    public int $version = 0;
+
+    public ?int $versionSeenInPostUpdate = null;
+
+    #[PostUpdate]
+    public function capturePostUpdateVersion(): void
+    {
+        $this->versionSeenInPostUpdate = $this->version;
+    }
 }
 
 #[Entity(tableName: 'ol_shared')]
@@ -408,5 +430,29 @@ class OptimisticLockingTest extends DatabaseTestCase {
         // a self-inflicted lost update and is surfaced, not silently absorbed.
         $this->expectException(OptimisticLockException::class);
         $em->flush();
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testPostUpdateCallbackObservesBumpedVersion(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createAccountsTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $account = new OptimisticLockPostUpdateAccount();
+        $account->name = 'Frank';
+        $em->persist($account);
+        $em->flush();
+
+        $account->name = 'Frank Updated';
+        $em->persist($account);
+        $em->flush();
+
+        // The row is at version 1 after the UPDATE; the #[PostUpdate] handler, which
+        // runs before commit, must see the same value rather than the stale 0.
+        $this->assertSame(1, $account->versionSeenInPostUpdate);
+        $this->assertSame(1, $account->version);
     }
 }

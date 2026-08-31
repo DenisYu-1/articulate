@@ -13,7 +13,6 @@ use Articulate\Exceptions\OptimisticLockException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Utils\ReflectionCache;
-use Closure;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**
@@ -166,9 +165,9 @@ class QueryExecutor {
      *
      * @param object $entity The entity to update
      * @param array $changes The changed properties (fieldName => newValue)
-     * @return Closure(): void|null Deferred in-memory #[Version] reconciliation; see EntityManager::flush().
+     * @return DeferredVersionBump|null In-memory #[Version] reconciliation for the caller to apply/revert; see EntityManager::flush().
      */
-    public function executeUpdate(object $entity, array $changes): ?Closure
+    public function executeUpdate(object $entity, array $changes): ?DeferredVersionBump
     {
         if (empty($changes)) {
             return null;
@@ -249,27 +248,27 @@ class QueryExecutor {
     }
 
     /**
-     * Builds the post-commit in-memory bump for an entity's checked #[Version] columns.
+     * Builds the in-memory reconciliation for an entity's checked #[Version] columns.
      *
-     * The DB already incremented them server-side; this walks the tracked-original values
-     * forward by one so the entity matches its row without a re-SELECT. It MUST run only
-     * after the flush transaction commits — applied eagerly, a later conflict in the same
-     * flush would roll the row back but leave the property ahead of it, poisoning every retry.
+     * The DB already incremented them server-side; the returned bump walks the tracked
+     * original values forward by one so the entity matches its row without a re-SELECT.
+     * The caller decides when to apply it (EntityManager::flush() does so before
+     * post-update callbacks) and reverts it if the flush never commits.
      *
      * @param array<string, mixed> $originalCheckedValues column name => value bound to the UPDATE's WHERE
-     * @return Closure(): void|null null when the entity has no checked #[Version] column
+     * @return DeferredVersionBump|null null when the entity has no checked #[Version] column
      */
-    public function deferredVersionReconciliation(EntityMetadata $metadata, object $entity, array $originalCheckedValues): ?Closure
+    public function deferredVersionReconciliation(EntityMetadata $metadata, object $entity, array $originalCheckedValues): ?DeferredVersionBump
     {
         if ($originalCheckedValues === []) {
             return null;
         }
 
-        return function () use ($metadata, $entity, $originalCheckedValues): void {
+        return new DeferredVersionBump(function (int $delta) use ($metadata, $entity, $originalCheckedValues): void {
             foreach ($originalCheckedValues as $column => $original) {
-                $this->setVersionColumnValue($metadata, $entity, $column, $original + 1);
+                $this->setVersionColumnValue($metadata, $entity, $column, $original + $delta);
             }
-        };
+        });
     }
 
     /**

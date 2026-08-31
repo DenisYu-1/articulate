@@ -145,6 +145,9 @@ class EntityManager {
             $this->connection->beginTransaction();
         }
 
+        /** @var list<DeferredVersionBump> $deferredVersionBumps */
+        $deferredVersionBumps = [];
+
         try {
             $unitOfWorks = $this->unitOfWorkRegistry->all();
             foreach ($unitOfWorks as $unitOfWork) {
@@ -159,6 +162,14 @@ class EntityManager {
             $this->cacheCoordinator->invalidateSecondLevelCache($aggregatedChanges);
             $this->cacheCoordinator->incrementQueryCacheGeneration();
 
+            // Bump the in-memory #[Version] properties before post-update callbacks so a
+            // #[PostUpdate] handler sees the value the row now carries. The catch block
+            // reverts them if the flush never commits, so a mid-flush conflict still
+            // can't strand a stale version and poison later retries.
+            foreach ($deferredVersionBumps as $bump) {
+                $bump->apply();
+            }
+
             foreach ($unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
             }
@@ -167,19 +178,14 @@ class EntityManager {
                 $this->connection->commit();
             }
 
-            // In-memory #[Version] bumps run post-commit so a rolled-back flush can't
-            // leave an entity's version ahead of its row (poisoning every retry);
-            // clearChanges() must follow to snapshot the bumped value. Caveat: a
-            // caller-owned transaction is not committed here — see the optimistic
-            // locking contract in CLAUDE.md.
-            foreach ($deferredVersionBumps as $reconcile) {
-                $reconcile();
-            }
-
             foreach ($unitOfWorks as $unitOfWork) {
                 $unitOfWork->clearChanges();
             }
         } catch (\Throwable $e) {
+            foreach ($deferredVersionBumps as $bump) {
+                $bump->revert();
+            }
+
             if ($managingTransaction) {
                 $this->connection->rollbackTransaction();
             }

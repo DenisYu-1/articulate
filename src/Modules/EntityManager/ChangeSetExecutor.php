@@ -3,7 +3,6 @@
 namespace Articulate\Modules\EntityManager;
 
 use Articulate\Schema\EntityMetadataRegistry;
-use Closure;
 
 class ChangeSetExecutor {
     public function __construct(
@@ -15,7 +14,7 @@ class ChangeSetExecutor {
 
     /**
      * @param array{inserts: object[], updates: array<int, array{entity?: object, changes?: array, table?: string, set?: array, where?: string, whereValues?: array, versionBumpColumns?: string[]}>, deletes: object[], softDeletes: object[]} $changes
-     * @return list<Closure(): void> Deferred in-memory #[Version] reconciliations; see EntityManager::flush().
+     * @return list<DeferredVersionBump> In-memory #[Version] reconciliations; see EntityManager::flush().
      */
     public function execute(array $changes): array
     {
@@ -84,9 +83,9 @@ class ChangeSetExecutor {
     }
 
     /**
-     * @return Closure(): void|null Deferred in-memory #[Version] reconciliation; see EntityManager::flush().
+     * @return DeferredVersionBump|null In-memory #[Version] reconciliation; see EntityManager::flush().
      */
-    private function executeSoftDelete(object $entity): ?Closure
+    private function executeSoftDelete(object $entity): ?DeferredVersionBump
     {
         $metadata = $this->metadataRegistry->getMetadata($entity::class);
         $softDeleteColumn = $metadata->getSoftDeleteColumn();
