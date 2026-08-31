@@ -204,7 +204,9 @@ $em->flush(); // throws OptimisticLockException: WHERE version = 3 matched 0 row
 
 A column may appear in at most one of a class's own `#[Version]` property or its own `#[VersionAware]` list — declaring both throws at metadata-build time. `#[Version]` properties must be typed `int`; a migration-generated column for one gets `DEFAULT 0` automatically. `OptimisticLockException` doesn't distinguish a stale version from a deleted row — both are "zero rows matched."
 
-Run `articulate:validate` to catch coverage gaps: every entity class mapping a versioned table must account for every `#[Version]` column on that table, either as its own `#[Version]` property or listed in its own `#[VersionAware]`. It also flags a `#[VersionAware]` column with no canonical `#[Version]` owner in the group, and reports (as info, not an error) when a table has more than one distinct `#[Version]` column across its entity classes.
+**Recovering from a conflict.** A flush that throws rolls its transaction back and leaves the entities' in-memory `#[Version]` properties untouched — the bump is applied only after the flush commits. So the failed flush does not poison a retry: re-`find()` the entity (or resolve the conflict another way) and flush again. There is no "EM is now closed" state to reset. Do not, however, write the same row through two different `#[Version]`-checking classes in a single flush — the first `UPDATE` bumps the shared column and the second then conflicts with itself.
+
+**Run `articulate:validate` in CI.** The coverage guarantee holds only if it is enforced: there is no runtime check, so a class mapping a versioned table with neither `#[Version]` nor `#[VersionAware]` silently drops out of lost-update detection until `validate` catches it. It errors when an entity class mapping a versioned table doesn't account for every `#[Version]` column on that table (as its own `#[Version]` property or in its own `#[VersionAware]` list), and when a `#[VersionAware]` column has no canonical `#[Version]` owner in the group; it reports (as info) a table with more than one distinct `#[Version]` column across its entity classes.
 
 ### Memory-Efficient Unit of Work
 

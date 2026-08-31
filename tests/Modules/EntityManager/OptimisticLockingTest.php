@@ -41,6 +41,19 @@ class OptimisticLockCheckedSibling {
 }
 
 #[Entity(tableName: 'ol_shared')]
+class OptimisticLockCheckedSiblingTwo {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $title = '';
+
+    #[Property]
+    #[Version]
+    public int $version = 0;
+}
+
+#[Entity(tableName: 'ol_shared')]
 #[VersionAware(['version'])]
 class OptimisticLockAwareSibling {
     #[PrimaryKey]
@@ -291,6 +304,108 @@ class OptimisticLockingTest extends DatabaseTestCase {
 
         $em->remove($account);
 
+        $this->expectException(OptimisticLockException::class);
+        $em->flush();
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testFailedFlushDoesNotPoisonInMemoryVersionOfSuccessfullyUpdatedSibling(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createAccountsTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        // Persisted first, so its UPDATE runs before the stale one's within the flush.
+        $good = new OptimisticLockAccount();
+        $good->name = 'Good';
+        $stale = new OptimisticLockAccount();
+        $stale->name = 'Stale';
+        $em->persist($good);
+        $em->persist($stale);
+        $em->flush();
+
+        // A concurrent writer bumps only the second row out of band.
+        $connection->executeQuery('UPDATE ol_accounts SET version = version + 1 WHERE id = ?', [$stale->id]);
+
+        $good->name = 'Good Updated';
+        $stale->name = 'Stale Updated';
+        $em->persist($good);
+        $em->persist($stale);
+
+        try {
+            $em->flush();
+            $this->fail('Expected OptimisticLockException');
+        } catch (OptimisticLockException) {
+            // expected: the stale sibling aborts the flush
+        }
+
+        // The flush did not complete, so the successfully-updated sibling's in-memory
+        // #[Version] property must NOT have been bumped — otherwise every retry sends
+        // WHERE version = 1 against a row still at 0 and can never match.
+        $this->assertSame(0, $good->version, 'in-memory version must not be bumped by a flush that threw before commit');
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testFailedFlushDoesNotPoisonInMemoryVersionOnSoftDeletePath(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createSoftDeleteTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $good = new OptimisticLockSoftDeleteAccount();
+        $good->name = 'Good';
+        $stale = new OptimisticLockSoftDeleteAccount();
+        $stale->name = 'Stale';
+        $em->persist($good);
+        $em->persist($stale);
+        $em->flush();
+
+        $connection->executeQuery('UPDATE ol_soft_delete SET version = version + 1 WHERE id = ?', [$stale->id]);
+
+        $em->remove($good);
+        $em->remove($stale);
+
+        try {
+            $em->flush();
+            $this->fail('Expected OptimisticLockException');
+        } catch (OptimisticLockException) {
+            // expected
+        }
+
+        $this->assertSame(0, $good->version, 'soft-delete in-memory version must not be bumped by a flush that threw before commit');
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testTwoCheckingSiblingsWritingSameRowInOneFlushConflictWithThemselves(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createSharedTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $a = new OptimisticLockCheckedSibling();
+        $a->status = 'a';
+        $em->persist($a);
+        $em->flush();
+
+        $b = $em->find(OptimisticLockCheckedSiblingTwo::class, $a->id);
+        $this->assertNotNull($b);
+
+        $a->status = 'a-updated';
+        $b->title = 'b-updated';
+        $em->persist($a);
+        $em->persist($b);
+
+        // Same row, two #[Version]-checking classes, one flush. Checking entities are
+        // never merged, so each issues its own UPDATE; the first bumps the shared
+        // version column, so the second's WHERE version = <pre-bump value> matches
+        // nothing. Writing one row through two checking contexts in a single flush is
+        // a self-inflicted lost update and is surfaced, not silently absorbed.
         $this->expectException(OptimisticLockException::class);
         $em->flush();
     }

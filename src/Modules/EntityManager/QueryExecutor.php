@@ -13,6 +13,7 @@ use Articulate\Exceptions\OptimisticLockException;
 use Articulate\Modules\Generators\GeneratorRegistry;
 use Articulate\Schema\EntityMetadata;
 use Articulate\Utils\ReflectionCache;
+use Closure;
 use ReflectionProperty as NativeReflectionProperty;
 
 /**
@@ -165,11 +166,12 @@ class QueryExecutor {
      *
      * @param object $entity The entity to update
      * @param array $changes The changed properties (fieldName => newValue)
+     * @return Closure(): void|null Deferred in-memory #[Version] reconciliation; see EntityManager::flush().
      */
-    public function executeUpdate(object $entity, array $changes): void
+    public function executeUpdate(object $entity, array $changes): ?Closure
     {
         if (empty($changes)) {
-            return;
+            return null;
         }
 
         $reflectionEntity = $this->getReflectionEntity($entity::class);
@@ -200,7 +202,7 @@ class QueryExecutor {
         }
 
         if (empty($setParts)) {
-            return; // No non-relation properties changed
+            return null; // No non-relation properties changed
         }
 
         // Handle MorphTo relationships - add any morph columns that changed
@@ -219,7 +221,7 @@ class QueryExecutor {
 
         // Optimistic-lock check: only #[Version] (never #[VersionAware]) columns are checked,
         // bound to the entity's currently-tracked value (kept in sync with the DB by the
-        // in-memory rebump below and by UnitOfWork::clearChanges() refreshing the snapshot).
+        // deferred reconciliation returned below and by UnitOfWork::clearChanges() refreshing the snapshot).
         $checkedVersionColumns = $metadata->getCheckedVersionColumns();
         $originalVersionValues = [];
         foreach ($checkedVersionColumns as $checkedColumn) {
@@ -243,9 +245,31 @@ class QueryExecutor {
 
         $this->assertVersionCheckSucceeded($statement, $tableName, $checkedVersionColumns);
 
-        foreach ($checkedVersionColumns as $checkedColumn) {
-            $this->setVersionColumnValue($metadata, $entity, $checkedColumn, $originalVersionValues[$checkedColumn] + 1);
+        return $this->deferredVersionReconciliation($metadata, $entity, $originalVersionValues);
+    }
+
+    /**
+     * Builds the post-commit in-memory bump for an entity's checked #[Version] columns.
+     *
+     * The DB already incremented them server-side; this walks the tracked-original values
+     * forward by one so the entity matches its row without a re-SELECT. It MUST run only
+     * after the flush transaction commits — applied eagerly, a later conflict in the same
+     * flush would roll the row back but leave the property ahead of it, poisoning every retry.
+     *
+     * @param array<string, mixed> $originalCheckedValues column name => value bound to the UPDATE's WHERE
+     * @return Closure(): void|null null when the entity has no checked #[Version] column
+     */
+    public function deferredVersionReconciliation(EntityMetadata $metadata, object $entity, array $originalCheckedValues): ?Closure
+    {
+        if ($originalCheckedValues === []) {
+            return null;
         }
+
+        return function () use ($metadata, $entity, $originalCheckedValues): void {
+            foreach ($originalCheckedValues as $column => $original) {
+                $this->setVersionColumnValue($metadata, $entity, $column, $original + 1);
+            }
+        };
     }
 
     /**
@@ -314,7 +338,7 @@ class QueryExecutor {
         ));
     }
 
-    private function getVersionColumnValue(EntityMetadata $metadata, object $entity, string $columnName): mixed
+    public function getVersionColumnValue(EntityMetadata $metadata, object $entity, string $columnName): mixed
     {
         $propertyName = $metadata->getPropertyNameForColumn($columnName);
         $property = $propertyName !== null ? $metadata->getProperty($propertyName) : null;

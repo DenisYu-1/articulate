@@ -154,7 +154,7 @@ class EntityManager {
             }
 
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($unitOfWorks);
-            $this->changeSetExecutor->execute($aggregatedChanges);
+            $deferredVersionBumps = $this->changeSetExecutor->execute($aggregatedChanges);
             $this->changeSetExecutor->syncManagedManyToMany($unitOfWorks);
             $this->cacheCoordinator->invalidateSecondLevelCache($aggregatedChanges);
             $this->cacheCoordinator->incrementQueryCacheGeneration();
@@ -163,12 +163,21 @@ class EntityManager {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
             }
 
-            foreach ($unitOfWorks as $unitOfWork) {
-                $unitOfWork->clearChanges();
-            }
-
             if ($managingTransaction) {
                 $this->connection->commit();
+            }
+
+            // In-memory #[Version] bumps run post-commit so a rolled-back flush can't
+            // leave an entity's version ahead of its row (poisoning every retry);
+            // clearChanges() must follow to snapshot the bumped value. Caveat: a
+            // caller-owned transaction is not committed here — see the optimistic
+            // locking contract in CLAUDE.md.
+            foreach ($deferredVersionBumps as $reconcile) {
+                $reconcile();
+            }
+
+            foreach ($unitOfWorks as $unitOfWork) {
+                $unitOfWork->clearChanges();
             }
         } catch (\Throwable $e) {
             if ($managingTransaction) {
