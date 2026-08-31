@@ -55,10 +55,16 @@ class OptimisticLockPostUpdateAccount {
 
     public ?int $versionSeenInPostUpdate = null;
 
+    public bool $throwFromPostUpdate = false;
+
     #[PostUpdate]
     public function capturePostUpdateVersion(): void
     {
         $this->versionSeenInPostUpdate = $this->version;
+
+        if ($this->throwFromPostUpdate) {
+            throw new \RuntimeException('boom from postUpdate');
+        }
     }
 }
 
@@ -454,5 +460,38 @@ class OptimisticLockingTest extends DatabaseTestCase {
         // runs before commit, must see the same value rather than the stale 0.
         $this->assertSame(1, $account->versionSeenInPostUpdate);
         $this->assertSame(1, $account->version);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testVersionBumpIsRevertedWhenAPostUpdateCallbackThrows(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createAccountsTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $account = new OptimisticLockPostUpdateAccount();
+        $account->name = 'Grace';
+        $em->persist($account);
+        $em->flush();
+        $this->assertSame(0, $account->version);
+
+        $account->name = 'Grace Updated';
+        $account->throwFromPostUpdate = true;
+        $em->persist($account);
+
+        try {
+            $em->flush();
+            $this->fail('Expected the post-update callback to abort the flush');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('boom from postUpdate', $e->getMessage());
+        }
+
+        // apply() bumped the property to 1 before the callback fired; the flush then
+        // failed, so the catch block's revert() must have restored it to 0 — the
+        // value the (rolled-back / uncommitted) row still holds.
+        $this->assertSame(1, $account->versionSeenInPostUpdate, 'sanity: the callback did run after apply()');
+        $this->assertSame(0, $account->version);
     }
 }
