@@ -145,6 +145,9 @@ class EntityManager {
             $this->connection->beginTransaction();
         }
 
+        /** @var list<DeferredVersionBump> $deferredVersionBumps */
+        $deferredVersionBumps = [];
+
         try {
             $unitOfWorks = $this->unitOfWorkRegistry->all();
             foreach ($unitOfWorks as $unitOfWork) {
@@ -154,23 +157,35 @@ class EntityManager {
             }
 
             $aggregatedChanges = $this->changeAggregator->aggregateChanges($unitOfWorks);
-            $this->changeSetExecutor->execute($aggregatedChanges);
+            $deferredVersionBumps = $this->changeSetExecutor->execute($aggregatedChanges);
             $this->changeSetExecutor->syncManagedManyToMany($unitOfWorks);
             $this->cacheCoordinator->invalidateSecondLevelCache($aggregatedChanges);
             $this->cacheCoordinator->incrementQueryCacheGeneration();
+
+            // Bump the in-memory #[Version] properties before post-update callbacks so a
+            // #[PostUpdate] handler sees the value the row now carries. The catch block
+            // reverts them if the flush never commits, so a mid-flush conflict still
+            // can't strand a stale version and poison later retries.
+            foreach ($deferredVersionBumps as $bump) {
+                $bump->apply();
+            }
 
             foreach ($unitOfWorks as $unitOfWork) {
                 $unitOfWork->executePostCallbacks($unitOfWork->getChangeSets());
             }
 
-            foreach ($unitOfWorks as $unitOfWork) {
-                $unitOfWork->clearChanges();
-            }
-
             if ($managingTransaction) {
                 $this->connection->commit();
             }
+
+            foreach ($unitOfWorks as $unitOfWork) {
+                $unitOfWork->clearChanges();
+            }
         } catch (\Throwable $e) {
+            foreach ($deferredVersionBumps as $bump) {
+                $bump->revert();
+            }
+
             if ($managingTransaction) {
                 $this->connection->rollbackTransaction();
             }

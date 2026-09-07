@@ -13,9 +13,10 @@ class ChangeSetExecutor {
     }
 
     /**
-     * @param array{inserts: object[], updates: array<int, array{entity?: object, changes?: array, table?: string, set?: array, where?: string, whereValues?: array}>, deletes: object[], softDeletes: object[]} $changes
+     * @param array{inserts: object[], updates: array<int, array{entity?: object, changes?: array, table?: string, set?: array, where?: string, whereValues?: array, versionBumpColumns?: string[]}>, deletes: object[], softDeletes: object[]} $changes
+     * @return list<DeferredVersionBump> In-memory #[Version] reconciliations; see EntityManager::flush().
      */
-    public function execute(array $changes): void
+    public function execute(array $changes): array
     {
         $orderedInserts = $this->dependencySorter->order($changes['inserts'], 'insert');
         foreach ($orderedInserts as $entity) {
@@ -26,6 +27,8 @@ class ChangeSetExecutor {
             $this->queryExecutor->syncManyToMany($entity);
         }
 
+        $deferredVersionBumps = [];
+
         $updatedEntities = [];
         foreach ($changes['updates'] as $update) {
             if (isset($update['table'])) {
@@ -34,12 +37,16 @@ class ChangeSetExecutor {
                     columnChanges: $update['set'],
                     whereClause: $update['where'],
                     whereValues: $update['whereValues'],
+                    versionBumpColumns: $update['versionBumpColumns'] ?? [],
                 );
 
                 continue;
             }
 
-            $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
+            $bump = $this->queryExecutor->executeUpdate($update['entity'], $update['changes']);
+            if ($bump !== null) {
+                $deferredVersionBumps[] = $bump;
+            }
             $updatedEntities[] = $update['entity'];
         }
 
@@ -54,8 +61,13 @@ class ChangeSetExecutor {
         }
 
         foreach ($changes['softDeletes'] as $entity) {
-            $this->executeSoftDelete($entity);
+            $bump = $this->executeSoftDelete($entity);
+            if ($bump !== null) {
+                $deferredVersionBumps[] = $bump;
+            }
         }
+
+        return $deferredVersionBumps;
     }
 
     /**
@@ -70,22 +82,34 @@ class ChangeSetExecutor {
         }
     }
 
-    private function executeSoftDelete(object $entity): void
+    /**
+     * @return DeferredVersionBump|null In-memory #[Version] reconciliation; see EntityManager::flush().
+     */
+    private function executeSoftDelete(object $entity): ?DeferredVersionBump
     {
         $metadata = $this->metadataRegistry->getMetadata($entity::class);
         $softDeleteColumn = $metadata->getSoftDeleteColumn();
 
         if ($softDeleteColumn === null) {
-            return;
+            return null;
         }
 
         $where = $this->queryExecutor->buildEntityWhereClause($entity);
+
+        $versionCheckColumns = [];
+        foreach ($metadata->getCheckedVersionColumns() as $checkedColumn) {
+            $versionCheckColumns[$checkedColumn] = $this->queryExecutor->getVersionColumnValue($metadata, $entity, $checkedColumn);
+        }
 
         $this->queryExecutor->executeUpdateByTable(
             $metadata->getTableName(),
             [$softDeleteColumn => (new \DateTimeImmutable())->format('Y-m-d H:i:s')],
             $where['clause'],
             $where['values'],
+            $metadata->getVersionColumns(),
+            $versionCheckColumns,
         );
+
+        return $this->queryExecutor->deferredVersionReconciliation($metadata, $entity, $versionCheckColumns);
     }
 }

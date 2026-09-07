@@ -340,6 +340,67 @@ class ConnectionTest extends AbstractTestCase {
         $connection->rollbackTransaction();
     }
 
+    public function testTransactionalDefaultsToThreeRetries(): void
+    {
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
+
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
+        }
+
+        $attempts = 0;
+
+        try {
+            $connection->transactional(function () use (&$attempts): void {
+                $attempts++;
+
+                throw $this->deadlock();
+            });
+            $this->fail('Expected the deadlock to be rethrown after the retries are exhausted.');
+        } catch (\PDOException) {
+            // expected
+        }
+
+        $this->assertSame(4, $attempts); // initial attempt + 3 default retries
+    }
+
+    public function testTransactionalBackoffGrowsExponentially(): void
+    {
+        $connection = ConnectionPool::getInstance()->getMysqlConnection();
+        $this->assertNotNull($connection);
+
+        if ($connection->inTransaction()) {
+            $connection->rollbackTransaction();
+        }
+
+        $startedAt = hrtime(true);
+
+        try {
+            $connection->transactional(function (): void {
+                throw $this->deadlock();
+            }, maxRetries: 3, baseDelayMs: 100);
+            $this->fail('Expected the deadlock to be rethrown after the retries are exhausted.');
+        } catch (\PDOException) {
+            // expected
+        }
+
+        $elapsedMs = (hrtime(true) - $startedAt) / 1_000_000;
+
+        // 100 + 200 + 400 = 700ms of backoff; the window is wide enough to tolerate
+        // scheduling noise but still rules out linear (300ms) and 3^n (1300ms) growth.
+        $this->assertGreaterThan(600, $elapsedMs);
+        $this->assertLessThan(1000, $elapsedMs);
+    }
+
+    private function deadlock(): \PDOException
+    {
+        $deadlock = new \PDOException('Deadlock found when trying to get lock');
+        $deadlock->errorInfo = ['40001', 1213, 'Deadlock found when trying to get lock'];
+
+        return $deadlock;
+    }
+
     protected function setUpTestTables(Connection $connection, string $databaseName): bool
     {
         return true;

@@ -23,6 +23,21 @@ class MergeConflictEntity {
     public string $status = '';
 }
 
+/**
+ * Entity with a plain 'id' property but NO #[PrimaryKey] attribute.
+ * This exercises the fallback path in buildUpdateIdentity() (lines 135-148)
+ * where getPrimaryKeyColumns() returns [] and the method falls back to looking
+ * up the property named 'id' via getProperty('id').
+ */
+#[Entity]
+class MergeNoKeyEntity {
+    #[Property]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name = '';
+}
+
 class MergeUpdateConflictResolutionStrategyTest extends TestCase {
     private EntityManager $entityManager;
 
@@ -152,5 +167,36 @@ class MergeUpdateConflictResolutionStrategyTest extends TestCase {
         $this->assertSame('First', $result[0]['set']['name']);
         $this->assertSame('merged', $result[0]['set']['status']);
         $this->assertSame($rawUpdate, $result[1]);
+    }
+
+    // ── Fallback id-property path mutation killers ────────
+
+    public function testFallbackPathMergesEntityWithPlainIdProperty(): void
+    {
+        $entity = new MergeNoKeyEntity();
+        $entity->id = 42;
+
+        $result = $this->strategy->resolve(
+            [['entity' => $entity, 'changes' => ['name' => 'Test']]],
+            $this->entityManager->getMetadataRegistry(),
+        );
+
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('table', $result[0], 'Entity with plain id must be merged into a table-scoped update');
+        $this->assertContains(42, $result[0]['whereValues']);
+    }
+
+    public function testFallbackPathPassesThroughEntityWithNullPlainId(): void
+    {
+        $entity = new MergeNoKeyEntity();
+        // id stays null
+
+        $result = $this->strategy->resolve(
+            [['entity' => $entity, 'changes' => ['name' => 'Test']]],
+            $this->entityManager->getMetadataRegistry(),
+        );
+
+        $this->assertCount(1, $result);
+        $this->assertArrayHasKey('entity', $result[0], 'Entity with null id must pass through unmerged');
     }
 }

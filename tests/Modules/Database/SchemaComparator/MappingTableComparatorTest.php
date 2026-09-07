@@ -2,6 +2,7 @@
 
 namespace Articulate\Tests\Modules\Database\SchemaComparator;
 
+use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Relations\MappingTableProperty;
 use Articulate\Modules\Database\SchemaComparator\Comparators\IndexComparator;
 use Articulate\Modules\Database\SchemaComparator\Comparators\MappingTableComparator;
@@ -596,7 +597,7 @@ class MappingTableComparatorTest extends TestCase {
                 ],
                 'legacy_extra_index' => [
                     'columns' => ['taggable_type'],
-                    'unique' => false,
+                    'unique' => true,
                 ],
             ]);
 
@@ -610,6 +611,8 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertCount(1, $result->indexes);
         $this->assertEquals('legacy_extra_index', $result->indexes[0]->name);
         $this->assertEquals(CompareResult::OPERATION_DELETE, $result->indexes[0]->operation);
+        $this->assertEquals(['taggable_type'], $result->indexes[0]->columns);
+        $this->assertTrue($result->indexes[0]->isUnique);
 
         $deletedIndexNames = array_map(
             fn ($index) => $index->operation === CompareResult::OPERATION_DELETE ? $index->name : null,
@@ -768,4 +771,106 @@ class MappingTableComparatorTest extends TestCase {
         $this->assertEquals(['taggable_type', 'taggable_id'], $result->indexes[0]->columns);
         $this->assertFalse($result->indexes[0]->isUnique);
     }
+
+    public function testCompareMorphToManyTableUsesStringMorphIdWhenOwnerHasStringPrimaryKey(): void
+    {
+        $result = $this->comparator->compareMorphToManyTable(
+            $this->morphDefinition([$this->relationOf(MorphOwnerWithStringPk::class)]),
+            ['tags']
+        );
+
+        $morphId = $this->columnByName($result, 'taggable_id');
+        $this->assertSame('string', $morphId->propertyData->type);
+        $this->assertSame(36, $morphId->propertyData->length);
+        $this->assertTrue($morphId->propertyData->isForeignKey);
+    }
+
+    public function testCompareMorphToManyTableUsesIntMorphIdWhenOwnerHasIntPrimaryKey(): void
+    {
+        $result = $this->comparator->compareMorphToManyTable(
+            $this->morphDefinition([$this->relationOf(MorphOwnerWithIntPk::class)]),
+            ['tags']
+        );
+
+        $morphId = $this->columnByName($result, 'taggable_id');
+        $this->assertSame('int', $morphId->propertyData->type);
+        $this->assertNull($morphId->propertyData->length);
+        $this->assertTrue($morphId->propertyData->isForeignKey);
+    }
+
+    public function testCompareMorphToManyTableFindsStringPrimaryKeyInLaterRelation(): void
+    {
+        $result = $this->comparator->compareMorphToManyTable(
+            $this->morphDefinition([
+                $this->relationOf(MorphOwnerWithIntPk::class),
+                $this->relationOf(MorphOwnerWithStringPk::class),
+            ]),
+            ['tags']
+        );
+
+        $this->assertSame('string', $this->columnByName($result, 'taggable_id')->propertyData->type);
+    }
+
+    public function testCompareMorphToManyTableMarksTargetColumnAsForeignKey(): void
+    {
+        $result = $this->comparator->compareMorphToManyTable($this->morphDefinition([]), ['tags']);
+
+        $this->assertTrue($this->columnByName($result, 'tag_id')->propertyData->isForeignKey);
+        $this->assertFalse($this->columnByName($result, 'taggable_type')->propertyData->isForeignKey);
+    }
+
+    private function morphDefinition(array $relations): array
+    {
+        return [
+            'tableName' => 'taggables',
+            'morphName' => 'taggable',
+            'typeColumn' => 'taggable_type',
+            'idColumn' => 'taggable_id',
+            'targetColumn' => 'tag_id',
+            'targetTable' => 'tags',
+            'targetReferencedColumn' => 'id',
+            'extraProperties' => [],
+            'primaryColumns' => ['taggable_type', 'taggable_id', 'tag_id'],
+            'relations' => $relations,
+        ];
+    }
+
+    private function relationOf(string $className): object
+    {
+        return new class($className) {
+            public function __construct(private string $className)
+            {
+            }
+
+            public function getDeclaringClassName(): string
+            {
+                return $this->className;
+            }
+        };
+    }
+
+    private function columnByName(TableCompareResult $result, string $name): object
+    {
+        foreach ($result->columns as $column) {
+            if ($column->name === $name) {
+                return $column;
+            }
+        }
+
+        $this->fail("Column {$name} not found in compare result.");
+    }
+}
+
+class MorphOwnerWithStringPk {
+    public string $label;
+
+    #[PrimaryKey]
+    public string $id;
+}
+
+class MorphOwnerWithIntPk {
+    public string $label;
+
+    #[PrimaryKey]
+    public int $id;
 }

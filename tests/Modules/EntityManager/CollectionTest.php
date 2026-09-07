@@ -275,4 +275,58 @@ class CollectionTest extends TestCase {
         $this->assertSame([$a, $b], $col->getRemovedItems());
         $this->assertSame(0, $col->count());
     }
+
+    // ── Mutation killers ──────────────────────────────────────────────────────
+
+    public function testRemoveOnlyRemovesOneItemFromAddedItems(): void
+    {
+        $a = new CollectionTestEntity();
+        $b = new CollectionTestEntity();
+
+        $col = new Collection();
+        $col->add($a);
+        $col->add($b);
+
+        $col->remove($a);
+
+        $this->assertSame([$b], $col->getAddedItems(), 'Only A must be removed from addedItems; B must remain');
+        $this->assertSame([], $col->getRemovedItems());
+    }
+
+    public function testClearDoesNotPushUnpersistedItemsToRemovedItems(): void
+    {
+        $a = new CollectionTestEntity();
+        $b = new CollectionTestEntity();
+
+        $col = new Collection();
+        $col->add($a);
+        $col->add($b);
+        $col->clear();
+
+        $this->assertSame([], $col->getAddedItems());
+        $this->assertSame([], $col->getRemovedItems(), 'Items never persisted must not appear in removedItems');
+    }
+
+    public function testOffsetSetNullRoutesToAddAndTracksInAddedItems(): void
+    {
+        $entity = new CollectionTestEntity();
+
+        $col = new Collection();
+        $col[] = $entity; // null offset
+
+        $this->assertSame([$entity], $col->getAddedItems(), 'Appended item must appear in addedItems');
+        $this->assertSame(1, $col->count());
+        $this->assertSame($entity, $col[0]);
+    }
+
+    public function testOffsetSetNumericMarksDirty(): void
+    {
+        $entity = new CollectionTestEntity();
+
+        $col = new Collection();
+        $col->markClean(); // ensure clean start
+        $col[0] = $entity; // else branch: items[0] = entity, isDirty = true
+
+        $this->assertTrue($col->isDirty(), 'Setting a numeric offset must mark the collection dirty');
+    }
 }

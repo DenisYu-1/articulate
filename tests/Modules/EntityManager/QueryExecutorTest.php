@@ -5,6 +5,9 @@ namespace Articulate\Tests\Modules\EntityManager;
 use Articulate\Attributes\Entity;
 use Articulate\Attributes\Indexes\PrimaryKey;
 use Articulate\Attributes\Property;
+use Articulate\Attributes\Relations\ManyToOne;
+use Articulate\Attributes\Relations\OneToMany;
+use Articulate\Attributes\Relations\OneToOne;
 use Articulate\Connection;
 use Articulate\Modules\EntityManager\QueryExecutor;
 use Articulate\Modules\Generators\GeneratorInterface;
@@ -36,6 +39,50 @@ class QueryExecutorUuidEntity {
 
     #[Property]
     public string $name;
+}
+
+#[Entity]
+class QueryExecutorImplicitIdEntity {
+    public ?int $id = null;
+
+    #[Property]
+    public string $name;
+}
+
+#[Entity]
+class QueryExecutorPrefixedIdEntity {
+    #[PrimaryKey(generator: 'prefixed', options: ['prefix' => 'ord_'])]
+    public ?string $id = null;
+
+    #[Property]
+    public string $name;
+}
+
+#[Entity]
+class QueryExecutorRelationTarget {
+    #[PrimaryKey]
+    public int $id;
+
+    #[OneToMany(targetEntity: QueryExecutorRelationOwner::class, ownedBy: 'target')]
+    public array $owners = [];
+}
+
+#[Entity]
+class QueryExecutorRelationOwner {
+    #[PrimaryKey]
+    public int $id;
+
+    #[Property]
+    public string $name;
+
+    #[ManyToOne(targetEntity: QueryExecutorRelationTarget::class)]
+    public ?QueryExecutorRelationTarget $target = null;
+
+    #[OneToMany(targetEntity: QueryExecutorRelationTarget::class, ownedBy: 'owners')]
+    public array $children = [];
+
+    #[OneToOne(targetEntity: QueryExecutorRelationTarget::class, ownedBy: 'owners')]
+    public ?QueryExecutorRelationTarget $inverse = null;
 }
 
 class QueryExecutorTest extends TestCase {
@@ -240,5 +287,106 @@ class QueryExecutorTest extends TestCase {
         // Should return empty array
         $result = $this->queryExecutor->executeSelect('SELECT * FROM test');
         $this->assertEquals([], $result);
+    }
+
+    public function testExecuteInsertTreatsPlainIdPropertyAsImplicitPrimaryKey(): void
+    {
+        $entity = new QueryExecutorImplicitIdEntity();
+        $entity->name = 'Implicit';
+
+        $this->connection->method('lastInsertId')->willReturn('42');
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->with($this->stringContains('INSERT INTO'), $this->equalTo(['Implicit']));
+
+        $result = $this->queryExecutor->executeInsert($entity);
+
+        $this->assertSame(42, $result);
+        $this->assertSame(42, $entity->id);
+    }
+
+    public function testExecuteInsertPassesGeneratorOptionsToTheGenerator(): void
+    {
+        $generator = $this->createMock(GeneratorInterface::class);
+        $generator->expects($this->once())
+            ->method('generate')
+            ->with(QueryExecutorPrefixedIdEntity::class, ['prefix' => 'ord_'])
+            ->willReturn('ord_1');
+
+        $this->generatorRegistry = $this->createStub(GeneratorRegistry::class);
+        $this->generatorRegistry->method('getGenerator')->willReturn($generator);
+        $this->queryExecutor = new QueryExecutor($this->connection, $this->generatorRegistry);
+
+        $entity = new QueryExecutorPrefixedIdEntity();
+        $entity->name = 'Prefixed';
+
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->with($this->stringContains('INSERT INTO'), $this->equalTo(['Prefixed', 'ord_1']));
+
+        $this->assertSame('ord_1', $this->queryExecutor->executeInsert($entity));
+        $this->assertSame('ord_1', $entity->id);
+    }
+
+    public function testExecuteInsertWritesOwningRelationColumnsOnly(): void
+    {
+        $target = new QueryExecutorRelationTarget();
+        $target->id = 7;
+
+        $entity = new QueryExecutorRelationOwner();
+        $entity->id = 1;
+        $entity->name = 'Owner';
+        $entity->target = $target;
+        $entity->children = [];
+        $entity->inverse = null;
+
+        $capturedSql = null;
+        $capturedValues = null;
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->willReturnCallback(function (string $sql, array $values = []) use (&$capturedSql, &$capturedValues) {
+                $capturedSql = $sql;
+                $capturedValues = $values;
+
+                return $this->createStub(\PDOStatement::class);
+            });
+
+        $this->queryExecutor->executeInsert($entity);
+
+        $this->assertStringContainsString('target_id', $capturedSql);
+        $this->assertStringNotContainsString('children', $capturedSql);
+        $this->assertStringNotContainsString('inverse', $capturedSql);
+        $this->assertSame([1, 'Owner', 7], $capturedValues);
+    }
+
+    public function testExecuteUpdateWritesOwningRelationColumnsOnly(): void
+    {
+        $target = new QueryExecutorRelationTarget();
+        $target->id = 9;
+
+        $entity = new QueryExecutorRelationOwner();
+        $entity->id = 1;
+        $entity->name = 'Owner';
+        $entity->target = $target;
+        $entity->children = [];
+        $entity->inverse = null;
+
+        $capturedSql = null;
+        $capturedValues = null;
+        $this->connection->expects($this->once())
+            ->method('executeQuery')
+            ->willReturnCallback(function (string $sql, array $values = []) use (&$capturedSql, &$capturedValues) {
+                $capturedSql = $sql;
+                $capturedValues = $values;
+
+                return $this->createStub(\PDOStatement::class);
+            });
+
+        $this->queryExecutor->executeUpdate($entity, ['name' => 'Owner']);
+
+        $this->assertStringContainsString('target_id = ?', $capturedSql);
+        $this->assertStringNotContainsString('children', $capturedSql);
+        $this->assertStringNotContainsString('inverse', $capturedSql);
+        $this->assertSame(['Owner', 9, 1], $capturedValues);
     }
 }

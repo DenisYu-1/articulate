@@ -4,6 +4,7 @@ namespace Articulate\Tests\Commands\EntityClassDiscovery;
 
 use Articulate\Attributes\Reflection\ReflectionEntity;
 use Articulate\Commands\EntityClassDiscovery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class EntityClassDiscoveryTest extends TestCase {
@@ -225,5 +226,95 @@ PHP);
 
         $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
         $this->assertSame([$loadedEntity], $classNames);
+    }
+
+    public function testIgnoresFilesWithoutAPhpExtension(): void
+    {
+        $dir = $this->tempDir . '/extensions';
+        mkdir($dir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $entityClass = $this->writeFixtureClass($dir, 'RealOne.php', $namespace, 'RealOne', true);
+
+        // A stray template/backup that happens to contain a loadable class declaration.
+        $decoyPath = $dir . '/Decoy.php.txt';
+        file_put_contents($decoyPath, <<<PHP
+<?php
+
+namespace {$namespace};
+
+#[\\Articulate\\Attributes\\Entity]
+class DecoyFromTextFile {
+}
+PHP);
+        require_once $decoyPath;
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
+        $this->assertSame([$entityClass], $classNames);
+    }
+
+    public function testDiscoversEntitiesInNestedSubdirectories(): void
+    {
+        $dir = $this->tempDir . '/nested';
+        $nested = $dir . '/Deep/Deeper';
+        mkdir($nested, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $entityClass = $this->writeFixtureClass($nested, 'DeepEntity.php', $namespace, 'DeepEntity', true);
+
+        $discovery = new EntityClassDiscovery();
+        $entities = $discovery->discover([$dir]);
+
+        $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
+        $this->assertSame([$entityClass], $classNames);
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function defaultPathProvider(): iterable
+    {
+        yield 'src/Entities' => ['src/Entities'];
+        yield 'src/Entity' => ['src/Entity'];
+    }
+
+    #[DataProvider('defaultPathProvider')]
+    public function testFallsBackToEveryConventionalPathWhenNoPathIsGiven(string $defaultPath): void
+    {
+        $root = $this->tempDir . '/default_' . str_replace('/', '_', $defaultPath);
+        $entitiesDir = $root . '/' . $defaultPath;
+        mkdir($entitiesDir, 0777, true);
+        $namespace = 'Articulate\\Tests\\Generated\\Discovery' . str_replace('.', '', uniqid('', true));
+        $entityClass = $this->writeFixtureClass($entitiesDir, 'DefaultPathEntity.php', $namespace, 'DefaultPathEntity', true);
+
+        $previousCwd = getcwd();
+        chdir($root);
+
+        try {
+            $entities = new EntityClassDiscovery()->discover(null);
+        } finally {
+            chdir($previousCwd);
+        }
+
+        $classNames = array_map(fn (ReflectionEntity $entity) => $entity->getName(), $entities);
+        $this->assertSame([$entityClass], $classNames);
+    }
+
+    public function testThrowsWhenNoConventionalPathExists(): void
+    {
+        $root = $this->tempDir . '/no_defaults';
+        mkdir($root, 0777, true);
+
+        $previousCwd = getcwd();
+        chdir($root);
+
+        try {
+            $this->expectException(\RuntimeException::class);
+            $this->expectExceptionMessage('Entities directory is not found');
+            new EntityClassDiscovery()->discover(null);
+        } finally {
+            chdir($previousCwd);
+        }
     }
 }
