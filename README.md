@@ -18,8 +18,8 @@ Articulate still provides the expected ORM foundations: attributes, repositories
 
 ## Badges
 
-[![CI](https://github.com/DenisYu-1/articulate/workflows/QA/badge.svg)](https://github.com/DenisYu-1/articulate/actions)
-[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/DenisYu-1/articulate/actions)
+[![CI](https://github.com/articulate-orm/core/workflows/QA/badge.svg)](https://github.com/articulate-orm/core/actions)
+[![Mutation testing](https://img.shields.io/badge/Mutation%20Score-83%25+-brightgreen)](https://github.com/articulate-orm/core/actions)
 [![PHP Version](https://img.shields.io/badge/php-%3E%3D8.4-8892BF.svg)](https://php.net/)
 
 ## What Makes It Different?

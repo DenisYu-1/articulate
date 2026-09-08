@@ -1,5 +1,5 @@
 {
-    "name": "denisyu-1/articulate",
+    "name": "articulate-orm/core",
     "description": "Context-bounded PHP ORM for domain-driven applications",
     "type": "library",
     "license": "Apache-2.0",
@@ -19,7 +19,7 @@
             "email": "denis.yuryev.de@gmail.com"
         }
     ],
-    "homepage": "https://github.com/DenisYu-1/articulate",
+    "homepage": "https://github.com/articulate-orm/core",
     "keywords": ["orm", "php", "database", "ddd", "bounded-context", "entity-manager"],
     "require-dev": {
         "phpunit/phpunit": "^13.0",
