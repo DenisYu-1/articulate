@@ -168,7 +168,7 @@ $em->persist($loginUser); // throws
 A naive optimistic lock (version tied to one entity class) breaks under context-bounded entities: if only one sibling class bumps/checks the version column, another sibling can silently overwrite changes undetected. Articulate's optimistic locking is fully explicit, per-class, from that class's own attributes only:
 
 - `#[Version]` — property-level. This class's canonical version column: hydrated as a normal `int` property, bumped (`version = version + 1`) **and** checked (`WHERE version = ?`, against the tracked value) on every `UPDATE` through this class. It implies `#[Property]`, so a bare `#[Version]` property is persisted without also writing `#[Property]`; an optional `#[Version(name: 'lock_version')]` overrides the column name with the same semantics as `#[Property(name:)]`.
-- `#[VersionAware(['column', ...])]` — class-level. Declares raw column names (typically a sibling's `#[Version]` column) that this class bumps on `UPDATE` but never checks. Use it when a class legitimately writes through a versioned table but shouldn't take on lost-update detection it can't reason about (e.g. a lightweight title-only edit path on a billing entity).
+- `#[VersionAware(['column', ...])]` — class-level. An inert acknowledgement marker: no SET, no WHERE, no bump at runtime. It only names the version columns (typically a sibling's `#[Version]` column) that this class knowingly writes through without taking on lost-update detection it can't reason about (e.g. a lightweight title-only edit path on a billing entity), so `articulate:validate` treats the class as accounted for rather than a gap.
 - No attribute at all on a class mapping a versioned table means that class touches no version columns — a real gap, and `articulate:validate` errors on it rather than silently tolerating it.
 
 ```php
@@ -204,7 +204,7 @@ $em->persist($invoice);
 $em->flush(); // throws OptimisticLockException: WHERE version = 3 matched 0 rows
 ```
 
-A column may appear in at most one of a class's own `#[Version]` property or its own `#[VersionAware]` list — declaring both throws at metadata-build time. `#[Version]` properties must be typed `int`; a migration-generated column for one gets `DEFAULT 0` automatically. `OptimisticLockException` doesn't distinguish a stale version from a deleted row — both are "zero rows matched."
+`#[VersionAware]` is an inert acknowledgement marker — no SET, no WHERE, no bump; it only names the version columns a slice acknowledges, for `articulate:validate`. A column in both a class's own `#[Version]` property and its own `#[VersionAware]` list is merely redundant. `#[Version]` properties must be typed `int`; a migration-generated column for one gets `DEFAULT 0` automatically. `OptimisticLockException` doesn't distinguish a stale version from a deleted row — both are "zero rows matched."
 
 **Recovering from a conflict.** A flush that throws rolls its transaction back and leaves the entities' in-memory `#[Version]` properties at their pre-flush values — the `+1` bump is applied just before post-update callbacks (so a `#[PostUpdate]` handler sees the value the row now carries) and reverted if the flush never commits. So the failed flush does not poison a retry: re-`find()` the entity (or resolve the conflict another way) and flush again. There is no "EM is now closed" state to reset. Do not, however, write the same row through two different `#[Version]`-checking classes in a single flush — the first `UPDATE` bumps the shared column and the second then conflicts with itself.
 

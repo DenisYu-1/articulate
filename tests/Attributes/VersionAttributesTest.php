@@ -29,7 +29,7 @@ class VersionAttrAwareOnlyEntity {
 
 #[Entity(tableName: 'version_attr_both')]
 #[VersionAware(['version'])]
-class VersionAttrContradictingEntity {
+class VersionAttrRedundantEntity {
     #[PrimaryKey]
     public ?int $id = null;
 
@@ -105,11 +105,21 @@ class VersionAttributesTest extends TestCase {
         $this->assertSame(['name'], (new EntityMetadata(VersionAttrPlainEntity::class))->getGuardSet());
     }
 
-    public function testSameColumnInOwnVersionAndOwnVersionAwareThrows(): void
+    public function testSameColumnInOwnVersionAndOwnVersionAwareIsMerelyRedundant(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $metadata = new EntityMetadata(VersionAttrRedundantEntity::class);
 
-        new EntityMetadata(VersionAttrContradictingEntity::class);
+        $this->assertSame(['version'], $metadata->getVersionColumns());
+        $this->assertSame(['version'], $metadata->getAcknowledgedVersionColumns());
+    }
+
+    public function testVersionAwareRequiresAnExplicitColumnList(): void
+    {
+        $required = (new \ReflectionClass(VersionAware::class))
+            ->getConstructor()
+            ->getNumberOfRequiredParameters();
+
+        $this->assertSame(1, $required, 'VersionAware has no argless "acknowledge everything" form');
     }
 
     public function testNonIntVersionPropertyThrows(): void

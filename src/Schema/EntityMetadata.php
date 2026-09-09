@@ -159,20 +159,12 @@ class EntityMetadata {
         // Load soft-delete configuration
         $this->softDeleteable = $this->reflectionEntity->getSoftDeleteableAttribute();
 
-        // Load optimistic-locking configuration
+        // Load optimistic-locking configuration. #[VersionAware] is an inert
+        // acknowledgement marker — no SET/WHERE/bump — so a column appearing in
+        // both a class's own #[Version] and its own #[VersionAware] is merely
+        // redundant, not a contradiction.
         $this->versionProperty = $this->reflectionEntity->getVersionProperty();
         $this->versionAware = $this->reflectionEntity->getVersionAwareAttribute();
-
-        if (
-            $this->versionProperty !== null && $this->versionAware !== null
-            && in_array($this->versionProperty->getColumnName(), $this->versionAware->columns, true)
-        ) {
-            throw new \InvalidArgumentException(sprintf(
-                'Class "%s" declares column "%s" as both its own #[Version] property and in its own #[VersionAware] list.',
-                $this->reflectionEntity->getName(),
-                $this->versionProperty->getColumnName(),
-            ));
-        }
     }
 
     /**
