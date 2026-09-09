@@ -57,6 +57,24 @@ class VersionAttrPlainEntity {
     public string $name = '';
 }
 
+#[Entity(tableName: 'version_attr_only')]
+class VersionAttrOnlyEntity {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Version]
+    public int $revisionCount = 0;
+}
+
+#[Entity(tableName: 'version_attr_named')]
+class VersionAttrNamedEntity {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Version(name: 'lock_version')]
+    public int $revisionCount = 0;
+}
+
 class VersionAttributesTest extends TestCase {
     public function testCheckedColumnComesFromVersionProperty(): void
     {
@@ -101,5 +119,35 @@ class VersionAttributesTest extends TestCase {
         $metadata = new EntityMetadata(VersionAttrCheckedEntity::class);
 
         $this->assertSame('0', $metadata->getProperty('version')->getDefaultValue());
+    }
+
+    public function testBareVersionPropertyIsPersistedWithConventionColumnName(): void
+    {
+        $metadata = new EntityMetadata(VersionAttrOnlyEntity::class);
+
+        $property = $metadata->getProperty('revisionCount');
+        $this->assertNotNull($property);
+        $this->assertSame('revision_count', $property->getColumnName());
+        $this->assertSame('0', $property->getDefaultValue());
+        $this->assertSame(['revision_count'], $metadata->getVersionColumns());
+        $this->assertSame(['revision_count'], $metadata->getCheckedVersionColumns());
+    }
+
+    public function testVersionAcceptsExplicitColumnName(): void
+    {
+        $metadata = new EntityMetadata(VersionAttrNamedEntity::class);
+
+        $property = $metadata->getProperty('revisionCount');
+        $this->assertNotNull($property);
+        $this->assertSame('lock_version', $property->getColumnName());
+        $this->assertSame('0', $property->getDefaultValue());
+        $this->assertSame(['lock_version'], $metadata->getCheckedVersionColumns());
+    }
+
+    public function testVersionWithPropertyOnSamePropertyDoesNotThrow(): void
+    {
+        $metadata = new EntityMetadata(VersionAttrCheckedEntity::class);
+
+        $this->assertSame(['version'], $metadata->getCheckedVersionColumns());
     }
 }

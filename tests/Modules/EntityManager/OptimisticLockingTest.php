@@ -101,6 +101,18 @@ class OptimisticLockAwareSiblingTwo {
     public string $note = '';
 }
 
+#[Entity(tableName: 'ol_revisioned')]
+class OptimisticLockRevisionedAccount {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name = '';
+
+    #[Version(name: 'lock_version')]
+    public int $revisionCount = 0;
+}
+
 #[Entity(tableName: 'ol_soft_delete')]
 #[SoftDeleteable]
 class OptimisticLockSoftDeleteAccount {
@@ -139,6 +151,47 @@ class OptimisticLockingTest extends DatabaseTestCase {
             default => throw new \InvalidArgumentException("Unsupported database: {$databaseName}"),
         };
         $connection->executeQuery($sql);
+    }
+
+    private function createRevisionedTable(Connection $connection, string $databaseName): void
+    {
+        $connection->executeQuery('DROP TABLE IF EXISTS ol_revisioned' . ($databaseName === 'pgsql' ? ' CASCADE' : ''));
+        $sql = match ($databaseName) {
+            'mysql' => 'CREATE TABLE ol_revisioned (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, lock_version INT NOT NULL DEFAULT 0)',
+            'pgsql' => 'CREATE TABLE ol_revisioned (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, lock_version INT NOT NULL DEFAULT 0)',
+            default => throw new \InvalidArgumentException("Unsupported database: {$databaseName}"),
+        };
+        $connection->executeQuery($sql);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testBareVersionWithExplicitColumnNamePersistsAndReads(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createRevisionedTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $account = new OptimisticLockRevisionedAccount();
+        $account->name = 'Ada';
+        $em->persist($account);
+        $em->flush();
+
+        $this->assertSame(0, $account->revisionCount);
+
+        $account->name = 'Ada Updated';
+        $em->persist($account);
+        $em->flush();
+
+        $this->assertSame(1, $account->revisionCount);
+
+        $row = $connection->executeQuery('SELECT lock_version FROM ol_revisioned WHERE id = ?', [$account->id])->fetch();
+        $this->assertSame(1, (int) $row['lock_version']);
+
+        $reloaded = (new EntityManager($connection))->find(OptimisticLockRevisionedAccount::class, $account->id);
+        $this->assertNotNull($reloaded);
+        $this->assertSame(1, $reloaded->revisionCount);
     }
 
     private function createSoftDeleteTable(Connection $connection, string $databaseName): void
