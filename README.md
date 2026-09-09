@@ -179,6 +179,12 @@ class Invoice
     public int $id;
 
     #[Property]
+    public int $total;
+
+    #[Property]
+    public string $title;
+
+    // #[Version] implies #[Property]; it guards this slice's own columns (total, title).
     #[Version]
     public int $version = 0;
 }
@@ -190,6 +196,9 @@ class InvoiceTitleEdit
     #[PrimaryKey]
     public int $id;
 
+    // Writes `title`, which is inside Invoice's guard set, but takes no lost-update
+    // detection of its own — #[VersionAware(['version'])] declares that crossing so
+    // articulate:validate treats it as acknowledged rather than a gap.
     #[Property]
     public string $title;
 }
@@ -208,7 +217,7 @@ $em->flush(); // throws OptimisticLockException: WHERE version = 3 matched 0 row
 
 **Recovering from a conflict.** A flush that throws rolls its transaction back and leaves the entities' in-memory `#[Version]` properties at their pre-flush values — the `+1` bump is applied just before post-update callbacks (so a `#[PostUpdate]` handler sees the value the row now carries) and reverted if the flush never commits. So the failed flush does not poison a retry: re-`find()` the entity (or resolve the conflict another way) and flush again. There is no "EM is now closed" state to reset. Do not, however, write the same row through two different `#[Version]`-checking classes in a single flush — the first `UPDATE` bumps the shared column and the second then conflicts with itself.
 
-**Run `articulate:validate` in CI.** The coverage guarantee holds only if it is enforced: there is no runtime check, so a class mapping a versioned table with neither `#[Version]` nor `#[VersionAware]` silently drops out of lost-update detection until `validate` catches it. It errors when an entity class mapping a versioned table doesn't account for every `#[Version]` column on that table (as its own `#[Version]` property or in its own `#[VersionAware]` list), and when a `#[VersionAware]` column has no canonical `#[Version]` owner in the group; it reports (as info) a table with more than one distinct `#[Version]` column across its entity classes.
+**Run `articulate:validate` in CI.** The guard-set guarantee holds only if it is enforced: there is no runtime check, so a slice writing a column inside a sibling's guard set silently drops out of that guard's lost-update detection until `validate` catches it. It errors on **rival counters** — two distinct `#[Version]` columns on a table whose guard sets overlap (never downgraded) — and on a slice persisting a column inside another slice's guard set without its own `#[Version]` or a `#[VersionAware]` acknowledgement of that version column. The `--lenient` flag downgrades the missing-acknowledgement error to a warning.
 
 ### Memory-Efficient Unit of Work
 
