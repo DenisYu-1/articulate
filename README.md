@@ -167,7 +167,7 @@ $em->persist($loginUser); // throws
 
 A naive optimistic lock (version tied to one entity class) breaks under context-bounded entities: if only one sibling class bumps/checks the version column, another sibling can silently overwrite changes undetected. Articulate's optimistic locking is fully explicit, per-class, from that class's own attributes only:
 
-- `#[Version]` — property-level, no args. This class's canonical version column: hydrated as a normal `int` property, bumped (`version = version + 1`) **and** checked (`WHERE version = ?`, against the tracked value) on every `UPDATE` through this class.
+- `#[Version]` — property-level. This class's canonical version column: hydrated as a normal `int` property, bumped (`version = version + 1`) **and** checked (`WHERE version = ?`, against the tracked value) on every `UPDATE` through this class. It implies `#[Property]`, so a bare `#[Version]` property is persisted without also writing `#[Property]`; an optional `#[Version(name: 'lock_version')]` overrides the column name with the same semantics as `#[Property(name:)]`.
 - `#[VersionAware(['column', ...])]` — class-level. Declares raw column names (typically a sibling's `#[Version]` column) that this class bumps on `UPDATE` but never checks. Use it when a class legitimately writes through a versioned table but shouldn't take on lost-update detection it can't reason about (e.g. a lightweight title-only edit path on a billing entity).
 - No attribute at all on a class mapping a versioned table means that class touches no version columns — a real gap, and `articulate:validate` errors on it rather than silently tolerating it.
 
