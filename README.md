@@ -8,7 +8,7 @@ Most ORMs make the table/entity boundary the modeling boundary: one table, one p
 
 A `users` table may be touched by authentication, administration, billing, public APIs, reporting, and background workers. Those contexts do not need the same fields, relations, invariants, or lifecycle behavior. A single shared `User` entity gradually becomes a coupling point between modules.
 
-**Table width is a storage decision. Domain boundaries aren't. Don't let one dictate the other.** How many columns share a table is about storage and locality; how those columns split into contexts — each with its own fields, invariants, and lifecycle — is domain modeling. One class per table forces the two to be the same call. Articulate lets them diverge.
+**Table width is a storage decision. Domain boundaries aren't. Don't let one dictate the other.** How many columns share a table is about storage and locality; how those columns split into contexts is domain modeling. One class per table forces the two to be the same call. Articulate lets them diverge.
 
 Articulate makes the bounded context the modeling boundary. Several small entity classes can map to the same physical table: `LoginUser` for authentication, `AdminUser` for administration, `BillingCustomer` for billing, and read-only projection entities for public APIs.
 
