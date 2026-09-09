@@ -76,20 +76,19 @@ class VersionAttrNamedEntity {
 }
 
 class VersionAttributesTest extends TestCase {
-    public function testCheckedColumnComesFromVersionProperty(): void
+    public function testVersionColumnComesFromVersionProperty(): void
     {
         $metadata = new EntityMetadata(VersionAttrCheckedEntity::class);
 
-        $this->assertSame(['version'], $metadata->getCheckedVersionColumns());
         $this->assertSame(['version'], $metadata->getVersionColumns());
     }
 
-    public function testVersionAwareBumpsButNeverChecks(): void
+    public function testVersionAwareContributesNothingToTheVersionColumn(): void
     {
         $metadata = new EntityMetadata(VersionAttrAwareOnlyEntity::class);
 
-        $this->assertSame(['version'], $metadata->getVersionColumns());
-        $this->assertSame([], $metadata->getCheckedVersionColumns());
+        $this->assertSame([], $metadata->getVersionColumns());
+        $this->assertSame(['version'], $metadata->getAcknowledgedVersionColumns());
     }
 
     public function testPlainEntityHasNoVersionColumns(): void
@@ -97,7 +96,13 @@ class VersionAttributesTest extends TestCase {
         $metadata = new EntityMetadata(VersionAttrPlainEntity::class);
 
         $this->assertSame([], $metadata->getVersionColumns());
-        $this->assertSame([], $metadata->getCheckedVersionColumns());
+        $this->assertSame([], $metadata->getAcknowledgedVersionColumns());
+    }
+
+    public function testGuardSetIsOwnPropertyColumnsExcludingPrimaryKeyAndVersion(): void
+    {
+        $this->assertSame([], (new EntityMetadata(VersionAttrCheckedEntity::class))->getGuardSet());
+        $this->assertSame(['name'], (new EntityMetadata(VersionAttrPlainEntity::class))->getGuardSet());
     }
 
     public function testSameColumnInOwnVersionAndOwnVersionAwareThrows(): void
@@ -130,7 +135,6 @@ class VersionAttributesTest extends TestCase {
         $this->assertSame('revision_count', $property->getColumnName());
         $this->assertSame('0', $property->getDefaultValue());
         $this->assertSame(['revision_count'], $metadata->getVersionColumns());
-        $this->assertSame(['revision_count'], $metadata->getCheckedVersionColumns());
     }
 
     public function testVersionAcceptsExplicitColumnName(): void
@@ -141,13 +145,13 @@ class VersionAttributesTest extends TestCase {
         $this->assertNotNull($property);
         $this->assertSame('lock_version', $property->getColumnName());
         $this->assertSame('0', $property->getDefaultValue());
-        $this->assertSame(['lock_version'], $metadata->getCheckedVersionColumns());
+        $this->assertSame(['lock_version'], $metadata->getVersionColumns());
     }
 
     public function testVersionWithPropertyOnSamePropertyDoesNotThrow(): void
     {
         $metadata = new EntityMetadata(VersionAttrCheckedEntity::class);
 
-        $this->assertSame(['version'], $metadata->getCheckedVersionColumns());
+        $this->assertSame(['version'], $metadata->getVersionColumns());
     }
 }

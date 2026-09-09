@@ -180,8 +180,16 @@ class QueryExecutor {
         // Prepare SET clause from changes
         $setParts = [];
         $values = [];
+        $versionColumns = $metadata->getVersionColumns();
 
         foreach ($changes as $columnName => $newValue) {
+            // The #[Version] column is ORM-managed: the server-side "col = col + 1" bump
+            // appended below is authoritative. Emitting a bound "col = ?" assignment here
+            // as well would duplicate the SET target (a hard error on PostgreSQL).
+            if (in_array($columnName, $versionColumns, true)) {
+                continue;
+            }
+
             // Find the property metadata by column name (changes are keyed by column name)
             $property = null;
             foreach (iterator_to_array($reflectionEntity->getEntityProperties()) as $prop) {
@@ -211,17 +219,17 @@ class QueryExecutor {
         $this->addManyToOneChanges($entity, $setParts, $values);
 
         // Optimistic-lock bump: server-side increment, no bound parameter needed.
-        foreach ($metadata->getVersionColumns() as $versionColumn) {
+        foreach ($versionColumns as $versionColumn) {
             $setParts[] = "{$versionColumn} = {$versionColumn} + 1";
         }
 
         // Prepare WHERE clause - try primary key first, then fall back to 'id' property
         [$whereClause, $whereValues] = $this->buildWhereClause($entity);
 
-        // Optimistic-lock check: only #[Version] (never #[VersionAware]) columns are checked,
-        // bound to the entity's currently-tracked value (kept in sync with the DB by the
+        // Optimistic-lock check: the slice's own #[Version] column, bound to the
+        // entity's currently-tracked value (kept in sync with the DB by the
         // deferred reconciliation returned below and by UnitOfWork::clearChanges() refreshing the snapshot).
-        $checkedVersionColumns = $metadata->getCheckedVersionColumns();
+        $checkedVersionColumns = $versionColumns;
         $originalVersionValues = [];
         foreach ($checkedVersionColumns as $checkedColumn) {
             $originalVersionValues[$checkedColumn] = $this->getVersionColumnValue($metadata, $entity, $checkedColumn);

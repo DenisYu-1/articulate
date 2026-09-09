@@ -97,7 +97,7 @@ class EntityMetadataRegistry {
     {
         $columns = [];
         foreach ($this->getClassesByTable($tableName) as $entityClass) {
-            $columns = array_merge($columns, $this->getMetadata($entityClass)->getCheckedVersionColumns());
+            $columns = array_merge($columns, $this->getMetadata($entityClass)->getVersionColumns());
         }
 
         return array_values(array_unique($columns));

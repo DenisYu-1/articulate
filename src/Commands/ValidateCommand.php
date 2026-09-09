@@ -93,7 +93,7 @@ class ValidateCommand extends Command {
         foreach ($metadataByTable as $tableName => $metadataGroup) {
             $canonicalVersionColumns = $this->metadataRegistry->getVersionColumnsForTable($tableName);
             $anyVersionColumns = array_merge($canonicalVersionColumns, ...array_map(
-                fn ($metadata) => $metadata->getVersionColumns(),
+                fn ($metadata) => array_merge($metadata->getVersionColumns(), $metadata->getAcknowledgedVersionColumns()),
                 $metadataGroup
             ));
 
@@ -110,7 +110,7 @@ class ValidateCommand extends Command {
             }
 
             foreach ($metadataGroup as $metadata) {
-                $classVersionColumns = $metadata->getVersionColumns();
+                $classVersionColumns = array_merge($metadata->getVersionColumns(), $metadata->getAcknowledgedVersionColumns());
 
                 foreach (array_diff($canonicalVersionColumns, $classVersionColumns) as $missingColumn) {
                     $hasError = true;
@@ -122,7 +122,7 @@ class ValidateCommand extends Command {
                     ));
                 }
 
-                $ownAwareColumns = array_diff($classVersionColumns, $metadata->getCheckedVersionColumns());
+                $ownAwareColumns = $metadata->getAcknowledgedVersionColumns();
                 foreach (array_diff($ownAwareColumns, $canonicalVersionColumns) as $danglingColumn) {
                     $hasError = true;
                     $io->error(sprintf(

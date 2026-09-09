@@ -232,6 +232,35 @@ class OptimisticLockingTest extends DatabaseTestCase {
     }
 
     #[DataProvider('databaseProvider')]
+    public function testManualVersionPropertyMutationDoesNotEmitDuplicateSetTarget(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createAccountsTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $account = new OptimisticLockAccount();
+        $account->name = 'Alice';
+        $em->persist($account);
+        $em->flush();
+
+        // Hand-writing the ORM-managed #[Version] property alongside a real change must
+        // not emit a bound "version = ?" assignment next to the server-side
+        // "version = version + 1" bump: a duplicate SET target is a hard error on
+        // PostgreSQL and a silent double-apply on MySQL. The mutation is ignored for the
+        // SET clause; because the stale hand-written value no longer matches the row it
+        // surfaces as a normal OptimisticLockException on both databases rather than a
+        // driver-specific failure.
+        $account->name = 'Alice Updated';
+        $account->version = 999;
+        $em->persist($account);
+
+        $this->expectException(OptimisticLockException::class);
+        $em->flush();
+    }
+
+    #[DataProvider('databaseProvider')]
     public function testStaleVersionUpdateThrowsOptimisticLockException(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
@@ -281,7 +310,7 @@ class OptimisticLockingTest extends DatabaseTestCase {
     }
 
     #[DataProvider('databaseProvider')]
-    public function testVersionAwareSiblingBumpsColumnWithoutCheckingIt(string $databaseName): void
+    public function testCosmeticVersionAwareSliceWriteDoesNotBumpOrBlockCheckedSibling(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
@@ -293,6 +322,7 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $checkedEm->persist($checked);
         $checkedEm->flush();
 
+        // Cosmetic write through the #[VersionAware] slice: no version SQL at all.
         $awareEm = new EntityManager($connection);
         $aware = $awareEm->find(OptimisticLockAwareSibling::class, $checked->id);
         $aware->title = 'Changed by aware sibling';
@@ -300,19 +330,45 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $awareEm->flush();
 
         $row = $connection->executeQuery('SELECT version FROM ol_shared WHERE id = ?', [$checked->id])->fetch();
-        $this->assertSame(1, (int) $row['version'], 'VersionAware sibling must bump the shared column');
+        $this->assertSame(0, (int) $row['version'], 'VersionAware slice must not bump the shared version column');
 
-        // The checked sibling still holds the stale in-memory version (0) — its next
-        // flush must now detect the lost update caused by the aware sibling's write.
+        // The checked sibling still tracks version 0 — and the row is still at 0,
+        // so its next flush succeeds: the cosmetic write did not disturb it.
         $checked->status = 'checked writer update';
         $checkedEm->persist($checked);
-
-        $this->expectException(OptimisticLockException::class);
         $checkedEm->flush();
+
+        $this->assertSame(1, $checked->version);
+        $row = $connection->executeQuery('SELECT version, title FROM ol_shared WHERE id = ?', [$checked->id])->fetch();
+        $this->assertSame(1, (int) $row['version']);
+        $this->assertSame('Changed by aware sibling', $row['title']);
     }
 
     #[DataProvider('databaseProvider')]
-    public function testTwoVersionAwareSiblingsCombinedBumpColumnOnceNotTwice(string $databaseName): void
+    public function testStaleVersionedSliceWriteStillThrowsOnASharedRow(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createSharedTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+        $checked = new OptimisticLockCheckedSibling();
+        $checked->status = 'initial';
+        $em->persist($checked);
+        $em->flush();
+
+        // A concurrent writer bumps the version out of band.
+        $connection->executeQuery('UPDATE ol_shared SET version = version + 1 WHERE id = ?', [$checked->id]);
+
+        $checked->status = 'stale write';
+        $em->persist($checked);
+
+        $this->expectException(OptimisticLockException::class);
+        $em->flush();
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testTwoVersionAwareSiblingsInOneFlushEmitNoVersionSql(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
@@ -341,7 +397,7 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $em->flush();
 
         $row = $connection->executeQuery('SELECT version FROM ol_shared WHERE id = ?', [$seed->id])->fetch();
-        $this->assertSame(1, (int) $row['version'], 'Two siblings bumping the same column in one flush must increment it exactly once');
+        $this->assertSame(0, (int) $row['version'], '#[VersionAware] slices bump nothing');
     }
 
     #[DataProvider('databaseProvider')]
