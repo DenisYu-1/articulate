@@ -113,6 +113,51 @@ class OptimisticLockRevisionedAccount {
     public int $revisionCount = 0;
 }
 
+#[Entity(tableName: 'ol_shared')]
+class OptimisticLockPostUpdateSibling {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $status = '';
+
+    #[Property]
+    #[Version]
+    public int $version = 0;
+
+    public ?int $versionSeenInPostUpdate = null;
+
+    #[PostUpdate]
+    public function capturePostUpdateVersion(): void
+    {
+        $this->versionSeenInPostUpdate = $this->version;
+    }
+}
+
+#[Entity(tableName: 'ol_multi_guard')]
+class MultiGuardStatusSlice {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $status = '';
+
+    #[Version(name: 'status_version')]
+    public int $statusVersion = 0;
+}
+
+#[Entity(tableName: 'ol_multi_guard')]
+class MultiGuardAliasSlice {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $alias = '';
+
+    #[Version(name: 'alias_version')]
+    public int $aliasVersion = 0;
+}
+
 #[Entity(tableName: 'ol_soft_delete')]
 #[SoftDeleteable]
 class OptimisticLockSoftDeleteAccount {
@@ -125,6 +170,19 @@ class OptimisticLockSoftDeleteAccount {
     #[Property]
     #[Version]
     public int $version = 0;
+
+    #[Property(nullable: true)]
+    public ?\DateTimeImmutable $deletedAt = null;
+}
+
+#[Entity(tableName: 'ol_soft_delete_cosmetic')]
+#[SoftDeleteable]
+class OptimisticLockCosmeticSoftDeleteAccount {
+    #[PrimaryKey]
+    public ?int $id = null;
+
+    #[Property]
+    public string $name = '';
 
     #[Property(nullable: true)]
     public ?\DateTimeImmutable $deletedAt = null;
@@ -192,6 +250,17 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $reloaded = (new EntityManager($connection))->find(OptimisticLockRevisionedAccount::class, $account->id);
         $this->assertNotNull($reloaded);
         $this->assertSame(1, $reloaded->revisionCount);
+    }
+
+    private function createMultiGuardTable(Connection $connection, string $databaseName): void
+    {
+        $connection->executeQuery('DROP TABLE IF EXISTS ol_multi_guard' . ($databaseName === 'pgsql' ? ' CASCADE' : ''));
+        $sql = match ($databaseName) {
+            'mysql' => 'CREATE TABLE ol_multi_guard (id INT AUTO_INCREMENT PRIMARY KEY, status VARCHAR(255) NOT NULL DEFAULT \'\', alias VARCHAR(255) NOT NULL DEFAULT \'\', status_version INT NOT NULL DEFAULT 0, alias_version INT NOT NULL DEFAULT 0)',
+            'pgsql' => 'CREATE TABLE ol_multi_guard (id SERIAL PRIMARY KEY, status VARCHAR(255) NOT NULL DEFAULT \'\', alias VARCHAR(255) NOT NULL DEFAULT \'\', status_version INT NOT NULL DEFAULT 0, alias_version INT NOT NULL DEFAULT 0)',
+            default => throw new \InvalidArgumentException("Unsupported database: {$databaseName}"),
+        };
+        $connection->executeQuery($sql);
     }
 
     private function createSoftDeleteTable(Connection $connection, string $databaseName): void
@@ -400,6 +469,40 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $this->assertSame(0, (int) $row['version'], '#[VersionAware] slices bump nothing');
     }
 
+    private function createCosmeticSoftDeleteTable(Connection $connection, string $databaseName): void
+    {
+        $connection->executeQuery('DROP TABLE IF EXISTS ol_soft_delete_cosmetic' . ($databaseName === 'pgsql' ? ' CASCADE' : ''));
+        $sql = match ($databaseName) {
+            'mysql' => 'CREATE TABLE ol_soft_delete_cosmetic (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255) NOT NULL, deleted_at DATETIME NULL)',
+            'pgsql' => 'CREATE TABLE ol_soft_delete_cosmetic (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, deleted_at TIMESTAMP NULL)',
+            default => throw new \InvalidArgumentException("Unsupported database: {$databaseName}"),
+        };
+        $connection->executeQuery($sql);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testSoftDeleteThroughNonVersionedSliceIssuesNoVersionSql(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        // Table has no version column at all: any leaked "version = version + 1"
+        // SET or "version = ?" WHERE would be a SQL error against a missing column.
+        $this->createCosmeticSoftDeleteTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $account = new OptimisticLockCosmeticSoftDeleteAccount();
+        $account->name = 'Frank';
+        $em->persist($account);
+        $em->flush();
+
+        $em->remove($account);
+        $em->flush();
+
+        $row = $connection->executeQuery('SELECT deleted_at FROM ol_soft_delete_cosmetic WHERE id = ?', [$account->id])->fetch();
+        $this->assertNotNull($row['deleted_at']);
+    }
+
     #[DataProvider('databaseProvider')]
     public function testSoftDeleteHappyPathBumpsAndChecksVersion(string $databaseName): void
     {
@@ -517,7 +620,7 @@ class OptimisticLockingTest extends DatabaseTestCase {
     }
 
     #[DataProvider('databaseProvider')]
-    public function testTwoCheckingSiblingsWritingSameRowInOneFlushConflictWithThemselves(string $databaseName): void
+    public function testTwoCheckingSiblingsGuardingSameColumnInOneFlushCombineAndSucceed(string $databaseName): void
     {
         $connection = $this->getConnection($databaseName);
         $this->setCurrentDatabase($connection, $databaseName);
@@ -538,13 +641,146 @@ class OptimisticLockingTest extends DatabaseTestCase {
         $em->persist($a);
         $em->persist($b);
 
-        // Same row, two #[Version]-checking classes, one flush. Checking entities are
-        // never merged, so each issues its own UPDATE; the first bumps the shared
-        // version column, so the second's WHERE version = <pre-bump value> matches
-        // nothing. Writing one row through two checking contexts in a single flush is
-        // a self-inflicted lost update and is surfaced, not silently absorbed.
-        $this->expectException(OptimisticLockException::class);
+        // Same row, two #[Version]-checking classes over the same version column,
+        // one flush. They now merge into a single UPDATE that bumps and checks
+        // `version` exactly once — no self-inflicted lost update.
         $em->flush();
+
+        $row = $connection->executeQuery('SELECT status, title, version FROM ol_shared WHERE id = ?', [$a->id])->fetch();
+        $this->assertSame('a-updated', $row['status']);
+        $this->assertSame('b-updated', $row['title']);
+        $this->assertSame(1, (int) $row['version'], 'shared version column bumped exactly once');
+        $this->assertSame(1, $a->version);
+        $this->assertSame(1, $b->version);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testTwoDisjointVersionSlicesInOneFlushCombineAndBumpBothColumns(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createMultiGuardTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $statusSlice = new MultiGuardStatusSlice();
+        $statusSlice->status = 'initial';
+        $em->persist($statusSlice);
+        $em->flush();
+
+        $aliasSlice = $em->find(MultiGuardAliasSlice::class, $statusSlice->id);
+        $this->assertNotNull($aliasSlice);
+
+        $statusSlice->status = 'changed';
+        $aliasSlice->alias = 'nickname';
+        $em->persist($statusSlice);
+        $em->persist($aliasSlice);
+        $em->flush();
+
+        $row = $connection->executeQuery(
+            'SELECT status, alias, status_version, alias_version FROM ol_multi_guard WHERE id = ?',
+            [$statusSlice->id]
+        )->fetch();
+
+        $this->assertSame('changed', $row['status']);
+        $this->assertSame('nickname', $row['alias']);
+        $this->assertSame(1, (int) $row['status_version'], 'status guard bumped once');
+        $this->assertSame(1, (int) $row['alias_version'], 'alias guard bumped once');
+        $this->assertSame(1, $statusSlice->statusVersion);
+        $this->assertSame(1, $aliasSlice->aliasVersion);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testVersionCheckingAndNonCheckingSliceCombineIntoOneUpdate(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createSharedTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $checked = new OptimisticLockCheckedSibling();
+        $checked->status = 'initial';
+        $em->persist($checked);
+        $em->flush();
+
+        $aware = $em->find(OptimisticLockAwareSibling::class, $checked->id);
+        $this->assertNotNull($aware);
+
+        $checked->status = 'critical change';
+        $aware->title = 'cosmetic change';
+        $em->persist($checked);
+        $em->persist($aware);
+        $em->flush();
+
+        $row = $connection->executeQuery('SELECT status, title, version FROM ol_shared WHERE id = ?', [$checked->id])->fetch();
+        $this->assertSame('critical change', $row['status']);
+        $this->assertSame('cosmetic change', $row['title']);
+        $this->assertSame(1, (int) $row['version'], 'the checking slice still bumps its guard in the combined write');
+        $this->assertSame(1, $checked->version);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testPostUpdateOnCombinedWriteObservesBumpedVersion(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createSharedTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $checked = new OptimisticLockPostUpdateSibling();
+        $checked->status = 'initial';
+        $em->persist($checked);
+        $em->flush();
+
+        $aware = $em->find(OptimisticLockAwareSibling::class, $checked->id);
+        $this->assertNotNull($aware);
+
+        $checked->status = 'changed';
+        $aware->title = 'cosmetic';
+        $em->persist($checked);
+        $em->persist($aware);
+        $em->flush();
+
+        $this->assertSame(1, $checked->versionSeenInPostUpdate, '#[PostUpdate] on a combined write sees N+1');
+        $this->assertSame(1, $checked->version);
+    }
+
+    #[DataProvider('databaseProvider')]
+    public function testConflictingCombinedFlushLeavesEveryInMemoryVersionAtPreFlushValue(string $databaseName): void
+    {
+        $connection = $this->getConnection($databaseName);
+        $this->setCurrentDatabase($connection, $databaseName);
+        $this->createMultiGuardTable($connection, $databaseName);
+
+        $em = new EntityManager($connection);
+
+        $statusSlice = new MultiGuardStatusSlice();
+        $statusSlice->status = 'initial';
+        $em->persist($statusSlice);
+        $em->flush();
+
+        $aliasSlice = $em->find(MultiGuardAliasSlice::class, $statusSlice->id);
+        $this->assertNotNull($aliasSlice);
+
+        // A concurrent writer bumps one of the two guarded columns out of band.
+        $connection->executeQuery('UPDATE ol_multi_guard SET status_version = status_version + 1 WHERE id = ?', [$statusSlice->id]);
+
+        $statusSlice->status = 'changed';
+        $aliasSlice->alias = 'nickname';
+        $em->persist($statusSlice);
+        $em->persist($aliasSlice);
+
+        try {
+            $em->flush();
+            $this->fail('Expected OptimisticLockException');
+        } catch (OptimisticLockException) {
+            // expected: the combined UPDATE's WHERE status_version = 0 matches nothing
+        }
+
+        $this->assertSame(0, $statusSlice->statusVersion, 'in-memory version reverted after a failed combined flush');
+        $this->assertSame(0, $aliasSlice->aliasVersion, 'sibling in the same combined write also reverted');
     }
 
     #[DataProvider('databaseProvider')]
