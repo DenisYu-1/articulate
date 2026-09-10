@@ -3,8 +3,10 @@
 namespace Articulate\Tests\Modules\QueryBuilder;
 
 use Articulate\Exceptions\CursorPaginationException;
-use Articulate\Modules\QueryBuilder\CursorPaginationHandler;
+use Articulate\Modules\QueryBuilder\Cursor;
 use Articulate\Modules\QueryBuilder\CursorCodec;
+use Articulate\Modules\QueryBuilder\CursorDirection;
+use Articulate\Modules\QueryBuilder\CursorPaginationHandler;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -91,9 +93,9 @@ class CursorPaginationHandlerTest extends TestCase {
         $values = $this->handler->extractCursorValues(['created_at' => $dt], $parsed, null);
 
         $codec = new CursorCodec();
-        $token = $codec->encode(new \Articulate\Modules\QueryBuilder\Cursor(
+        $token = $codec->encode(new Cursor(
             $values,
-            \Articulate\Modules\QueryBuilder\CursorDirection::NEXT
+            CursorDirection::NEXT
         ));
         $decoded = $codec->decode($token);
 

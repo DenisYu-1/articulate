@@ -63,6 +63,7 @@ class CursorPaginationHandler {
                     // not a registered entity — fall through to reflection in that case,
                     // but let any other failure (e.g. getValue()) surface.
                     $metadata = null;
+
                     try {
                         $metadata = $this->metadataRegistry->getMetadata($entityClass);
                     } catch (InvalidArgumentException) {
@@ -82,6 +83,7 @@ class CursorPaginationHandler {
                 // ReflectionEntity throws when $item::class is not an entity —
                 // fall through to array handling, but do not swallow other errors.
                 $reflectionEntity = null;
+
                 try {
                     $reflectionEntity = new ReflectionEntity($item::class);
                 } catch (InvalidArgumentException) {
